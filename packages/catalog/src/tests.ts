@@ -181,7 +181,7 @@ export const TESTS: readonly LabTestDef[] = [
     unit: 'fL', conversions: { fl: [1] }, ranges: [{ min: 7.5, max: 11.5 }],
     plausible: [3, 25], decimals: 1, processes: ['hemostasis'], structures: ['bones', 'spleen'], systems: ['hematologic'],
   },
-  ...diff('neutrophil', '751-8', '770-8', 'Notrofil', ['NEU', 'NEUT', 'NE'], [2.0, 7.0], [40, 75]),
+  ...diff('neutrophil', '751-8', '770-8', 'Nötrofil', ['NEU', 'NEUT', 'NE'], [2.0, 7.0], [40, 75]),
   ...diff('lymphocyte', '731-0', '736-9', 'Lenfosit', ['LYM', 'LYMPH', 'LY'], [1.0, 4.0], [20, 45]),
   ...diff('monocyte', '742-7', '5905-5', 'Monosit', ['MONO', 'MO'], [0.2, 1.0], [2, 10]),
   ...diff('eosinophil', '711-2', '713-8', 'Eozinofil', ['EOS', 'EO'], [0.0, 0.5], [0, 6]),

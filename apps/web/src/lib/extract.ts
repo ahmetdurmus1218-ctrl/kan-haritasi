@@ -2,7 +2,7 @@ import type { FileInfo } from '@kh/vault';
 import type { Sex } from '@kh/catalog';
 import { type ReportDraft, type TextItem, parseReport, pdfTextToItems } from '@kh/parser';
 import { openPdf } from './pdf';
-import { type OcrStage, prepareImage, recognizeCanvas } from './ocr';
+import { type OcrStage, looksLikeScreenshot, prepareImage, recognizeCanvas } from './ocr';
 
 export interface ExtractProgress {
   phase: 'text' | 'ocr' | 'parse';
@@ -70,21 +70,32 @@ export async function extractDraft(
       void task.destroy();
     }
   } else {
-    usedOcr = true;
-    options.onProgress?.({ phase: 'ocr', page: 1, pages: 1, stage: 'prepare', fraction: 0 });
-    const img = await prepareImage(bytes, info.mimeType);
-    pageSizes.set(1, { w: img.width, h: img.height });
-    items.push(
-      ...(await recognizeCanvas(
+    // Görüntü: önce kâğıt fotoğrafı gibi işle; az sonuç çıkarsa ekran görüntüsü kipiyle bir kez daha
+    // dene ve daha çok değer okunan sonucu al (ör. e-Nabız ekran görüntüleri açık gri yazı içerir).
+    const ocrImage = async (mode: 'document' | 'screen') => {
+      options.onProgress?.({ phase: 'ocr', page: 1, pages: 1, stage: 'prepare', fraction: 0 });
+      const img = await prepareImage(bytes, info.mimeType, mode);
+      pageSizes.set(1, { w: img.width, h: img.height });
+      const got = await recognizeCanvas(
         img.canvas,
         1,
         img.scale,
         (o) => options.onProgress?.({ phase: 'ocr', page: 1, pages: 1, stage: o.stage, fraction: o.fraction }),
         img.offset,
-      )),
-    );
-    img.canvas.width = 0;
-    img.canvas.height = 0;
+      );
+      img.canvas.width = 0;
+      img.canvas.height = 0;
+      return got;
+    };
+    const parse = (list: TextItem[]) => parseReport(list, { sex: options.sex, method: 'ocr', pageSizes, pageCount: 1, userAliases: options.userAliases });
+    const order: Array<'document' | 'screen'> = (await looksLikeScreenshot(bytes, info.mimeType)) ? ['screen', 'document'] : ['document', 'screen'];
+    let best = parse(await ocrImage(order[0]!));
+    if (best.rows.length < 4) {
+      const second = parse(await ocrImage(order[1]!));
+      if (draftScore(second) > draftScore(best)) best = second;
+    }
+    options.onProgress?.({ phase: 'parse', page: 1, pages: 1 });
+    return best;
   }
 
   options.onProgress?.({ phase: 'parse', page: pageCount, pages: pageCount });
@@ -95,4 +106,9 @@ export async function extractDraft(
     pageCount,
     userAliases: options.userAliases,
   });
+}
+
+/** İki okuma denemesini karşılaştırmak için: okunan değer sayısı, güven; sorunlu satırlar (birim/aralık okunamadı…) eksi. */
+function draftScore(d: ReportDraft): number {
+  return d.rows.reduce((s, r) => s + 10 + r.confidence * 5 - r.issues.length * 3, 0) + d.missing.length * 2;
 }

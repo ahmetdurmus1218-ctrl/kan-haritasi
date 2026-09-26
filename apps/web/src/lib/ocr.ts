@@ -289,26 +289,50 @@ function paperBounds(bitmap: ImageBitmap): { x: number; y: number; w: number; h:
   return { x: nx0 / k, y: ny0 / k, w: (nx1 - nx0) / k, h: (ny1 - ny0) / k };
 }
 
-/** Fotoğraf ön işleme: yön (EXIF), kâğıdı kırp, gri ton + kontrast, OCR için uygun boyut. */
+/**
+ * Ekran görüntüsü mü (telefon ekranı: uzun ve dar; ya da PNG)? Kâğıt fotoğrafları çoğunlukla 4:3 veya
+ * 16:9'dur; telefon ekranları 19,5:9–20:9. Yalnızca hangi ön işlemenin önce deneneceğini belirler.
+ */
+export async function looksLikeScreenshot(bytes: Uint8Array<ArrayBuffer>, mimeType: string): Promise<boolean> {
+  if (mimeType === 'image/png') return true;
+  try {
+    const bmp = await createImageBitmap(new Blob([bytes], { type: mimeType }), { imageOrientation: 'from-image' });
+    const r = Math.max(bmp.width, bmp.height) / Math.max(1, Math.min(bmp.width, bmp.height));
+    bmp.close();
+    return r >= 1.9;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Görüntü ön işleme. İki kip:
+ *  - 'document': kâğıt fotoğrafı — yön (EXIF), kâğıdı kırp, gri ton + kontrast, küçükse büyüt.
+ *  - 'screen': ekran görüntüsü (e-Nabız, hastane uygulaması) — kırpma yok, yalnızca gri ton; açık gri
+ *    yazılar kontrastla silinmesin, büyütme harfleri bulanıklaştırmasın.
+ */
 export async function prepareImage(
   bytes: Uint8Array<ArrayBuffer>,
   mimeType: string,
-): Promise<{ canvas: HTMLCanvasElement; width: number; height: number; scale: number; offset: { x: number; y: number } }> {
+  mode: 'document' | 'screen' = 'document',
+): Promise<{ canvas: HTMLCanvasElement; width: number; height: number; scale: number; offset: { x: number; y: number }; cropped: boolean }> {
   const bitmap = await createImageBitmap(new Blob([bytes], { type: mimeType }), { imageOrientation: 'from-image' });
   const full = { x: 0, y: 0, w: bitmap.width, h: bitmap.height };
-  const crop = paperBounds(bitmap) ?? full;
+  const paper = mode === 'document' ? paperBounds(bitmap) : null;
+  const crop = paper ?? full;
   const longEdge = Math.max(crop.w, crop.h);
   // Küçük görselleri büyüt (doğruluk), büyükleri 2400 px'e indir (telefonda bellek ve hız).
-  const scale = longEdge < 1600 ? 1600 / longEdge : Math.min(1, 2400 / longEdge);
+  const scale =
+    mode === 'screen' ? (longEdge < 1000 ? 1000 / longEdge : Math.min(1, 3200 / longEdge)) : longEdge < 1600 ? 1600 / longEdge : Math.min(1, 2400 / longEdge);
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(crop.w * scale);
   canvas.height = Math.round(crop.h * scale);
   const ctx = canvas.getContext('2d', { willReadFrequently: false });
   if (!ctx) throw new Error('canvas');
-  ctx.filter = 'grayscale(1) contrast(1.35)';
+  ctx.filter = mode === 'screen' ? 'grayscale(1)' : 'grayscale(1) contrast(1.35)';
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(bitmap, crop.x, crop.y, crop.w, crop.h, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   // Koordinatlar orijinal görsel pikseline göre tutulur (görüntüleyicideki kutu için).
-  return { canvas, width: full.w, height: full.h, scale, offset: { x: crop.x, y: crop.y } };
+  return { canvas, width: full.w, height: full.h, scale, offset: { x: crop.x, y: crop.y }, cropped: paper !== null };
 }

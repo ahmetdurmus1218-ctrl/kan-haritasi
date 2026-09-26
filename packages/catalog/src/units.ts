@@ -13,6 +13,9 @@ export function normalizeUnit(raw: string): string | null {
   u = u.replace(/[µμ]/g, 'u').replace(/^mc(?=g|mol|iu|u)/, 'u').replace(/\/mc(?=g|l)/, '/u');
   u = u.replace(/×/g, 'x').replace(/\*\*/g, '^').replace(/(\d)\*(\d)/g, '$1^$2').replace(/^x(?=10)/, '');
   u = u.replace(/ıu/g, 'iu').replace(/saat/g, 'h').replace(/sa$/, 'h').replace(/hr$/, 'h');
+  // OCR: "UlU/mL" (I yerine l), "»" (yüzde işareti bazı yazı tiplerinde böyle okunur)
+  u = u.replace(/^ulu(?=[/-]ml)/, 'uiu').replace(/^u1u(?=[/-]ml)/, 'uiu');
+  if (u === '»' || u === '%»') u = '%';
   u = u.replace(/mm³/g, 'mm3');
 
   const direct: Record<string, string> = {
@@ -65,6 +68,14 @@ export function normalizeUnit(raw: string): string | null {
   };
   const hit = direct[u];
   if (hit) return hit;
+  // Bazı sistemler (ör. e-Nabız) bölü işaretini tire olarak gösterir: "UIU-mL", "10^9-L", "mg-dL".
+  if (u.includes('-') && !u.includes('/') && /[a-z%]/.test(u)) {
+    const slashed = normalizeUnit(u.replace(/-/g, '/'));
+    if (slashed) return slashed;
+  }
+  // OCR'ın bozduğu "10^9/L": "1049-1", "10^9-1"
+  if (/^10[\^4]?9[-/][l1i]$/.test(u)) return '10^9/l';
+  if (/^10[\^4]?12[-/][l1i]$/.test(u)) return '10^12/l';
 
   // OCR'ın bozduğu üst simgeli sayım birimleri: "107 3/uL", "10-3/pL", "10*3/µL" → 10^3/µL
   const ocrCount = /^10[-^7*·.]?([369])\/([upµ]l|mm3)$/.exec(u);

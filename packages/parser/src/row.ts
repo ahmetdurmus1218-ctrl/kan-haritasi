@@ -103,6 +103,9 @@ function stripPunct(tok: string): string {
 }
 
 const DASH_TOKEN = /^[-–—~]$/;
+const GLUED_RANGE = /^\d+(?:[.,]\d+)?[-–—]\d+(?:[.,]\d+)?$/;
+/** Ekran simgeleri ve OCR kırıntıları (e-Nabız'daki onay işaretleri, "»" gibi). */
+const NOISE_TOKEN = /^(v|nv|va|vv|ww|✓|✔|«|\|)$/i;
 
 export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineResult {
   const raw = line.tokens.map((t) => t.text);
@@ -133,8 +136,40 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
   // değerdir; gelmiyorsa o sayı aralığın kendisidir ve değer okunamamıştır (OCR kaçırmış olabilir).
   let unitBefore: { unit: string; unitKey: string } | null = null;
   let rangeFirst = false;
+  // "Ad | Referans | Değer | Birim" düzeni (ör. e-Nabız): aralık değerden önce gelir.
+  let rangeBefore: { text: string; start: number } | null = null;
   for (let i = match ? 0 : 1; i < rest.length && i < 8; i++) {
     let tok = stripPunct(rest[i] ?? '');
+    if (match && !rangeBefore) {
+      const glued = GLUED_RANGE.test(tok);
+      const spaced = !glued && !!parseNumber(tok) && DASH_TOKEN.test(rest[i + 1] ?? '') && !!parseNumber(stripPunct(rest[i + 2] ?? ''));
+      if (glued || spaced) {
+        const end = glued ? i : i + 2;
+        const text = glued ? tok : `${tok} - ${stripPunct(rest[i + 2] ?? '')}`;
+        // Aralıktan sonra (isteğe bağlı birimden sonra) bir sayı varsa o değerdir.
+        let j = end + 1;
+        const u = j < rest.length && !/\d/.test(rest[j] ?? '') ? findUnit(rest.slice(j, j + 3)) : null;
+        if (u) j += u.used;
+        const cand = stripPunct(rest[j] ?? '');
+        const cf = VALUE_WITH_FLAG.exec(cand);
+        const candNum = cf ? `${cf[1] ?? ''}${cf[2] ?? ''}` : cand;
+        const [cv, cu] = splitGlued(candNum);
+        if (cand && !GLUED_RANGE.test(cand) && parseNumber(cv)) {
+          rangeBefore = { text, start: i };
+          if (u) unitBefore = { unit: u.unit, unitKey: u.unitKey };
+          if (cf) {
+            const f = (cf[3] ?? '').toLowerCase();
+            gluedFlag = f.startsWith('h') || f === '↑' ? 'H' : f.startsWith('l') || f === '↓' ? 'L' : undefined;
+          }
+          valueIdx = j;
+          valueText = cv;
+          gluedUnit = cu;
+          break;
+        }
+        rangeFirst = true;
+        break;
+      }
+    }
     if (match && !/\d/.test(tok) && !unitBefore) {
       const u = findUnit(rest.slice(i, i + 3));
       if (u && normalizeUnit(tok) !== null) {
@@ -182,7 +217,7 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     return { kind: 'none' };
   }
 
-  const afterValue = rest.slice(valueIdx + 1);
+  const afterValue = rest.slice(valueIdx + 1).filter((t) => !NOISE_TOKEN.test(t) || t === '%');
   const unitFound = gluedUnit
     ? { unit: gluedUnit, unitKey: normalizeUnit(gluedUnit) as string, used: 0 }
     : (findUnit(afterValue) ?? (unitBefore ? { ...unitBefore, used: 0 } : null));
@@ -203,7 +238,7 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
 
   const parsedValue = parseNumber(valueText, isCountUnit(unitKey));
   if (!parsedValue) return { kind: 'none' };
-  const { range: reportRange, sexSpecific } = parseRange(tailText, ctx.sex);
+  const { range: reportRange, sexSpecific } = parseRange(rangeBefore ? rangeBefore.text : tailText, ctx.sex);
 
   if (!match) {
     // Tanınmayan satır: adı harf içeren ve değer + (birim veya aralık) taşıyan satırlar listelenir.
@@ -222,7 +257,7 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
   // Adla değer arasında sayı içeren bir belirteç varsa veya birim bu testle uyumsuzsa eşleşme reddedilir.
   const shortAlias = match.matchedAlias.replace(/[^a-z]/g, '').length <= 3;
   if (shortAlias) {
-    const between = rest.slice(0, valueIdx);
+    const between = rest.slice(0, rangeBefore ? rangeBefore.start : valueIdx);
     const unitMismatch = unitFound !== null && !(unitKey && unitKey in test.conversions);
     if (between.some((t) => /\d/.test(t)) || unitMismatch) return parseLine(line, ctx, true);
   }

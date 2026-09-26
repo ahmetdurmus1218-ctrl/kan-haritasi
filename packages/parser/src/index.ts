@@ -1,5 +1,5 @@
-import { type LabTestDef, type Sex, normalizeText, testByKey } from '@kh/catalog';
-import { buildLines } from './layout';
+import { type LabTestDef, type Sex, matchTestName, normalizeText, testByKey } from '@kh/catalog';
+import { type Line, buildLines } from './layout';
 import { extractLabName, extractReportDate } from './meta';
 import { parseLine } from './row';
 import type { MissingValue, ParsedRow, ReportDraft, TextItem, UnrecognizedRow } from './types';
@@ -47,8 +47,24 @@ export function parseReport(items: TextItem[], options: ParseOptions = {}): Repo
   const missing: MissingValue[] = [];
   const seen = new Map<string, ParsedRow>();
 
+  // Kart düzeni (ör. e-Nabız'da tek testlik kartlar): test adı kendi satırında, değer birkaç satır
+  // aşağıda ada sahip olmayan bir satırda ("0,27-4,2  1,3 UIU/mL"). Yalnızca addan oluşan son satır
+  // hatırlanır ve en fazla 4 satır içinde adsız bir değer satırına bağlanır.
+  let pendingName: { tokens: Line['tokens']; left: number } | null = null;
   for (const line of lines) {
-    const result = parseLine(line, { sex, ocr: method !== 'text', userAliases });
+    const ctx = { sex, ocr: method !== 'text', userAliases };
+    let result = parseLine(line, ctx);
+    if (result.kind === 'none' && pendingName && pendingName.left > 0 && /\d/.test(line.text) && !matchTestName(line.tokens.map((t) => t.text), userAliases)) {
+      const merged: Line = { ...line, tokens: [...pendingName.tokens, ...line.tokens], text: `${pendingName.tokens.map((t) => t.text).join(' ')} ${line.text}` };
+      const r2 = parseLine(merged, ctx);
+      if (r2.kind === 'row' || r2.kind === 'missing') {
+        result = r2;
+        pendingName = null;
+      }
+    }
+    if (pendingName) pendingName.left--;
+    const own = matchTestName(line.tokens.map((t) => t.text), userAliases);
+    if (result.kind === 'none' && own && own.tokensUsed === line.tokens.length && own.score >= 1) pendingName = { tokens: line.tokens, left: 4 };
     if (result.kind === 'row') {
       const prev = seen.get(result.row.testKey);
       if (prev) {

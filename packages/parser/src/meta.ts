@@ -2,6 +2,9 @@ import { normalizeText } from '@kh/catalog';
 import type { Line } from './layout';
 
 const DATE_RE = /(\d{1,2})[./-](\d{1,2})[./-](\d{4})/;
+/** "11 MAYIS 2024", "2 Ağustos 2023" (e-Nabız ve bazı hastane raporları) */
+const MONTHS = ['ocak', 'subat', 'mart', 'nisan', 'mayis', 'haziran', 'temmuz', 'agustos', 'eylul', 'ekim', 'kasim', 'aralik'];
+const TEXT_DATE_RE = new RegExp(`\\b(\\d{1,2}) (${MONTHS.join('|')}) (\\d{4})\\b`);
 const DATE_KEYS: Array<[RegExp, number]> = [
   [/numune|alinma|alim tarihi|kan alma|orneklem/, 5],
   [/kabul/, 4],
@@ -17,10 +20,11 @@ export function extractReportDate(lines: Line[]): string | undefined {
     const norm = normalizeText(line.text);
     if (/dogum/.test(norm)) continue;
     const m = DATE_RE.exec(line.text);
-    if (!m) continue;
-    const d = Number(m[1]);
-    const mo = Number(m[2]);
-    const y = Number(m[3]);
+    const t = m ? null : TEXT_DATE_RE.exec(norm);
+    if (!m && !t) continue;
+    const d = Number((m ?? t)![1]);
+    const mo = m ? Number(m[2]) : MONTHS.indexOf(t![2]!) + 1;
+    const y = Number((m ?? t)![3]);
     if (mo < 1 || mo > 12 || d < 1 || d > 31 || y < 1990 || y > 2100) continue;
     const iso = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     const score = DATE_KEYS.find(([re]) => re.test(norm))?.[1] ?? 0;
