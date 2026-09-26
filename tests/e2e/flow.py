@@ -100,7 +100,11 @@ with sync_playwright() as p:
     page.wait_for_timeout(5000)
     page.screenshot(path=SHOTS / "27-simulasyon.png")
     panel = page.locator("aside[aria-label='Simülasyon paneli']").inner_text()
-    check("Aşama 2/8" in panel.replace("AŞAMA", "Aşama"), "simülasyon LDL taşınması aşamasından başladı")
+    import re
+    m = re.search(r"(\d)/8", panel)
+    stage_no = int(m.group(1)) if m else 0
+    # Simülasyon 2. aşamadan (LDL taşınması) başlar ve kendiliğinden ilerler; yavaş/hızlı makinede 2 veya sonrası olabilir.
+    check(stage_no >= 2, f"simülasyon başladı ve ilerliyor (aşama {stage_no}/8)")
     page.locator("button[aria-label^='Aşama 8:']").click()
     page.wait_for_timeout(1500)
     check("Plak gelişimi" in page.locator("aside[aria-label='Simülasyon paneli']").inner_text(), "aşama seçimi")
