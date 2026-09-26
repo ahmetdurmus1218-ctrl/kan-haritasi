@@ -8,14 +8,15 @@ export const SYSTEM_TEXT: Partial<Record<SystemId, string>> = {
   urinary: 'Böbrekler kanı süzer, atıkları idrarla uzaklaştırır; sıvı, tuz ve asit–baz dengesini korur.',
   endocrine: 'Hormon bezleri kan yoluyla haberleşir: hipotalamus ve hipofiz diğer bezleri yönetir, geri bildirimle denge kurulur.',
   nervous: 'Beyin ve omurilik vücudun iletişim ağının merkezidir; hormon sistemini de hipotalamus üzerinden yönlendirir.',
-  musculoskeletal: 'Kemikler vücudu taşır, mineral depolar ve iliklerinde kan hücrelerini üretir. Kas modeli bu sürümde yok.',
+  musculoskeletal: 'Kemikler vücudu taşır, mineral depolar ve iliklerinde kan hücrelerini üretir; kaslar kemiklere tutunarak hareketi sağlar.',
   immune: 'Dalak, timus ve lenf dokusu bağışıklık hücrelerini üretir, olgunlaştırır ve kanı süzer.',
   hematologic: 'Kan hücreleri kemik iliğinde üretilir; dalak yaşlanan hücreleri ayıklar.',
   integumentary: 'Deri vücudu korur, ısıyı düzenler ve D vitamini yapımını başlatır.',
+  reproductive: 'Üreme bezleri (testis, yumurtalık) cinsiyet hormonlarını üretir; hipofizden gelen FSH ve LH ile yönetilir. Modeldeki vücut erkek referans vücududur; kadın üreme organlarının modeli yoktur.',
 };
 
 /** Menüde gösterilen sistemler (sırasıyla). */
-export const MENU_SYSTEMS: SystemId[] = ['cardiovascular', 'respiratory', 'digestive', 'urinary', 'endocrine', 'nervous', 'musculoskeletal', 'immune'];
+export const MENU_SYSTEMS: SystemId[] = ['cardiovascular', 'respiratory', 'digestive', 'urinary', 'endocrine', 'reproductive', 'nervous', 'musculoskeletal', 'immune'];
 
 export function structuresOfSystem(system: SystemId): string[] {
   if (system === 'hematologic') return ['bones', 'spleen'];

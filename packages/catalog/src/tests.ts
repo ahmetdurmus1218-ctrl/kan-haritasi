@@ -50,6 +50,11 @@ export interface RangeDef {
 
 export interface LabTestDef {
   key: string;
+  /**
+   * Test tek bir organı göstermiyorsa (ör. CRP, lökosit, ferritin) kısa açıklama. Arayüz bunu
+   * "tek bir organa özgü değil" diye gösterir; vücut modelinde ilişkili yapılar yine vurgulanır.
+   */
+  nonSpecific?: string;
   loinc: string;
   nameTr: string;
   group: TestGroup;
@@ -519,6 +524,56 @@ export const TESTS: readonly LabTestDef[] = [
     plausible: [0.1, 5000], decimals: 1, processes: ['pituitary-hormones'], structures: ['pituitary'], systems: ['endocrine'],
   },
   {
+    key: 'testosterone', loinc: '2986-8', nameTr: 'Testosteron (total)', group: 'hormone',
+    aliases: ['Testosteron', 'Total testosteron', 'Testosteron total', 'Testosterone', 'Total testosterone', 'TESTO'],
+    unit: 'ng/dL', conversions: { 'ng/dl': [1], 'nmol/l': [28.84], 'ng/ml': [100] },
+    ranges: [{ sex: 'male', min: 264, max: 916 }, { sex: 'female', min: 8, max: 60 }],
+    plausible: [1, 3000], decimals: 0, processes: ['sex-hormones'], structures: ['testes', 'ovaries', 'adrenals', 'pituitary'], systems: ['endocrine', 'reproductive'],
+  },
+  {
+    key: 'estradiol', loinc: '2243-4', nameTr: 'Östradiol (E2)', group: 'hormone',
+    aliases: ['Östradiol', 'Estradiol', 'E2', 'Östrojen', 'Estrojen', 'Oestradiol', 'Estradiol (E2)'],
+    unit: 'pg/mL', conversions: { 'pg/ml': [1], 'pmol/l': [1 / 3.671] },
+    // Kadında adet döngüsüne göre çok değişir; raporda aralık yoksa geniş aralık kullanılır.
+    ranges: [{ sex: 'male', min: 11, max: 44 }, { sex: 'female', min: 12.5, max: 498 }],
+    plausible: [1, 50000], decimals: 0, processes: ['sex-hormones'], structures: ['ovaries', 'testes', 'adrenals'], systems: ['endocrine', 'reproductive'],
+  },
+  {
+    key: 'progesterone', loinc: '2839-9', nameTr: 'Progesteron', group: 'hormone',
+    aliases: ['Progesteron', 'Progesterone'],
+    unit: 'ng/mL', conversions: { 'ng/ml': [1], 'nmol/l': [1 / 3.18] },
+    ranges: [{ sex: 'male', min: 0.2, max: 1.4 }, { sex: 'female', min: 0.2, max: 25 }],
+    plausible: [0, 1000], decimals: 2, processes: ['sex-hormones'], structures: ['ovaries', 'uterus', 'adrenals'], systems: ['endocrine', 'reproductive'],
+  },
+  {
+    key: 'fsh', loinc: '15067-2', nameTr: 'FSH (folikül uyarıcı hormon)', group: 'hormone',
+    aliases: ['FSH', 'Folikül uyarıcı hormon', 'Folikul stimulan hormon', 'Follicle stimulating hormone'],
+    unit: 'mIU/mL', conversions: { 'miu/ml': [1], 'u/l': [1], 'iu/l': [1] },
+    ranges: [{ sex: 'male', min: 1.5, max: 12.4 }, { sex: 'female', min: 3.5, max: 12.5 }],
+    plausible: [0.01, 400], decimals: 2, processes: ['sex-hormones', 'pituitary-hormones'], structures: ['pituitary', 'testes', 'ovaries'], systems: ['endocrine', 'reproductive'],
+  },
+  {
+    key: 'lh', loinc: '10501-5', nameTr: 'LH (lüteinleştirici hormon)', group: 'hormone',
+    aliases: ['LH', 'Lüteinleştirici hormon', 'Luteinizan hormon', 'Luteinizing hormone'],
+    unit: 'mIU/mL', conversions: { 'miu/ml': [1], 'u/l': [1], 'iu/l': [1] },
+    ranges: [{ sex: 'male', min: 1.7, max: 8.6 }, { sex: 'female', min: 2.4, max: 12.6 }],
+    plausible: [0.01, 400], decimals: 2, processes: ['sex-hormones', 'pituitary-hormones'], structures: ['pituitary', 'testes', 'ovaries'], systems: ['endocrine', 'reproductive'],
+  },
+  {
+    key: 'dhea-s', loinc: '2191-5', nameTr: 'DHEA-S', group: 'hormone',
+    aliases: ['DHEA-S', 'DHEAS', 'DHEA SO4', 'DHEA-SO4', 'Dehidroepiandrosteron sülfat', 'Dehydroepiandrosterone sulfate'],
+    unit: 'µg/dL', conversions: { 'ug/dl': [1], 'umol/l': [36.85] },
+    ranges: [{ sex: 'male', min: 80, max: 560 }, { sex: 'female', min: 35, max: 430 }],
+    plausible: [1, 3000], decimals: 0, processes: ['sex-hormones', 'stress-hormones'], structures: ['adrenals'], systems: ['endocrine'],
+  },
+  {
+    key: 'bhcg', loinc: '21198-7', nameTr: 'Beta-hCG', group: 'hormone',
+    aliases: ['Beta-hCG', 'Beta hCG', 'β-hCG', 'B-HCG', 'BHCG', 'Total beta hCG', 'Total β-hCG', 'hCG', 'Gebelik testi (kan)'],
+    unit: 'mIU/mL', conversions: { 'miu/ml': [1], 'u/l': [1], 'iu/l': [1] },
+    ranges: [{ max: 5 }],
+    plausible: [0, 1000000], decimals: 1, processes: ['pregnancy'], structures: ['uterus', 'ovaries'], systems: ['reproductive', 'endocrine'],
+  },
+  {
     key: 'psa', loinc: '2857-1', nameTr: 'PSA', group: 'other',
     aliases: ['PSA', 'Total PSA', 'Prostat spesifik antijen', 'PSA total'],
     unit: 'ng/mL', conversions: { 'ng/ml': [1] }, ranges: [{ max: 4 }],
@@ -543,6 +598,33 @@ export const TESTS: readonly LabTestDef[] = [
     plausible: [1, 300], decimals: 1, processes: ['atherosclerosis', 'b12-folate'], structures: ['coronary-arteries', 'aorta', 'carotid-arteries'], systems: ['cardiovascular'],
   },
 ];
+
+/** Tek bir organa özgü olmayan testler: sonuç birden fazla sistemden etkilenir. */
+const NON_SPECIFIC: Record<string, string> = {
+  crp: 'CRP vücudun herhangi bir yerindeki iltihap veya enfeksiyonda yükselir; yerini göstermez.',
+  'hs-crp': 'hs-CRP genel bir inflamasyon belirtecidir; tek bir organı göstermez.',
+  esr: 'Sedimantasyon iltihap, enfeksiyon, kansızlık, gebelik ve yaş gibi birçok durumdan etkilenir.',
+  wbc: 'Akyuvar sayısı enfeksiyon, stres, ilaçlar ve kemik iliğiyle ilişkilidir; tek bir organı göstermez.',
+  ferritin: 'Ferritin demir deposunu gösterir, ancak iltihap ve karaciğer sorunlarında da yükselebilir.',
+  ldh: 'LDH neredeyse tüm hücrelerde bulunur; kaynağı tek başına belirlenemez.',
+  homocysteine: 'Homosistein vitamin (B12, folat, B6) durumu, böbrek işlevi ve kalıtsal özelliklerle ilişkilidir.',
+  glucose: 'Kan şekeri pankreasın (insülin), karaciğerin, kasların ve hormonların ortak dengesiyle belirlenir.',
+  hba1c: 'HbA1c son 2–3 ayın ortalama kan şekerini yansıtır; kansızlık gibi alyuvar durumlarından da etkilenir.',
+  albumin: 'Albumin karaciğerde yapılır; beslenme, iltihap, böbrek ve bağırsak kayıplarından da etkilenir.',
+  'total-protein': 'Total protein karaciğer, beslenme, bağışıklık (globulinler) ve su dengesinden etkilenir.',
+  'vitamin-d': 'D vitamini deride yapılır, karaciğer ve böbrekte aktifleşir; güneşe ve beslenmeye bağlıdır.',
+  ck: 'CK iskelet ve kalp kasından kana geçer; yoğun egzersiz de yükseltir.',
+  sodium: 'Sodyum böbrekler, hormonlar (ADH, aldosteron), sıvı alımı ve ilaçların ortak dengesidir.',
+  potassium: 'Potasyum böbrekler, hormonlar, ilaçlar ve örneğin bekletilmesi (hemoliz) gibi birçok etkenden etkilenir.',
+  calcium: 'Kalsiyum kemik, bağırsak, böbrek, paratiroid hormonu ve D vitamini tarafından birlikte ayarlanır.',
+  'uric-acid': 'Ürik asit beslenme, böbrek atılımı ve hücre yıkımından etkilenir.',
+  bhcg: 'Beta-hCG gebelikte yükselir; gebelik dışı yüksekliği ek değerlendirme gerektirir.',
+};
+
+for (const t of TESTS as LabTestDef[]) {
+  const diffKind = /^(neutrophil|lymphocyte|monocyte|eosinophil|basophil)-/.exec(t.key);
+  t.nonSpecific ??= NON_SPECIFIC[t.key] ?? (diffKind ? 'Akyuvar alt türleri enfeksiyon, alerji, stres ve kemik iliği işleviyle ilişkilidir; tek bir organı göstermez.' : undefined);
+}
 
 export const testByKey = new Map(TESTS.map((t) => [t.key, t]));
 export const testByLoinc = new Map(TESTS.map((t) => [t.loinc, t]));

@@ -172,3 +172,33 @@ describe('birlikte yorum (paternler)', () => {
     expect(text).not.toMatch(/undefined|NaN|null/);
   });
 });
+
+describe('hormonlar ve tek organa özgü olmayan testler', () => {
+  it('düşük testosteron + yüksek LH/FSH: testis kaynaklı olabilir', () => {
+    const out = interpret([r('testosterone', 180, 'low', 264, 916), r('lh', 14, 'high', 1.7, 8.6), r('fsh', 20, 'high', 1.5, 12.4)], 'male');
+    const p = out.patterns.find((x) => x.id === 'testosterone-low')!;
+    expect(p.text).toMatch(/testis kaynaklı/);
+    expect(p.structures).toContain('testes');
+    expect(out.patterns.map((x) => x.id)).not.toContain('sex-hormones');
+  });
+
+  it('kadında cinsiyet hormonları döngü gününe göre yorumlanır uyarısıyla gelir', () => {
+    const out = interpret([r('estradiol', 520, 'high', 12.5, 498), r('lh', 40, 'high', 2.4, 12.6)], 'female');
+    expect(out.patterns.find((x) => x.id === 'sex-hormones')!.text).toMatch(/adet döngüsünün gününe/);
+  });
+
+  it('beta-hCG, prolaktin ve kortizol paternleri', () => {
+    expect(interpret([r('bhcg', 1200, 'high', undefined, 5)]).patterns.map((x) => x.id)).toEqual(['bhcg']);
+    expect(interpret([r('prolactin', 45, 'high', 4, 15.2)], 'male').patterns.map((x) => x.id)).toEqual(['prolactin-high']);
+    expect(interpret([r('cortisol', 3, 'low', 6.2, 19.4)]).patterns[0]!.title).toBe('Kortizol düşük');
+  });
+
+  it('CRP, lökosit ve ferritin "tek bir organa özgü değil" olarak işaretlenir', () => {
+    const out = interpret([r('crp', 20, 'high', undefined, 5), r('wbc', 12, 'high', 4, 10.5), r('ferritin', 400, 'high', 30, 400), r('alt', 30, 'normal', undefined, 41)]);
+    const byKey = Object.fromEntries(out.findings.map((f) => [f.testKey, f]));
+    expect(byKey.crp!.nonSpecific).toMatch(/yerini göstermez/);
+    expect(byKey.wbc!.nonSpecific).toBeTruthy();
+    expect(byKey.ferritin!.nonSpecific).toBeTruthy();
+    expect(byKey.alt!.nonSpecific).toBeUndefined();
+  });
+});

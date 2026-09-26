@@ -17,7 +17,8 @@ export type SystemId =
   | 'musculoskeletal'
   | 'immune'
   | 'hematologic'
-  | 'integumentary';
+  | 'integumentary'
+  | 'reproductive';
 
 export interface BodySystem {
   id: SystemId;
@@ -36,9 +37,22 @@ export const SYSTEMS: readonly BodySystem[] = [
   { id: 'immune', nameTr: 'Bağışıklık', color: '#6fd3a8' },
   { id: 'hematologic', nameTr: 'Kan ve kemik iliği', color: '#ff7a7a' },
   { id: 'integumentary', nameTr: 'Deri', color: '#c9a58f' },
+  { id: 'reproductive', nameTr: 'Üreme', color: '#f59ec0' },
 ];
 
-export type ModelAsset = 'body' | 'skeleton' | 'muscles' | 'cardio' | 'respiratory' | 'digestive' | 'urinary' | 'nervous' | 'immune' | 'schematic';
+export type ModelAsset =
+  | 'body'
+  | 'skeleton'
+  | 'muscles'
+  | 'cardio'
+  | 'respiratory'
+  | 'digestive'
+  | 'urinary'
+  | 'nervous'
+  | 'immune'
+  | 'endocrine'
+  | 'reproductive'
+  | 'schematic';
 
 export interface Structure {
   id: string;
@@ -76,7 +90,7 @@ export const STRUCTURES: readonly Structure[] = [
   { id: 'large-intestine', nameTr: 'Kalın bağırsak', systems: ['digestive'], asset: 'digestive', modelMatch: ['colon', 'cecum', 'rectum', 'appendix', 'intestine_large', 'large_intestine'], blurb: 'Su ve tuzların geri emildiği bölüm.' },
   { id: 'kidneys', nameTr: 'Böbrekler', systems: ['urinary'], asset: 'urinary', modelMatch: ['kidney', 'renal_papilla', 'renal_pyramid', 'renal_column', 'cortex_of_kidney', 'hilum_of_kidney'], drill: 'nephron', blurb: 'Kanı süzen, sıvı-tuz dengesini ve atık atılımını düzenleyen organlar.' },
   { id: 'urinary-tract', nameTr: 'Üreterler ve mesane', systems: ['urinary'], asset: 'urinary', modelMatch: ['ureter', 'urinary_bladder', 'bladder'], blurb: 'İdrarı böbreklerden taşıyan ve depolayan yollar.' },
-  { id: 'prostate', nameTr: 'Prostat', systems: ['urinary'], asset: 'urinary', modelMatch: ['prostate'], blurb: 'Erkeklerde mesane altındaki bez.' },
+  { id: 'prostate', nameTr: 'Prostat', systems: ['urinary', 'reproductive'], asset: 'urinary', modelMatch: ['prostate'], blurb: 'Erkeklerde mesane altındaki bez.' },
   { id: 'brain', nameTr: 'Beyin', systems: ['nervous'], asset: 'nervous', modelMatch: ['brain', 'allen', 'cortex', 'gyrus', 'lobe', 'cerebell', 'thalam', 'hippocamp', 'nucleus', 'ventricle_of_brain'], blurb: 'Sinir sisteminin merkezi.' },
   { id: 'spinal-cord', nameTr: 'Omurilik', systems: ['nervous'], asset: 'nervous', modelMatch: ['spinal_cord', 'spinal', 'cervical', 'thoracic', 'lumbar'], blurb: 'Beyin ile vücut arasında sinyal taşır.' },
   { id: 'limb-vessels', nameTr: 'Kol ve bacak damarları', systems: ['cardiovascular'], asset: 'cardio', modelMatch: [], drill: 'vessel', approximate: true, blurb: 'Kolları ve bacakları besleyen ana atardamarlar (brakiyal, radyal, femoral, tibial) ve toplardamarlar (safen, sefalik, bazilik). Yolları kemiklere göre şematik çizilmiştir.' },
@@ -89,6 +103,11 @@ export const STRUCTURES: readonly Structure[] = [
   { id: 'pituitary', nameTr: 'Hipofiz (şematik)', systems: ['endocrine', 'nervous'], asset: 'schematic', modelMatch: ['schematic_pituitary'], schematic: true, blurb: 'TSH, prolaktin, ACTH gibi hormonları salgılayan bez.' },
   { id: 'hypothalamus', nameTr: 'Hipotalamus (şematik)', systems: ['endocrine', 'nervous'], asset: 'schematic', modelMatch: ['schematic_hypothalamus'], schematic: true, blurb: 'Hipofizi yöneten beyin bölgesi.' },
   { id: 'adrenals', nameTr: 'Böbreküstü bezleri (şematik)', systems: ['endocrine'], asset: 'schematic', modelMatch: ['schematic_adrenal'], schematic: true, blurb: 'Kortizol ve aldosteron üreten bezler.' },
+  // Üreme sistemi (erkek referans vücudu; kadın üreme organlarının modeli yok)
+  { id: 'testes', nameTr: 'Testisler', systems: ['reproductive', 'endocrine'], asset: 'reproductive', modelMatch: [], blurb: 'Sperm ve testosteron üreten erkek üreme bezleri; üstlerinde epididim bulunur.' },
+  { id: 'male-genitals', nameTr: 'Erkek üreme yolları', systems: ['reproductive'], asset: 'reproductive', modelMatch: [], blurb: 'Sperm kanalları (duktus deferens), seminal veziküller ve penis.' },
+  { id: 'ovaries', nameTr: 'Yumurtalıklar (model yok)', systems: ['reproductive', 'endocrine'], asset: null, modelMatch: [], blurb: 'Östrojen ve progesteron üreten kadın üreme bezleri. Uygulamadaki vücut erkek referans modeli olduğundan 3D modeli yok.' },
+  { id: 'uterus', nameTr: 'Rahim (model yok)', systems: ['reproductive'], asset: null, modelMatch: [], blurb: 'Gebeliğin geliştiği organ. Uygulamadaki vücut erkek referans modeli olduğundan 3D modeli yok.' },
   { id: 'skeletal-muscle', nameTr: 'İskelet kasları', systems: ['musculoskeletal'], asset: 'muscles', modelMatch: [], blurb: 'Hareketi sağlayan, kemiklere tutunan kaslar. Kas enzimi (CK) ve kreatinin kas kütlesi ve kas hasarıyla ilişkilidir.' },
 ];
 
@@ -115,7 +134,9 @@ export type ProcessId =
   | 'muscle-injury'
   | 'stress-hormones'
   | 'pituitary-hormones'
-  | 'prostate';
+  | 'prostate'
+  | 'sex-hormones'
+  | 'pregnancy';
 
 export const PROCESSES: Readonly<Record<ProcessId, { nameTr: string; summary: string }>> = {
   'lipid-transport': { nameTr: 'Lipid taşınması', summary: 'Kolesterol ve trigliseritler kanda lipoprotein (LDL, HDL, VLDL) paketleriyle taşınır.' },
@@ -141,6 +162,8 @@ export const PROCESSES: Readonly<Record<ProcessId, { nameTr: string; summary: st
   'stress-hormones': { nameTr: 'Stres hormonları', summary: 'Kortizol böbreküstü bezinden salgılanır, günlük döngüsü vardır.' },
   'pituitary-hormones': { nameTr: 'Hipofiz hormonları', summary: 'Hipofiz birçok bezi yöneten hormonlar salgılar.' },
   prostate: { nameTr: 'Prostat', summary: 'PSA prostat hücrelerince üretilen bir proteindir.' },
+  'sex-hormones': { nameTr: 'Cinsiyet hormonları', summary: 'Hipofizden salgılanan FSH ve LH, testis ve yumurtalıkları uyararak testosteron, östrojen ve progesteron yapımını yönetir; kan düzeyleri geri bildirimle ayarlanır.' },
+  pregnancy: { nameTr: 'Gebelik hormonu (hCG)', summary: 'hCG, gebelikte plasentanın ürettiği hormondur; gebeliğin ilk haftalarında hızla yükselir.' },
 };
 
 export const structureById = new Map(STRUCTURES.map((s) => [s.id, s]));

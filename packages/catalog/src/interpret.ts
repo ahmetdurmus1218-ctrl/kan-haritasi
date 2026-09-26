@@ -69,6 +69,8 @@ export interface Finding {
   detail: string;
   systems: SystemId[];
   structures: string[];
+  /** Test tek bir organa özgü değilse açıklaması. */
+  nonSpecific?: string;
   date?: string;
 }
 
@@ -386,6 +388,7 @@ export function gradeResult(input: LabInput, sex: Sex = 'unspecified'): Finding 
     detail: note ? `${d.detail} ${note}` : d.detail,
     systems: test.systems,
     structures: test.structures,
+    ...(test.nonSpecific ? { nonSpecific: test.nonSpecific } : {}),
     date: input.date,
   };
 }
@@ -794,6 +797,94 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
       structures: ['skeletal-muscle', 'heart'],
     });
   }
+  // --- Hormonlar
+  const testo = m.get('testosterone');
+  const fsh = m.get('fsh');
+  const lh = m.get('lh');
+  const gonadotropinHigh = fsh?.status === 'high' || lh?.status === 'high';
+  if (testo?.status === 'low' && sex !== 'female') {
+    push({
+      id: 'testosterone-low',
+      title: 'Testosteron düşük',
+      level: 'attention',
+      text: [
+        'Testosteron referansın altında.',
+        gonadotropinHigh
+          ? 'FSH/LH yüksek: hipofiz testisleri daha çok uyarıyor ama yanıt az; bu tablo testis kaynaklı olabilir.'
+          : fsh || lh
+            ? 'FSH/LH yüksek değil: hipofiz–hipotalamus uyarısının azalmasıyla ilişkili olabilir.'
+            : 'FSH ve LH ölçümü kaynağını anlamaya yardım eder.',
+        'Testosteron sabah en yüksektir; tanı için genellikle sabah tekrar ölçümle doğrulanır. Uyku, kilo ve kronik hastalıklar da etkiler.',
+      ].join(' '),
+      tests: ['testosterone', 'fsh', 'lh', 'prolactin'].filter((k) => has(m, k)),
+      systems: ['endocrine', 'reproductive'],
+      structures: ['testes', 'pituitary'],
+      ask: ['Sabah tekrar ölçüm gerekir mi?', 'FSH, LH ve prolaktin ölçülmeli mi?'],
+    });
+  } else if (testo?.status === 'high' && sex === 'female') {
+    push({
+      id: 'androgen-high',
+      title: 'Kadında testosteron yüksek',
+      level: 'attention',
+      text: 'Testosteron kadın referansının üzerinde. Yumurtalıklar (ör. polikistik over sendromu) veya böbreküstü bezleriyle ilişkili olabilir; adet düzeni, tüylenme ve akne gibi belirtilerle birlikte değerlendirilir.',
+      tests: ['testosterone', 'dhea-s', 'lh', 'fsh'].filter((k) => has(m, k)),
+      systems: ['endocrine', 'reproductive'],
+      structures: ['ovaries', 'adrenals'],
+    });
+  }
+  const sexOff = ['estradiol', 'progesterone', 'fsh', 'lh'].filter((k) => m.get(k) && m.get(k)!.status !== 'normal' && m.get(k)!.status !== 'unknown');
+  if (sexOff.length && !(testo?.status === 'low' && sex !== 'female')) {
+    push({
+      id: 'sex-hormones',
+      title: 'Cinsiyet hormonlarında sapma',
+      level: 'info',
+      text: `${sexOff.map((k) => `${m.get(k)!.name.split(' (')[0]} ${m.get(k)!.status === 'high' ? 'yüksek' : 'düşük'}`).join(', ')}. Kadınlarda bu hormonlar adet döngüsünün gününe, gebeliğe, menopoza ve hormon ilaçlarına göre büyük ölçüde değişir; sonuç ölçüm günüyle birlikte yorumlanmalıdır.`,
+      tests: [...sexOff, 'testosterone', 'prolactin'].filter((k, i, a) => has(m, k) && a.indexOf(k) === i),
+      systems: ['endocrine', 'reproductive'],
+      structures: ['pituitary', 'ovaries', 'testes'],
+    });
+  }
+  if (is(m, 'prolactin', 'high')) {
+    push({
+      id: 'prolactin-high',
+      title: 'Prolaktin yüksek',
+      level: (val(m, 'prolactin') ?? 0) > 100 ? 'attention' : 'info',
+      text: 'Prolaktin hipofizden salgılanır. Stres, iğne korkusu, uykusuzluk, gebelik ve emzirme, bazı ilaçlar (ör. mide ve psikiyatri ilaçları) ve hipofizle ilgili durumlar yükseltebilir. Hafif yükseklik çoğu zaman dinlenmiş olarak tekrar ölçülür.',
+      tests: ['prolactin', 'tsh'].filter((k) => has(m, k)),
+      systems: ['endocrine'],
+      structures: ['pituitary'],
+      ask: ['Dinlenmiş olarak tekrar ölçüm gerekir mi?', 'Kullandığım ilaçlar prolaktini etkiler mi?'],
+    });
+  }
+  const cort = m.get('cortisol');
+  if (cort && (cort.status === 'high' || cort.status === 'low')) {
+    push({
+      id: 'cortisol',
+      title: cort.status === 'high' ? 'Kortizol yüksek' : 'Kortizol düşük',
+      level: 'attention',
+      text:
+        cort.status === 'high'
+          ? 'Kortizol stres, uykusuzluk, ölçüm saati ve kortizon içeren ilaçlarla yükselir. Kalıcı yükseklik ayrıca değerlendirilir.'
+          : 'Kortizol sabah ölçümünde düşükse böbreküstü bezi veya hipofiz işlevi açısından değerlendirme gerekebilir; kortizon kullanımı ve ölçüm saati de etkiler.',
+      tests: ['cortisol', 'dhea-s', 'sodium', 'potassium'].filter((k) => has(m, k)),
+      systems: ['endocrine'],
+      structures: ['adrenals', 'pituitary'],
+      ask: ['Ölçüm saati uygun muydu, tekrar gerekir mi?'],
+    });
+  }
+  if ((val(m, 'bhcg') ?? 0) > 5) {
+    push({
+      id: 'bhcg',
+      title: 'Beta-hCG pozitif aralıkta',
+      level: 'attention',
+      text: 'Beta-hCG 5 mIU/mL üzerinde: en sık gebelikle uyumludur. Gebeliğin seyri, tekrar ölçümle (genellikle 48 saat arayla) ve ultrasonla hekim tarafından değerlendirilir.',
+      tests: ['bhcg'],
+      systems: ['reproductive'],
+      structures: ['uterus', 'ovaries'],
+      ask: ['Tekrar ölçüm ve ultrason ne zaman yapılmalı?'],
+    });
+  }
+
   if (is(m, 'psa', 'high')) {
     push({
       id: 'psa',
@@ -811,7 +902,7 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
 // ------------------------------------------------------------------------------------------------
 // Ana giriş
 
-const SUMMARY_SYSTEMS: SystemId[] = ['cardiovascular', 'hematologic', 'digestive', 'urinary', 'endocrine', 'immune', 'musculoskeletal', 'nervous', 'respiratory'];
+const SUMMARY_SYSTEMS: SystemId[] = ['cardiovascular', 'hematologic', 'digestive', 'urinary', 'endocrine', 'reproductive', 'immune', 'musculoskeletal', 'nervous', 'respiratory'];
 
 export function interpret(inputs: LabInput[], sex: Sex = 'unspecified'): Interpretation {
   const findings = inputs.map((i) => gradeResult(i, sex)).filter((x): x is Finding => x !== null);

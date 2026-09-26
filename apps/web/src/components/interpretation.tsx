@@ -222,8 +222,33 @@ export function FindingBlock({ finding: f, showName = false }: { finding: Findin
         <SeverityChip finding={f} />
         {f.critical && <span className="rounded-full bg-[#ff5d5d]/15 px-2 py-0.5 text-[11px] font-medium text-[#ff7a7a]">Kritik düzey</span>}
       </div>
-      <p className="mt-2 leading-relaxed text-fg">{f.headline}</p>
-      {f.detail && <p className="mt-1.5 leading-relaxed text-fg-muted">{f.detail}</p>}
+      <dl className="mt-2 space-y-2">
+        <div>
+          <dt className="text-[11px] font-medium uppercase tracking-wide text-fg-faint">Raporda ölçülen</dt>
+          <dd className="leading-relaxed text-fg">{f.headline}</dd>
+        </div>
+        {f.detail && (
+          <div>
+            <dt className="text-[11px] font-medium uppercase tracking-wide text-fg-faint">Olası anlamı (genel bilgi)</dt>
+            <dd className="leading-relaxed text-fg-muted">{f.detail}</dd>
+          </div>
+        )}
+        {f.nonSpecific && (
+          <div>
+            <dt className="text-[11px] font-medium uppercase tracking-wide text-fg-faint">Tek bir organa özgü değil</dt>
+            <dd className="leading-relaxed text-fg-muted">{f.nonSpecific}</dd>
+          </div>
+        )}
+        {(f.status === 'high' || f.status === 'low' || f.severity === 'borderline') && (
+          <div>
+            <dt className="text-[11px] font-medium uppercase tracking-wide text-fg-faint">Kesin olmayan</dt>
+            <dd className="leading-relaxed text-fg-muted">
+              Tek ölçümdür. Açlık, ölçüm saati, egzersiz, ilaçlar ve laboratuvar farkları sonucu etkileyebilir; bir organda hasar olduğunu
+              kanıtlamaz. Anlamı, belirtilerin ve gerekirse tekrar ölçümün ışığında hekimle netleşir.
+            </dd>
+          </div>
+        )}
+      </dl>
     </div>
   );
 }
