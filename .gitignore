@@ -6,3 +6,6 @@ apps/web/public/ocr/
 *.log
 .DS_Store
 tests/e2e/.shots/
+
+# 3D kaynak modeller (fetch-hra.sh indirir)
+assets-pipeline/.cache/

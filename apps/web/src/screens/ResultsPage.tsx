@@ -185,7 +185,7 @@ export function ResultDetail({ testKey }: { testKey: string }) {
             <BodyIcon size={16} /> Vücutta göster
           </button>
           {test.simulation && (
-            <button type="button" className="btn-ghost" onClick={() => go({ name: 'simulation', id: test.simulation! })}>
+            <button type="button" className="btn-ghost" onClick={() => go({ name: 'simulation', id: test.simulation!, from: test.structures[0] })}>
               Eğitimsel simülasyon
             </button>
           )}

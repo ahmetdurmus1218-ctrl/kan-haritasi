@@ -50,6 +50,12 @@ export default tseslint.config(
     rules: { 'no-restricted-globals': 'off' },
   },
   {
+    // Geliştirici araçları (derleme hattı) konsola ilerleme yazar; uygulama koduna dahil değildir.
+    files: ['assets-pipeline/**'],
+    languageOptions: { globals: { ...globals.node } },
+    rules: { 'no-console': 'off' },
+  },
+  {
     files: ['**/*.test.{ts,tsx}', 'tests/**'],
     rules: { 'no-console': 'off', '@typescript-eslint/no-non-null-assertion': 'off' },
   },

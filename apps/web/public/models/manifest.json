@@ -1,0 +1,288 @@
+{
+ "source": "HuBMAP Human Reference Atlas — 3D Reference Object Library (VH Male), CC BY 4.0",
+ "sourceUrl": "https://github.com/hubmapconsortium/ccf-3d-reference-object-library",
+ "sourceCommit": "f1a3a63f110e27ff0736047d52d04dba5d3087f9",
+ "units": "meter; +Y up, +X subject left, +Z anterior",
+ "assets": {
+  "body": {
+   "file": "body.glb",
+   "bytes": 762808,
+   "triangles": 32000,
+   "bounds": {
+    "min": [
+     -0.5237,
+     -0.9146,
+     -0.1606
+    ],
+    "max": [
+     0.523,
+     0.9149,
+     0.1556
+    ]
+   },
+   "nodes": [
+    "skin"
+   ]
+  },
+  "skeleton": {
+   "file": "skeleton.glb",
+   "bytes": 1740012,
+   "triangles": 70766,
+   "bounds": {
+    "min": [
+     -0.1349,
+     -0.0331,
+     -0.1161
+    ],
+    "max": [
+     0.1455,
+     0.7619,
+     0.0537
+    ]
+   },
+   "nodes": [
+    "bones",
+    "bones"
+   ]
+  },
+  "cardio": {
+   "file": "cardio.glb",
+   "bytes": 4475032,
+   "triangles": 195816,
+   "bounds": {
+    "min": [
+     -0.1107,
+     -0.0397,
+     -0.089
+    ],
+    "max": [
+     0.1229,
+     0.8288,
+     0.0969
+    ]
+   },
+   "nodes": [
+    "heart",
+    "eye-vessels|ophthalmic vein L",
+    "eye-vessels|superior ophthalmic vein L",
+    "eye-vessels|inferior ophthalmic vein L",
+    "eye-vessels|central retinal vein L",
+    "eye-vessels|ophthalmic vein R",
+    "eye-vessels|superior ophthalmic vein R",
+    "eye-vessels|inferior ophthalmic vein R",
+    "eye-vessels|central retinal vein R",
+    "eye-vessels|central retinal artery L",
+    "eye-vessels|opthalmic artery L",
+    "eye-vessels|long posterior ciliary artery L",
+    "eye-vessels|central retinal artery R",
+    "eye-vessels|opthalmic artery R",
+    "eye-vessels|long posterior ciliary artery R",
+    "abdominal-vessels|inferior mesenteric vein",
+    "abdominal-vessels|median sacral vein",
+    "abdominal-vessels|sigmoid vein",
+    "abdominal-vessels|superior mesenteric vein",
+    "abdominal-vessels|superior rectal vein",
+    "veins|common iliac vein L",
+    "veins|common iliac vein R",
+    "abdominal-vessels|inferior pancreaticoduodenal vein",
+    "veins|external iliac vein L",
+    "veins|external iliac vein R",
+    "abdominal-vessels|inferior rectal vein L",
+    "abdominal-vessels|inferior rectal vein R",
+    "abdominal-vessels|internal pudendal vein L",
+    "abdominal-vessels|internal pudendal vein R",
+    "veins|internal iliac vein L",
+    "veins|internal iliac vein R",
+    "abdominal-vessels|left colic vein",
+    "abdominal-vessels|ileocolic vein",
+    "abdominal-vessels|right colic vein",
+    "abdominal-vessels|middle colic vein",
+    "abdominal-vessels|middle rectal vein L",
+    "abdominal-vessels|middle rectal vein R",
+    "abdominal-vessels|right colic artery",
+    "abdominal-vessels|middle colic artery",
+    "abdominal-vessels|left colic artery",
+    "abdominal-vessels|ileocolic artery",
+    "abdominal-vessels|sigmoid artery a",
+    "abdominal-vessels|sigmoid artery b",
+    "abdominal-vessels|sigmoid artery c",
+    "abdominal-vessels|inferior mesenteric artery",
+    "abdominal-vessels|superior mesenteric artery",
+    "abdominal-vessels|marginal artery of Drummond",
+    "renal-vessels|renal vein L",
+    "renal-vessels|renal vein R",
+    "renal-vessels|left renal artery",
+    "renal-vessels|right renal artery",
+    "aorta|aortic arch",
+    "aorta|ascending aorta",
+    "carotid-arteries|brachiocephalic artery b",
+    "carotid-arteries|brachiocephalic artery a",
+    "carotid-arteries|left common carotid artery a",
+    "carotid-arteries|left common carotid artery b",
+    "carotid-arteries|left subclavian artery a",
+    "carotid-arteries|left subclavian artery b",
+    "aorta|descending aorta a",
+    "aorta|descending aorta b",
+    "coronary-arteries|left anterior descending artery",
+    "coronary-arteries|right marginal artery",
+    "coronary-arteries|right posterior descending artery",
+    "coronary-arteries|diagonal branch of anterior descending branch of left coronary artery",
+    "coronary-arteries|left coronary artery",
+    "coronary-arteries|right coronary artery",
+    "coronary-arteries|diagonal branch of left anterior descending artery",
+    "coronary-arteries|left marginal branch",
+    "pulmonary-vessels|pulmonary artery L",
+    "pulmonary-vessels|pulmonary artery R",
+    "pulmonary-vessels|pulmonary trunk",
+    "veins|great cardiac vein",
+    "veins|middle cardiac vein",
+    "veins|oblique vein of left atrium",
+    "veins|anterior cardiac vein",
+    "veins|coronary sinus",
+    "veins|posterior vein of left ventricle",
+    "veins|small cardiac vein",
+    "pulmonary-vessels|pulmonary vein R inf",
+    "pulmonary-vessels|pulmonary vein R sup",
+    "pulmonary-vessels|pulmonary vein L inf",
+    "pulmonary-vessels|pulmonary vein L sup",
+    "veins|brachiocephalic vein L",
+    "veins|brachiocephalic vein R",
+    "veins|superior vena cava",
+    "veins|inferior vena cava b",
+    "veins|inferior vena cava a",
+    "abdominal-vessels|splenic vein",
+    "abdominal-vessels|splenic artery",
+    "abdominal-vessels|cystic vein",
+    "abdominal-vessels|cystic artery",
+    "abdominal-vessels|celiac trunk",
+    "abdominal-vessels|left hepatic artery",
+    "abdominal-vessels|proper hepatic artery",
+    "abdominal-vessels|posterior segmental right hepatic artery",
+    "abdominal-vessels|right hepatic artery",
+    "abdominal-vessels|anterior segmental right hepatic artery",
+    "abdominal-vessels|common hepatic artery",
+    "abdominal-vessels|middle hepatic artery branch of left hepatic artery",
+    "abdominal-vessels|right hepatic vein",
+    "abdominal-vessels|left hepatic vein",
+    "abdominal-vessels|middle hepatic vein",
+    "abdominal-vessels|left branch of portal vein",
+    "abdominal-vessels|right branch of portal vein",
+    "abdominal-vessels|portal vein",
+    "abdominal-vessels|hepatic portal vein"
+   ]
+  },
+  "respiratory": {
+   "file": "respiratory.glb",
+   "bytes": 1776188,
+   "triangles": 69797,
+   "bounds": {
+    "min": [
+     -0.1247,
+     0.3856,
+     -0.0909
+    ],
+    "max": [
+     0.1335,
+     0.6601,
+     0.0973
+    ]
+   },
+   "nodes": [
+    "lungs",
+    "airways",
+    "airways"
+   ]
+  },
+  "digestive": {
+   "file": "digestive.glb",
+   "bytes": 1491580,
+   "triangles": 58633,
+   "bounds": {
+    "min": [
+     -0.1332,
+     -0.0389,
+     -0.0896
+    ],
+    "max": [
+     0.1431,
+     0.4544,
+     0.139
+    ]
+   },
+   "nodes": [
+    "liver",
+    "gallbladder",
+    "pancreas",
+    "small-intestine",
+    "large-intestine"
+   ]
+  },
+  "urinary": {
+   "file": "urinary.glb",
+   "bytes": 1335588,
+   "triangles": 50987,
+   "bounds": {
+    "min": [
+     -0.0969,
+     -0.0083,
+     -0.0687
+    ],
+    "max": [
+     0.1094,
+     0.3564,
+     0.0549
+    ]
+   },
+   "nodes": [
+    "kidneys",
+    "kidneys",
+    "urinary-tract",
+    "urinary-tract",
+    "urinary-tract",
+    "prostate"
+   ]
+  },
+  "nervous": {
+   "file": "nervous.glb",
+   "bytes": 1566324,
+   "triangles": 55999,
+   "bounds": {
+    "min": [
+     -0.0683,
+     0.2845,
+     -0.0847
+    ],
+    "max": [
+     0.0681,
+     0.9025,
+     0.0821
+    ]
+   },
+   "nodes": [
+    "brain",
+    "spinal-cord"
+   ]
+  },
+  "immune": {
+   "file": "immune.glb",
+   "bytes": 277500,
+   "triangles": 10730,
+   "bounds": {
+    "min": [
+     -0.0267,
+     0.3107,
+     -0.0808
+    ],
+    "max": [
+     0.1363,
+     0.5758,
+     0.0608
+    ]
+   },
+   "nodes": [
+    "spleen",
+    "thymus"
+   ]
+  }
+ }
+}

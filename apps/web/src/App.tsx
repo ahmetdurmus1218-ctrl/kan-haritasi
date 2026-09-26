@@ -5,10 +5,22 @@ import { AppShell } from './screens/AppShell';
 import { DocumentsPage } from './screens/DocumentsPage';
 import { DocumentDetail } from './screens/DocumentDetail';
 import { PrivacyPage } from './screens/PrivacyPage';
+import { Suspense, lazy } from 'react';
 import { ComingSoon } from './screens/ComingSoon';
 import { ResultDetail, ResultsPage } from './screens/ResultsPage';
 import { Banner } from './components/ui';
 import { SpinnerIcon } from './components/icons';
+
+// 3D keşif ekranı (three.js) büyük olduğu için yalnızca açıldığında yüklenir.
+const Explorer = lazy(() => import('./explore/Explorer').then((m) => ({ default: m.Explorer })));
+
+function ExplorerFallback() {
+  return (
+    <div className="explore-bg flex h-full items-center justify-center gap-2 text-sm text-fg-muted">
+      <SpinnerIcon size={16} /> 3D sahne hazırlanıyor…
+    </div>
+  );
+}
 
 function Gate() {
   const { status } = useVault();
@@ -43,7 +55,9 @@ function Gate() {
           ) : route.name === 'result' ? (
             <ResultDetail key={route.key} testKey={route.key} />
           ) : route.name === 'body' || route.name === 'simulation' ? (
-            <ComingSoon page="body" />
+            <Suspense fallback={<ExplorerFallback />}>
+              <Explorer route={route} />
+            </Suspense>
           ) : route.name === 'timeline' ? (
             <ComingSoon page="timeline" />
           ) : (

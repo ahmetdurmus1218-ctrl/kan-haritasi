@@ -27,11 +27,11 @@ export interface BodySystem {
 
 export const SYSTEMS: readonly BodySystem[] = [
   { id: 'cardiovascular', nameTr: 'Kalp ve damarlar', color: '#e5606b' },
-  { id: 'respiratory', nameTr: 'Solunum', color: '#8fb8ff' },
+  { id: 'respiratory', nameTr: 'Solunum', color: '#4fd6e8' },
   { id: 'digestive', nameTr: 'Sindirim', color: '#e0a15a' },
-  { id: 'urinary', nameTr: 'Boşaltım', color: '#d8c35a' },
-  { id: 'endocrine', nameTr: 'Endokrin (hormonlar)', color: '#b98cf0' },
-  { id: 'nervous', nameTr: 'Sinir sistemi', color: '#f2d7a0' },
+  { id: 'urinary', nameTr: 'Boşaltım', color: '#a78bfa' },
+  { id: 'endocrine', nameTr: 'Endokrin (hormonlar)', color: '#e879c9' },
+  { id: 'nervous', nameTr: 'Sinir sistemi', color: '#5b8cff' },
   { id: 'musculoskeletal', nameTr: 'Kemik ve kas', color: '#d9d4c7' },
   { id: 'immune', nameTr: 'Bağışıklık', color: '#6fd3a8' },
   { id: 'hematologic', nameTr: 'Kan ve kemik iliği', color: '#ff7a7a' },
@@ -57,7 +57,7 @@ export interface Structure {
 
 export const STRUCTURES: readonly Structure[] = [
   { id: 'heart', nameTr: 'Kalp', systems: ['cardiovascular'], asset: 'cardio', modelMatch: ['cardiac_atrium', 'ventricle', 'interventricular_septum', '_valve', 'papillary_muscle'], blurb: 'Kanı vücuda ve akciğerlere pompalayan kas organ.' },
-  { id: 'coronary-arteries', nameTr: 'Koroner arterler', systems: ['cardiovascular'], asset: 'cardio', modelMatch: ['coronary_artery', 'anterior_descending', 'marginal_artery', 'marginal_branch', 'posterior_descending', 'diagonal_branch'], drill: 'vessel', blurb: 'Kalp kasını besleyen damarlar; ateroskleroz en sık burada önem kazanır.' },
+  { id: 'coronary-arteries', nameTr: 'Koroner arterler', systems: ['cardiovascular'], asset: 'cardio', modelMatch: ['coronary_artery', 'anterior_descending', 'right_marginal_artery', 'marginal_branch', 'posterior_descending', 'diagonal_branch'], drill: 'vessel', blurb: 'Kalp kasını besleyen damarlar; ateroskleroz en sık burada önem kazanır.' },
   { id: 'aorta', nameTr: 'Aort', systems: ['cardiovascular'], asset: 'cardio', modelMatch: ['aorta', 'aortic_arch'], drill: 'vessel', blurb: 'Kalpten çıkan ana atardamar.' },
   { id: 'carotid-arteries', nameTr: 'Şah damarları (karotis)', systems: ['cardiovascular'], asset: 'cardio', modelMatch: ['carotid', 'brachiocephalic_artery', 'subclavian_artery'], drill: 'vessel', blurb: 'Beyne kan taşıyan boyun atardamarları.' },
   { id: 'pulmonary-vessels', nameTr: 'Akciğer damarları', systems: ['cardiovascular', 'respiratory'], asset: 'cardio', modelMatch: ['pulmonary_artery', 'pulmonary_trunk', 'pulmonary_vein'], blurb: 'Kanı akciğerlere taşıyıp oksijenlenmiş olarak geri getiren damarlar.' },

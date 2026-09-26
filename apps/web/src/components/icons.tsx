@@ -210,3 +210,10 @@ export const FingerprintIcon = (p: IconProps) => (
     <path d="M4 12a8 8 0 0 1 14.4-4.8M19.6 11c.3 1.7.3 3.4 0 5" />
   </Icon>
 );
+
+export const LayersIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+    <path d="m3 13 9 5 9-5" />
+  </Icon>
+);

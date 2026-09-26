@@ -26,7 +26,11 @@ def check(cond, msg):
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path=os.environ.get("CHROME_PATH") or None)
+    # WebGL: başsız tarayıcıda yazılımsal (SwiftShader) çizim
+    browser = p.chromium.launch(
+        executable_path=os.environ.get("CHROME_PATH") or None,
+        args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
+    )
     ctx = browser.new_context(viewport={"width": 1366, "height": 900}, device_scale_factor=1)
     page = ctx.new_page()
     console, external = [], []
@@ -83,6 +87,29 @@ with sync_playwright() as p:
     page.get_by_text("Bu test neyi ölçer?").wait_for()
     page.screenshot(path=SHOTS / "25-ldl-detay.png", full_page=True)
     check(page.get_by_text("Doktoruna sorabileceklerin").count() == 1, "öğren paneli")
+
+    # --- Vücutta göster → keşif yolu → eğitimsel simülasyon
+    page.get_by_role("button", name="Vücutta göster").click()
+    page.get_by_text("Keşif yolu").wait_for(timeout=20000)
+    page.wait_for_timeout(6000)
+    page.screenshot(path=SHOTS / "26-vucutta-goster.png")
+    check("#/vucut/ldl" in page.url, "LDL için vücut rotası")
+    check(page.locator("aside[aria-label='Bilgi paneli']").get_by_text("Koroner arterler").count() >= 1, "LDL → koroner arterler bağlantısı")
+    page.locator("button:has-text('Eğitimsel simülasyonu başlat')").click()
+    page.get_by_text("Eğitimsel biyolojik simülasyon").first.wait_for(timeout=20000)
+    page.wait_for_timeout(5000)
+    page.screenshot(path=SHOTS / "27-simulasyon.png")
+    panel = page.locator("aside[aria-label='Simülasyon paneli']").inner_text()
+    check("Aşama 2/8" in panel.replace("AŞAMA", "Aşama"), "simülasyon LDL taşınması aşamasından başladı")
+    page.locator("button[aria-label^='Aşama 8:']").click()
+    page.wait_for_timeout(1500)
+    check("Plak gelişimi" in page.locator("aside[aria-label='Simülasyon paneli']").inner_text(), "aşama seçimi")
+    page.get_by_role("button", name="LDL parçacığı").click()
+    check(page.get_by_text("Düşük yoğunluklu lipoprotein").count() >= 1, "nesne bilgisi (LDL)")
+    # Geri: organa dön
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(4000)
+    check("#/vucut/yapi/coronary-arteries" in page.url, "Esc ile organa dönüş")
 
     csp = page.evaluate("window.__csp")
     check(csp == [], f"CSP ihlali yok {csp}")

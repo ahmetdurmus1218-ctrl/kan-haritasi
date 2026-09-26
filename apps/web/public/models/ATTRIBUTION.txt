@@ -1,0 +1,6 @@
+3D anatomi modelleri: HuBMAP Human Reference Atlas, 3D Reference Object Library (VH Male), CC BY 4.0.
+Kaynak: https://github.com/hubmapconsortium/ccf-3d-reference-object-library (commit f1a3a63)
+Değişiklikler: sahne düzleştirildi, parçalar yapıya göre birleştirildi, ağlar sadeleştirildi (meshoptimizer),
+nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı. Tiroid, hipofiz, hipotalamus ve böbreküstü bezleri
+uygulamada şematik olarak çizilir ve bu kaynaktan gelmez.
+Lisans: https://creativecommons.org/licenses/by/4.0/

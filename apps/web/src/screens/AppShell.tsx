@@ -8,7 +8,7 @@ type NavKey = 'documents' | 'results' | 'body' | 'timeline' | 'privacy';
 const NAV: { key: NavKey; label: string; icon: (p: { size?: number }) => ReactNode; phase?: number }[] = [
   { key: 'documents', label: 'Belgeler', icon: FolderIcon },
   { key: 'results', label: 'Sonuçlar', icon: ListIcon },
-  { key: 'body', label: 'Vücut', icon: BodyIcon, phase: 4 },
+  { key: 'body', label: 'Keşfet', icon: BodyIcon },
   { key: 'timeline', label: 'Zaman', icon: ChartIcon, phase: 6 },
   { key: 'privacy', label: 'Gizlilik', icon: ShieldIcon },
 ];
