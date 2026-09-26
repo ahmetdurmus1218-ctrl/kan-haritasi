@@ -29,8 +29,11 @@ copyFileSync(join(pkg('tesseract.js'), 'dist', 'worker.min.js'), join(ocrOut, 'w
 const coreDir = dirname(require.resolve('tesseract.js-core/package.json', { paths: [pkg('tesseract.js')] }));
 copyFileSync(join(coreDir, 'tesseract-core-simd-lstm.wasm.js'), join(ocrOut, 'tesseract-core-simd-lstm.wasm.js'));
 // Yalnızca Türkçe: Latin harfleri, rakamları ve birimleri de kapsar; tek model daha az bellek ister.
+// Dosya gzip'li kalır ama adı ".gz" ile BİTMEZ: Android derlemesi varlıklardaki ".gz" uzantısını
+// siler (tur.traineddata.gz → tur.traineddata) ve işçi 404 alırdı. Tesseract.js gzip'i dosyanın
+// ilk baytlarından tanıyıp açar.
 for (const lang of ['tur']) {
-  copyFileSync(join(pkg(`@tesseract.js-data/${lang}`), '4.0.0_best_int', `${lang}.traineddata.gz`), join(ocrOut, `${lang}.traineddata.gz`));
+  copyFileSync(join(pkg(`@tesseract.js-data/${lang}`), '4.0.0_best_int', `${lang}.traineddata.gz`), join(ocrOut, `${lang}.traineddata`));
 }
 
 process.stdout.write(`vendor assets -> ${pub}/{pdfjs,ocr}\n`);

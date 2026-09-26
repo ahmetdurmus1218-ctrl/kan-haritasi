@@ -24,10 +24,21 @@ export class OcrError extends Error {
   constructor(
     readonly code: 'STALLED' | 'FAILED' | 'CANCELLED',
     readonly stage: OcrStage,
+    /** Teknik ayrıntı (ör. "dil dosyası bulunamadı (404)"); sağlık verisi içermez. */
+    readonly detail?: string,
   ) {
-    super(`ocr ${code} at ${stage}`);
+    super(`ocr ${code} at ${stage}${detail ? `: ${detail}` : ''}`);
     this.name = 'OcrError';
   }
+}
+
+/** İşçi hata metnini kısa, kullanıcıya gösterilebilir bir ayrıntıya çevirir (URL'ler kısaltılır). */
+function describeFailure(e: unknown): string {
+  const text = String(e instanceof Error ? e.message : e);
+  const net = /Network error while fetching .*\/([^/\s]+)\. Response code: (\d+)/.exec(text);
+  if (net) return `${net[1]} alınamadı (HTTP ${net[2]})`;
+  if (/out of memory|Cannot enlarge memory|RangeError/i.test(text)) return 'bellek yetmedi';
+  return text.replace(/https?:\/\/\S+/g, '…').slice(0, 140);
 }
 
 const LANG = 'tur';
@@ -65,7 +76,7 @@ function watch<T>(p: Promise<T>): Promise<T> {
         reject(new OcrError('CANCELLED', stage));
       } else if (failure) {
         clearInterval(timer);
-        reject(new OcrError('FAILED', stage));
+        reject(new OcrError('FAILED', stage, failure));
       } else if (Date.now() - lastActivity > STALL_MS[stage]) {
         clearInterval(timer);
         reject(new OcrError('STALLED', stage));
@@ -76,9 +87,9 @@ function watch<T>(p: Promise<T>): Promise<T> {
         clearInterval(timer);
         resolve(v);
       },
-      () => {
+      (e: unknown) => {
         clearInterval(timer);
-        reject(new OcrError('FAILED', stage));
+        reject(e instanceof OcrError ? e : new OcrError('FAILED', stage, failure ?? describeFailure(e)));
       },
     );
   });
@@ -94,14 +105,15 @@ async function getWorker(): Promise<TesseractWorker> {
       corePath: `${base}tesseract-core-simd-lstm.wasm.js`,
       langPath: base.replace(/\/$/, ''),
       workerBlobURL: false,
-      gzip: true,
+      // Dosya gzip'li ama ".gz" uzantısız (Android paketleme nedeniyle; bkz. copy-vendor-assets.mjs)
+      gzip: false,
       cacheMethod: 'none',
       logger: (m) => {
         const s = STATUS_STAGE[m.status];
         if (s) report(s, typeof m.progress === 'number' ? m.progress : 0);
       },
-      errorHandler: () => {
-        failure = 'worker';
+      errorHandler: (err: unknown) => {
+        failure = describeFailure(err);
       },
     });
     report('init', 1);

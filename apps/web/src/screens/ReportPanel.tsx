@@ -208,7 +208,7 @@ function ocrMessage(e: OcrError): string {
   const where = STAGE_TEXT[e.stage].split(' (')[0]!.toLocaleLowerCase('tr');
   if (e.code === 'CANCELLED') return 'Okuma iptal edildi.';
   if (e.code === 'STALLED') return `Görüntüden okuma "${where}" aşamasında uzun süre ilerlemedi ve durduruldu. Telefonun belleği yetmemiş olabilir; uygulamayı kapatıp açarak tekrar dene ya da daha yakından çekilmiş bir fotoğraf kullan.`;
-  return `Görüntüden okuma "${where}" aşamasında başarısız oldu. Tekrar deneyebilir ya da değerleri elle girebilirsin.`;
+  return `Görüntüden okuma "${where}" aşamasında başarısız oldu${e.detail ? ` (${e.detail})` : ''}. Tekrar deneyebilir ya da değerleri elle girebilirsin.`;
 }
 
 function ExtractingView({ progress, kind, onCancel }: { progress: ExtractProgress | null; kind: FileInfo['kind']; onCancel: () => void }) {
