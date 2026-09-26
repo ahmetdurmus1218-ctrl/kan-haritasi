@@ -1,0 +1,62 @@
+# Diğer iş akışları bittiğinde durumlarını ve (başarısızsa) hata günlüklerini
+# `ci-logs` dalına yazar. Böylece derleme sonucu git üzerinden okunabilir.
+# Günlüklerde yalnızca derleme çıktısı vardır; testler sentetik veriyle çalışır.
+name: CI raporu
+
+on:
+  workflow_run:
+    workflows: ["CI", "Android APK"]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: ci-logs
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Günlükleri topla
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          NAME: ${{ github.event.workflow_run.name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir -p out
+          SLUG=$(echo "$NAME" | tr 'A-Z ' 'a-z-' | tr -cd 'a-z0-9-')
+          {
+            echo "workflow: $NAME"
+            echo "run: $RUN_ID"
+            echo "sha: $SHA"
+            echo "conclusion: $CONCLUSION"
+            echo
+            gh run view "$RUN_ID" -R "$REPO" --json jobs --jq '.jobs[] | "\(.name): \(.conclusion)", (.steps[] | "  - \(.name): \(.conclusion)")'
+            echo
+            if [ "$CONCLUSION" != "success" ]; then
+              gh run view "$RUN_ID" -R "$REPO" --log-failed | cut -c1-600 | tail -n 5000
+            fi
+          } > "out/latest-$SLUG.txt" 2>&1 || true
+          echo "$SLUG" > out/slug
+
+      - name: ci-logs dalına yaz
+        env:
+          TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          MSG: "${{ github.event.workflow_run.name }} ${{ github.event.workflow_run.id }} ${{ github.event.workflow_run.conclusion }}"
+        run: |
+          SLUG=$(cat out/slug)
+          git init -q logs
+          cd logs
+          git remote add origin "https://x-access-token:${TOKEN}@github.com/${REPO}.git"
+          if git fetch -q --depth 1 origin ci-logs; then git checkout -q -b ci-logs FETCH_HEAD; else git checkout -q --orphan ci-logs; fi
+          cp "../out/latest-$SLUG.txt" .
+          git add "latest-$SLUG.txt"
+          git -c user.name=ci-rapor -c user.email=ci-rapor@users.noreply.github.com commit -q -m "log: $MSG" || exit 0
+          git push -q origin HEAD:ci-logs
