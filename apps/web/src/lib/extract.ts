@@ -2,13 +2,15 @@ import type { FileInfo } from '@kh/vault';
 import type { Sex } from '@kh/catalog';
 import { type ReportDraft, type TextItem, parseReport, pdfTextToItems } from '@kh/parser';
 import { openPdf } from './pdf';
-import { prepareImage, recognizeCanvas } from './ocr';
+import { type OcrStage, prepareImage, recognizeCanvas } from './ocr';
 
 export interface ExtractProgress {
   phase: 'text' | 'ocr' | 'parse';
   page: number;
   pages: number;
-  /** 0–1, OCR sırasında sayfa içi ilerleme. */
+  /** OCR aşaması (motor, dil verisi, tanıma…). */
+  stage?: OcrStage;
+  /** 0–1, OCR sırasında aşama içi ilerleme. */
   fraction?: number;
 }
 
@@ -58,7 +60,9 @@ export async function extractDraft(
         canvas.width = Math.floor(vp.width);
         canvas.height = Math.floor(vp.height);
         await page.render({ canvas, viewport: vp }).promise;
-        items.push(...(await recognizeCanvas(canvas, p, scale, (f) => options.onProgress?.({ phase: 'ocr', page: p, pages: pageCount, fraction: f }))));
+        items.push(
+          ...(await recognizeCanvas(canvas, p, scale, (o) => options.onProgress?.({ phase: 'ocr', page: p, pages: pageCount, stage: o.stage, fraction: o.fraction }))),
+        );
         canvas.width = 0;
         canvas.height = 0;
       }
@@ -67,10 +71,18 @@ export async function extractDraft(
     }
   } else {
     usedOcr = true;
-    options.onProgress?.({ phase: 'ocr', page: 1, pages: 1, fraction: 0 });
+    options.onProgress?.({ phase: 'ocr', page: 1, pages: 1, stage: 'prepare', fraction: 0 });
     const img = await prepareImage(bytes, info.mimeType);
     pageSizes.set(1, { w: img.width, h: img.height });
-    items.push(...(await recognizeCanvas(img.canvas, 1, img.scale, (f) => options.onProgress?.({ phase: 'ocr', page: 1, pages: 1, fraction: f }))));
+    items.push(
+      ...(await recognizeCanvas(
+        img.canvas,
+        1,
+        img.scale,
+        (o) => options.onProgress?.({ phase: 'ocr', page: 1, pages: 1, stage: o.stage, fraction: o.fraction }),
+        img.offset,
+      )),
+    );
     img.canvas.width = 0;
     img.canvas.height = 0;
   }

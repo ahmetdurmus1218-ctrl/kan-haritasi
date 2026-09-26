@@ -1,6 +1,6 @@
 // Çalışma zamanında gereken üçüncü taraf dosyaları uygulamayla birlikte paketler:
 // - PDF.js: CMap, standart fontlar, WASM görüntü çözücüleri, ICC profilleri
-// - Tesseract.js (OCR): worker betiği, SIMD+LSTM çekirdeği, Türkçe ve İngilizce dil verisi
+// - Tesseract.js (OCR): worker betiği, SIMD+LSTM çekirdeği, Türkçe dil verisi
 // Böylece hiçbir kütüphane CDN'e istek atmaz; CSP `connect-src 'self'` ile uyumlu kalır ve
 // Android'de (internet izni yok) her şey APK içinden gelir.
 import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
@@ -28,7 +28,8 @@ mkdirSync(ocrOut, { recursive: true });
 copyFileSync(join(pkg('tesseract.js'), 'dist', 'worker.min.js'), join(ocrOut, 'worker.min.js'));
 const coreDir = dirname(require.resolve('tesseract.js-core/package.json', { paths: [pkg('tesseract.js')] }));
 copyFileSync(join(coreDir, 'tesseract-core-simd-lstm.wasm.js'), join(ocrOut, 'tesseract-core-simd-lstm.wasm.js'));
-for (const lang of ['tur', 'eng']) {
+// Yalnızca Türkçe: Latin harfleri, rakamları ve birimleri de kapsar; tek model daha az bellek ister.
+for (const lang of ['tur']) {
   copyFileSync(join(pkg(`@tesseract.js-data/${lang}`), '4.0.0_best_int', `${lang}.traineddata.gz`), join(ocrOut, `${lang}.traineddata.gz`));
 }
 

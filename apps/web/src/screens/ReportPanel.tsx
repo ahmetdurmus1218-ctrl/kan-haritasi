@@ -8,11 +8,12 @@ import {
   normalizeUnit,
   testByKey,
 } from '@kh/catalog';
-import { type ReportDraft, type SourceBox, type UnrecognizedRow, needsReview, parseRange } from '@kh/parser';
+import { type MissingValue, type ReportDraft, type SourceBox, type UnrecognizedRow, needsReview, parseRange } from '@kh/parser';
 import type { Bytes, FileInfo } from '@kh/vault';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { go } from '../state/router';
 import type { ExtractProgress } from '../lib/extract';
+import { OcrError, type OcrStage, cancelOcr } from '../lib/ocr';
 import {
   type ReviewRow,
   type StoredReport,
@@ -63,7 +64,7 @@ export function ReportPanel({ info, bytes, highlight, onHighlight }: { info: Fil
   const { bump } = useVault();
   const [mode, setMode] = useState<'loading' | 'saved' | 'extracting' | 'review' | 'error'>('loading');
   const [saved, setSaved] = useState<StoredReport | null>(null);
-  const [draft, setDraft] = useState<{ rows: ReviewRow[]; unrecognized: UnrecognizedRow[]; meta: Pick<ReportDraft, 'reportDate' | 'labName' | 'method'> } | null>(null);
+  const [draft, setDraft] = useState<{ rows: ReviewRow[]; unrecognized: UnrecognizedRow[]; missing?: MissingValue[]; meta: Pick<ReportDraft, 'reportDate' | 'labName' | 'method'> } | null>(null);
   const [progress, setProgress] = useState<ExtractProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sex, setSex] = useState<Sex>('unspecified');
@@ -78,13 +79,19 @@ export function ReportPanel({ info, bytes, highlight, onHighlight }: { info: Fil
       // PDF.js ve OCR yalnızca okuma gerektiğinde yüklenir.
       const { extractDraft } = await import('../lib/extract');
       const d = await extractDraft(info, bytes, { sex: s, userAliases: aliases, onProgress: setProgress });
-      setDraft({ rows: draftToReview(d), unrecognized: d.unrecognized, meta: { reportDate: d.reportDate, labName: d.labName, method: d.method } });
+      setDraft({ rows: draftToReview(d), unrecognized: d.unrecognized, missing: d.missing, meta: { reportDate: d.reportDate, labName: d.labName, method: d.method } });
       setMode('review');
     } catch (e) {
-      setError(userMessage(e));
+      setError(e instanceof OcrError ? ocrMessage(e) : userMessage(e));
       setMode('error');
     }
   }, [vault, info, bytes]);
+
+  /** Okuma yapılamadığında değerler elle girilebilir (onay ekranı boş açılır). */
+  const manual = () => {
+    setDraft({ rows: [], unrecognized: [], meta: { reportDate: undefined, labName: undefined, method: 'text' } });
+    setMode('review');
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -146,13 +153,21 @@ export function ReportPanel({ info, bytes, highlight, onHighlight }: { info: Fil
           <SpinnerIcon size={16} /> Yükleniyor…
         </div>
       )}
-      {mode === 'extracting' && <ExtractingView progress={progress} kind={info.kind} />}
+      {mode === 'extracting' && <ExtractingView progress={progress} kind={info.kind} onCancel={cancelOcr} />}
       {mode === 'error' && (
         <div className="space-y-3 p-5">
           <Banner tone="error">{error ?? 'Rapor okunamadı.'}</Banner>
-          <button type="button" className="btn-ghost" onClick={analyze}>
-            <RefreshIcon size={16} /> Tekrar dene
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-ghost" onClick={analyze}>
+              <RefreshIcon size={16} /> Tekrar dene
+            </button>
+            <button type="button" className="btn-ghost" onClick={manual}>
+              Değerleri elle gir
+            </button>
+          </div>
+          <p className="text-xs leading-relaxed text-fg-faint">
+            Fotoğraf için ipucu: kâğıdı düz bir yüzeye koy, gölge düşmesin, yalnızca sonuç tablosunu kadraja al ve yakından çek.
+          </p>
         </div>
       )}
       {mode === 'review' && draft && (
@@ -181,21 +196,67 @@ export function ReportPanel({ info, bytes, highlight, onHighlight }: { info: Fil
   );
 }
 
-function ExtractingView({ progress, kind }: { progress: ExtractProgress | null; kind: FileInfo['kind'] }) {
-  const label =
-    progress?.phase === 'ocr'
-      ? `Görüntüden metin okunuyor${progress.pages > 1 ? ` (sayfa ${progress.page}/${progress.pages})` : ''}… %${Math.round((progress.fraction ?? 0) * 100)}`
-      : progress?.phase === 'parse'
-        ? 'Sonuçlar eşleniyor…'
-        : kind === 'pdf'
-          ? `PDF metni okunuyor${progress ? ` (sayfa ${progress.page}/${progress.pages})` : ''}…`
-          : 'Fotoğraf hazırlanıyor…';
+const STAGE_TEXT: Record<OcrStage, string> = {
+  prepare: 'Fotoğraf hazırlanıyor (kâğıt kırpılıyor, netleştiriliyor)',
+  core: 'Okuma motoru başlatılıyor (ilk seferde birkaç saniye sürebilir)',
+  lang: 'Türkçe dil verisi yükleniyor',
+  init: 'Okuma motoru hazırlanıyor',
+  recognize: 'Metin tanınıyor',
+};
+
+function ocrMessage(e: OcrError): string {
+  const where = STAGE_TEXT[e.stage].split(' (')[0]!.toLocaleLowerCase('tr');
+  if (e.code === 'CANCELLED') return 'Okuma iptal edildi.';
+  if (e.code === 'STALLED') return `Görüntüden okuma "${where}" aşamasında uzun süre ilerlemedi ve durduruldu. Telefonun belleği yetmemiş olabilir; uygulamayı kapatıp açarak tekrar dene ya da daha yakından çekilmiş bir fotoğraf kullan.`;
+  return `Görüntüden okuma "${where}" aşamasında başarısız oldu. Tekrar deneyebilir ya da değerleri elle girebilirsin.`;
+}
+
+function ExtractingView({ progress, kind, onCancel }: { progress: ExtractProgress | null; kind: FileInfo['kind']; onCancel: () => void }) {
+  const [started] = useState(() => Date.now());
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const seconds = Math.round((Date.now() - started) / 1000);
+  const ocr = progress?.phase === 'ocr';
+  const pct = ocr && (progress?.stage === 'recognize' || progress?.stage === 'lang') ? Math.round((progress.fraction ?? 0) * 100) : null;
+  const label = ocr
+    ? `${STAGE_TEXT[progress!.stage ?? 'core']}${progress!.pages > 1 ? ` · sayfa ${progress!.page}/${progress!.pages}` : ''}`
+    : progress?.phase === 'parse'
+      ? 'Sonuçlar eşleniyor'
+      : kind === 'pdf'
+        ? `PDF metni okunuyor${progress ? ` · sayfa ${progress.page}/${progress.pages}` : ''}`
+        : 'Fotoğraf hazırlanıyor';
   return (
-    <div className="space-y-4 p-5">
+    <div className="space-y-4 p-5" aria-live="polite">
       <div className="flex items-center gap-2 text-sm">
-        <SpinnerIcon size={16} className="text-accent" /> {label}
+        <SpinnerIcon size={16} className="text-accent" /> {label}…{pct !== null ? ` %${pct}` : ''}
+      </div>
+      {ocr && (
+        <div className="h-1.5 overflow-hidden rounded-full bg-ink-700">
+          <div
+            className="h-full rounded-full bg-accent transition-[width] duration-500"
+            style={{
+              width: `${
+                progress?.stage === 'recognize' ? 35 + (pct ?? 0) * 0.65 : progress?.stage === 'init' ? 30 : progress?.stage === 'lang' ? 15 + (pct ?? 0) * 0.15 : progress?.stage === 'core' ? 10 : 4
+              }%`,
+            }}
+          />
+        </div>
+      )}
+      <div className="flex items-center justify-between text-xs text-fg-faint">
+        <span>{seconds} sn</span>
+        {ocr && (
+          <button type="button" className="text-fg-muted underline-offset-4 hover:text-fg hover:underline" onClick={onCancel}>
+            İptal
+          </button>
+        )}
       </div>
       <p className="text-xs leading-relaxed text-fg-faint">Okuma tamamen bu cihazda yapılıyor. Metin ve görüntü diske yazılmıyor, hiçbir yere gönderilmiyor.</p>
+      {ocr && seconds > 25 && (
+        <p className="text-xs leading-relaxed text-fg-faint">Telefonlarda fotoğraftan okuma 30–90 saniye sürebilir. Uygulamayı açık tut.</p>
+      )}
     </div>
   );
 }
@@ -204,7 +265,7 @@ function ExtractingView({ progress, kind }: { progress: ExtractProgress | null; 
 
 interface ReviewProps {
   fileId: string;
-  initial: { rows: ReviewRow[]; unrecognized: UnrecognizedRow[]; meta: Pick<ReportDraft, 'reportDate' | 'labName' | 'method'> };
+  initial: { rows: ReviewRow[]; unrecognized: UnrecognizedRow[]; missing?: MissingValue[]; meta: Pick<ReportDraft, 'reportDate' | 'labName' | 'method'> };
   sex: Sex;
   onSexChange: (s: Sex) => void;
   highlight: Highlight;
@@ -253,14 +314,17 @@ function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight
     );
   };
 
-  const addManual = () => {
-    const test = testByKey.get('hemoglobin')!;
+  const [missing, setMissing] = useState<MissingValue[]>(() => initial.missing ?? []);
+
+  const addManual = (testKey = 'hemoglobin', source?: SourceBox, rawName = '') => {
+    const test = testByKey.get(testKey) ?? testByKey.get('hemoglobin')!;
+    setMissing((ms) => ms.filter((m) => m.testKey !== testKey));
     setRows((rs) => [
       ...rs,
       {
         testKey: test.key,
         loinc: test.loinc,
-        rawName: '',
+        rawName,
         valueText: '',
         value: Number.NaN,
         unit: unitLabel(test.key, canonicalKey(test)),
@@ -271,7 +335,7 @@ function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight
         status: 'unknown',
         confidence: 1,
         issues: [],
-        source: { page: 1, x: 0, y: 0, w: 0, h: 0 },
+        source: source ?? { page: 1, x: 0, y: 0, w: 0, h: 0 },
         include: true,
         userEdited: true,
         edit: { value: '', unitKey: canonicalKey(test), refMin: '', refMax: '' },
@@ -339,6 +403,7 @@ function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight
         </div>
         <p className="text-sm leading-relaxed text-fg-muted">
           {rows.length} sonuç okundu{reviewCount ? `, ${reviewCount} tanesi kontrol istiyor` : ''}
+          {missing.length ? `, ${missing.length} testin değeri okunamadı` : ''}
           {unrec.filter((u) => !u.linked).length ? `, ${unrec.filter((u) => !u.linked).length} satır tanınmadı` : ''}. Değerleri belgeyle karşılaştır; onaylamadığın hiçbir şey kaydedilmez veya vücut modeline uygulanmaz.
         </p>
         <div className="flex flex-wrap items-end gap-3">
@@ -376,9 +441,31 @@ function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight
             onShow={() => (row.source.w > 0 ? onHighlight({ key: rowId(row, i), box: row.source }) : undefined)}
           />
         ))}
-        <button type="button" className="btn-ghost w-full border-dashed" onClick={addManual}>
+        <button type="button" className="btn-ghost w-full border-dashed" onClick={() => addManual()}>
           + Sonuç ekle
         </button>
+
+        {missing.length > 0 && (
+          <section className="mt-4 space-y-2">
+            <p className="label-caps">Değeri okunamayan testler</p>
+            <p className="text-xs leading-relaxed text-fg-muted">
+              Bu testlerin adı bulundu ama sonucu okunamadı (fotoğrafta silik ya da gölgede kalmış olabilir). Belgeye bakıp değeri elle ekle.
+            </p>
+            {missing.map((m) => (
+              <div key={m.testKey} className="flex items-center gap-2 rounded-xl border border-high/30 bg-high/5 p-3 text-sm">
+                <span className="flex-1">{testByKey.get(m.testKey)?.nameTr ?? m.rawName}</span>
+                {m.source.w > 0 && (
+                  <button type="button" className="icon-btn h-8 w-8" onClick={() => onHighlight({ key: `m-${m.testKey}`, box: m.source })} aria-label="Belgede göster">
+                    <EyeIcon size={16} />
+                  </button>
+                )}
+                <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => addManual(m.testKey, m.source, m.rawName)}>
+                  Değeri gir
+                </button>
+              </div>
+            ))}
+          </section>
+        )}
 
         {unrec.some((u) => !u.linked) && (
           <section className="mt-4 space-y-2">

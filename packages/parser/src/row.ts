@@ -15,7 +15,7 @@ import {
   toCanonical,
 } from '@kh/catalog';
 import type { Line } from './layout';
-import type { IssueCode, ParsedRow, UnrecognizedRow } from './types';
+import type { IssueCode, MissingValue, ParsedRow, UnrecognizedRow } from './types';
 
 const NUMBER = String.raw`\d+(?:[.,]\d+)?`;
 const RANGE_DASH = new RegExp(String.raw`(${NUMBER})\s*[-–—~]\s*(${NUMBER})`);
@@ -91,7 +91,18 @@ function findUnit(tokens: string[]): { unit: string; unitKey: string; used: numb
   return null;
 }
 
-export type LineResult = { kind: 'row'; row: ParsedRow } | { kind: 'unrecognized'; row: UnrecognizedRow } | { kind: 'none' };
+export type LineResult =
+  | { kind: 'row'; row: ParsedRow }
+  | { kind: 'unrecognized'; row: UnrecognizedRow }
+  | { kind: 'missing'; row: MissingValue }
+  | { kind: 'none' };
+
+/** OCR'ın sayıya yapıştırdığı noktalama: "35)", "(94", "13,9|". */
+function stripPunct(tok: string): string {
+  return tok.replace(/^[([{|'"`]+/, '').replace(/[)\]}|:;'"`]+$/, '');
+}
+
+const DASH_TOKEN = /^[-–—~]$/;
 
 export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineResult {
   const raw = line.tokens.map((t) => t.text);
@@ -117,8 +128,21 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
   let gluedUnit: string | null = null;
   let gluedFlag: 'H' | 'L' | undefined;
   let valueText = '';
+  // Sayıdan önce gelen birim: bazı raporlar "Test | Birim | Sonuç | Referans" sırasıyla yazar; çoğu
+  // ise değer → birim → aralık. Birimden sonraki ilk sayının ardından ayrıca bir aralık geliyorsa o sayı
+  // değerdir; gelmiyorsa o sayı aralığın kendisidir ve değer okunamamıştır (OCR kaçırmış olabilir).
+  let unitBefore: { unit: string; unitKey: string } | null = null;
+  let rangeFirst = false;
   for (let i = match ? 0 : 1; i < rest.length && i < 8; i++) {
-    let tok = rest[i] ?? '';
+    let tok = stripPunct(rest[i] ?? '');
+    if (match && !/\d/.test(tok) && !unitBefore) {
+      const u = findUnit(rest.slice(i, i + 3));
+      if (u && normalizeUnit(tok) !== null) {
+        unitBefore = { unit: u.unit, unitKey: u.unitKey };
+        i += u.used - 1;
+        continue;
+      }
+    }
     const vf = VALUE_WITH_FLAG.exec(tok);
     if (vf) {
       const f = (vf[3] ?? '').toLowerCase();
@@ -130,6 +154,16 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     const joined = /^[<>≤≥]=?$/.test(tok) && rest[i + 1] ? `${tok}${rest[i + 1]}` : v;
     if (parseNumber(joined)) {
       const idx = joined === v ? i : i + 1;
+      // "0 - 130", "0-130": değer değil aralık (değer eksik)
+      const next = rest[idx + 1] ?? '';
+      if (match && ((DASH_TOKEN.test(next) && parseNumber(stripPunct(rest[idx + 2] ?? ''))) || /^\d+(?:[.,]\d+)?[-–—]\d/.test(tok))) {
+        rangeFirst = true;
+        break;
+      }
+      if (match && unitBefore && parseRange(rest.slice(idx + 1).join(' '), ctx.sex).range.source === 'none') {
+        rangeFirst = true;
+        break;
+      }
       // Tanınmayan satırda adın içinde sayı olabilir ("CA 19-9"): değer, ardından birim veya
       // aralık gelen ilk sayıdır.
       if (!match && !u && !findUnit(rest.slice(idx + 1)) && parseRange(rest.slice(idx + 1).join(' '), ctx.sex).range.source === 'none') continue;
@@ -140,10 +174,18 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     }
   }
 
-  if (valueIdx < 0) return { kind: 'none' };
+  if (valueIdx < 0 || (match && rangeFirst)) {
+    if (match && (rangeFirst || unitBefore)) {
+      const test = match.candidates[0];
+      if (test) return { kind: 'missing', row: { testKey: test.key, rawName: raw.slice(start, nameEnd).join(' '), source: line.box } };
+    }
+    return { kind: 'none' };
+  }
 
   const afterValue = rest.slice(valueIdx + 1);
-  const unitFound = gluedUnit ? { unit: gluedUnit, unitKey: normalizeUnit(gluedUnit) as string, used: 0 } : findUnit(afterValue);
+  const unitFound = gluedUnit
+    ? { unit: gluedUnit, unitKey: normalizeUnit(gluedUnit) as string, used: 0 }
+    : (findUnit(afterValue) ?? (unitBefore ? { ...unitBefore, used: 0 } : null));
   const unitKey = unitFound?.unitKey ?? null;
   const tail = afterValue.slice(unitFound?.used ?? 0);
   const tailText = tail.join(' ');

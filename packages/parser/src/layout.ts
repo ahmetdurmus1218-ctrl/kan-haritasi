@@ -31,15 +31,17 @@ export function buildLines(items: TextItem[], pageSizes: Map<number, { w: number
     byPage.set(it.page, list);
   }
 
+  // Eğik fotoğrafta aynı tablo satırındaki kelimelerin y'si kayar; OCR eğimi düzeltilmiş merkezi (cy) verir.
+  const center = (it: TextItem) => it.cy ?? it.y + it.h / 2;
   const lines: Line[] = [];
   for (const [page, list] of [...byPage.entries()].sort((a, b) => a[0] - b[0])) {
-    list.sort((a, b) => a.y + a.h / 2 - (b.y + b.h / 2) || a.x - b.x);
+    list.sort((a, b) => center(a) - center(b) || a.x - b.x);
     const groups: TextItem[][] = [];
     for (const it of list) {
-      const cy = it.y + it.h / 2;
+      const cy = center(it);
       const g = groups[groups.length - 1];
       if (g) {
-        const gy = g.reduce((s, x) => s + x.y + x.h / 2, 0) / g.length;
+        const gy = g.reduce((s, x) => s + center(x), 0) / g.length;
         const gh = Math.max(...g.map((x) => x.h));
         if (Math.abs(cy - gy) <= Math.max(gh, it.h) * 0.5) {
           g.push(it);

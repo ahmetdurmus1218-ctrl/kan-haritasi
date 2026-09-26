@@ -2,7 +2,7 @@ import { type LabTestDef, type Sex, normalizeText, testByKey } from '@kh/catalog
 import { buildLines } from './layout';
 import { extractLabName, extractReportDate } from './meta';
 import { parseLine } from './row';
-import type { ParsedRow, ReportDraft, TextItem, UnrecognizedRow } from './types';
+import type { MissingValue, ParsedRow, ReportDraft, TextItem, UnrecognizedRow } from './types';
 
 export * from './types';
 export { buildLines } from './layout';
@@ -44,6 +44,7 @@ export function parseReport(items: TextItem[], options: ParseOptions = {}): Repo
 
   const rows: ParsedRow[] = [];
   const unrecognized: UnrecognizedRow[] = [];
+  const missing: MissingValue[] = [];
   const seen = new Map<string, ParsedRow>();
 
   for (const line of lines) {
@@ -59,6 +60,8 @@ export function parseReport(items: TextItem[], options: ParseOptions = {}): Repo
       rows.push(result.row);
     } else if (result.kind === 'unrecognized') {
       unrecognized.push(result.row);
+    } else if (result.kind === 'missing') {
+      missing.push(result.row);
     }
   }
 
@@ -67,6 +70,8 @@ export function parseReport(items: TextItem[], options: ParseOptions = {}): Repo
     labName: extractLabName(lines),
     rows,
     unrecognized,
+    // Başka bir satırda değeri bulunan testler eksik sayılmaz.
+    missing: missing.filter((m, i, all) => !seen.has(m.testKey) && all.findIndex((x) => x.testKey === m.testKey) === i),
     pageCount: options.pageCount ?? Math.max(0, ...lines.map((l) => l.page)),
     method,
   };
