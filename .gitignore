@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 apps/web/public/pdfjs/
+apps/web/public/ocr/
 *.log
 .DS_Store
 tests/e2e/.shots/

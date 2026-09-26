@@ -244,6 +244,7 @@ describe('silme', () => {
     // Anahtar kayıtla birlikte gitti; eski gövde hiçbir kayda bağlı değil.
     expect([...blobs.blobs.values()][0]).toEqual(staleBlob);
 
+    await vault.putRecord('profile', 'profile', { sex: 'male' });
     expect(await vault.sweepOrphans()).toBe(1);
     expect(blobs.blobs.size).toBe(0);
   });
@@ -365,5 +366,45 @@ describe('birden fazla kilit açma yöntemi', () => {
     await records.putMeta({ formatVersion: 1, createdAt: meta.createdAt, wrapped: meta.keys![0] });
     const v = await Vault.unlock(records, blobs, new PassphraseKeyWrapper(PASS, FAST), { chunkSize: CHUNK });
     expect((await v.readFile(info.id)).info.id).toBe(info.id);
+  });
+});
+
+describe('genel şifreli kayıtlar', () => {
+  it('rapor kaydı şifreli saklanır, türü ve kimliği AAD ile bağlıdır', async () => {
+    const { vault, records } = await newVault();
+    const id = '11111111-2222-4333-8444-555555555555';
+    await vault.putRecord('report', id, { fileId: 'x', results: [{ testKey: 'ldl', value: 178 }] });
+    expect(await vault.getRecord('report', id)).toEqual({ fileId: 'x', results: [{ testKey: 'ldl', value: 178 }] });
+    expect(JSON.stringify(records.records.get(id))).not.toContain('ldl');
+
+    // Başka türmüş gibi okunamaz
+    await expectCode(vault.getRecord('alias', id), 'INTEGRITY');
+    // Kayıt başka türe etiketlenirse AAD tutmaz
+    const r = records.records.get(id)!;
+    records.records.set(id, { ...r, kind: 'alias' });
+    await expectCode(vault.getRecord('alias', id), 'INTEGRITY');
+    records.records.set(id, r);
+
+    const list = await vault.listRecords('report');
+    expect(list.items.map((i) => i.id)).toEqual([id]);
+    await vault.deleteRecord('report', id);
+    expect(await vault.getRecord('report', id)).toBeUndefined();
+  });
+
+  it('geçersiz kayıt kimliği reddedilir; kilitliyken kayıt işlemi yapılamaz', async () => {
+    const { vault } = await newVault();
+    await expectCode(vault.putRecord('report', '../x', {}), 'INVALID_INPUT');
+    vault.lock();
+    await expectCode(vault.putRecord('report', 'a', {}), 'LOCKED');
+    await expectCode(vault.listRecords('report'), 'LOCKED');
+  });
+
+  it('dosya listesi yalnızca dosya kayıtlarını döndürür', async () => {
+    const { vault } = await newVault();
+    await addPdf(vault);
+    await vault.putRecord('profile', 'profile', { sex: 'female' });
+    const { files, corruptIds } = await vault.listFiles();
+    expect(files).toHaveLength(1);
+    expect(corruptIds).toEqual([]);
   });
 });

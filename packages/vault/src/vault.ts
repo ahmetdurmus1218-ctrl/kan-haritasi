@@ -339,6 +339,7 @@ export class Vault {
     this.#key();
     const live = new Set<string>();
     for (const record of await this.#records.list()) {
+      if (record.kind !== 'file') continue;
       try {
         live.add((await this.#openFileRecord(record)).blobKey);
       } catch {
@@ -354,6 +355,56 @@ export class Vault {
       }
     }
     return removed;
+  }
+
+  // ------------------------------------------------------------------ Genel şifreli kayıtlar
+
+  /** Belge dışı kayıtlar (rapor, takma ad, profil). Değer JSON'a çevrilip MK ile şifrelenir. */
+  async putRecord(kind: Exclude<RecordKind, 'file'>, id: string, value: unknown): Promise<void> {
+    this.#key();
+    if (!/^[A-Za-z0-9-]{1,64}$/.test(id)) throw new VaultError('INVALID_INPUT', 'bad record id');
+    await this.#records.put(await this.#sealRecord(kind, id, value));
+  }
+
+  async getRecord<T>(kind: Exclude<RecordKind, 'file'>, id: string): Promise<T | undefined> {
+    const record = await this.#records.get(id);
+    if (!record) return undefined;
+    if (record.kind !== kind) throw new VaultError('INTEGRITY', 'record kind mismatch');
+    return this.#openJson<T>(record);
+  }
+
+  /** Doğrulanamayan kayıtlar atlanır ve kimlikleri ayrıca döner. */
+  async listRecords<T>(kind: Exclude<RecordKind, 'file'>): Promise<{ items: Array<{ id: string; value: T }>; corruptIds: string[] }> {
+    this.#key();
+    const items: Array<{ id: string; value: T }> = [];
+    const corruptIds: string[] = [];
+    for (const record of await this.#records.list()) {
+      if (record.kind !== kind) continue;
+      try {
+        items.push({ id: record.id, value: await this.#openJson<T>(record) });
+      } catch (e) {
+        if (e instanceof VaultError && e.code === 'LOCKED') throw e;
+        corruptIds.push(record.id);
+      }
+    }
+    return { items, corruptIds };
+  }
+
+  async deleteRecord(kind: Exclude<RecordKind, 'file'>, id: string): Promise<void> {
+    this.#key();
+    const record = await this.#records.get(id);
+    if (!record) return;
+    if (record.kind !== kind) throw new VaultError('INTEGRITY', 'record kind mismatch');
+    await this.#records.delete(id);
+  }
+
+  async #openJson<T>(record: EncryptedRecord): Promise<T> {
+    const plain = await open(this.#key(), fromBase64(record.iv), fromBase64(record.ct), recordAad(record.kind, record.id));
+    try {
+      return JSON.parse(fromUtf8(plain)) as T;
+    } catch {
+      throw new VaultError('INTEGRITY', 'record not json');
+    }
   }
 
   async usage(): Promise<{ count: number; bytes: number }> {
