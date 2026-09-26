@@ -955,7 +955,10 @@ export function interpret(inputs: LabInput[], sex: Sex = 'unspecified'): Interpr
     }
   }
 
-  const worst = [...abnormal].sort((a, b) => SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity]).slice(0, 3);
+  // Önce kritik düzeyler, sonra derece, aynı derecede sapmanın büyüklüğü (ör. CRP 10 kat > lenfosit %46 düşük).
+  const worst = [...abnormal]
+    .sort((a, b) => Number(b.critical) - Number(a.critical) || SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity] || (b.deviation ?? 0) - (a.deviation ?? 0))
+    .slice(0, 3);
   const text = !findings.length
     ? 'Henüz değerlendirilecek sonuç yok.'
     : !abnormal.length

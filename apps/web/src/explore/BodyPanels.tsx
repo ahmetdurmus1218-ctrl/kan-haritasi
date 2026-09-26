@@ -523,12 +523,18 @@ function MinePanel({
   );
 }
 
-/** Aralık dışı bulgular: önce kritik, sonra derece. */
+/** Aralık dışı bulgular: önce kritik, sonra derece, aynı derecede sapmanın büyüklüğü. */
 export function abnormalFindings(interp: Interpretation) {
   const w = { marked: 3, moderate: 2, mild: 1, borderline: 0.5, normal: 0, unknown: 0 } as const;
   return interp.findings
     .filter((f) => f.status === 'high' || f.status === 'low')
-    .sort((a, b) => Number(b.critical) - Number(a.critical) || w[b.severity] - w[a.severity] || a.name.localeCompare(b.name, 'tr'));
+    .sort(
+      (a, b) =>
+        Number(b.critical) - Number(a.critical) ||
+        w[b.severity] - w[a.severity] ||
+        (b.deviation ?? 0) - (a.deviation ?? 0) ||
+        a.name.localeCompare(b.name, 'tr'),
+    );
 }
 
 /* ---------------------------------------------------------------- Tahlil odağı */
