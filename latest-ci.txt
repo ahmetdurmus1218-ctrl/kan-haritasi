@@ -1,7 +1,7 @@
 workflow: CI
-run: 36241266922
-sha: e83cbfad6a4575a205e11477e5d9c1056870fa37
-conclusion: success
+run: 36242805806
+sha: 5dd634f2bc2a07253978021ecfc304a8f451a649
+conclusion: failure
 
 web: success
   - Set up job: success
@@ -19,14 +19,7 @@ web: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-dependencies: success
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-e2e: success
+e2e: failure
   - Set up job: success
   - Run actions/checkout@v4: success
   - Run pnpm/action-setup@v4: success
@@ -37,12 +30,47 @@ e2e: success
   - Playwright (Chromium): success
   - Önizleme sunucusu: success
   - Belgeler ve kasa (smoke): success
-  - Okuma → sonuçlar → vücutta göster → simülasyon: success
-  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
+  - Okuma → sonuçlar → vücutta göster → simülasyon: failure
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: skipped
   - Run actions/upload-artifact@v4: success
-  - Post Run actions/setup-python@v5: success
-  - Post Run actions/setup-node@v4: success
+  - Post Run actions/setup-python@v5: skipped
+  - Post Run actions/setup-node@v4: skipped
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
+dependencies: success
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	﻿2026-09-26T12:44:24.3362671Z ##[group]Run python tests/e2e/flow.py "$RUNNER_TEMP/shots"
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3363223Z ^[[36;1mpython tests/e2e/flow.py "$RUNNER_TEMP/shots"^[[0m
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3419551Z shell: /usr/bin/bash -e {0}
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3419766Z env:
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3419986Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3420295Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3420636Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib/pkgconfig
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3420972Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3421301Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3421603Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3421899Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:44:24.3422154Z ##[endgroup]
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6363986Z PASS PDF'ten 14 sonuç okundu
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6364723Z FAIL kaydedilen raporda 5 aralık dışı sonuç (ALT, T.kolesterol, LDL, TG yüksek; ferritin düşük)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6365289Z PASS fotoğraftan OCR ile 9 sonuç okundu
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6365590Z PASS Sonuçlarım listesinde LDL
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6366205Z PASS öğren paneli
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6366433Z PASS LDL için vücut rotası
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6366715Z PASS LDL → koroner arterler bağlantısı
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6367052Z PASS simülasyon başladı ve ilerliyor (aşama 2/8)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6367347Z PASS aşama seçimi
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6367547Z PASS nesne bilgisi (LDL)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6367788Z PASS Esc ile organa dönüş
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6368008Z PASS CSP ihlali yok []
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6368231Z PASS konsol hatası yok []
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6368437Z PASS harici istek yok []
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6368977Z {'problems': ['kaydedilen raporda 5 aralık dışı sonuç (ALT, T.kolesterol, LDL, TG yüksek; ferritin düşük)']}
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:45:16.6560980Z ##[error]Process completed with exit code 1.
