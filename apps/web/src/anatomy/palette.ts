@@ -32,6 +32,7 @@ const COLORS: Record<string, string> = {
   pituitary: '#b98cf0',
   hypothalamus: '#9d7fe0',
   adrenals: '#d9a441',
+  'skeletal-muscle': '#b4574e',
 };
 
 export const VEIN_COLOR = '#4a6fd6';
@@ -91,4 +92,7 @@ export const LAYER_SYSTEMS: SystemId[] = [
 export const TRANSLUCENT: Record<string, number> = {
   lungs: 0.38,
   airways: 0.7,
+  // Tam iskelet organların önünde durur (kaburgalar, kafatası): yarı saydam
+  bones: 0.5,
+  'skeletal-muscle': 0.82,
 };

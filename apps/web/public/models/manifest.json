@@ -1,23 +1,27 @@
 {
- "source": "HuBMAP Human Reference Atlas — 3D Reference Object Library (VH Male), CC BY 4.0",
+ "source": "HuBMAP Human Reference Atlas — 3D Reference Object Library (VH Male), CC BY 4.0; BodyParts3D 3.0 (DBCLS), CC BY-SA 2.1 JP (skin, skeleton, muscles)",
+ "bp3d": {
+  "repo": "https://github.com/Kevin-Mattheus-Moerman/BodyParts3D",
+  "commit": "f0eeb6e843380cfe6b83797cf8c3e1af74de5e61"
+ },
  "sourceUrl": "https://github.com/hubmapconsortium/ccf-3d-reference-object-library",
  "sourceCommit": "f1a3a63f110e27ff0736047d52d04dba5d3087f9",
  "units": "meter; +Y up, +X subject left, +Z anterior",
  "assets": {
   "body": {
    "file": "body.glb",
-   "bytes": 762808,
-   "triangles": 32000,
+   "bytes": 921820,
+   "triangles": 35850,
    "bounds": {
     "min": [
-     -0.5237,
-     -0.9146,
-     -0.1606
+     -0.334,
+     -0.8618,
+     -0.1771
     ],
     "max": [
-     0.523,
-     0.9149,
-     0.1556
+     0.3695,
+     0.9172,
+     0.1378
     ]
    },
    "nodes": [
@@ -26,42 +30,97 @@
   },
   "skeleton": {
    "file": "skeleton.glb",
-   "bytes": 1740012,
-   "triangles": 70766,
+   "bytes": 3382888,
+   "triangles": 129968,
    "bounds": {
     "min": [
-     -0.1349,
-     -0.0331,
-     -0.1161
+     -0.3285,
+     -0.8543,
+     -0.1555
     ],
     "max": [
-     0.1455,
-     0.7619,
-     0.0537
+     0.3638,
+     0.9135,
+     0.1181
     ]
    },
    "nodes": [
-    "bones",
-    "bones"
+    "bones|Göğüs kafesi",
+    "bones|Kafatası ve yüz kemikleri",
+    "bones|Leğen kemiği (pelvis)",
+    "bones|Omurga",
+    "bones|Sağ ayak kemikleri",
+    "bones|Sağ bacak kemikleri",
+    "bones|Sağ el kemikleri",
+    "bones|Sağ omuz kuşağı (köprücük, kürek)",
+    "bones|Sağ önkol kemikleri",
+    "bones|Sağ uyluk kemiği ve diz kapağı",
+    "bones|Sağ üst kol kemiği (humerus)",
+    "bones|Sol ayak kemikleri",
+    "bones|Sol bacak kemikleri",
+    "bones|Sol el kemikleri",
+    "bones|Sol omuz kuşağı (köprücük, kürek)",
+    "bones|Sol önkol kemikleri",
+    "bones|Sol uyluk kemiği ve diz kapağı",
+    "bones|Sol üst kol kemiği (humerus)"
    ]
   },
   "cardio": {
    "file": "cardio.glb",
-   "bytes": 4475032,
-   "triangles": 195816,
+   "bytes": 5509816,
+   "triangles": 237780,
    "bounds": {
     "min": [
-     -0.1107,
-     -0.0397,
-     -0.089
+     -0.2858,
+     -0.8323,
+     -0.1471
     ],
     "max": [
-     0.1229,
+     0.3097,
      0.8288,
      0.0969
     ]
    },
    "nodes": [
+    "carotid-arteries|right subclavian artery",
+    "carotid-arteries|left subclavian artery",
+    "carotid-arteries|right common carotid artery",
+    "abdominal-vessels|right common iliac artery",
+    "abdominal-vessels|left common iliac artery",
+    "abdominal-vessels|right external iliac artery",
+    "abdominal-vessels|left external iliac artery",
+    "abdominal-vessels|right internal iliac artery",
+    "abdominal-vessels|left internal iliac artery",
+    "veins|right internal jugular vein",
+    "veins|left internal jugular vein",
+    "veins|right subclavian vein",
+    "veins|left subclavian vein",
+    "limb-vessels|right axillary and brachial artery",
+    "limb-vessels|right radial artery",
+    "limb-vessels|right ulnar artery",
+    "limb-vessels|right palmar arch",
+    "limb-vessels|right axillary and brachial vein",
+    "limb-vessels|right cephalic vein",
+    "limb-vessels|right basilic vein",
+    "limb-vessels|right femoral and popliteal artery",
+    "limb-vessels|right anterior tibial artery",
+    "limb-vessels|right posterior tibial artery",
+    "limb-vessels|right femoral and popliteal vein",
+    "limb-vessels|right great saphenous vein",
+    "limb-vessels|right small saphenous vein",
+    "limb-vessels|left axillary and brachial artery",
+    "limb-vessels|left radial artery",
+    "limb-vessels|left ulnar artery",
+    "limb-vessels|left palmar arch",
+    "limb-vessels|left axillary and brachial vein",
+    "limb-vessels|left cephalic vein",
+    "limb-vessels|left basilic vein",
+    "limb-vessels|left femoral and popliteal artery",
+    "limb-vessels|left anterior tibial artery",
+    "limb-vessels|left posterior tibial artery",
+    "limb-vessels|left femoral and popliteal vein",
+    "limb-vessels|left great saphenous vein",
+    "limb-vessels|left small saphenous vein",
     "heart",
     "eye-vessels|ophthalmic vein L",
     "eye-vessels|superior ophthalmic vein L",
@@ -282,6 +341,40 @@
    "nodes": [
     "spleen",
     "thymus"
+   ]
+  },
+  "muscles": {
+   "file": "muscles.glb",
+   "bytes": 4046004,
+   "triangles": 149778,
+   "bounds": {
+    "min": [
+     -0.325,
+     -0.8545,
+     -0.1591
+    ],
+    "max": [
+     0.3567,
+     0.916,
+     0.134
+    ]
+   },
+   "nodes": [
+    "skeletal-muscle|Baş ve yüz kasları",
+    "skeletal-muscle|Boyun kasları",
+    "skeletal-muscle|Göğüs kasları",
+    "skeletal-muscle|Karın kasları",
+    "skeletal-muscle|Sağ bacak ve ayak kasları",
+    "skeletal-muscle|Sağ kalça kasları",
+    "skeletal-muscle|Sağ omuz ve üst kol kasları",
+    "skeletal-muscle|Sağ önkol ve el kasları",
+    "skeletal-muscle|Sağ uyluk kasları",
+    "skeletal-muscle|Sırt kasları",
+    "skeletal-muscle|Sol bacak ve ayak kasları",
+    "skeletal-muscle|Sol kalça kasları",
+    "skeletal-muscle|Sol omuz ve üst kol kasları",
+    "skeletal-muscle|Sol önkol ve el kasları",
+    "skeletal-muscle|Sol uyluk kasları"
    ]
   }
  }

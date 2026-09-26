@@ -44,10 +44,11 @@ const SCENES: Partial<Record<InsideId, LazyExoticComponent<ComponentType<InsideS
 /** Açılış yalnızca oturumda bir kez oynar. */
 let introPlayed = false;
 
-const CARDIO_LAYER = new Set(['heart', 'coronary-arteries', 'aorta', 'carotid-arteries', 'pulmonary-vessels', 'veins', 'renal-vessels', 'abdominal-vessels', 'eye-vessels']);
+const CARDIO_LAYER = new Set(['heart', 'coronary-arteries', 'aorta', 'carotid-arteries', 'pulmonary-vessels', 'veins', 'renal-vessels', 'abdominal-vessels', 'eye-vessels', 'limb-vessels']);
 
 function layerAllows(layers: Layers, structure: string): boolean {
   if (structure === 'bones') return layers.skeleton;
+  if (structure === 'skeletal-muscle') return layers.muscles;
   if (CARDIO_LAYER.has(structure)) return layers.cardio;
   if (structure === 'lungs' || structure === 'airways') return layers.respiratory;
   if (structure === 'brain' || structure === 'spinal-cord') return layers.nervous;
@@ -67,7 +68,6 @@ function useReducedMotion(): boolean {
 
 export function Explorer({ route }: { route: ExploreRoute }) {
   const vault = useUnlockedVault();
-  const models = useModels();
   const { reports } = useReports();
   const reducedMotion = useReducedMotion();
   const [sex, setSex] = useState<Sex>('unspecified');
@@ -94,6 +94,13 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const shownInside = shownKey.startsWith('inside:') ? (shownKey.slice(7) as InsideId) : null;
   const [partKey, setPartKey] = useState<string | null>(null);
   useEffect(() => setPartKey(null), [structure]);
+  // Kas modeli büyük (≈4 MB): yalnızca kas katmanı açılınca ya da kaslara/kas sistemine gidilince yüklenir.
+  const wantMuscles = layers.muscles || structure === 'skeletal-muscle' || system === 'musculoskeletal';
+  const [musclesRequested, setMusclesRequested] = useState(false);
+  useEffect(() => {
+    if (wantMuscles) setMusclesRequested(true);
+  }, [wantMuscles]);
+  const models = useModels(musclesRequested);
 
   const [insideState, insideActions] = useInside(shownInside, !!inside?.startSimulation && shownInside === inside.scene);
 
@@ -172,12 +179,16 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       const d = pos.sub(tgt).normalize();
       return frameBox(b, [(Math.atan2(d.x, d.z) * 180) / Math.PI, (Math.asin(Math.max(-1, Math.min(1, d.y))) * 180) / Math.PI], cam, 2.4, 0.02);
     }
+    // Tüm vücuda yayılan yapılar (iskelet, kaslar, kol-bacak damarları): baştan ayağa kadraj
+    const wholeBody = (b: Box3 | null) => !!b && b.max.y - b.min.y > 1.2;
     if (structure) {
       const b = unionBox([structure]);
+      if (wholeBody(b)) return overviewShot(cam);
       return b ? frameBox(b, ORGANS[structure]?.view ?? [0, 5], cam, 1.45) : OVERVIEW;
     }
     if (system) {
       const b = unionBox(structuresOfSystem(system));
+      if (wholeBody(b)) return overviewShot(cam);
       return b ? frameBox(b, [0, 6], cam, 1.05) : OVERVIEW;
     }
     if (focusTest) {

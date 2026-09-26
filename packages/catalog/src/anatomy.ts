@@ -38,7 +38,7 @@ export const SYSTEMS: readonly BodySystem[] = [
   { id: 'integumentary', nameTr: 'Deri', color: '#c9a58f' },
 ];
 
-export type ModelAsset = 'body' | 'skeleton' | 'cardio' | 'respiratory' | 'digestive' | 'urinary' | 'nervous' | 'immune' | 'schematic';
+export type ModelAsset = 'body' | 'skeleton' | 'muscles' | 'cardio' | 'respiratory' | 'digestive' | 'urinary' | 'nervous' | 'immune' | 'schematic';
 
 export interface Structure {
   id: string;
@@ -50,6 +50,8 @@ export interface Structure {
   modelMatch: string[];
   /** Temsili (şematik) şekil mi? */
   schematic?: boolean;
+  /** Modelde gerçek karşılığı olmayan, yaklaşık yolu çizilmiş yapı (ör. kol/bacak damarları). */
+  approximate?: boolean;
   /** Bu yapıya "içeri girildiğinde" açılacak alt seviye sahne. */
   drill?: 'vessel' | 'nephron' | 'hepatocyte' | 'alveolus' | 'bone-marrow' | 'beta-cell' | 'thyroid-follicle';
   blurb: string;
@@ -77,7 +79,8 @@ export const STRUCTURES: readonly Structure[] = [
   { id: 'prostate', nameTr: 'Prostat', systems: ['urinary'], asset: 'urinary', modelMatch: ['prostate'], blurb: 'Erkeklerde mesane altındaki bez.' },
   { id: 'brain', nameTr: 'Beyin', systems: ['nervous'], asset: 'nervous', modelMatch: ['brain', 'allen', 'cortex', 'gyrus', 'lobe', 'cerebell', 'thalam', 'hippocamp', 'nucleus', 'ventricle_of_brain'], blurb: 'Sinir sisteminin merkezi.' },
   { id: 'spinal-cord', nameTr: 'Omurilik', systems: ['nervous'], asset: 'nervous', modelMatch: ['spinal_cord', 'spinal', 'cervical', 'thoracic', 'lumbar'], blurb: 'Beyin ile vücut arasında sinyal taşır.' },
-  { id: 'bones', nameTr: 'Omurga ve pelvis', systems: ['musculoskeletal', 'hematologic'], asset: 'skeleton', modelMatch: ['vertebra', 'sacrum', 'coccyx', 'pelvi', 'hip_bone', 'ilium', 'ischium', 'pubis', 'femur', 'atlas', 'axis'], drill: 'bone-marrow', blurb: 'Yetişkinde kan yapımının (kemik iliği) büyük kısmı omurga ve pelviste olur.' },
+  { id: 'limb-vessels', nameTr: 'Kol ve bacak damarları', systems: ['cardiovascular'], asset: 'cardio', modelMatch: [], drill: 'vessel', approximate: true, blurb: 'Kolları ve bacakları besleyen ana atardamarlar (brakiyal, radyal, femoral, tibial) ve toplardamarlar (safen, sefalik, bazilik). Yolları kemiklere göre şematik çizilmiştir.' },
+  { id: 'bones', nameTr: 'İskelet', systems: ['musculoskeletal', 'hematologic'], asset: 'skeleton', modelMatch: ['vertebra', 'sacrum', 'coccyx', 'pelvi', 'hip_bone', 'ilium', 'ischium', 'pubis', 'femur', 'atlas', 'axis'], drill: 'bone-marrow', blurb: 'Vücudu taşıyan 200’den fazla kemik. Yetişkinde kan yapımının (kemik iliği) büyük kısmı omurga, pelvis, kaburgalar ve göğüs kemiğinde olur.' },
   { id: 'spleen', nameTr: 'Dalak', systems: ['immune', 'hematologic'], asset: 'immune', modelMatch: ['spleen', 'splenic_'], blurb: 'Yaşlanmış alyuvarları ayıklar, bağışıklık hücrelerini barındırır.' },
   { id: 'thymus', nameTr: 'Timus', systems: ['immune'], asset: 'immune', modelMatch: ['thymus'], blurb: 'T lenfositlerinin olgunlaştığı bez.' },
   { id: 'skin', nameTr: 'Deri', systems: ['integumentary'], asset: 'body', modelMatch: ['skin'], blurb: 'Güneş ışığıyla D vitamini yapımının başladığı organ.' },
@@ -86,7 +89,7 @@ export const STRUCTURES: readonly Structure[] = [
   { id: 'pituitary', nameTr: 'Hipofiz (şematik)', systems: ['endocrine', 'nervous'], asset: 'schematic', modelMatch: ['schematic_pituitary'], schematic: true, blurb: 'TSH, prolaktin, ACTH gibi hormonları salgılayan bez.' },
   { id: 'hypothalamus', nameTr: 'Hipotalamus (şematik)', systems: ['endocrine', 'nervous'], asset: 'schematic', modelMatch: ['schematic_hypothalamus'], schematic: true, blurb: 'Hipofizi yöneten beyin bölgesi.' },
   { id: 'adrenals', nameTr: 'Böbreküstü bezleri (şematik)', systems: ['endocrine'], asset: 'schematic', modelMatch: ['schematic_adrenal'], schematic: true, blurb: 'Kortizol ve aldosteron üreten bezler.' },
-  { id: 'skeletal-muscle', nameTr: 'İskelet kasları', systems: ['musculoskeletal'], asset: null, modelMatch: [], blurb: 'Hareket kasları. Bu yapı 3D modelde yer almıyor.' },
+  { id: 'skeletal-muscle', nameTr: 'İskelet kasları', systems: ['musculoskeletal'], asset: 'muscles', modelMatch: [], blurb: 'Hareketi sağlayan, kemiklere tutunan kaslar. Kas enzimi (CK) ve kreatinin kas kütlesi ve kas hasarıyla ilişkilidir.' },
 ];
 
 export type ProcessId =

@@ -791,7 +791,7 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
       text: 'CK artışı çoğunlukla yakın zamandaki yoğun egzersiz ya da kas zorlanmasıyla ilişkilidir; bazı ilaçlar (ör. kolesterol ilaçları) ve kas hastalıkları da yükseltebilir. Kas ağrısı, güçsüzlük veya koyu idrar varsa hemen başvur.',
       tests: ['ck'],
       systems: ['musculoskeletal'],
-      structures: ['heart'],
+      structures: ['skeletal-muscle', 'heart'],
     });
   }
   if (is(m, 'psa', 'high')) {

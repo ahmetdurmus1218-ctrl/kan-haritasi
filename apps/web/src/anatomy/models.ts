@@ -24,7 +24,8 @@ export interface ModelPart {
 }
 
 export const LOAD_ORDER: LoadableAsset[] = ['body', 'skeleton', 'digestive', 'urinary', 'respiratory', 'nervous', 'immune', 'cardio'];
-export const TOTAL_BYTES = LOAD_ORDER.reduce((n, a) => n + MODEL_ASSETS[a].bytes, 0);
+/** İstenince yüklenenler (ör. kaslar, katman açılınca). */
+export const OPTIONAL_ASSETS: LoadableAsset[] = ['muscles'];
 
 let loader: GLTFLoader | null = null;
 function getLoader(): GLTFLoader {

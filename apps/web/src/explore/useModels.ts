@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Box3 } from 'three';
-import { LOAD_ORDER, TOTAL_BYTES, type ModelPart, loadAsset } from '../anatomy/models';
+import { LOAD_ORDER, OPTIONAL_ASSETS, type ModelPart, loadAsset } from '../anatomy/models';
+import { MODEL_ASSETS } from '../anatomy/assets.generated';
 import type { LoadableAsset } from '../anatomy/assets.generated';
 import { SCHEMATIC_PARTS } from '../anatomy/schematic';
 
@@ -17,11 +18,13 @@ export interface ModelsState {
  * Anatomi modellerini sırayla ister (paralel indirilir, küçükten büyüğe sıralı), her dosya
  * geldikçe sahneye eklenir. Önbellek oturum boyunca kalır; ekran yeniden açılınca anında gelir.
  */
-export function useModels(): ModelsState {
+export function useModels(withOptional = false): ModelsState {
   const [state, setState] = useState<ModelsState>({ parts: [], loaded: new Set(), failed: [], progress: 0, done: false });
 
   useEffect(() => {
     let cancelled = false;
+    const order: LoadableAsset[] = withOptional ? [...LOAD_ORDER, ...OPTIONAL_ASSETS] : LOAD_ORDER;
+    const total = order.reduce((n, a) => n + MODEL_ASSETS[a].bytes, 0);
     const bytes = new Map<LoadableAsset, number>();
     const results = new Map<LoadableAsset, ModelPart[]>();
     const failed: LoadableAsset[] = [];
@@ -30,20 +33,20 @@ export function useModels(): ModelsState {
       raf = 0;
       if (cancelled) return;
       const loadedBytes = [...bytes.values()].reduce((a, b) => a + b, 0);
-      const parts = LOAD_ORDER.flatMap((a) => results.get(a) ?? []);
+      const parts = order.flatMap((a) => results.get(a) ?? []);
       const settled = results.size + failed.length;
       setState({
         parts,
         loaded: new Set(results.keys()),
         failed: [...failed],
-        progress: Math.min(1, loadedBytes / TOTAL_BYTES),
-        done: settled === LOAD_ORDER.length,
+        progress: Math.min(1, loadedBytes / total),
+        done: settled === order.length,
       });
     };
     const schedule = () => {
       if (!raf) raf = requestAnimationFrame(publish);
     };
-    for (const asset of LOAD_ORDER) {
+    for (const asset of order) {
       loadAsset(asset, (n) => {
         bytes.set(asset, n);
         schedule();
@@ -62,7 +65,7 @@ export function useModels(): ModelsState {
       cancelled = true;
       if (raf) cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [withOptional]);
 
   return state;
 }

@@ -38,6 +38,19 @@ const EXACT: Record<string, string> = {
   'common hepatic artery': 'Ortak karaciğer atardamarı',
   'proper hepatic artery': 'Karaciğer atardamarı',
   'coronary sinus': 'Koroner sinüs',
+  'right subclavian artery': 'Sağ köprücükaltı arter',
+  'left subclavian artery': 'Sol köprücükaltı arter',
+  'right common carotid artery': 'Sağ ortak şah damarı',
+  'right common iliac artery': 'Sağ ortak iliak arter',
+  'left common iliac artery': 'Sol ortak iliak arter',
+  'right external iliac artery': 'Sağ dış iliak arter',
+  'left external iliac artery': 'Sol dış iliak arter',
+  'right internal iliac artery': 'Sağ iç iliak arter',
+  'left internal iliac artery': 'Sol iç iliak arter',
+  'right internal jugular vein': 'Sağ iç şah toplardamarı (juguler ven)',
+  'left internal jugular vein': 'Sol iç şah toplardamarı (juguler ven)',
+  'right subclavian vein': 'Sağ köprücükaltı ven',
+  'left subclavian vein': 'Sol köprücükaltı ven',
   'great cardiac vein': 'Büyük kalp toplardamarı',
   'middle cardiac vein': 'Orta kalp toplardamarı',
   'small cardiac vein': 'Küçük kalp toplardamarı',
@@ -99,8 +112,27 @@ const EXACT: Record<string, string> = {
   'long posterior ciliary artery R': 'Sağ uzun arka siliyer arter',
 };
 
+/** Şematik kol/bacak damarları: "right radial artery" → "Sağ radyal arter (önkol)". */
+const LIMB: Record<string, string> = {
+  'axillary and brachial artery': 'koltukaltı ve kol atardamarı (aksiller–brakiyal arter)',
+  'radial artery': 'radyal arter (önkol, başparmak tarafı)',
+  'ulnar artery': 'ulnar arter (önkol, serçe parmak tarafı)',
+  'palmar arch': 'avuç içi atardamar kavsi',
+  'axillary and brachial vein': 'koltukaltı ve kol toplardamarı',
+  'cephalic vein': 'sefalik ven (kolun dış yüzü)',
+  'basilic vein': 'bazilik ven (kolun iç yüzü)',
+  'femoral and popliteal artery': 'uyluk ve diz arkası atardamarı (femoral–popliteal arter)',
+  'anterior tibial artery': 'ön tibial arter (bacağın önü, ayak sırtı)',
+  'posterior tibial artery': 'arka tibial arter (bacağın arkası, ayak tabanı)',
+  'femoral and popliteal vein': 'uyluk ve diz arkası toplardamarı (femoral–popliteal ven)',
+  'great saphenous vein': 'büyük safen ven (bacağın iç yüzü)',
+  'small saphenous vein': 'küçük safen ven (baldır)',
+};
+
 export function vesselLabel(raw: string): string {
   if (EXACT[raw]) return EXACT[raw];
+  const limb = /^(right|left) (.+)$/.exec(raw);
+  if (limb && LIMB[limb[2]!]) return `${limb[1] === 'right' ? 'Sağ' : 'Sol'} ${LIMB[limb[2]!]}`;
   const tr = raw
     .replace(/ (a|b|c)$/, '')
     .replace(/\binferior\b/g, 'alt')

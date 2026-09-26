@@ -1,7 +1,9 @@
 /**
  * Anatomi varlık hattı.
  *
- * Kaynak: HuBMAP Human Reference Atlas (HRA) 3D referans organları, erkek (VH_M), CC BY 4.0.
+ * Kaynaklar:
+ *  - HuBMAP Human Reference Atlas (HRA) 3D referans organları, erkek (VH_M), CC BY 4.0: organlar, damarlar.
+ *  - BodyParts3D 3.0 (DBCLS), CC BY-SA 2.1 JP: deri, tam iskelet ve kaslar (bkz. bp3d.ts).
  * Bütün organlar ortak bir vücut koordinat sisteminde (metre, +Y yukarı, +X kişinin solu,
  * +Z ön) konumlandırılmıştır; bu yüzden birlikte yerleştirilebilirler.
  *
@@ -22,6 +24,8 @@ import { EXTMeshoptCompression, KHRMeshQuantization, ALL_EXTENSIONS } from '@glt
 import { clearNodeTransform, dedup, flatten, joinPrimitives, meshopt, normals, prune, quantize, simplify, weld, getBounds } from '@gltf-transform/functions';
 import { MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import { type ModelAsset, structureById, structureForNode } from '@kh/catalog';
+import { BP3D_COMMIT, BP3D_REPO, bp3dDocument, planBp3d } from './bp3d';
+import { limbVesselDocument, trunkVesselDocument } from './limbs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SRC = process.env.HRA_DIR ?? join(here, '.cache/hra');
@@ -41,9 +45,6 @@ interface SourceSpec {
 }
 
 const SOURCES: SourceSpec[] = [
-  { file: 'VH_Male/v1.2/VH_M_Skin.glb', asset: 'body', structure: 'skin', tris: 32000 },
-  { file: 'VH_Male/v1.2/VH_M_Vertebrae.glb', asset: 'skeleton', structure: 'bones', tris: 36000 },
-  { file: 'VH_Male/v1.2/VH_M_Pelvis.glb', asset: 'skeleton', structure: 'bones', tris: 16000 },
   { file: 'VH_Male/v1.2/VH_M_Heart.glb', asset: 'cardio', structure: 'heart', tris: 30000 },
   { file: 'VH_Male/v1.4/3d-vh-m-blood-vasculature.glb', asset: 'cardio', fallback: 'abdominal-vessels', tris: 110000, keepNodes: true },
   { file: 'VH_Male/v1.4/3d-vh-m-lung.glb', asset: 'respiratory', fallback: 'lungs', tris: 42000 },
@@ -134,10 +135,16 @@ async function loadSource(spec: SourceSpec): Promise<Document> {
   for (const n of newNodes) scene.addChild(n);
   await doc.transform(prune());
 
-  // 4) Kaynak (ağ) sadeleştirme
+  await simplifyTo(doc, spec.tris, spec.file.split('/').pop() ?? spec.file, groups.size);
+  return doc;
+}
+
+/** Ağı hedef üçgen sayısına sadeleştirir ve normalleri yeniden hesaplar. */
+async function simplifyTo(doc: Document, tris: number, name: string, parts: number) {
   await MeshoptSimplifier.ready;
   const before = triCount(doc);
-  const ratio = Math.min(1, spec.tris / Math.max(1, before));
+  const ratio = Math.min(1, tris / Math.max(1, before));
+  const spec = { tris };
   await doc.transform(weld({}));
   // Hata sınırını hedefe ulaşılana kadar kademeli gevşet (ince damarlar için küçük başlar).
   if (ratio < 0.98) {
@@ -147,15 +154,36 @@ async function loadSource(spec: SourceSpec): Promise<Document> {
     }
   }
   await doc.transform(normals({ overwrite: true }));
-  console.log(`  ${spec.file.split('/').pop()?.padEnd(34)} ${String(before).padStart(7)} → ${String(triCount(doc)).padStart(6)} üçgen, ${groups.size} parça`);
+  console.log(`  ${name.padEnd(34)} ${String(before).padStart(7)} → ${String(triCount(doc)).padStart(6)} üçgen, ${parts} parça`);
+}
+
+/** Kalp-damar dosyasına eklenenler: BodyParts3D gövde damarları ve şematik kol/bacak damarları. */
+async function loadExtraVessels(): Promise<Document[]> {
+  const trunk = trunkVesselDocument();
+  await simplifyTo(trunk, 16000, 'BodyParts3D gövde damarları', 13);
+  const limbs = limbVesselDocument();
+  await limbs.transform(weld({}), normals({ overwrite: true }));
+  console.log(`  ${'şematik kol/bacak damarları'.padEnd(34)} ${String(triCount(limbs)).padStart(7)} üçgen, ${limbs.getRoot().listNodes().length} parça`);
+  return [trunk, limbs];
+}
+
+/** BodyParts3D kaynaklı varlıklar: deri, iskelet, kaslar. */
+const BP3D_BUDGET = { body: 36000, skeleton: 130000, muscles: 150000 } as const;
+
+async function loadBp3d(asset: keyof typeof BP3D_BUDGET): Promise<Document> {
+  const plan = planBp3d();
+  const groups = asset === 'body' ? plan.skin : asset === 'skeleton' ? plan.skeleton : plan.muscles;
+  const doc = bp3dDocument(groups, asset);
+  await simplifyTo(doc, BP3D_BUDGET[asset], `BodyParts3D ${asset}`, groups.length);
   return doc;
 }
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
-  const assets = [...new Set(SOURCES.map((s) => s.asset))];
+  const assets = [...new Set<Exclude<ModelAsset, 'schematic'>>(['body', 'skeleton', ...SOURCES.map((s) => s.asset), 'muscles'])];
   const manifest: Record<string, unknown> = {
-    source: 'HuBMAP Human Reference Atlas — 3D Reference Object Library (VH Male), CC BY 4.0',
+    source: 'HuBMAP Human Reference Atlas — 3D Reference Object Library (VH Male), CC BY 4.0; BodyParts3D 3.0 (DBCLS), CC BY-SA 2.1 JP (skin, skeleton, muscles)',
+    bp3d: { repo: BP3D_REPO, commit: BP3D_COMMIT },
     sourceUrl: 'https://github.com/hubmapconsortium/ccf-3d-reference-object-library',
     sourceCommit: 'f1a3a63f110e27ff0736047d52d04dba5d3087f9',
     units: 'meter; +Y up, +X subject left, +Z anterior',
@@ -167,9 +195,11 @@ async function main() {
     const target = new Document();
     target.createBuffer();
     target.createScene(asset);
+    const { mergeDocuments } = await import('@gltf-transform/functions');
+    if (asset === 'body' || asset === 'skeleton' || asset === 'muscles') mergeDocuments(target, await loadBp3d(asset));
+    if (asset === 'cardio') for (const d of await loadExtraVessels()) mergeDocuments(target, d);
     for (const spec of SOURCES.filter((s) => s.asset === asset)) {
       const src = await loadSource(spec);
-      const { mergeDocuments } = await import('@gltf-transform/functions');
       mergeDocuments(target, src);
     }
     const root = target.getRoot();
@@ -218,12 +248,23 @@ async function main() {
   );
   writeFileSync(
     join(OUT, 'ATTRIBUTION.txt'),
-    `3D anatomi modelleri: HuBMAP Human Reference Atlas, 3D Reference Object Library (VH Male), CC BY 4.0.
-Kaynak: https://github.com/hubmapconsortium/ccf-3d-reference-object-library (commit f1a3a63)
-Değişiklikler: sahne düzleştirildi, parçalar yapıya göre birleştirildi, ağlar sadeleştirildi (meshoptimizer),
-nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı. Tiroid, hipofiz, hipotalamus ve böbreküstü bezleri
-uygulamada şematik olarak çizilir ve bu kaynaktan gelmez.
-Lisans: https://creativecommons.org/licenses/by/4.0/
+    `3D anatomi modelleri
+
+1) Organlar ve damarlar (cardio, respiratory, digestive, urinary, nervous, immune):
+   HuBMAP Human Reference Atlas, 3D Reference Object Library (VH Male), CC BY 4.0.
+   Kaynak: https://github.com/hubmapconsortium/ccf-3d-reference-object-library (commit f1a3a63)
+   Lisans: https://creativecommons.org/licenses/by/4.0/
+
+2) Deri, iskelet ve kaslar (body.glb, skeleton.glb, muscles.glb):
+   BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan.
+   Kaynak: http://lifesciencedb.jp/bp3d/ — kopya: ${BP3D_REPO} (commit ${BP3D_COMMIT.slice(0, 7)})
+   Lisans: https://creativecommons.org/licenses/by-sa/2.1/jp/deed.en
+   Bu üç dosya (uyarlanmış eser) aynı lisansla (CC BY-SA 2.1 JP) dağıtılır.
+
+Değişiklikler: sahne düzleştirildi, parçalar yapıya/bölgeye göre birleştirildi, BodyParts3D parçaları HRA
+koordinat sistemine benzerlik dönüşümüyle taşındı (iki farklı vücut; uyum yaklaşıktır), ağlar sadeleştirildi
+(meshoptimizer), nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı. Tiroid, hipofiz, hipotalamus ve
+böbreküstü bezleri uygulamada şematik olarak çizilir ve bu kaynaklardan gelmez.
 `,
   );
 }

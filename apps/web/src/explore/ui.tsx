@@ -71,6 +71,7 @@ export function ViewControls({ onView, onZoom, onReset }: { onView: (v: ViewName
 
 export interface Layers {
   skin: SkinMode;
+  muscles: boolean;
   skeleton: boolean;
   cardio: boolean;
   organs: boolean;
@@ -78,11 +79,11 @@ export interface Layers {
   nervous: boolean;
 }
 
-export const DEFAULT_LAYERS: Layers = { skin: 'xray', skeleton: true, cardio: true, organs: true, respiratory: true, nervous: true };
+export const DEFAULT_LAYERS: Layers = { skin: 'xray', muscles: false, skeleton: true, cardio: true, organs: true, respiratory: true, nervous: true };
 
-const LAYER_ROWS: { key: Exclude<keyof Layers, 'skin'> | 'muscles'; label: string; note?: string }[] = [
-  { key: 'muscles', label: 'Kaslar', note: 'MODEL GEREKİR' },
-  { key: 'skeleton', label: 'İskelet', note: 'omurga + pelvis' },
+const LAYER_ROWS: { key: Exclude<keyof Layers, 'skin'>; label: string; note?: string }[] = [
+  { key: 'muscles', label: 'Kaslar', note: '+4 MB' },
+  { key: 'skeleton', label: 'İskelet' },
   { key: 'cardio', label: 'Kalp ve damarlar' },
   { key: 'respiratory', label: 'Solunum' },
   { key: 'organs', label: 'İç organlar' },
@@ -121,8 +122,8 @@ export function LayersMenu({ layers, onChange, onClose }: { layers: Layers; onCh
       </div>
       <ul className="space-y-1">
         {LAYER_ROWS.map((row) => {
-          const disabled = row.key === 'muscles';
-          const on = !disabled && layers[row.key as Exclude<keyof Layers, 'skin'>];
+          const disabled = false;
+          const on = layers[row.key];
           return (
             <li key={row.key}>
               <label className={`flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm ${disabled ? 'opacity-50' : 'cursor-pointer hover:bg-ink-800'}`}>

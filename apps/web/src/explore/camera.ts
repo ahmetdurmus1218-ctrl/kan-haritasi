@@ -11,15 +11,21 @@ export interface Shot {
   target: [number, number, number];
 }
 
-/** Vücudun genel görünümü (gövde + baş); dar/dikey ekranlarda kadraj en-boy oranına göre hesaplanır. */
-export const OVERVIEW: Shot = { position: [0, 0.48, 1.95], target: [0, 0.43, 0] };
-const TORSO = new Box3(new Vector3(-0.2, -0.04, -0.14), new Vector3(0.2, 0.92, 0.14));
+/** Vücudun genel görünümü: baştan ayağa tüm vücut; kadraj en-boy oranına göre hesaplanır. */
+export const OVERVIEW: Shot = { position: [0, 0.1, 3.3], target: [0, 0.03, 0] };
+const BODY = new Box3(new Vector3(-0.36, -0.87, -0.18), new Vector3(0.37, 0.93, 0.14));
 export function overviewShot(camera: PerspectiveCamera): Shot {
-  if (camera.aspect >= 1) return OVERVIEW;
-  return frameBox(TORSO, [0, 4], camera, 0.98);
+  // Yükseklik ve genişlik ayrı ayrı sığdırılır (uzun ince bir kutu için küre sığdırmaktan daha sıkı).
+  const size = BODY.getSize(new Vector3());
+  const center = BODY.getCenter(new Vector3());
+  const vfov = MathUtils.degToRad(camera.fov);
+  const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+  const dist = Math.max(size.y / 2 / Math.tan(vfov / 2), size.x / 2 / Math.tan(hfov / 2)) * 1.06 + size.z / 2;
+  const dir = direction(0, 2);
+  return { position: center.clone().addScaledVector(dir, dist).toArray() as Shot['position'], target: center.toArray() as Shot['target'] };
 }
 /** Açılış: uzaktan, hafif aşağıdan. */
-export const INTRO_START: Shot = { position: [0.35, 0.1, 4.6], target: [0, 0.35, 0] };
+export const INTRO_START: Shot = { position: [0.4, -0.05, 5.7], target: [0, 0.08, 0] };
 
 export const PRESETS: Record<'front' | 'back' | 'left' | 'right' | 'top', [number, number]> = {
   front: [0, 4],

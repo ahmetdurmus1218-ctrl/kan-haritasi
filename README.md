@@ -29,7 +29,7 @@ Kurulumda "bilinmeyen kaynak" izni istenir. APK, derleme sırasında `INTERNET` 
 | **Verilerimi indir** | Şifresiz ZIP: orijinaller + `sonuclar.json` + `sonuclar.csv` (açık uyarıyla) |
 | **Gizlilik** | Veri akışı, depolama, açma yöntemleri (parola, Android'de parmak izi/yüz/PIN), otomatik kilit, profil, tüm verileri sil |
 
-Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zekâ **BAĞLI DEĞİL**, kas ve mide modeli **MODEL GEREKİR**, dört bez **şematik**.
+Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zekâ **BAĞLI DEĞİL**, dört bez **şematik**; kol-bacak damarları ve mide modeli yoktur.
 
 ## Güvenlik modeli (kısa)
 
@@ -81,7 +81,7 @@ Tanımlı olduklarında iş akışı otomatik olarak bu anahtarı kullanır. Not
 ### 3D modelleri yeniden üretmek
 
 ```bash
-pnpm --filter @kh/assets-pipeline fetch   # HRA kaynaklarını belirli bir commit'ten indirir (~560 MB)
+pnpm --filter @kh/assets-pipeline fetch   # HRA ve BodyParts3D kaynaklarını belirli commit'lerden indirir (~1,7 GB)
 pnpm --filter @kh/assets-pipeline build   # sadeleştir, nicemle, meshopt ile sıkıştır → apps/web/public/models
 ```
 
@@ -99,14 +99,14 @@ apps/web/     Vite + React + Tailwind; three.js / React Three Fiber
   src/explore/   Keşfet ekranı, sinematik kamera, gürültü geçişi, paneller
   src/explore/inside/   içeri-gir sahneleri, aşama/nesne içerikleri
 apps/android/ Kotlin + Compose kabuğu (WebView, Keystore, SAF)
-assets-pipeline/  HRA → uygulama GLB dönüşümü
+assets-pipeline/  HRA + BodyParts3D → uygulama GLB dönüşümü
 tests/        güvenlik testleri ve uçtan uca betikler
 fixtures/     yalnızca sentetik raporlar
 ```
 
 ## Bilinen sınırlar
 
-- **Vücut modeli:** Tek bir erkek referans vücududur (HRA). Senin taraman değildir. Kas ve mide modeli yok. Tiroid, hipofiz, hipotalamus ve böbreküstü şematiktir. İskelet yalnızca omurga ve pelvisten oluşur.
+- **Vücut modeli:** Erkek referans vücudu: organlar ve damarlar HRA'dan, deri, tam iskelet ve kaslar BodyParts3D'den (iki farklı vücut, benzerlik dönüşümüyle hizalandı; uyum yaklaşıktır). Senin taraman değildir. Kol ve bacak damarları ile mide modeli yok. Tiroid, hipofiz, hipotalamus ve böbreküstü şematiktir.
 - **Doku ve hücre sahneleri** temsilidir: prosedürel üretilmiştir, ölçekler anlaşılır olsun diye değiştirilmiştir.
 - **OCR** fotoğraf kalitesine bağlıdır. Düşük güvenli satırlar işaretlenir ve hiçbir değer onaysız kaydedilmez.
 - **Veri kalıcılığı:** Web'de tarayıcı, depolama dolarsa veriyi silebilir. Düzenli şifreli yedek al.
@@ -116,5 +116,5 @@ fixtures/     yalnızca sentetik raporlar
 
 ## Lisanslar
 
-- **3D anatomi modelleri:** HuBMAP Human Reference Atlas, 3D Reference Object Library, CC BY 4.0. Ayrıntı ve yapılan değişiklikler `apps/web/public/models/ATTRIBUTION.txt` dosyasında ve uygulamadaki Hakkında ekranında.
+- **3D anatomi modelleri:** HuBMAP Human Reference Atlas, 3D Reference Object Library, CC BY 4.0 (organlar, damarlar); BodyParts3D, © The Database Center for Life Science, CC BY-SA 2.1 JP (deri, iskelet, kaslar — bu üç model dosyası aynı lisansla dağıtılır). Ayrıntı ve yapılan değişiklikler `apps/web/public/models/ATTRIBUTION.txt` dosyasında ve uygulamadaki Hakkında ekranında.
 - **Açık kaynak bileşenler:** React, three.js, React Three Fiber, drei, camera-controls ve hash-wasm MIT lisanslıdır. PDF.js, Tesseract.js ve Tesseract dil modelleri Apache-2.0 lisanslıdır. Tam liste uygulamadaki Hakkında ekranında.

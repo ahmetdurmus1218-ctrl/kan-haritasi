@@ -156,11 +156,24 @@ export const ORGANS: Record<string, OrganInfo> = {
     view: [180, 5],
   },
   bones: {
-    location: 'Modelde omurga ve pelvis bulunur.',
-    function: 'Yetişkinde kan hücrelerinin büyük kısmı omurga, pelvis ve göğüs kemiğindeki kemik iliğinde yapılır. Kemik ayrıca kalsiyum ve fosfor deposudur.',
-    anatomy: ['Omurlar', 'Sakrum', 'Kalça kemikleri', 'Kemik iliği'],
-    view: [150, 10],
+    location: 'Tüm vücut: kafatası, omurga, göğüs kafesi, leğen kemiği, kol ve bacak kemikleri.',
+    function: 'Vücudu taşır, organları korur ve kasların tutunduğu kaldıraçları oluşturur. Yetişkinde kan hücrelerinin büyük kısmı omurga, pelvis, kaburgalar ve göğüs kemiğindeki kemik iliğinde yapılır. Kemik ayrıca kalsiyum ve fosfor deposudur; D vitamini, kalsiyum ve ALP kemik sağlığıyla ilişkilidir.',
+    anatomy: ['Kafatası', 'Omurga (33 omur, diskler)', 'Göğüs kafesi (kaburgalar, göğüs kemiği)', 'Leğen kemiği', 'Kol, önkol ve el kemikleri', 'Uyluk, bacak ve ayak kemikleri', 'Kemik iliği'],
+    view: [20, 8],
     inside: 'ilik',
+  },
+  'limb-vessels': {
+    location: 'Kollar ve bacaklar boyunca, kemiklere ve kaslara eşlik ederek.',
+    function: 'Atardamarlar oksijenli kanı kaslara ve dokulara taşır; toplardamarlar kanı kalbe geri getirir. Bacak toplardamarlarındaki kapakçıklar kanın yerçekimine karşı yukarı akmasına yardım eder. Uzun süre hareketsizlik bacak toplardamarlarında pıhtı riskini artırabilir.',
+    anatomy: ['Aksiller ve brakiyal arter', 'Radyal ve ulnar arter', 'Femoral ve popliteal arter', 'Ön ve arka tibial arter', 'Büyük ve küçük safen ven', 'Sefalik ve bazilik ven'],
+    view: [20, 5],
+    inside: 'damar',
+  },
+  'skeletal-muscle': {
+    location: 'Tüm vücut: baş, boyun, gövde, kollar ve bacaklar. Kemiklere kirişlerle tutunur.',
+    function: 'Kasılarak hareketi ve duruşu sağlar, ısı üretir ve kan şekerinin büyük kısmını kullanır. Kas hasarında CK kana geçer; kreatinin kas metabolizmasının atığıdır, bu yüzden kas kütlesi kreatinin değerini etkiler.',
+    anatomy: ['Baş ve boyun kasları', 'Göğüs, karın ve sırt kasları', 'Omuz, kol ve önkol kasları', 'Kalça, uyluk ve bacak kasları'],
+    view: [20, 8],
   },
   spleen: {
     location: 'Karnın sol üst bölümünde, midenin arkasında.',

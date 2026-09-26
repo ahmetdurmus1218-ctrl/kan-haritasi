@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "HRA (CC BY 4.0) referans organ modellerini uygulama için sadeleştirir ve sıkıştırır.",
+  "description": "HRA (CC BY 4.0) ve BodyParts3D (CC BY-SA 2.1 JP) anatomi modellerini uygulama için sadeleştirir ve sıkıştırır.",
   "scripts": {
-    "fetch": "sh fetch-hra.sh",
+    "fetch": "sh fetch-hra.sh && sh fetch-bp3d.sh",
     "build": "tsx build-anatomy.ts"
   },
   "devDependencies": {

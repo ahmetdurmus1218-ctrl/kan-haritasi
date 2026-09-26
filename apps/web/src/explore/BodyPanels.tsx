@@ -175,8 +175,9 @@ export function BodyIntroPanel({
         </p>
       )}
       <p className="mt-8 text-[11px] leading-relaxed text-fg-faint">
-        Model: HuBMAP İnsan Referans Atlası, erkek referans vücudu (CC BY 4.0). Senin vücudunun taraması değildir. Tiroid, hipofiz, hipotalamus ve
-        böbreküstü bezleri şematiktir.
+        Modeller: organlar ve damarlar HuBMAP İnsan Referans Atlası (CC BY 4.0); deri, iskelet ve kaslar BodyParts3D (DBCLS, CC BY-SA 2.1 JP).
+        İki farklı referans vücuttur, uyum yaklaşıktır; senin vücudunun taraması değildir. Tiroid, hipofiz, hipotalamus ve böbreküstü bezleri
+        şematiktir. Kol ve bacak damarları modelde yoktur.
       </p>
     </div>
   );
@@ -230,7 +231,7 @@ export function SystemPanel({
                 >
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: h ? highlightColor(h.status, h.score) : 'transparent', border: h ? 'none' : `1px solid ${accent}` }} />
                   <span className="flex-1">{s?.nameTr ?? sid}</span>
-                  {s?.schematic && <Caps className="text-[9px] text-fg-faint">Şematik</Caps>}
+                  {(s?.schematic || s?.approximate) && <Caps className="text-[9px] text-fg-faint">Şematik</Caps>}
                 </button>
               </li>
             );
@@ -301,6 +302,8 @@ export function OrganPanel({
   const processes = [...new Set(tests.flatMap((k) => testByKey.get(k)?.processes ?? []))] as ProcessId[];
   const part = vessels.find((v) => v.id === selectedPart);
   const inside = info?.inside;
+  const isVessel = s?.drill === 'vessel' || s?.asset === 'cardio';
+  const source = s?.asset === 'skeleton' || s?.asset === 'muscles' || s?.asset === 'body' ? 'BodyParts3D' : 'HRA';
 
   if (!s) return <p className="text-sm text-fg-muted">Bilinmeyen yapı.</p>;
 
@@ -310,7 +313,15 @@ export function OrganPanel({
         caps={`${part ? 'Seviye 4 · Yapı' : 'Seviye 3 · Organ'} · ${systemById.get(system!)?.nameTr ?? ''}`}
         title={part ? part.label : s.nameTr}
         accent={accent}
-        note={part ? `${s.nameTr} · ${part.vein ? 'toplardamar' : 'atardamar'}` : s.schematic ? 'Bu bez modelde yok; konumu şematik bir şekille gösteriliyor.' : undefined}
+        note={
+          part
+            ? `${s.nameTr}${isVessel ? ` · ${part.vein ? 'toplardamar' : 'atardamar'}` : ''}`
+            : s.schematic
+              ? 'Bu bez modelde yok; konumu şematik bir şekille gösteriliyor.'
+              : s.approximate
+                ? 'ŞEMATİK: bu damarların gerçek modeli yok; yolları kemiklere göre yaklaşık çizildi.'
+                : undefined
+        }
       />
 
       {h && (
@@ -331,8 +342,16 @@ export function OrganPanel({
 
       {part ? (
         <div className="space-y-4 text-sm leading-relaxed text-fg-muted">
-          <p>{part.vein ? 'Toplardamarlar kanı dokulardan kalbe geri taşır; duvarları atardamarlardan incedir.' : 'Atardamarlar kanı kalpten dokulara taşır; duvarları kalın ve esnektir.'}</p>
-          <p className="text-xs text-fg-faint">Kaynak adı (HRA): {part.raw}</p>
+          <p>
+            {isVessel
+              ? part.vein
+                ? 'Toplardamarlar kanı dokulardan kalbe geri taşır; duvarları atardamarlardan incedir.'
+                : 'Atardamarlar kanı kalpten dokulara taşır; duvarları kalın ve esnektir.'
+              : `${part.label}: ${s.nameTr.toLocaleLowerCase('tr')} yapısının bu bölgedeki parçaları.`}
+          </p>
+          <p className="text-xs text-fg-faint">
+            {isVessel ? `Kaynak adı (${source}): ${part.raw}` : `Kaynak: ${source} — bölgedeki parçalar tek grup olarak gösterilir.`}
+          </p>
           <button type="button" className="text-xs text-accent underline-offset-4 hover:underline" onClick={() => onSelectPart(null)}>
             ← {s.nameTr}
           </button>
@@ -368,7 +387,9 @@ export function OrganPanel({
                 )}
                 {vessels.length > 0 && (
                   <div>
-                    <Caps className="text-fg-faint">Modeldeki damarlar ({vessels.length})</Caps>
+                    <Caps className="text-fg-faint">
+                      {isVessel ? 'Modeldeki damarlar' : 'Modeldeki bölümler'} ({vessels.length})
+                    </Caps>
                     <ul className="mt-2 max-h-72 overflow-y-auto pr-1">
                       {vessels.map((v) => (
                         <li key={v.id}>
@@ -377,7 +398,7 @@ export function OrganPanel({
                             onClick={() => onSelectPart(v.id)}
                             className="flex w-full items-center gap-2.5 border-b border-ink-700/60 py-2 text-left text-[13px] text-fg transition hover:bg-white/[0.03]"
                           >
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: v.vein ? '#4a6fd6' : '#d4454f' }} />
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: isVessel ? (v.vein ? '#4a6fd6' : '#d4454f') : accent }} />
                             {v.label}
                           </button>
                         </li>
