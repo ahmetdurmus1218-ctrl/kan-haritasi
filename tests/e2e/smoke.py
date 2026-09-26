@@ -95,6 +95,8 @@ with sync_playwright() as p:
 
     # PDF'i aç, ara
     page.locator("ul li").filter(has_text="· PDF ·").first.locator("button").first.click()
+    # Mobilde belge ekranı "Sonuçlar" sekmesiyle açılır; görüntüleyici "Belge" sekmesinde
+    page.get_by_role("tab", name="Belge").click()
     page.wait_for_selector("canvas", timeout=20000)
     page.wait_for_timeout(1200)
     page.screenshot(path=SHOTS / "04-pdf.png")
@@ -105,7 +107,7 @@ with sync_playwright() as p:
     page.screenshot(path=SHOTS / "05-pdf-arama.png")
     nonblank = page.evaluate("""() => { const c = document.querySelector('canvas'); const d = c.getContext('2d').getImageData(0,0,c.width,c.height).data; let dark=0; for (let i=0;i<d.length;i+=16) if (d[i]<128) dark++; return dark; }""")
     check(nonblank > 500, f"PDF sayfası çizildi (koyu piksel örneği: {nonblank})")
-    check(page.get_by_text("NOT CONNECTED").is_visible(), "sonuç paneli NOT CONNECTED etiketli")
+    check(page.get_by_role("tab", name="Sonuçlar").count() == 1, "belge ekranında okunan sonuçlar sekmesi")
 
     # İndir ve orijinalle karşılaştır
     with page.expect_download() as dl:
@@ -124,6 +126,7 @@ with sync_playwright() as p:
 
     # Görseli aç, döndür
     page.locator("ul li").filter(has_text="· PNG ·").first.locator("button").first.click()
+    page.get_by_role("tab", name="Belge").click()
     page.wait_for_selector("img[alt='Yüklenen rapor görseli']", timeout=10000)
     page.wait_for_timeout(500)
     page.get_by_role("button", name="Sağa döndür").click()

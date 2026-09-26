@@ -36,6 +36,44 @@ jobs:
           path: apps/web/dist
           retention-days: 7
 
+  e2e:
+    # Gerçek Chromium'da uçtan uca: kasa, yükleme, PDF/OCR okuma, 3D keşif ve simülasyon,
+    # zaman çizelgesi, şifreli yedek → başka kasaya geri yükleme, ZIP dışa aktarma; CSP ihlali ve dış istek yok.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Playwright (Chromium)
+        run: |
+          pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+      - name: Önizleme sunucusu
+        run: |
+          (cd apps/web && nohup npx vite preview --port 4173 --strictPort > "$RUNNER_TEMP/preview.log" 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://localhost:4173/ > /dev/null && break; sleep 1; done
+      - name: Belgeler ve kasa (smoke)
+        run: python tests/e2e/smoke.py "$RUNNER_TEMP/shots"
+      - name: Okuma → sonuçlar → vücutta göster → simülasyon
+        run: python tests/e2e/flow.py "$RUNNER_TEMP/shots"
+      - name: Zaman çizelgesi, şifreli yedek, dışa aktarma
+        run: python tests/e2e/data.py "$RUNNER_TEMP/shots"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-ekran-goruntuleri
+          path: ${{ runner.temp }}/shots
+          retention-days: 7
+
   dependencies:
     runs-on: ubuntu-latest
     timeout-minutes: 10
