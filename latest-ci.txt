@@ -1,8 +1,27 @@
 workflow: CI
-run: 36240552519
-sha: 45793a21e10a677708ab5cb230b4771f34fdcc7d
-conclusion: success
+run: 36240813555
+sha: 3131c86381c9b930428a4cf1afa55c61cb934d77
+conclusion: failure
 
+e2e: failure
+  - Set up job: success
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Run pnpm build: success
+  - Run actions/setup-python@v5: success
+  - Playwright (Chromium): success
+  - Önizleme sunucusu: success
+  - Belgeler ve kasa (smoke): success
+  - Okuma → sonuçlar → vücutta göster → simülasyon: failure
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: skipped
+  - Run actions/upload-artifact@v4: success
+  - Post Run actions/setup-python@v5: skipped
+  - Post Run actions/setup-node@v4: skipped
+  - Post Run pnpm/action-setup@v4: success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 web: success
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -27,3 +46,31 @@ dependencies: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	﻿2026-09-26T12:06:06.3946012Z ##[group]Run python tests/e2e/flow.py "$RUNNER_TEMP/shots"
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.3946469Z ^[[36;1mpython tests/e2e/flow.py "$RUNNER_TEMP/shots"^[[0m
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.4020574Z shell: /usr/bin/bash -e {0}
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.4020870Z env:
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.4021151Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.4021584Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.4022060Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib/pkgconfig
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.4023006Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.4023667Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.4024063Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.4024461Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:06:06.4024800Z ##[endgroup]
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7816642Z PASS PDF'ten 14 sonuç okundu
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7817527Z PASS kaydedilen raporda 5 aralık dışı sonuç (ALT, T.kolesterol, LDL, TG yüksek; ferritin düşük)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7818239Z PASS fotoğraftan OCR ile 9 sonuç okundu
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7818976Z PASS Sonuçlarım listesinde LDL
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7819316Z PASS öğren paneli
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7819624Z PASS LDL için vücut rotası
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7820377Z PASS LDL → koroner arterler bağlantısı
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7820852Z FAIL simülasyon LDL taşınması aşamasından başladı
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7821220Z PASS aşama seçimi
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7821472Z PASS nesne bilgisi (LDL)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7821778Z PASS Esc ile organa dönüş
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7822059Z PASS CSP ihlali yok []
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7822351Z PASS konsol hatası yok []
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7822613Z PASS harici istek yok []
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.7823080Z {'problems': ['simülasyon LDL taşınması aşamasından başladı']}
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-26T12:07:10.8054744Z ##[error]Process completed with exit code 1.
