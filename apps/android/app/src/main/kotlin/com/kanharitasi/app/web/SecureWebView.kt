@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.res.AssetManager
 import android.net.Uri
 import android.view.View
+import android.view.ViewGroup
 import android.webkit.ConsoleMessage
 import android.webkit.GeolocationPermissions
 import android.webkit.PermissionRequest
@@ -46,6 +47,9 @@ object SecureWebView {
             .build()
 
         return WebView(context).apply {
+            // Açık MATCH_PARENT şart: Compose AndroidView düzen parametresi vermezse WebView "içeriğe göre
+            // yükseklik" kipine girer; sayfanın %100 yüksekliği sıfıra iner ve ana içerik görünmez olur.
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundColor(BACKGROUND)
             importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
             isVerticalScrollBarEnabled = false

@@ -14,6 +14,7 @@ import com.kanharitasi.app.ui.UnsupportedWebViewScreen
 import com.kanharitasi.app.ui.WebHost
 import com.kanharitasi.app.web.CaptureCache
 import com.kanharitasi.app.web.DocumentSaver
+import com.kanharitasi.app.web.ExternalFlow
 import com.kanharitasi.app.web.FileChooser
 import com.kanharitasi.app.web.NativeBridge
 import com.kanharitasi.app.web.SecureWebView
@@ -76,7 +77,8 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onPause() {
-        bridge?.emit("background")
+        // Kendi açtığımız seçici/kamera/kilit ekranı için duraklama "arka plana geçme" sayılmaz.
+        if (!ExternalFlow.active) bridge?.emit("background")
         webView?.onPause()
         super.onPause()
     }

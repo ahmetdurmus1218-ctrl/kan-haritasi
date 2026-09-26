@@ -190,13 +190,11 @@ export function VaultProvider({ children }: { children: ReactNode }) {
         lock();
       }
     };
+    // Android'de yalnızca yerel yaşam döngüsü olayları dinlenir: WebView, uygulamanın kendi açtığı
+    // dosya seçici veya kamera sırasında da "gizli" olur; bu, kullanıcının uygulamadan çıkması değildir.
     const unsubscribe = platform.onLifecycle(onChange);
-    // Android'de WebView de visibilitychange üretebilir; ikisi birlikte zararsızdır.
-    const onVisibility = () => onChange(document.visibilityState === 'hidden' ? 'background' : 'foreground');
-    if (platform.platform === 'android') document.addEventListener('visibilitychange', onVisibility);
     return () => {
       unsubscribe();
-      document.removeEventListener('visibilitychange', onVisibility);
       clearTimeout(timer);
     };
   }, [lock]);

@@ -10,6 +10,7 @@ import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.kanharitasi.app.web.ExternalFlow
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -98,11 +99,13 @@ class BiometricGate(private val activity: FragmentActivity) {
             ContextCompat.getMainExecutor(activity),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    ExternalFlow.active = false
                     val c = result.cryptoObject?.cipher
                     onResult(if (c != null) Outcome.Success(c) else Outcome.Failure("FAILED"))
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    ExternalFlow.active = false
                     val code = when (errorCode) {
                         BiometricPrompt.ERROR_USER_CANCELED,
                         BiometricPrompt.ERROR_NEGATIVE_BUTTON,
@@ -126,6 +129,7 @@ class BiometricGate(private val activity: FragmentActivity) {
             .setAllowedAuthenticators(authenticators)
             .setConfirmationRequired(false)
             .build()
+        ExternalFlow.active = true
         prompt.authenticate(info, BiometricPrompt.CryptoObject(cipher))
     }
 }

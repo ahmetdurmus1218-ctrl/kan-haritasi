@@ -14,6 +14,16 @@ import java.io.File
 import java.util.concurrent.Executors
 
 /**
+ * Uygulamanın kendi açtığı sistem ekranları (belge seçici, kamera, kaydetme, cihaz kilidi) sürerken
+ * etkinlik duraklar; bu, kullanıcının uygulamadan çıkması sayılmamalı (aksi halde "hemen kilitle"
+ * ayarında dosya seçerken kasa kilitlenir ve yükleme kaybolur).
+ */
+object ExternalFlow {
+    @Volatile
+    var active = false
+}
+
+/**
  * Sayfadaki `<input type=file>` için sistem belge seçicisi; `capture` özniteliği varsa kamera.
  * Yalnızca PDF, JPEG ve PNG seçilebilir (web tarafı ayrıca imzadan doğrular).
  */
@@ -22,12 +32,14 @@ class FileChooser(private val activity: ComponentActivity) {
     private var captureUri: Uri? = null
 
     private val pickLauncher = activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        ExternalFlow.active = false
         val cb = callback ?: return@registerForActivityResult
         callback = null
         cb.onReceiveValue(if (result.resultCode == Activity.RESULT_OK) urisFrom(result.data) else null)
     }
 
     private val captureLauncher = activity.registerForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        ExternalFlow.active = false
         val cb = callback ?: return@registerForActivityResult
         callback = null
         val uri = captureUri
@@ -45,6 +57,7 @@ class FileChooser(private val activity: ComponentActivity) {
             try {
                 val uri = CaptureCache.newUri(activity)
                 captureUri = uri
+                ExternalFlow.active = true
                 captureLauncher.launch(uri)
             } catch (e: Exception) {
                 cancel()
@@ -60,6 +73,7 @@ class FileChooser(private val activity: ComponentActivity) {
             .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, params.mode == FileChooserParams.MODE_OPEN_MULTIPLE)
         if (!wantsBackup) intent.putExtra(Intent.EXTRA_MIME_TYPES, ALLOWED_MIME)
         try {
+            ExternalFlow.active = true
             pickLauncher.launch(intent)
         } catch (e: ActivityNotFoundException) {
             cancel()
@@ -67,6 +81,7 @@ class FileChooser(private val activity: ComponentActivity) {
     }
 
     private fun cancel() {
+        ExternalFlow.active = false
         callback?.onReceiveValue(null)
         callback = null
         captureUri = null
@@ -116,6 +131,7 @@ class DocumentSaver(private val activity: ComponentActivity) {
     private val io = Executors.newSingleThreadExecutor()
 
     private val launcher = activity.registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        ExternalFlow.active = false
         val (bytes, done) = pending ?: return@registerForActivityResult
         pending = null
         val uri = result.data?.data
@@ -147,8 +163,10 @@ class DocumentSaver(private val activity: ComponentActivity) {
             .setType(mime)
             .putExtra(Intent.EXTRA_TITLE, name)
         try {
+            ExternalFlow.active = true
             launcher.launch(intent)
         } catch (e: ActivityNotFoundException) {
+            ExternalFlow.active = false
             pending = null
             bytes.fill(0)
             done(false)
