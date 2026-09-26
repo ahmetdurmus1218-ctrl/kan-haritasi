@@ -15,7 +15,7 @@ const LICENSES: { name: string; use: string; license: string }[] = [
   { name: 'meshoptimizer (three.js içinde)', use: '3D model sıkıştırma çözücüsü', license: 'MIT' },
   { name: 'PDF.js 6 (pdfjs-dist)', use: 'PDF görüntüleme ve metin okuma', license: 'Apache-2.0' },
   { name: 'Tesseract.js 7 · tesseract.js-core', use: 'Fotoğraftan metin okuma (OCR), cihazda', license: 'Apache-2.0' },
-  { name: 'Tesseract eğitim verileri (tur, eng · tessdata_best)', use: 'OCR dil modelleri', license: 'Apache-2.0' },
+  { name: 'Tesseract Türkçe eğitim verisi (tur · tessdata_best, tamsayı)', use: 'OCR dil modelleri', license: 'Apache-2.0' },
   { name: 'hash-wasm', use: 'Argon2id anahtar türetme', license: 'MIT' },
   { name: 'Tailwind CSS 4', use: 'Stil (derleme zamanı)', license: 'MIT' },
   { name: 'AndroidX, Jetpack Compose, Kotlin', use: 'Android kabuğu', license: 'Apache-2.0' },
@@ -71,7 +71,7 @@ export function AboutPage() {
           yoktur (her iki kaynak da erkek referans vücududur).
         </p>
         <p className="mt-3 text-sm leading-relaxed text-fg-muted">
-          Doku ve hücre sahneleri (damar içi, alveol, nefron, lobül, adacık, folikül, kemik iliği) bu uygulama için prosedürel olarak üretilmiş temsili
+          Doku ve hücre sahneleri (damar içi, kan hücreleri, alveol, nefron, lobül, adacık, folikül, kemik iliği) bu uygulama için prosedürel olarak üretilmiş temsili
           görsellerdir; ölçekler anlaşılırlık için değiştirilmiştir.
         </p>
       </Block>

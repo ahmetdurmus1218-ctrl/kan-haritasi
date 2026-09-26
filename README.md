@@ -18,12 +18,12 @@ Kurulumda "bilinmeyen kaynak" izni istenir. APK, derleme sırasında `INTERNET` 
 | Alan | İçerik |
 | --- | --- |
 | **Belgelerim** | PDF/JPG/PNG yükleme (imza, boyut, piksel ve sayfa sınırları), şifreli saklama, PDF ve görsel görüntüleyici (yakınlaştır, sayfa, döndür, tam ekran), orijinali bayt bayt indirme, yeniden adlandırma, silme |
-| **Okuma** | PDF metin katmanı; taranmış sayfa ve fotoğraflar için cihazda OCR (Tesseract, Türkçe + İngilizce). 74 testlik LOINC kataloğu, Türkçe ondalık, birim dönüşümü, rapordaki referans aralığı, düşük güvenli satırlar işaretli |
+| **Okuma** | PDF metin katmanı; taranmış sayfa, fotoğraf ve ekran görüntüsü (ör. e-Nabız) için cihazda OCR (Tesseract, Türkçe). Görüntüler iki farklı sayfa bölütlemesiyle okunur; iki okumanın uyuşmadığı değerler doğrulamaya düşer. 81 testlik LOINC kataloğu (hemogram ve akyuvar alt türleri, biyokimya, lipid, tiroid, cinsiyet hormonları, kortizol, prolaktin, vitamin-mineral, demir, pıhtılaşma), Türkçe ondalık, birim dönüşümü, farklı sütun düzenleri, rapordaki referans aralığı (etiketli, cinsiyete ya da döngü evresine göre verilen aralıklar dahil), düşük güvenli satırlar işaretli |
 | **Onay** | Okunan her değer onaydan geçer: düzeltme, tanınmayan satırı bir teste bağlama (kalıcı takma ad), elle ekleme, kaynağı belgede vurgulama |
 | **Sonuçlarım** | Yüksek/düşük/normal, aralık çubuğu, "bu test neyi ölçer", olası etkenler, doktora sorulabilecekler |
 | **Keşfet (3D)** | Sinematik açılış, sistem menüsü, katmanlar, üzerine gelince ad; tıklayınca kamera organa gider, diğerleri söner. Seviyeler: Vücut / Sistem / Organ / Yapı (tek tek damarlar, göz damarlarına kadar) / Doku / Hücre / Süreç. Sonuçların ilgili yapıları yüksek/düşük renginde nabız gibi atar |
-| **İçeri gir** | Damar içi ve 8 aşamalı LDL–ateroskleroz simülasyonu; alveol ve gaz değişimi; nefron ve süzme; karaciğer lobülü; pankreas adacığı ve insülin; tiroid folikülü; kemik iliği. Oynat/duraklat, hız, aşama çizelgesi, nesneye dokununca açıklama. Ekranda her zaman **"Eğitimsel biyolojik simülasyon"** etiketi |
-| **Vücutta göster** | Tahlilden keşif yolu: LDL → koroner arterler → damar içi → simülasyon; ALT → karaciğer → lobül; kreatinin → böbrek → nefron; glukoz → pankreas → adacık |
+| **İçeri gir** | Damar içi ve 8 aşamalı LDL–ateroskleroz simülasyonu; kan hücreleri (alyuvar, beş akyuvar türü, trombosit); alveol ve gaz değişimi; nefron ve süzme; karaciğer lobülü; pankreas adacığı ve insülin; tiroid folikülü; kemik iliği. Sahnedeki sayı, boyut ve renkler kişinin son sonuçlarına göre çizilir; "tipik değerler" ile karşılaştırılabilir. Oynat/duraklat, hız, aşama çizelgesi, nesneye dokununca açıklama. Ekranda her zaman **"Eğitimsel biyolojik simülasyon"** etiketi |
+| **Vücutta göster** | Tahlilden keşif yolu: LDL → koroner arterler → damar içi → simülasyon; hemogram → kan hücreleri; ALT → karaciğer → lobül; kreatinin → böbrek → nefron; glukoz → pankreas → adacık; CK → iskelet kasları. Aralık dışı bulgular arasında ileri/geri gezinme. CRP, lökosit, ferritin gibi tek bir organa özgü olmayan testler bunu açıkça belirtir |
 | **Zaman** | Test başına eğilim grafiği (her ölçümün kendi raporundaki referans bandıyla), noktadan rapora ve vücuda gidiş, tablo görünümü, rapor geçmişi |
 | **Yedek** | `.khyedek` şifreli yedek (ayrı yedek parolası), başka cihaza geri yükleme, tekrarları atlama |
 | **Verilerimi indir** | Şifresiz ZIP: orijinaller + `sonuclar.json` + `sonuclar.csv` (açık uyarıyla) |
@@ -41,11 +41,13 @@ Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zek
 
 ## Testler
 
-- **86 birim/güvenlik testi (Vitest):** kripto ve kurcalama, sızıntı (depoda açık metin yok), silme, yükleme saldırıları (sahte uzantı, dev PNG başlığı, path traversal), ayrıştırıcı (gerçek PDF fixture'ında 14/14), katalog bütünlüğü, yedek (yanlış parola, kurcalanmış gövde/başlık, sürüm), ZIP, XSS.
+- **151 birim/güvenlik testi (Vitest):** kripto ve kurcalama, sızıntı (depoda açık metin yok), silme, yükleme saldırıları (sahte uzantı, dev PNG başlığı, path traversal), ayrıştırıcı, katalog bütünlüğü, yorum motoru, yedek (yanlış parola, kurcalanmış gövde/başlık, sürüm), ZIP, XSS.
+- **Sentetik rapor seti (`fixtures/`):** 7 PDF (hemogram, biyokimya, kadın hormon, vitamin-mineral, lipid, çoklu anormallik, genel) ve 4 görüntü (eğik telefon fotoğrafı, gürültülü tarama, e-Nabız benzeri ekran görüntüsü, düz tarama); her biri farklı bir laboratuvar düzeni. PDF'lerde her satırın değeri, durumu ve beklenen yorum örüntüleri; görüntülerde gerçek Tesseract ile okuma ve **yanlış okunan hiçbir değerin doğrulama işareti olmadan geçmemesi** test edilir.
 - **Uçtan uca (gerçek Chromium, CI'da her gönderimde):**
   - `tests/e2e/smoke.py`: kasa, belgeler, görüntüleyici, indirme, silme, kilit.
   - `tests/e2e/flow.py`: PDF ve fotoğraf okuma, onay, sonuçlar, vücutta göster, simülasyon, nesne seçimi, Esc ile dönüş.
   - `tests/e2e/data.py`: zaman çizelgesi, şifreli yedek → yeni kasaya geri yükleme, ZIP doğrulaması.
+  - `tests/e2e/reports.py`: 9 farklı raporun uygulamada okunması, onayı, özet sayıları, çoklu bulgu örüntüleri, doğrulama listesi, tek organa özgü olmayan test, 3B'ye geçiş ve bulgular arası gezinme.
   - Hepsinde: CSP ihlali yok, konsol hatası yok, uygulama dışına istek yok.
 - **Derleme kapıları:** CSP meta, izleme alan adı taraması, test verisinde TC kimlik no taraması, OSV bağımlılık açıkları, APK'da `INTERNET` izni kontrolü.
 
@@ -108,7 +110,8 @@ fixtures/     yalnızca sentetik raporlar
 
 - **Vücut modeli:** Erkek referans vücudu: organlar ve damarlar HRA'dan, deri, tam iskelet ve kaslar BodyParts3D'den (iki farklı vücut, benzerlik dönüşümüyle hizalandı; uyum yaklaşıktır). Senin taraman değildir. Tiroid bezi ile kol-bacak damarları şematiktir; kadın üreme organlarının modeli yoktur.
 - **Doku ve hücre sahneleri** temsilidir: prosedürel üretilmiştir, ölçekler anlaşılır olsun diye değiştirilmiştir.
-- **OCR** fotoğraf kalitesine bağlıdır. Düşük güvenli satırlar işaretlenir ve hiçbir değer onaysız kaydedilmez.
+- **OCR** fotoğraf kalitesine bağlıdır. Türkçe modelde "%" işareti sık sık başka karakter okunur (uygulama testin adına bakarak düzeltir ve bunu işaretler); çok bozuk satırlar (ör. "0,7" yerine "0/7") okunamaz ve elle girilmelidir. Düşük güvenli ya da iki okumada farklı çıkan değerler işaretlenir; hiçbir değer onaysız kaydedilmez.
+- **Döngü evresine göre verilen hormon aralıkları** (östradiol, progesteron, FSH, LH) otomatik değerlendirilmez: hangi evrenin geçerli olduğunu yazılım bilemez; kullanıcıdan uygun aralığı girmesi istenir.
 - **Veri kalıcılığı:** Web'de tarayıcı, depolama dolarsa veriyi silebilir. Düzenli şifreli yedek al.
 - **Bellek:** JavaScript dizeleri bellekten silinemez; belge anahtarları kısa süre bellekte bulunur. Ana anahtar hiçbir zaman dize olarak tutulmaz.
 - **Kilit açılışı:** Argon2id ana iş parçacığında çalışır; kilit açılırken yaklaşık 0,5–1 saniyelik donma olur.
