@@ -1,6 +1,6 @@
 workflow: Android APK
-run: 36257988712
-sha: 092712664c68784eb9ab9347da49757f848165cd
+run: 36261819101
+sha: 5e6d44a49243d2de040f9aef4217f374b5b0bbe0
 conclusion: success
 
 apk: success
@@ -16,6 +16,7 @@ apk: success
   - İmza anahtarı (tanımlıysa gizli anahtar, yoksa depodaki hata ayıklama anahtarı): success
   - APK derle: success
   - APK'da INTERNET izni olmamalı: success
+  - APK'da çalışma zamanı dosyaları eksiksiz olmalı: success
   - APK'yı adlandır: success
   - Run actions/upload-artifact@v4: success
   - Son sürüm: telefondan indirilebilir yayın (apk-son): success
