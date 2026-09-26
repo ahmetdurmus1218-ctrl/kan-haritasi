@@ -43,6 +43,20 @@ describe('sayı ve birim', () => {
     expect(normalizeUnit('mcg/dL')).toBe('ug/dl');
     expect(normalizeUnit('elma')).toBeNull();
   });
+
+  it('OCR bozulmaları: üst simge, µ ve I harfi', () => {
+    for (const u of ['1073/pL', '10*3/pL', '10“3/pL', '1073/pHL', '1073/pAL', '10-3/µL']) expect(normalizeUnit(u), u).toBe('10^3/ul');
+    for (const u of ['10“-9/L', '10-9/L', '10“9/L', '1049-1']) expect(normalizeUnit(u), u).toBe('10^9/l');
+    expect(normalizeUnit('10“6/pL')).toBe('10^6/ul');
+    expect(normalizeUnit('mlU/mL')).toBe('miu/ml');
+    expect(normalizeUnit('mlU/L')).toBe('miu/l');
+    expect(normalizeUnit('ulU/mL')).toBe('miu/l');
+    expect(normalizeUnit('uUlU/mL')).toBe('miu/l');
+    expect(normalizeUnit('Hg/dL')).toBe('ug/dl');
+    // Tutarsız üs/payda: tahmin edilmez
+    expect(normalizeUnit('10-3/L')).toBeNull();
+    expect(normalizeUnit('pg/mL')).toBe('pg/ml');
+  });
 });
 
 describe('test adı eşleme', () => {
@@ -75,6 +89,23 @@ describe('referans aralığı', () => {
     const sx = parseRange('E: 13,5-17,5 K: 12-15,5', 'unspecified');
     expect(sx.sexSpecific).toBe(true);
     expect(parseRange('E: 13,5-17,5 K: 12-15,5', 'female').range).toMatchObject({ min: 12, max: 15.5 });
+  });
+
+  it('etiketli, tek cinsiyetli ve evreye göre verilen aralıklar', () => {
+    expect(parseRange('Eksiklik: < 20 / Yetersizlik: 20 - 30 / Yeterli: 30 - 100', 'unspecified').range).toMatchObject({ min: 30, max: 100 });
+    expect(parseRange('Optimal: < 100 · Optimale yakın: 100 - 129', 'unspecified').range).toMatchObject({ max: 100, maxExclusive: true });
+    // Yalnızca risk kategorisi: normal aralık sayılmaz
+    expect(parseRange('Düşük: < 40', 'male').range.source).toBe('none');
+    // Kategori olmayan etiket (ör. yaş grubu) aralığı bozmaz
+    expect(parseRange('Yetişkin: 70 - 100', 'unspecified').range).toMatchObject({ min: 70, max: 100 });
+    // Satırda yalnızca bir cinsiyetin aralığı varsa (devamı alt satırda)
+    expect(parseRange('Erkek: 13,5 - 17,5', 'male').range).toMatchObject({ min: 13.5, max: 17.5 });
+    expect(parseRange('Erkek: 13,5 - 17,5', 'female').range.source).toBe('none');
+    expect(parseRange('Erkek: 13,5 - 17,5', 'unspecified').sexSpecific).toBe(true);
+    // Döngü evresine göre: aralık seçilmez
+    const ph = parseRange('Foliküler: 12,5 - 166', 'female');
+    expect(ph.phaseSpecific).toBe(true);
+    expect(ph.range.min).toBeUndefined();
   });
 
   it('"<200" aralığında 200 yüksektir; "0-130" aralığında 130 normaldir', () => {

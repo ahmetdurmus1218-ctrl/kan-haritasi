@@ -9,6 +9,7 @@ export { buildLines } from './layout';
 export { parseLine, parseRange } from './row';
 export { extractReportDate, extractLabName } from './meta';
 export { pdfTextToItems } from './pdfItems';
+export { draftScore, mergeOcrDrafts } from './merge';
 export type { PdfTextItemLike, ViewportLike } from './pdfItems';
 
 export interface ParseOptions {

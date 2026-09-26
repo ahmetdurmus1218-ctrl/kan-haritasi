@@ -102,6 +102,20 @@ export function matchTestName(tokens: string[], userAliases?: ReadonlyMap<string
       }
     }
   }
+  // "WEBC (Lökosit)": kısaltma OCR'da bozulmuş ama parantez içindeki ad okunabiliyor.
+  // Parantez içi eşleşirse ad o parantezin sonuna kadar sayılır; eşleşme "bulanık" işaretlenir.
+  if (!best) {
+    for (let i = 1; i < Math.min(tokens.length, 4); i++) {
+      if (!tokens[i]!.startsWith('(')) continue;
+      let j = i;
+      while (j < tokens.length - 1 && !tokens[j]!.includes(')')) j++;
+      if (!tokens[j]!.includes(')')) break;
+      const inner = tokens.slice(i, j + 1).map((t) => t.replace(/[()]/g, '')).filter(Boolean);
+      const m = matchTestName(inner, userAliases);
+      if (m && m.tokensUsed === inner.length) return { ...m, tokensUsed: j + 1, score: Math.min(m.score, 0.9) };
+      break;
+    }
+  }
   return best;
 }
 

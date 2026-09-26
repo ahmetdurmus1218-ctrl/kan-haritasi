@@ -96,7 +96,9 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const [partKey, setPartKey] = useState<string | null>(null);
   useEffect(() => setPartKey(null), [structure]);
   // Kas modeli büyük (≈4 MB): yalnızca kas katmanı açılınca ya da kaslara/kas sistemine gidilince yüklenir.
-  const wantMuscles = layers.muscles || structure === 'skeletal-muscle' || system === 'musculoskeletal';
+  // Kaslar isteğe bağlı (+4 MB): katman açılınca ya da odaktaki yapı/sistem/test kaslarla ilgiliyse yüklenir (ör. CK).
+  const focusTestMuscles = focusTest ? (testByKey.get(focusTest)?.structures.includes('skeletal-muscle') ?? false) : false;
+  const wantMuscles = layers.muscles || structure === 'skeletal-muscle' || system === 'musculoskeletal' || focusTestMuscles;
   const [musclesRequested, setMusclesRequested] = useState(false);
   useEffect(() => {
     if (wantMuscles) setMusclesRequested(true);
@@ -127,9 +129,11 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     (sid: string) => {
       // Model erkek referans vücududur; kadın kullanıcıda erkek üreme organları gösterilmez.
       if ((sid === 'prostate' || sid === 'testes' || sid === 'male-genitals') && sex === 'female') return false;
+      // Odaktaki yapılar katmanı kapalı olsa da görünür (ör. CK → iskelet kasları).
+      if (focus?.has(sid)) return true;
       return layerAllows(layers, sid);
     },
-    [layers, sex],
+    [layers, sex, focus],
   );
 
   const accent = shownInside
@@ -195,6 +199,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     }
     if (focusTest) {
       const b = unionBox(highlights.keys());
+      if (wholeBody(b)) return overviewShot(cam);
       return b ? frameBox(b, [0, 6], cam, 1.15) : overviewShot(cam);
     }
     return overviewShot(cam);

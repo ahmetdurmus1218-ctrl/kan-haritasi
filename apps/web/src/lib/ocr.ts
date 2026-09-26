@@ -1,5 +1,6 @@
 import type { TextItem } from '@kh/parser';
-import type { Worker as TesseractWorker } from 'tesseract.js';
+import type { PSM, Worker as TesseractWorker } from 'tesseract.js';
+import { ocrLinesToItems } from './ocrItems';
 
 /**
  * Cihaz içi OCR (Tesseract.js, Türkçe). Worker, çekirdek (WASM) ve dil verisi uygulamayla
@@ -13,6 +14,14 @@ import type { Worker as TesseractWorker } from 'tesseract.js';
  */
 
 export type OcrStage = 'prepare' | 'core' | 'lang' | 'init' | 'recognize';
+
+/**
+ * Sayfa bölütleme: "block" (tek düzgün blok, PSM 6) tablolarda sütunları kaybetmez; "auto" (PSM 3)
+ * karışık düzenlerde daha sağlamdır. Görüntüler iki kipte okunur ve sonuçlar karşılaştırılır
+ * (bkz. mergeOcrDrafts): iki okumanın uyuşmadığı değerler kullanıcıya doğrulatılır.
+ */
+export type Segmentation = 'block' | 'auto';
+const SEGMENTATION: Record<Segmentation, string> = { block: '6', auto: '3' };
 
 export interface OcrProgress {
   stage: OcrStage;
@@ -155,65 +164,29 @@ export async function recognizeCanvas(
   scale: number,
   onProgress?: (p: OcrProgress) => void,
   offset: { x: number; y: number } = { x: 0, y: 0 },
-): Promise<TextItem[]> {
-  listener = onProgress ?? null;
+  modes: Segmentation[] = ['block', 'auto'],
+): Promise<TextItem[][]> {
   cancelled = false;
   failure = null;
   try {
     const worker = await getWorker();
-    report('recognize', 0);
-    const { data } = await watch(worker.recognize(canvas, {}, { blocks: true, text: false }));
-    const items: TextItem[] = [];
-    const lines = (data.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines));
-    const theta = skewAngle(lines);
-    const sin = Math.sin(theta);
-    const cos = Math.cos(theta);
-    for (const line of lines) {
-      const words = line.words.filter((w) => w.text.trim());
-      if (!words.length) continue;
-      // Satırın eğimi düzeltilmiş dikey merkezi: aynı tablo satırının tüm kelimeleri aynı gruba düşer.
-      const ys = words.map((w) => {
-        const cx = (w.bbox.x0 + w.bbox.x1) / 2;
-        const cy = (w.bbox.y0 + w.bbox.y1) / 2;
-        return -cx * sin + cy * cos;
-      });
-      const lineCy = ys.reduce((a, b) => a + b, 0) / ys.length / scale + offset.y;
-      for (const w of words) {
-        items.push({
-          text: w.text,
-          x: w.bbox.x0 / scale + offset.x,
-          y: w.bbox.y0 / scale + offset.y,
-          w: (w.bbox.x1 - w.bbox.x0) / scale,
-          h: (w.bbox.y1 - w.bbox.y0) / scale,
-          page,
-          conf: w.confidence,
-          cy: lineCy,
-        });
-      }
+    const out: TextItem[][] = [];
+    for (let i = 0; i < modes.length; i++) {
+      // İlerleme çubuğu tüm geçişleri kapsar (iki geçişte her biri yarısı).
+      listener = onProgress ? (p) => onProgress(p.stage === 'recognize' ? { ...p, fraction: (i + p.fraction) / modes.length } : p) : null;
+      report('recognize', 0);
+      await worker.setParameters({ tessedit_pageseg_mode: SEGMENTATION[modes[i]!] as unknown as PSM });
+      const { data } = await watch(worker.recognize(canvas, {}, { blocks: true, text: false }));
+      const lines = (data.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines));
+      out.push(ocrLinesToItems(lines, page, scale, offset));
     }
-    return items;
+    return out;
   } catch (e) {
     if (e instanceof OcrError && e.code !== 'CANCELLED') await releaseOcr();
     throw e;
   } finally {
     listener = null;
   }
-}
-
-interface OcrLine {
-  baseline: { x0: number; y0: number; x1: number; y1: number };
-  bbox: { x0: number; x1: number };
-}
-
-/** Fotoğrafın eğimi: yeterince uzun satırların taban çizgisi açılarının ortancası (radyan). */
-export function skewAngle(lines: OcrLine[]): number {
-  const angles = lines
-    .filter((l) => l.baseline && l.baseline.x1 - l.baseline.x0 > Math.max(80, (l.bbox.x1 - l.bbox.x0) * 0.5))
-    .map((l) => Math.atan2(l.baseline.y1 - l.baseline.y0, l.baseline.x1 - l.baseline.x0))
-    .filter((a) => Math.abs(a) < 0.35)
-    .sort((a, b) => a - b);
-  if (!angles.length) return 0;
-  return angles[Math.floor(angles.length / 2)]!;
 }
 
 /**

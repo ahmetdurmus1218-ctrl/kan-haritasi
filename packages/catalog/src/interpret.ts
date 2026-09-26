@@ -477,7 +477,12 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
   const alt = m.get('alt');
   const ast = m.get('ast');
   const hepatocellular = alt?.status === 'high' || ast?.status === 'high';
-  const cholestatic = (is(m, 'alp', 'high') || is(m, 'ggt', 'high')) && !hepatocellular;
+  const cholestaticEnzymes = is(m, 'alp', 'high') || is(m, 'ggt', 'high');
+  // İkisi birlikte yüksekse R oranı (ALT×ÜS katı / ALP×ÜS katı) baskın paterni gösterir:
+  // ≥5 hepatosellüler, 2–5 karma, ≤2 kolestatik.
+  const rFactor = alt?.uln && m.get('alp')?.uln ? alt.uln / m.get('alp')!.uln! : null;
+  const mixed = hepatocellular && cholestaticEnzymes;
+  const cholestatic = cholestaticEnzymes && (!hepatocellular || rFactor === null || rFactor < 5);
   if (hepatocellular) {
     const astAlt = alt && ast ? ast.value / Math.max(1, alt.value) : null;
     const muscle = is(m, 'ck', 'high');
@@ -490,6 +495,9 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
         'Yaygın nedenler: yağlanma, alkol, bazı ilaçlar ve takviyeler, viral hepatitler, yoğun egzersiz.',
         astAlt !== null && astAlt > 2 && ast?.status === 'high' ? 'AST, ALT’nin 2 katından fazla: bu oran alkol ilişkili karaciğer hasarında ya da kas kaynaklı artışta görülebilir.' : '',
         muscle ? 'CK da yüksek: enzim artışı kısmen kaslardan (egzersiz, kas hasarı) kaynaklanıyor olabilir.' : '',
+        mixed
+          ? `ALP/GGT de yüksek${rFactor !== null ? ` (R oranı ~${f(rFactor, 1)}: ${rFactor >= 5 ? 'hücre enzimleri baskın' : rFactor > 2 ? 'karma patern' : 'safra enzimleri baskın'})` : ''}; hücre ve safra yolu enzimleri birlikte değerlendirilir.`
+          : '',
       ]
         .filter(Boolean)
         .join(' '),
@@ -505,7 +513,9 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
       id: 'cholestasis',
       title: 'Safra akışıyla ilişkili enzimlerde artış',
       level: 'attention',
-      text: 'ALP ve/veya GGT yüksek, ALT/AST ise normal: bu kolestatik patern safra yollarıyla, bazı ilaçlarla ya da (yalnız ALP yüksekse) kemik kaynaklı durumlarla ilişkili olabilir. GGT alkol kullanımıyla da artabilir.',
+      text: mixed
+        ? 'ALP ve/veya GGT, ALT/AST ile birlikte yüksek: safra akışını etkileyen durumlar (safra yolu tıkanıklığı, bazı ilaçlar, karaciğer iltihabı) bu karma tabloyu oluşturabilir. GGT alkol kullanımıyla da artabilir.'
+        : 'ALP ve/veya GGT yüksek, ALT/AST ise normal: bu kolestatik patern safra yollarıyla, bazı ilaçlarla ya da (yalnız ALP yüksekse) kemik kaynaklı durumlarla ilişkili olabilir. GGT alkol kullanımıyla da artabilir.',
       tests: ['alp', 'ggt', 'bilirubin-total', 'bilirubin-direct'].filter((k) => has(m, k)),
       systems: ['digestive'],
       structures: ['liver', 'gallbladder'],
@@ -786,13 +796,18 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
       scene: 'damar',
     });
   }
-  if (is(m, 'ck', 'high') && !hepatocellular) {
+  if (is(m, 'ck', 'high')) {
     push({
       id: 'muscle',
       title: 'Kas enzimi (CK) yüksek',
       level: (m.get('ck')!.uln ?? 0) >= 5 ? 'attention' : 'info',
-      text: 'CK artışı çoğunlukla yakın zamandaki yoğun egzersiz ya da kas zorlanmasıyla ilişkilidir; bazı ilaçlar (ör. kolesterol ilaçları) ve kas hastalıkları da yükseltebilir. Kas ağrısı, güçsüzlük veya koyu idrar varsa hemen başvur.',
-      tests: ['ck'],
+      text: [
+        'CK artışı çoğunlukla yakın zamandaki yoğun egzersiz ya da kas zorlanmasıyla ilişkilidir; bazı ilaçlar (ör. kolesterol ilaçları) ve kas hastalıkları da yükseltebilir. Kas ağrısı, güçsüzlük veya koyu idrar varsa hemen başvur.',
+        hepatocellular ? 'AST ve ALT kaslarda da bulunur: karaciğer enzimlerindeki artışın bir kısmı kas kaynaklı olabilir.' : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+      tests: ['ck', ...(hepatocellular ? ['ast', 'alt'].filter((k) => has(m, k)) : [])],
       systems: ['musculoskeletal'],
       structures: ['skeletal-muscle', 'heart'],
     });

@@ -67,6 +67,8 @@ jobs:
         run: python tests/e2e/flow.py "$RUNNER_TEMP/shots"
       - name: Zaman çizelgesi, şifreli yedek, dışa aktarma
         run: python tests/e2e/data.py "$RUNNER_TEMP/shots"
+      - name: Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B
+        run: python tests/e2e/reports.py "$RUNNER_TEMP/shots"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

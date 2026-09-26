@@ -548,7 +548,8 @@ export function TestPanel({ testKey, series, onEnter, interp }: { testKey: strin
   const test = testByKey.get(testKey);
   if (!test) return <p className="text-sm text-fg-muted">Bilinmeyen test.</p>;
   const finding = interp.findings.find((f) => f.testKey === testKey);
-  const related = interp.patterns.filter((p) => p.tests.includes(testKey));
+  // Önce bu testin kendi örüntüsü (ör. CK → kas), sonra testi yalnızca bağlam olarak kullananlar.
+  const related = interp.patterns.filter((p) => p.tests.includes(testKey)).sort((a, b) => a.tests.indexOf(testKey) - b.tests.indexOf(testKey));
   const list = abnormalFindings(interp);
   const at = list.findIndex((f) => f.testKey === testKey);
   const s = series.get(testKey);

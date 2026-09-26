@@ -1,6 +1,6 @@
 import type { FileInfo } from '@kh/vault';
 import type { Sex } from '@kh/catalog';
-import { type ReportDraft, type TextItem, parseReport, pdfTextToItems } from '@kh/parser';
+import { type ReportDraft, type TextItem, draftScore, mergeOcrDrafts, parseReport, pdfTextToItems } from '@kh/parser';
 import { openPdf } from './pdf';
 import { type OcrStage, looksLikeScreenshot, prepareImage, recognizeCanvas } from './ocr';
 
@@ -29,6 +29,8 @@ export async function extractDraft(
   options: { sex: Sex; userAliases?: Record<string, string>; onProgress?: (p: ExtractProgress) => void },
 ): Promise<ReportDraft> {
   const items: TextItem[] = [];
+  /** Taranmış sayfaların ikinci (farklı bölütlemeli) OCR okuması; metin katmanı iki listede de aynı. */
+  const altItems: TextItem[] = [];
   const pageSizes = new Map<number, { w: number; h: number }>();
   let usedOcr = false;
   let usedText = false;
@@ -49,6 +51,7 @@ export async function extractDraft(
         const chars = pageItems.reduce((n, it) => n + it.text.replace(/\s/g, '').length, 0);
         if (chars >= MIN_TEXT_CHARS) {
           items.push(...pageItems);
+          altItems.push(...pageItems);
           usedText = true;
           continue;
         }
@@ -60,9 +63,9 @@ export async function extractDraft(
         canvas.width = Math.floor(vp.width);
         canvas.height = Math.floor(vp.height);
         await page.render({ canvas, viewport: vp }).promise;
-        items.push(
-          ...(await recognizeCanvas(canvas, p, scale, (o) => options.onProgress?.({ phase: 'ocr', page: p, pages: pageCount, stage: o.stage, fraction: o.fraction }))),
-        );
+        const [block, auto] = await recognizeCanvas(canvas, p, scale, (o) => options.onProgress?.({ phase: 'ocr', page: p, pages: pageCount, stage: o.stage, fraction: o.fraction }));
+        items.push(...block!);
+        altItems.push(...auto!);
         canvas.width = 0;
         canvas.height = 0;
       }
@@ -70,9 +73,9 @@ export async function extractDraft(
       void task.destroy();
     }
   } else {
-    // Görüntü: önce kâğıt fotoğrafı gibi işle; az sonuç çıkarsa ekran görüntüsü kipiyle bir kez daha
-    // dene ve daha çok değer okunan sonucu al (ör. e-Nabız ekran görüntüleri açık gri yazı içerir).
-    const ocrImage = async (mode: 'document' | 'screen') => {
+    // Görüntü: kâğıt fotoğrafı ya da ekran görüntüsü için uygun ön işleme; çok az sonuç çıkarsa diğer
+    // ön işleme kipiyle bir kez daha dene (ör. e-Nabız ekran görüntüleri açık gri yazı içerir).
+    const ocrImage = async (mode: 'document' | 'screen', segmentations: Array<'block' | 'auto'>) => {
       options.onProgress?.({ phase: 'ocr', page: 1, pages: 1, stage: 'prepare', fraction: 0 });
       const img = await prepareImage(bytes, info.mimeType, mode);
       pageSizes.set(1, { w: img.width, h: img.height });
@@ -82,6 +85,7 @@ export async function extractDraft(
         img.scale,
         (o) => options.onProgress?.({ phase: 'ocr', page: 1, pages: 1, stage: o.stage, fraction: o.fraction }),
         img.offset,
+        segmentations,
       );
       img.canvas.width = 0;
       img.canvas.height = 0;
@@ -89,26 +93,27 @@ export async function extractDraft(
     };
     const parse = (list: TextItem[]) => parseReport(list, { sex: options.sex, method: 'ocr', pageSizes, pageCount: 1, userAliases: options.userAliases });
     const order: Array<'document' | 'screen'> = (await looksLikeScreenshot(bytes, info.mimeType)) ? ['screen', 'document'] : ['document', 'screen'];
-    let best = parse(await ocrImage(order[0]!));
+    // Aynı görüntü iki bölütleme kipinde okunur; uyuşmayan değerler doğrulamaya düşer.
+    const [block, auto] = await ocrImage(order[0]!, ['block', 'auto']);
+    let best = mergeOcrDrafts(parse(block!), parse(auto!));
     if (best.rows.length < 4) {
-      const second = parse(await ocrImage(order[1]!));
-      if (draftScore(second) > draftScore(best)) best = second;
+      // Çok az sonuç: diğer ön işleme kipiyle (ör. ekran görüntüsü) bir kez daha dene.
+      const [second] = await ocrImage(order[1]!, ['block']);
+      const alt = parse(second!);
+      if (draftScore(alt) > draftScore(best)) best = alt;
     }
     options.onProgress?.({ phase: 'parse', page: 1, pages: 1 });
     return best;
   }
 
   options.onProgress?.({ phase: 'parse', page: pageCount, pages: pageCount });
-  return parseReport(items, {
+  const opts = {
     sex: options.sex,
-    method: usedOcr && usedText ? 'mixed' : usedOcr ? 'ocr' : 'text',
+    method: (usedOcr && usedText ? 'mixed' : usedOcr ? 'ocr' : 'text') as ReportDraft['method'],
     pageSizes,
     pageCount,
     userAliases: options.userAliases,
-  });
-}
-
-/** İki okuma denemesini karşılaştırmak için: okunan değer sayısı, güven; sorunlu satırlar (birim/aralık okunamadı…) eksi. */
-function draftScore(d: ReportDraft): number {
-  return d.rows.reduce((s, r) => s + 10 + r.confidence * 5 - r.issues.length * 3, 0) + d.missing.length * 2;
+  };
+  const draft = parseReport(items, opts);
+  return usedOcr ? mergeOcrDrafts(draft, parseReport(altItems, opts)) : draft;
 }

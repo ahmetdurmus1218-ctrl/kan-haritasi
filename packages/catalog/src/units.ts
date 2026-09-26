@@ -14,7 +14,11 @@ export function normalizeUnit(raw: string): string | null {
   u = u.replace(/×/g, 'x').replace(/\*\*/g, '^').replace(/(\d)\*(\d)/g, '$1^$2').replace(/^x(?=10)/, '');
   u = u.replace(/ıu/g, 'iu').replace(/saat/g, 'h').replace(/sa$/, 'h').replace(/hr$/, 'h');
   // OCR: "UlU/mL" (I yerine l), "»" (yüzde işareti bazı yazı tiplerinde böyle okunur)
-  u = u.replace(/^ulu(?=[/-]ml)/, 'uiu').replace(/^u1u(?=[/-]ml)/, 'uiu');
+  u = u.replace(/^u*[l1]u(?=[/-]ml)/, 'uiu').replace(/^u+iu(?=[/-]ml)/, 'uiu');
+  // "mlU/mL", "m1U/L": küçük L / 1 büyük I sanılmış
+  u = u.replace(/^m[l1]u(?=[/-]m?l$)/, 'miu');
+  // "Hg/dL": µ işareti H okunmuş (Hg/dL diye bir birim yok)
+  if (u === 'hg/dl') u = 'ug/dl';
   if (u === '»' || u === '%»') u = '%';
   u = u.replace(/mm³/g, 'mm3');
 
@@ -77,9 +81,15 @@ export function normalizeUnit(raw: string): string | null {
   if (/^10[\^4]?9[-/][l1i]$/.test(u)) return '10^9/l';
   if (/^10[\^4]?12[-/][l1i]$/.test(u)) return '10^12/l';
 
-  // OCR'ın bozduğu üst simgeli sayım birimleri: "107 3/uL", "10-3/pL", "10*3/µL" → 10^3/µL
-  const ocrCount = /^10[-^7*·.]?([369])\/([upµ]l|mm3)$/.exec(u);
-  if (ocrCount) return ({ '3': '10^3/ul', '6': '10^6/ul', '9': '10^9/l' } as Record<string, string>)[ocrCount[1] ?? ''] ?? null;
+  // OCR'ın bozduğu üst simgeli sayım birimleri: "107 3/uL", "10-3/pL", "10*3/µL", "1073/pHL", "10“3/pL" → 10^3/µL;
+  // "10“-9/L", "10-9/L" → 10^9/L. Paydanın türü (µL/mm³ ya da L) üsle tutarlı olmalı.
+  const ocrCount = /^10[-^7*·.“”"'4]{0,2}(3|6|9|12)[-/]([upµ][a-z]?l|mm3|[l1i])$/.exec(u);
+  if (ocrCount) {
+    const perLitre = /^[l1i]$/.test(ocrCount[2] ?? '');
+    const exp = ocrCount[1];
+    if (perLitre) return exp === '9' ? '10^9/l' : exp === '12' ? '10^12/l' : null;
+    return exp === '3' ? '10^3/ul' : exp === '6' ? '10^6/ul' : null;
+  }
 
   // Hücre sayımları
   if (/^(10\^?3|k|bin|10e3)\/(ul|mm3)$/.test(u) || u === '10^3/ul' || u === 'k/ul') return '10^3/ul';

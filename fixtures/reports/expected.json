@@ -1,0 +1,912 @@
+{
+ "sentetik-kan-tahlili.pdf": {
+  "kind": "pdf",
+  "sex": "male",
+  "date": "2026-09-12",
+  "rows": [
+   {
+    "key": "hemoglobin",
+    "value": 13.9,
+    "status": "normal"
+   },
+   {
+    "key": "wbc",
+    "value": 7.2,
+    "status": "normal"
+   },
+   {
+    "key": "platelet",
+    "value": 251.0,
+    "status": "normal"
+   },
+   {
+    "key": "glucose",
+    "value": 94.0,
+    "status": "normal"
+   },
+   {
+    "key": "creatinine",
+    "value": 0.92,
+    "status": "normal"
+   },
+   {
+    "key": "alt",
+    "value": 68.0,
+    "status": "high"
+   },
+   {
+    "key": "ast",
+    "value": 35.0,
+    "status": "normal"
+   },
+   {
+    "key": "cholesterol-total",
+    "value": 241.0,
+    "status": "high"
+   },
+   {
+    "key": "ldl",
+    "value": 178.0,
+    "status": "high"
+   },
+   {
+    "key": "hdl",
+    "value": 44.0,
+    "status": "normal"
+   },
+   {
+    "key": "triglyceride",
+    "value": 162.0,
+    "status": "high"
+   },
+   {
+    "key": "tsh",
+    "value": 2.1,
+    "status": "normal"
+   },
+   {
+    "key": "ferritin",
+    "value": 19.0,
+    "status": "low"
+   },
+   {
+    "key": "b12",
+    "value": 312.0,
+    "status": "normal"
+   }
+  ],
+  "patterns": [
+   "lipids",
+   "liver-cells"
+  ]
+ },
+ "sentetik-kan-tahlili.png": {
+  "kind": "image",
+  "sex": "male",
+  "date": null,
+  "rows": [
+   {
+    "key": "hemoglobin",
+    "value": 13.9,
+    "status": "normal"
+   },
+   {
+    "key": "wbc",
+    "value": 7.2,
+    "status": "normal"
+   },
+   {
+    "key": "platelet",
+    "value": 251.0,
+    "status": "normal"
+   },
+   {
+    "key": "glucose",
+    "value": 94.0,
+    "status": "normal"
+   },
+   {
+    "key": "creatinine",
+    "value": 0.92,
+    "status": "normal"
+   },
+   {
+    "key": "alt",
+    "value": 68.0,
+    "status": "high"
+   },
+   {
+    "key": "ast",
+    "value": 35.0,
+    "status": "normal"
+   },
+   {
+    "key": "cholesterol-total",
+    "value": 241.0,
+    "status": "high"
+   },
+   {
+    "key": "ldl",
+    "value": 178.0,
+    "status": "high"
+   }
+  ],
+  "patterns": []
+ },
+ "hemogram.pdf": {
+  "kind": "pdf",
+  "sex": "female",
+  "date": "2026-09-03",
+  "rows": [
+   {
+    "key": "wbc",
+    "value": 6.84,
+    "status": "normal"
+   },
+   {
+    "key": "rbc",
+    "value": 4.21,
+    "status": "normal"
+   },
+   {
+    "key": "hemoglobin",
+    "value": 9.8,
+    "status": "low"
+   },
+   {
+    "key": "hematocrit",
+    "value": 31.2,
+    "status": "low"
+   },
+   {
+    "key": "mcv",
+    "value": 74.1,
+    "status": "low"
+   },
+   {
+    "key": "mch",
+    "value": 23.3,
+    "status": "low"
+   },
+   {
+    "key": "mchc",
+    "value": 31.4,
+    "status": "low"
+   },
+   {
+    "key": "rdw",
+    "value": 17.9,
+    "status": "high"
+   },
+   {
+    "key": "platelet",
+    "value": 438.0,
+    "status": "high"
+   },
+   {
+    "key": "mpv",
+    "value": 8.9,
+    "status": "normal"
+   },
+   {
+    "key": "neutrophil-abs",
+    "value": 4.05,
+    "status": "normal"
+   },
+   {
+    "key": "lymphocyte-abs",
+    "value": 2.01,
+    "status": "normal"
+   },
+   {
+    "key": "monocyte-abs",
+    "value": 0.52,
+    "status": "normal"
+   },
+   {
+    "key": "eosinophil-abs",
+    "value": 0.21,
+    "status": "normal"
+   },
+   {
+    "key": "basophil-abs",
+    "value": 0.05,
+    "status": "normal"
+   },
+   {
+    "key": "neutrophil-pct",
+    "value": 59.2,
+    "status": "normal"
+   },
+   {
+    "key": "lymphocyte-pct",
+    "value": 29.4,
+    "status": "normal"
+   },
+   {
+    "key": "monocyte-pct",
+    "value": 7.6,
+    "status": "normal"
+   },
+   {
+    "key": "eosinophil-pct",
+    "value": 3.1,
+    "status": "normal"
+   },
+   {
+    "key": "basophil-pct",
+    "value": 0.7,
+    "status": "normal"
+   }
+  ],
+  "patterns": [
+   "anemia",
+   "platelets"
+  ]
+ },
+ "hemogram-foto.jpg": {
+  "kind": "image",
+  "sex": "female",
+  "date": "2026-09-03",
+  "rows": [
+   {
+    "key": "wbc",
+    "value": 6.84,
+    "status": "normal"
+   },
+   {
+    "key": "rbc",
+    "value": 4.21,
+    "status": "normal"
+   },
+   {
+    "key": "hemoglobin",
+    "value": 9.8,
+    "status": "low"
+   },
+   {
+    "key": "hematocrit",
+    "value": 31.2,
+    "status": "low"
+   },
+   {
+    "key": "mcv",
+    "value": 74.1,
+    "status": "low"
+   },
+   {
+    "key": "mch",
+    "value": 23.3,
+    "status": "low"
+   },
+   {
+    "key": "mchc",
+    "value": 31.4,
+    "status": "low"
+   },
+   {
+    "key": "rdw",
+    "value": 17.9,
+    "status": "high"
+   },
+   {
+    "key": "platelet",
+    "value": 438.0,
+    "status": "high"
+   },
+   {
+    "key": "mpv",
+    "value": 8.9,
+    "status": "normal"
+   },
+   {
+    "key": "neutrophil-abs",
+    "value": 4.05,
+    "status": "normal"
+   },
+   {
+    "key": "lymphocyte-abs",
+    "value": 2.01,
+    "status": "normal"
+   },
+   {
+    "key": "monocyte-abs",
+    "value": 0.52,
+    "status": "normal"
+   },
+   {
+    "key": "eosinophil-abs",
+    "value": 0.21,
+    "status": "normal"
+   },
+   {
+    "key": "basophil-abs",
+    "value": 0.05,
+    "status": "normal"
+   },
+   {
+    "key": "neutrophil-pct",
+    "value": 59.2,
+    "status": "normal"
+   },
+   {
+    "key": "lymphocyte-pct",
+    "value": 29.4,
+    "status": "normal"
+   },
+   {
+    "key": "monocyte-pct",
+    "value": 7.6,
+    "status": "normal"
+   },
+   {
+    "key": "eosinophil-pct",
+    "value": 3.1,
+    "status": "normal"
+   },
+   {
+    "key": "basophil-pct",
+    "value": 0.7,
+    "status": "normal"
+   }
+  ],
+  "patterns": [
+   "anemia"
+  ]
+ },
+ "biyokimya.pdf": {
+  "kind": "pdf",
+  "sex": "male",
+  "date": "2026-08-15",
+  "rows": [
+   {
+    "key": "glucose",
+    "value": 112.0,
+    "status": "high"
+   },
+   {
+    "key": "urea",
+    "value": 64.0,
+    "status": "high"
+   },
+   {
+    "key": "creatinine",
+    "value": 1.68,
+    "status": "high"
+   },
+   {
+    "key": "egfr",
+    "value": 46.0,
+    "status": "low"
+   },
+   {
+    "key": "uric-acid",
+    "value": 8.1,
+    "status": "high"
+   },
+   {
+    "key": "sodium",
+    "value": 138.0,
+    "status": "normal"
+   },
+   {
+    "key": "potassium",
+    "value": 5.7,
+    "status": "high"
+   },
+   {
+    "key": "chloride",
+    "value": 103.0,
+    "status": "normal"
+   },
+   {
+    "key": "calcium",
+    "value": 9.3,
+    "status": "normal"
+   },
+   {
+    "key": "phosphorus",
+    "value": 4.9,
+    "status": "high"
+   },
+   {
+    "key": "alt",
+    "value": 24.0,
+    "status": "normal"
+   },
+   {
+    "key": "ast",
+    "value": 21.0,
+    "status": "normal"
+   },
+   {
+    "key": "ggt",
+    "value": 31.0,
+    "status": "normal"
+   },
+   {
+    "key": "alp",
+    "value": 88.0,
+    "status": "normal"
+   },
+   {
+    "key": "bilirubin-total",
+    "value": 0.64,
+    "status": "normal"
+   },
+   {
+    "key": "bilirubin-direct",
+    "value": 0.18,
+    "status": "normal"
+   },
+   {
+    "key": "total-protein",
+    "value": 7.0,
+    "status": "normal"
+   },
+   {
+    "key": "albumin",
+    "value": 4.1,
+    "status": "normal"
+   },
+   {
+    "key": "crp",
+    "value": 14.2,
+    "status": "high"
+   }
+  ],
+  "patterns": [
+   "kidney-filtration",
+   "electrolytes",
+   "uric-acid",
+   "inflammation",
+   "glucose"
+  ]
+ },
+ "hormon-kadin.pdf": {
+  "kind": "pdf",
+  "sex": "female",
+  "date": "2026-07-22",
+  "rows": [
+   {
+    "key": "tsh",
+    "value": 7.85,
+    "status": "high"
+   },
+   {
+    "key": "ft4",
+    "value": 0.82,
+    "status": "low"
+   },
+   {
+    "key": "ft3",
+    "value": 2.71,
+    "status": "normal"
+   },
+   {
+    "key": "anti-tpo",
+    "value": 186.0,
+    "status": "high"
+   },
+   {
+    "key": "prolactin",
+    "value": 41.6,
+    "status": "high"
+   },
+   {
+    "key": "cortisol",
+    "value": 13.8,
+    "status": "normal"
+   },
+   {
+    "key": "insulin",
+    "value": 17.2,
+    "status": "normal"
+   },
+   {
+    "key": "estradiol",
+    "value": 96.4,
+    "status": null
+   },
+   {
+    "key": "progesterone",
+    "value": 0.62,
+    "status": null
+   },
+   {
+    "key": "fsh",
+    "value": 6.1,
+    "status": null
+   },
+   {
+    "key": "lh",
+    "value": 7.4,
+    "status": null
+   },
+   {
+    "key": "dhea-s",
+    "value": 212.0,
+    "status": "normal"
+   },
+   {
+    "key": "testosterone",
+    "value": 0.31,
+    "status": "normal"
+   },
+   {
+    "key": "bhcg",
+    "value": 1.2,
+    "status": "normal"
+   }
+  ],
+  "patterns": [
+   "thyroid",
+   "prolactin-high"
+  ],
+  "phaseSpecific": [
+   "estradiol",
+   "progesterone",
+   "fsh",
+   "lh"
+  ]
+ },
+ "hormon-erkek.png": {
+  "kind": "image",
+  "sex": "male",
+  "date": "2026-08-09",
+  "rows": [
+   {
+    "key": "testosterone",
+    "value": 182.0,
+    "status": "low"
+   },
+   {
+    "key": "lh",
+    "value": 2.1,
+    "status": "normal"
+   },
+   {
+    "key": "fsh",
+    "value": 3.0,
+    "status": "normal"
+   },
+   {
+    "key": "prolactin",
+    "value": 11.2,
+    "status": "normal"
+   },
+   {
+    "key": "estradiol",
+    "value": 28.0,
+    "status": "normal"
+   },
+   {
+    "key": "cortisol",
+    "value": 22.4,
+    "status": "high"
+   },
+   {
+    "key": "tsh",
+    "value": 1.94,
+    "status": "normal"
+   },
+   {
+    "key": "psa",
+    "value": 1.1,
+    "status": "normal"
+   }
+  ],
+  "patterns": [
+   "testosterone-low",
+   "cortisol"
+  ]
+ },
+ "vitamin-mineral.pdf": {
+  "kind": "pdf",
+  "sex": "female",
+  "date": "2026-06-30",
+  "rows": [
+   {
+    "key": "vitamin-d",
+    "value": 11.8,
+    "status": "low"
+   },
+   {
+    "key": "b12",
+    "value": 168.0,
+    "status": "low"
+   },
+   {
+    "key": "folate",
+    "value": 4.6,
+    "status": "normal"
+   },
+   {
+    "key": "ferritin",
+    "value": 8.2,
+    "status": "low"
+   },
+   {
+    "key": "iron",
+    "value": 41.0,
+    "status": "low"
+   },
+   {
+    "key": "tibc",
+    "value": 468.0,
+    "status": "high"
+   },
+   {
+    "key": "transferrin-saturation",
+    "value": 8.8,
+    "status": "low"
+   },
+   {
+    "key": "magnesium",
+    "value": 1.92,
+    "status": "normal"
+   },
+   {
+    "key": "calcium",
+    "value": 9.1,
+    "status": "normal"
+   },
+   {
+    "key": "phosphorus",
+    "value": 3.6,
+    "status": "normal"
+   },
+   {
+    "key": "homocysteine",
+    "value": 17.8,
+    "status": "high"
+   }
+  ],
+  "patterns": [
+   "vitamin-d",
+   "b12-folate",
+   "iron-deficiency",
+   "homocysteine"
+  ]
+ },
+ "lipid.pdf": {
+  "kind": "pdf",
+  "sex": "male",
+  "date": "2026-05-04",
+  "rows": [
+   {
+    "key": "cholesterol-total",
+    "value": 262.0,
+    "status": "high"
+   },
+   {
+    "key": "ldl",
+    "value": 181.0,
+    "status": "high"
+   },
+   {
+    "key": "hdl",
+    "value": 37.0,
+    "status": "low"
+   },
+   {
+    "key": "triglyceride",
+    "value": 231.0,
+    "status": "high"
+   },
+   {
+    "key": "vldl",
+    "value": 46.0,
+    "status": "high"
+   },
+   {
+    "key": "non-hdl",
+    "value": 225.0,
+    "status": "high"
+   }
+  ],
+  "patterns": [
+   "lipids"
+  ]
+ },
+ "coklu-anormallik.pdf": {
+  "kind": "pdf",
+  "sex": "male",
+  "date": "2026-09-18",
+  "rows": [
+   {
+    "key": "hemoglobin",
+    "value": 11.4,
+    "status": "low"
+   },
+   {
+    "key": "wbc",
+    "value": 14.6,
+    "status": "high"
+   },
+   {
+    "key": "neutrophil-pct",
+    "value": 83.1,
+    "status": "high"
+   },
+   {
+    "key": "lymphocyte-pct",
+    "value": 10.2,
+    "status": "low"
+   },
+   {
+    "key": "platelet",
+    "value": 118.0,
+    "status": "low"
+   },
+   {
+    "key": "mcv",
+    "value": 86.0,
+    "status": "normal"
+   },
+   {
+    "key": "esr",
+    "value": 46.0,
+    "status": "high"
+   },
+   {
+    "key": "glucose",
+    "value": 186.0,
+    "status": "high"
+   },
+   {
+    "key": "hba1c",
+    "value": 8.2,
+    "status": "high"
+   },
+   {
+    "key": "alt",
+    "value": 142.0,
+    "status": "high"
+   },
+   {
+    "key": "ast",
+    "value": 96.0,
+    "status": "high"
+   },
+   {
+    "key": "ggt",
+    "value": 188.0,
+    "status": "high"
+   },
+   {
+    "key": "alp",
+    "value": 162.0,
+    "status": "high"
+   },
+   {
+    "key": "bilirubin-total",
+    "value": 2.3,
+    "status": "high"
+   },
+   {
+    "key": "bilirubin-direct",
+    "value": 1.1,
+    "status": "high"
+   },
+   {
+    "key": "albumin",
+    "value": 3.2,
+    "status": "low"
+   },
+   {
+    "key": "creatinine",
+    "value": 1.34,
+    "status": "high"
+   },
+   {
+    "key": "crp",
+    "value": 52.4,
+    "status": "high"
+   },
+   {
+    "key": "ldl",
+    "value": 176.0,
+    "status": "high"
+   },
+   {
+    "key": "hdl",
+    "value": 34.0,
+    "status": "low"
+   },
+   {
+    "key": "triglyceride",
+    "value": 318.0,
+    "status": "high"
+   },
+   {
+    "key": "tsh",
+    "value": 0.05,
+    "status": "low"
+   },
+   {
+    "key": "ft4",
+    "value": 2.41,
+    "status": "high"
+   },
+   {
+    "key": "vitamin-d",
+    "value": 13.1,
+    "status": "low"
+   },
+   {
+    "key": "ferritin",
+    "value": 612.0,
+    "status": "high"
+   },
+   {
+    "key": "lipase",
+    "value": 188.0,
+    "status": "high"
+   },
+   {
+    "key": "ck",
+    "value": 540.0,
+    "status": "high"
+   }
+  ],
+  "patterns": [
+   "anemia",
+   "inflammation",
+   "platelets",
+   "glucose",
+   "liver-cells",
+   "cholestasis",
+   "bilirubin",
+   "kidney-filtration",
+   "lipids",
+   "thyroid",
+   "vitamin-d",
+   "pancreas",
+   "muscle"
+  ]
+ },
+ "enabiz-ekran.png": {
+  "kind": "image",
+  "sex": "male",
+  "date": "2026-08-25",
+  "patterns": [],
+  "rows": [
+   {
+    "key": "wbc",
+    "value": 11.2,
+    "status": "high"
+   },
+   {
+    "key": "neutrophil-pct",
+    "value": 71.3,
+    "status": "normal"
+   },
+   {
+    "key": "lymphocyte-pct",
+    "value": 18.4,
+    "status": "low"
+   },
+   {
+    "key": "hemoglobin",
+    "value": 13.1,
+    "status": "low"
+   },
+   {
+    "key": "platelet",
+    "value": 262.0,
+    "status": "normal"
+   },
+   {
+    "key": "glucose",
+    "value": 97.0,
+    "status": "normal"
+   },
+   {
+    "key": "tsh",
+    "value": 3.1,
+    "status": "normal"
+   }
+  ]
+ }
+}

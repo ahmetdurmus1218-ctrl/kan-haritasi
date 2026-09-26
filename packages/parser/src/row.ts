@@ -25,6 +25,14 @@ const SEX_RANGE = new RegExp(
   String.raw`(?:^|\s)(E|Erkek|M|Male)\s*[:=]?\s*(${NUMBER})\s*[-–—]\s*(${NUMBER}).*?(?:^|\s)(K|Kad[ıi]n|F|Female)\s*[:=]?\s*(${NUMBER})\s*[-–—]\s*(${NUMBER})`,
   'i',
 );
+// Hormon aralıkları çoğu zaman döngü evresine, menopoza ya da gebelik haftasına göre verilir.
+// Hangi evrenin geçerli olduğunu yazılım bilemez; aralık kullanıcıya bırakılır.
+const PHASE_WORDS = /(folik[uü]ler|l[uü]teal|ovulasyon|ovulat[uü]ar|mid ?siklus|menopoz|postmenopoz|gebelik|trimester|follicular|ovulation|postmenopausal|pregnan)/i;
+// "Etiket: aralık" parçaları. Etiket harfle başlar, en fazla birkaç kelimedir.
+const LABEL_SEG = /([A-Za-zÇĞİÖŞÜçğıöşü][A-Za-zÇĞİÖŞÜçğıöşü ]{0,24}?)\s*:\s*(?=[<>≤≥]|\d)/g;
+const GOOD_LABEL = /^(yeterli|normal|optimal|optimum|istenen|arzu edilen|ideal|onerilen|hedef|desirable|sufficient|referans|referans araligi)$/;
+const SEX_LABEL = /^(e|k|erkek|kadin|male|female)$/;
+const RISK_LABEL = /(eksik|yetersiz|dusuk|yuksek|sinirda|risk|toksik|zehirli|optimale yakin|borderline|high|low|deficien|insufficien|diyabet|intoks)/;
 const FLAG_HIGH = /^(h|hh|y|yuksek|high|\*h)$/;
 const FLAG_LOW = /^(l|ll|d|dusuk|low|\*l)$/;
 const VALUE_WITH_FLAG = /^([<>≤≥]=?)?(\d+(?:[.,]\d+)*)(hh|ll|h|l|↑|↓|\*)$/i;
@@ -42,8 +50,9 @@ function num(text: string): number {
 }
 
 /** Rapor aralığını serbest metinden çıkarır. */
-export function parseRange(text: string, sex: Sex): { range: RangeValue; sexSpecific: boolean } {
+export function parseRange(text: string, sex: Sex): { range: RangeValue; sexSpecific: boolean; phaseSpecific?: boolean; categories?: boolean } {
   const t = text.replace(/−/g, '-');
+  if (PHASE_WORDS.test(t) && /\d/.test(t)) return { range: { source: 'report', text: t.trim() }, sexSpecific: false, phaseSpecific: true };
   const sx = SEX_RANGE.exec(t);
   if (sx) {
     const male = { min: num(sx[2] ?? ''), max: num(sx[3] ?? '') };
@@ -52,6 +61,27 @@ export function parseRange(text: string, sex: Sex): { range: RangeValue; sexSpec
     if (sex === 'male') return { range: { ...male, source: 'report', text: text2 }, sexSpecific: false };
     if (sex === 'female') return { range: { ...female, source: 'report', text: text2 }, sexSpecific: false };
     return { range: { source: 'report', text: text2 }, sexSpecific: true };
+  }
+  // Etiketli aralıklar: "Optimal: <100 · Sınırda yüksek: 130-159", "Eksiklik: <20 / Yeterli: 30-100",
+  // "Erkek: 13,5-17,5" (tek cinsiyet, satırın devamı alt satırda).
+  const labels = [...t.matchAll(LABEL_SEG)];
+  if (labels.length > 0) {
+    const seg = (i: number) => t.slice(labels[i]!.index! + labels[i]![0].length, labels[i + 1]?.index ?? t.length);
+    const names = labels.map((l) => normalizeText(l[1] ?? '').trim());
+    const good = names.findIndex((n) => GOOD_LABEL.test(n));
+    if (good >= 0) {
+      const r = parseRange(seg(good), sex).range;
+      if (r.source === 'report') return { range: { ...r, text: `${labels[good]![1]!.trim()}: ${r.text ?? ''}`.trim() }, sexSpecific: false };
+    }
+    const sexIdx = names.findIndex((n) => SEX_LABEL.test(n));
+    if (sexIdx >= 0 && labels.length === 1) {
+      const labelSex = /^(e|erkek|male)$/.test(names[sexIdx]!) ? 'male' : 'female';
+      if (sex === 'unspecified') return { range: { source: 'report', text: t.trim() }, sexSpecific: true };
+      if (sex === labelSex) return parseRange(seg(sexIdx), sex);
+      return { range: { source: 'none' }, sexSpecific: false };
+    }
+    // Yalnızca risk/eksiklik kategorileri varsa bunlar "normal aralık" değildir; genel aralık kullanılır.
+    if (names.some((n) => RISK_LABEL.test(n))) return { range: { source: 'none', text: t.trim() }, sexSpecific: false, categories: true };
   }
   // Birden fazla "a-b" olabilir (ör. OCR'ın bozduğu birim "10-3/pL"); geçerli ilk aralık alınır.
   for (const dash of t.matchAll(new RegExp(RANGE_DASH.source, 'g'))) {
@@ -91,6 +121,16 @@ function findUnit(tokens: string[]): { unit: string; unitKey: string; used: numb
   return null;
 }
 
+/** Satır başındaki aralığın kaç belirteç sürdüğü: "74-100", "74 - 100", "< 5", "<5", "> 90". */
+function rangeTokenCount(tokens: string[]): number {
+  const a = tokens[0] ?? '';
+  if (GLUED_RANGE.test(a) || /^[<>≤≥]=?\d/.test(a)) return 1;
+  if (/^[<>≤≥]=?$/.test(a) && parseNumber(tokens[1] ?? '')) return 2;
+  if (parseNumber(a) && DASH_TOKEN.test(tokens[1] ?? '') && parseNumber(tokens[2] ?? '')) return 3;
+  if (parseNumber(a) && /^[-–—]\d/.test(tokens[1] ?? '')) return 2;
+  return 0;
+}
+
 export type LineResult =
   | { kind: 'row'; row: ParsedRow }
   | { kind: 'unrecognized'; row: UnrecognizedRow }
@@ -107,8 +147,50 @@ const GLUED_RANGE = /^\d+(?:[.,]\d+)?[-–—]\d+(?:[.,]\d+)?$/;
 /** Ekran simgeleri ve OCR kırıntıları (e-Nabız'daki onay işaretleri, "»" gibi). */
 const NOISE_TOKEN = /^(v|nv|va|vv|ww|✓|✔|«|\|)$/i;
 
+// OCR'ın "%" işaretini okuyamadığı durumlar (Türkçe modelde sık): "Yo", "Vo", "Ve", "Y", "V", "96", "00".
+const PCT_LOOKALIKE = /^(yo|vo|ve|ke|ko|y|v|96|9o|o\/o|0\/0|00|%o|°\/o|»)$/i;
+const DIFF_WORD = /^(notrofil|lenfosit|monosit|eozinofil|bazofil|neu|neut|ne|lym|lymph|ly|mon|mono|mo|eos|eo|bas|baso|ba)$/;
+const GLUED_DIFF_PCT = /^(ne|neu|neut|ly|lym|lymph|mo|mon|mono|eo|eos|ba|bas|baso)(y|yo|vo|96|9o)$/i;
+/** Adı yüzde türünde bir testi gösteren sözcükler. */
+const PCT_NAME = /(%|notrofil|lenfosit|monosit|eozinofil|bazofil|hematokrit|\bhct\b|\brdw|hba1c|saturasyon)/;
+
+/**
+ * Yüzde işaretinin OCR'daki benzerlerini düzeltir; yalnızca ad bir yüzde testini gösteriyorsa.
+ * Değişiklik yapıldıysa `true` döner (satır "doğrula" diye işaretlenir).
+ */
+function fixPercent(raw: string[]): boolean {
+  let changed = false;
+  const firstNum = raw.findIndex((t) => /^\d/.test(t));
+  const nameEnd = firstNum < 0 ? raw.length : firstNum;
+  for (let i = 0; i < Math.min(nameEnd, 3); i++) {
+    const g = GLUED_DIFF_PCT.exec(raw[i]!);
+    if (g && i === 0) {
+      raw[i] = `${g[1]}%`;
+      changed = true;
+    }
+    const next = raw[i + 1];
+    // "Nötrofil Yo 59,2" / "Eozinofil 4 3,1": addan sonraki benzer belirteç (ardından sayı gelmeli)
+    if (next && DIFF_WORD.test(normalizeText(raw[i]!)) && (PCT_LOOKALIKE.test(next) || next === '4') && /^\d/.test(raw[i + 2] ?? '')) {
+      raw[i + 1] = '%';
+      changed = true;
+    }
+  }
+  const name = normalizeText(raw.slice(0, nameEnd).join(' ').replace(/%/g, ' yuzde ')) + (raw.slice(0, nameEnd).some((t) => t.includes('%')) ? ' %' : '');
+  if (!PCT_NAME.test(name)) return changed;
+  // Değerden (veya e-Nabız'da aralıktan sonraki değerden) hemen sonra gelen benzer belirteç
+  for (let i = nameEnd; i < raw.length - 1 && i < nameEnd + 4; i++) {
+    if (/^\d/.test(raw[i]!) && !/[-–—]\d/.test(raw[i]!) && PCT_LOOKALIKE.test(raw[i + 1]!)) {
+      raw[i + 1] = '%';
+      changed = true;
+      break;
+    }
+  }
+  return changed;
+}
+
 export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineResult {
   const raw = line.tokens.map((t) => t.text);
+  const percentGuessed = ctx.ocr && fixPercent(raw);
   const normLine = normalizeText(line.text);
   if (!normLine || PII_LINE.test(normLine)) return { kind: 'none' };
 
@@ -217,10 +299,19 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     return { kind: 'none' };
   }
 
-  const afterValue = rest.slice(valueIdx + 1).filter((t) => !NOISE_TOKEN.test(t) || t === '%');
-  const unitFound = gluedUnit
+  let afterValue = rest.slice(valueIdx + 1).filter((t) => !NOISE_TOKEN.test(t) || t === '%');
+  let unitFound = gluedUnit
     ? { unit: gluedUnit, unitKey: normalizeUnit(gluedUnit) as string, used: 0 }
     : (findUnit(afterValue) ?? (unitBefore ? { ...unitBefore, used: 0 } : null));
+  if (!unitFound) {
+    // "Sonuç | Referans | Birim" düzeni: birim aralıktan sonra gelir ("112 74 - 100 mg/dL").
+    const k = rangeTokenCount(afterValue);
+    const u = k ? findUnit(afterValue.slice(k)) : null;
+    if (u) {
+      unitFound = { unit: u.unit, unitKey: u.unitKey, used: 0 };
+      afterValue = [...afterValue.slice(0, k), ...afterValue.slice(k + u.used)];
+    }
+  }
   const unitKey = unitFound?.unitKey ?? null;
   const tail = afterValue.slice(unitFound?.used ?? 0);
   const tailText = tail.join(' ');
@@ -229,6 +320,8 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
   let reportFlag: 'H' | 'L' | undefined;
   if (gluedFlag) reportFlag = gluedFlag;
   for (const t of [...tail, ...rest.slice(0, valueIdx)]) {
+    // "Düşük: < 40" gibi aralık etiketleri bayrak değildir.
+    if (t.endsWith(':')) continue;
     if (t.includes('↑')) reportFlag = 'H';
     else if (t.includes('↓')) reportFlag = 'L';
     const n = normalizeText(t);
@@ -238,7 +331,7 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
 
   const parsedValue = parseNumber(valueText, isCountUnit(unitKey));
   if (!parsedValue) return { kind: 'none' };
-  const { range: reportRange, sexSpecific } = parseRange(rangeBefore ? rangeBefore.text : tailText, ctx.sex);
+  const { range: reportRange, sexSpecific, phaseSpecific, categories } = parseRange(rangeBefore ? rangeBefore.text : tailText, ctx.sex);
 
   if (!match) {
     // Tanınmayan satır: adı harf içeren ve değer + (birim veya aralık) taşıyan satırlar listelenir.
@@ -265,6 +358,10 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
   const issues: IssueCode[] = [];
   let confidence = match.score >= 1 ? 0.55 : 0.4;
   if (match.score < 1) issues.push('NAME_FUZZY');
+  if (percentGuessed) {
+    issues.push('PERCENT_GUESSED');
+    confidence -= 0.1;
+  }
 
   let canonicalValue: number | null;
   if (!unitFound) {
@@ -283,6 +380,8 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     confidence += 0.2;
   } else {
     if (sexSpecific) issues.push('RANGE_SEX_SPECIFIC');
+    else if (phaseSpecific) issues.push('RANGE_PHASE_SPECIFIC');
+    else if (categories) issues.push('RANGE_CATEGORIES');
     else issues.push('RANGE_MISSING');
     range = { source: 'none' };
   }
@@ -305,14 +404,14 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
   // Durum: rapor aralığı (rapor biriminde) varsa o; yoksa genel aralık (kanonik birimde).
   let status = statusFor(parsedValue.value, range, parsedValue.qualifier);
   let storedRange: RangeValue = convertRange(test, range, unitKey);
-  if (range.source === 'none' && canonicalValue !== null && !sexSpecific) {
+  if (range.source === 'none' && canonicalValue !== null && !sexSpecific && !phaseSpecific) {
     const fallback = catalogRange(test, ctx.sex);
     if (fallback.source === 'catalog') {
       storedRange = fallback;
       status = statusFor(canonicalValue, fallback, parsedValue.qualifier);
     }
   }
-  if (sexSpecific) {
+  if (sexSpecific || phaseSpecific) {
     storedRange = { source: 'report', text: reportRange.text };
     status = 'unknown';
   }
