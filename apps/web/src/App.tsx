@@ -6,7 +6,8 @@ import { DocumentsPage } from './screens/DocumentsPage';
 import { DocumentDetail } from './screens/DocumentDetail';
 import { PrivacyPage } from './screens/PrivacyPage';
 import { Suspense, lazy } from 'react';
-import { ComingSoon } from './screens/ComingSoon';
+import { TimelinePage } from './screens/TimelinePage';
+import { AboutPage } from './screens/AboutPage';
 import { ResultDetail, ResultsPage } from './screens/ResultsPage';
 import { Banner } from './components/ui';
 import { SpinnerIcon } from './components/icons';
@@ -48,8 +49,10 @@ function Gate() {
         <AppShell route={route}>
           {route.name === 'document' ? (
             <DocumentDetail key={route.id} id={route.id} navigate={navigate} />
-          ) : route.name === 'privacy' || route.name === 'about' ? (
+          ) : route.name === 'privacy' ? (
             <PrivacyPage />
+          ) : route.name === 'about' ? (
+            <AboutPage />
           ) : route.name === 'results' ? (
             <ResultsPage />
           ) : route.name === 'result' ? (
@@ -59,7 +62,7 @@ function Gate() {
               <Explorer route={route} />
             </Suspense>
           ) : route.name === 'timeline' ? (
-            <ComingSoon page="timeline" />
+            <TimelinePage testKey={route.key} />
           ) : (
             <DocumentsPage navigate={navigate} />
           )}

@@ -5,11 +5,11 @@ import { BodyIcon, ChartIcon, DropIcon, FolderIcon, ListIcon, LockIcon, ShieldIc
 
 type NavKey = 'documents' | 'results' | 'body' | 'timeline' | 'privacy';
 
-const NAV: { key: NavKey; label: string; icon: (p: { size?: number }) => ReactNode; phase?: number }[] = [
+const NAV: { key: NavKey; label: string; icon: (p: { size?: number }) => ReactNode }[] = [
   { key: 'documents', label: 'Belgeler', icon: FolderIcon },
   { key: 'results', label: 'Sonuçlar', icon: ListIcon },
   { key: 'body', label: 'Keşfet', icon: BodyIcon },
-  { key: 'timeline', label: 'Zaman', icon: ChartIcon, phase: 6 },
+  { key: 'timeline', label: 'Zaman', icon: ChartIcon },
   { key: 'privacy', label: 'Gizlilik', icon: ShieldIcon },
 ];
 
@@ -43,7 +43,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           <span className="font-semibold tracking-tight">Kan Haritası</span>
         </div>
         <nav className="flex-1 space-y-0.5 px-3" aria-label="Ana gezinme">
-          {NAV.map(({ key, label, icon: Icon, phase }) => {
+          {NAV.map(({ key, label, icon: Icon }) => {
             const isActive = key === active;
             return (
               <a
@@ -58,7 +58,6 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
                   <Icon size={17} />
                 </span>
                 <span className="flex-1">{label}</span>
-                {phase && <span className="font-mono text-[10px] text-fg-faint">Faz {phase}</span>}
               </a>
             );
           })}
@@ -91,7 +90,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
 
       {/* Mobil alt gezinme */}
       <nav className="safe-bottom grid grid-cols-5 border-t border-ink-700 bg-ink-900/95 backdrop-blur md:hidden" aria-label="Ana gezinme">
-        {NAV.map(({ key, label, icon: Icon, phase }) => {
+        {NAV.map(({ key, label, icon: Icon }) => {
           const isActive = key === active;
           return (
             <a
@@ -102,7 +101,6 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             >
               <Icon size={20} />
               {label}
-              {phase && <span className="absolute right-[18%] top-1.5 h-1.5 w-1.5 rounded-full bg-ink-500" aria-hidden="true" />}
             </a>
           );
         })}

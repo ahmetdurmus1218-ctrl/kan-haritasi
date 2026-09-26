@@ -52,11 +52,13 @@ class FileChooser(private val activity: ComponentActivity) {
             return
         }
 
+        // Yedek dosyası (.khyedek) için tür filtresi yok; içerik web tarafında imzasıyla doğrulanır.
+        val wantsBackup = params.acceptTypes.any { it == ".khyedek" || it == "application/octet-stream" }
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
             .addCategory(Intent.CATEGORY_OPENABLE)
             .setType("*/*")
-            .putExtra(Intent.EXTRA_MIME_TYPES, ALLOWED_MIME)
             .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, params.mode == FileChooserParams.MODE_OPEN_MULTIPLE)
+        if (!wantsBackup) intent.putExtra(Intent.EXTRA_MIME_TYPES, ALLOWED_MIME)
         try {
             pickLauncher.launch(intent)
         } catch (e: ActivityNotFoundException) {

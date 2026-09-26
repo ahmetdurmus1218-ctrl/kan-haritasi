@@ -31,6 +31,8 @@ export interface NewFileInput {
   displayName: string;
   mimeType: string;
   kind: FileKind;
+  /** Yedekten geri yüklerken özgün yükleme tarihi korunur (ISO 8601). */
+  createdAt?: string;
 }
 
 export interface VaultOptions {
@@ -255,7 +257,7 @@ export class Vault {
         kind: input.kind,
         size: input.bytes.length,
         sha256,
-        createdAt: new Date().toISOString(),
+        createdAt: input.createdAt && !Number.isNaN(Date.parse(input.createdAt)) ? new Date(input.createdAt).toISOString() : new Date().toISOString(),
         blobKey,
         dek: toBase64(dekRaw),
       };

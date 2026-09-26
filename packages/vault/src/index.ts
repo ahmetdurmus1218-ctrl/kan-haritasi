@@ -10,3 +10,5 @@ export type { FileInfo, FileKind, NewFileInput, VaultOptions } from './vault';
 export { IndexedDbBlobStore, IndexedDbRecordStore, openVaultDb } from './idb';
 export { OpfsBlobStore, openBrowserStores } from './opfs';
 export type { BrowserStores } from './opfs';
+export { BACKUP_EXTENSION, BACKUP_VERSION, createBackup, inspectBackup, restoreBackup } from './backup';
+export type { BackupSummary, RestoreResult } from './backup';
