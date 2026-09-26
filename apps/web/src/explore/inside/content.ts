@@ -189,6 +189,28 @@ export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
       ccell: { name: 'C hücresi', text: 'Kalsitonin üreten parafoliküler hücre.' },
     },
   },
+  kan: {
+    tests: ['hemoglobin', 'hematocrit', 'rbc', 'mcv', 'mch', 'mchc', 'rdw', 'wbc', 'neutrophil-pct', 'lymphocyte-pct', 'monocyte-pct', 'eosinophil-pct', 'basophil-pct', 'platelet', 'mpv'],
+    caution:
+      'Bu sahne EĞİTİMSEL ve temsilidir: hücre sayıları senin hemogramından türetilen oranlarla çizilir ama gerçek sayılar değildir (gerçekte her akyuvara yaklaşık 700 alyuvar düşer). Hücre görünümleri boyanmış yayma görüntülerinden esinlenmiştir.',
+    stages: [
+      { title: 'Kan örneği', text: 'Kanın yaklaşık yarısı plazmadır; geri kalanı çoğunlukla alyuvarlardır. Akyuvarlar ve trombositler sayıca çok daha azdır. Sahnedeki sayılar ve boyutlar senin hemogramına göre ayarlanır.' },
+      { title: 'Alyuvarlar', text: 'Ortası çukur disk biçimli alyuvarlar hemoglobinle oksijen taşır. MCV büyüklüklerini, MCH ise içlerindeki hemoglobin miktarını (rengin koyuluğunu) gösterir. Demir eksikliğinde küçük ve soluk, B12/folat eksikliğinde büyük olabilirler.' },
+      { title: 'Beş akyuvar türü', text: 'Nötrofil (çok parçalı çekirdek; bakterilere ilk yanıt), lenfosit (büyük yuvarlak çekirdek; virüsler ve bağışıklık hafızası), monosit (böbrek biçimli çekirdek; dokuda makrofaja dönüşür), eozinofil (turuncu tanecikler; alerji ve parazitler), bazofil (koyu tanecikler; alerjik yanıt).' },
+      { title: 'Trombositler', text: 'Trombositler kemik iliğindeki dev hücrelerden kopan küçük parçalardır. Damar hasar görünce yapışıp kümelenir ve pıhtılaşmayı başlatırlar.' },
+      { title: 'Enfeksiyona yanıt', text: 'Bakteriler dokuya girince salgılanan sinyaller nötrofilleri çeker; nötrofiller bölgeye göç edip bakterileri yutar. Enfeksiyonda akyuvar ve nötrofil sayısının artması bu yüzdendir. (Temsili canlandırma.)' },
+    ],
+    objects: {
+      rbc: { name: 'Alyuvar (eritrosit)', text: 'Çekirdeksiz, ortası çukur disk. Hemoglobin taşır; yaklaşık 120 gün yaşar. Hemoglobin, hematokrit, RBC, MCV, MCH ve RDW bu hücrelerle ilgilidir.', size: 'yaklaşık 7–8 mikrometre' },
+      neutrophil: { name: 'Nötrofil', text: 'En çok bulunan akyuvar. Çekirdeği 3–5 parçalıdır. Bakteri enfeksiyonlarında ilk yanıt verir ve sayısı artar.', size: 'yaklaşık 12–15 mikrometre' },
+      lymphocyte: { name: 'Lenfosit', text: 'Büyük, yuvarlak çekirdekli akyuvar. B ve T lenfositler antikor üretir, virüsle enfekte hücreleri tanır ve bağışıklık hafızası oluşturur.', size: 'yaklaşık 7–15 mikrometre' },
+      monocyte: { name: 'Monosit', text: 'En büyük akyuvar; böbrek biçimli çekirdeği vardır. Dokuya geçince makrofaja dönüşür.', size: 'yaklaşık 15–20 mikrometre' },
+      eosinophil: { name: 'Eozinofil', text: 'Turuncu-kırmızı tanecikli, genellikle iki parçalı çekirdekli akyuvar. Alerjilerde ve parazit enfeksiyonlarında artabilir.' },
+      basophil: { name: 'Bazofil', text: 'Koyu mor tanecikli, en az bulunan akyuvar. Histamin salgılayarak alerjik yanıtta rol alır.' },
+      platelet: { name: 'Trombosit', text: 'Pıhtılaşmayı başlatan küçük hücre parçası. Sayısı çok düşükse kanama, çok yüksekse pıhtı eğilimi değerlendirilir.', size: 'yaklaşık 2–3 mikrometre' },
+      bacteria: { name: 'Bakteri (temsili)', text: 'Enfeksiyon canlandırması için gösterilir; senin kanında bakteri olduğu anlamına gelmez.' },
+    },
+  },
   ilik: {
     tests: ['hemoglobin', 'rbc', 'wbc', 'platelet', 'ferritin', 'iron', 'b12', 'folate', 'mcv'],
     stages: [

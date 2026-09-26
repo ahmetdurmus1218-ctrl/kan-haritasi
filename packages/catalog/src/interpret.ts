@@ -85,7 +85,7 @@ export interface Pattern {
   systems: SystemId[];
   structures: string[];
   /** İçeri-gir sahnesi (varsa). */
-  scene?: 'damar' | 'alveol' | 'nefron' | 'lobul' | 'adacik' | 'folikul' | 'ilik';
+  scene?: 'damar' | 'alveol' | 'nefron' | 'lobul' | 'adacik' | 'folikul' | 'ilik' | 'kan';
   /** Hekime sorulabilecek. */
   ask?: string[];
 }
@@ -431,8 +431,8 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
       text: `Hemoglobin/hematokrit referansın altında. ${kindText} Nedeninin hekimle birlikte araştırılması gerekir.`,
       tests: ['hemoglobin', 'hematocrit', 'mcv', 'ferritin', 'b12', 'folate'].filter((k) => has(m, k)),
       systems: ['hematologic'],
-      structures: ['bones', 'spleen'],
-      scene: 'ilik',
+      structures: ['spleen', 'bones'],
+      scene: 'kan',
       ask: ['Kansızlığın nedenini anlamak için hangi testler gerekir (demir, B12, folat, retikülosit)?', 'Kan kaybı olasılığı araştırılmalı mı?'],
     });
   }
@@ -677,8 +677,8 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
       text: `${crpHigh ? 'CRP yüksek' : 'Sedimantasyon yüksek'}${wbcHigh ? ' ve akyuvar sayısı artmış' : ''}: vücutta aktif bir iltihap veya enfeksiyon olabilir. Belirtilerle (ateş, ağrı, halsizlik) birlikte değerlendirilmelidir.`,
       tests: ['crp', 'hs-crp', 'wbc', 'esr', 'neutrophil-abs'].filter((k) => has(m, k)),
       systems: ['immune'],
-      structures: ['bones', 'spleen', 'liver'],
-      scene: 'ilik',
+      structures: ['spleen', 'bones', 'liver'],
+      scene: 'kan',
     });
   }
 
@@ -744,8 +744,8 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
           : 'Trombosit yüksekliği çoğunlukla iltihap, demir eksikliği ya da kanama sonrası tepkiseldir; kalıcıysa kemik iliği açısından değerlendirilir.',
       tests: ['platelet', 'mpv'].filter((k) => has(m, k)),
       systems: ['hematologic'],
-      structures: ['bones', 'spleen'],
-      scene: 'ilik',
+      structures: ['spleen', 'bones'],
+      scene: 'kan',
     });
   }
   if (is(m, 'wbc', 'low')) {
@@ -756,8 +756,8 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
       text: 'Akyuvar düşüklüğü bazı viral enfeksiyonlar, ilaçlar, B12/folat eksikliği ya da kemik iliği ile ilişkili olabilir. Ateş olursa hemen başvurmak gerekir.',
       tests: ['wbc', 'neutrophil-abs', 'lymphocyte-abs'].filter((k) => has(m, k)),
       systems: ['immune', 'hematologic'],
-      structures: ['bones', 'spleen', 'thymus'],
-      scene: 'ilik',
+      structures: ['spleen', 'bones', 'thymus'],
+      scene: 'kan',
     });
   }
 

@@ -218,6 +218,7 @@ export const ORGANS: Record<string, OrganInfo> = {
     location: 'Karnın sol üst bölümünde, midenin arkasında.',
     function: 'Yaşlanmış alyuvarları kandan ayıklar, bağışıklık hücrelerini barındırır ve kanı süzer.',
     view: [120, 10],
+    inside: 'kan',
   },
   thymus: {
     location: 'Göğüs kemiğinin arkasında, kalbin üstünde.',

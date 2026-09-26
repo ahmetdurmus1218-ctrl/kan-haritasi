@@ -65,10 +65,31 @@ const KNOBS: Record<InsideId, Knob[]> = {
     { param: 'plt', tests: ['platelet'], typical: 250, min: 0.1, max: 3, what: 'trombositler' },
     { param: 'iron', tests: ['ferritin', 'iron'], typical: 80, min: 0.05, max: 4, what: 'alyuvar öncüllerine ulaşan demir' },
   ],
+  kan: [
+    { param: 'rbc', tests: ['rbc', 'hemoglobin'], typical: 14, min: 0.4, max: 1.35, what: 'alyuvar sayısı' },
+    { param: 'rbcSize', tests: ['mcv'], typical: 90, min: 0.72, max: 1.3, what: 'alyuvar büyüklüğü' },
+    { param: 'rbcColor', tests: ['mch'], typical: 29, min: 0.6, max: 1.3, what: 'alyuvar renginin koyuluğu (içindeki hemoglobin)' },
+    { param: 'neutrophil', tests: ['neutrophil-abs', 'neutrophil-pct'], typical: 4.2, min: 0.05, max: 5, what: 'nötrofil sayısı' },
+    { param: 'lymphocyte', tests: ['lymphocyte-abs', 'lymphocyte-pct'], typical: 2.1, min: 0.05, max: 5, what: 'lenfosit sayısı' },
+    { param: 'monocyte', tests: ['monocyte-abs', 'monocyte-pct'], typical: 0.42, min: 0.05, max: 6, what: 'monosit sayısı' },
+    { param: 'eosinophil', tests: ['eosinophil-abs', 'eosinophil-pct'], typical: 0.2, min: 0.05, max: 10, what: 'eozinofil sayısı' },
+    { param: 'basophil', tests: ['basophil-abs', 'basophil-pct'], typical: 0.05, min: 0.05, max: 10, what: 'bazofil sayısı' },
+    { param: 'plt', tests: ['platelet'], typical: 250, min: 0.1, max: 3, what: 'trombosit sayısı' },
+  ],
 };
 
 /** Hemoglobinin sahne karşılığı: RBC testi varsa (10⁶/µL) tipik 4,8. */
-const TYPICAL_OVERRIDE: Record<string, number> = { rbc: 4.8, bun: 14, iron: 100 };
+const TYPICAL_OVERRIDE: Record<string, number> = {
+  rbc: 4.8,
+  bun: 14,
+  iron: 100,
+  // Akyuvar yüzdeleri (mutlak sayı yoksa): tipik dağılım
+  'neutrophil-pct': 60,
+  'lymphocyte-pct': 30,
+  'monocyte-pct': 6,
+  'eosinophil-pct': 3,
+  'basophil-pct': 1,
+};
 
 export interface PersonalLine {
   finding: Finding;
@@ -122,6 +143,30 @@ export function personalFor(scene: InsideId, interp: Interpretation, sceneTests:
     }
     params[k.param] = factor;
     lines.push({ finding: f, param: k.param, factor, effect });
+  }
+  // Kan sahnesi: akyuvar türü yüzdeyle verildiyse toplam akyuvar sayısıyla ölçeklenir (yüzde × toplam = sayı).
+  if (scene === 'kan') {
+    const wbc = byKey.get('wbc');
+    const wbcFactor = wbc && wbc.canonical ? Math.max(0.1, Math.min(4, wbc.value / 7)) : 1;
+    for (const l of lines) {
+      if (/-pct$/.test(l.finding.testKey) && wbcFactor !== 1) {
+        l.factor = Math.max(0.05, Math.min(10, l.factor * wbcFactor));
+        params[l.param] = l.factor;
+        l.effect = `${l.effect.split(':')[0]}: yüzde × toplam akyuvar → ${ratio(l.factor)}`;
+      }
+    }
+    if (wbc && !lines.some((l) => l.finding.testKey === 'wbc')) {
+      used.add('wbc');
+      const types = ['neutrophil', 'lymphocyte', 'monocyte', 'eosinophil', 'basophil'];
+      const hasDiff = lines.some((l) => types.includes(l.param));
+      if (wbc.canonical && !hasDiff) {
+        // Alt türler yoksa toplam sayı tüm türleri aynı oranda ölçekler (tipik dağılım varsayılır).
+        for (const t of types) params[t] = wbcFactor;
+        lines.push({ finding: wbc, param: 'wbc', factor: wbcFactor, effect: `akyuvar sayısı (tipik tür dağılımıyla): ${ratio(wbcFactor)}` });
+      } else {
+        lines.push({ finding: wbc, param: '', factor: 1, effect: '' });
+      }
+    }
   }
   // Düğmesi olmayan ama sahneyle ilişkili sonuçlar da listede görünür (yalnızca metin).
   for (const key of sceneTests) {

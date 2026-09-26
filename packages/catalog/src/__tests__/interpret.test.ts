@@ -78,7 +78,7 @@ describe('birlikte yorum (paternler)', () => {
     const out = interpret([r('hemoglobin', 10.2, 'low', 12, 15.5), r('mcv', 72, 'low', 80, 100), r('ferritin', 6, 'low', 13, 150)], 'female');
     const anemia = out.patterns.find((p) => p.id === 'anemia')!;
     expect(anemia.text).toContain('MCV düşük');
-    expect(anemia.scene).toBe('ilik');
+    expect(anemia.scene).toBe('kan');
     expect(out.patterns.map((p) => p.id)).toContain('iron-deficiency');
     expect(out.systems.find((s) => s.system === 'hematologic')!.status).toBe('attention');
   });

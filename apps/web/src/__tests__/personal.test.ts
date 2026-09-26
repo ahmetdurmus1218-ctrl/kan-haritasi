@@ -45,4 +45,22 @@ describe('içeri-gir sahnelerinin kişiselleştirilmesi', () => {
     expect(p.lines[0]!.param).toBe('');
     expect(p.params).toEqual(typicalParams('damar'));
   });
+
+  it('kan sahnesi: yüzde × toplam akyuvar = tür sayısı', () => {
+    const interp = interpret([r('wbc', 14, 'high', 4, 10), r('neutrophil-pct', 80, 'high', 40, 75), r('lymphocyte-pct', 15, 'low', 20, 45)]);
+    const p = personalFor('kan', interp, INSIDE_CONTENT.kan.tests);
+    // nötrofil: (80/60) × (14/7) ≈ 2,67
+    expect(p.params.neutrophil).toBeCloseTo((80 / 60) * 2);
+    expect(p.params.lymphocyte).toBeCloseTo((15 / 30) * 2);
+    // alt türü verilmeyenler tipik kalır
+    expect(p.params.monocyte).toBe(1);
+  });
+
+  it('kan sahnesi: alt tür yoksa toplam akyuvar tüm türleri ölçekler', () => {
+    const p = personalFor('kan', interpret([r('wbc', 2.1, 'low', 4, 10), r('hemoglobin', 9.8, 'low', 12, 15.5)], 'female'), INSIDE_CONTENT.kan.tests);
+    expect(p.params.neutrophil).toBeCloseTo(0.3);
+    expect(p.params.basophil).toBeCloseTo(0.3);
+    expect(p.params.rbc).toBeCloseTo(0.7);
+    expect(p.lines.find((l) => l.finding.testKey === 'wbc')!.effect).toMatch(/akyuvar sayısı/);
+  });
 });

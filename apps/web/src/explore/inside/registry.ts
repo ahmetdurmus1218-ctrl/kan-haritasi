@@ -4,7 +4,7 @@ import type { SystemId } from '@kh/catalog';
  * "İçeri gir" sahneleri. Hepsi eğitimsel ve temsilidir: kişinin kendi dokusunun görüntüsü değildir.
  * `ready: false` olan sahneler arayüzde açıkça "HAZIR DEĞİL" olarak gösterilir.
  */
-export type InsideId = 'damar' | 'alveol' | 'nefron' | 'lobul' | 'adacik' | 'folikul' | 'ilik';
+export type InsideId = 'damar' | 'alveol' | 'nefron' | 'lobul' | 'adacik' | 'folikul' | 'ilik' | 'kan';
 
 export interface InsideScene {
   id: InsideId;
@@ -77,6 +77,16 @@ export const INSIDE: Record<InsideId, InsideScene> = {
     process: 'Tiroid hormonu yapımı',
     system: 'endocrine',
     summary: 'Folikül hücreleri TSH uyarısıyla koloidde depolanan tiroglobulinden T4 ve T3 üretir.',
+    ready: true,
+  },
+  kan: {
+    id: 'kan',
+    title: 'Kan hücreleri',
+    tissue: 'Kan',
+    cell: 'Alyuvar, akyuvar, trombosit',
+    process: 'Kan hücrelerinin görevleri',
+    system: 'hematologic',
+    summary: 'Plazmada süzülen alyuvarlar, beş akyuvar türü ve trombositler. Sayı, boyut ve renkler senin hemogramına göre çizilir.',
     ready: true,
   },
   ilik: {

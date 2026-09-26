@@ -537,7 +537,8 @@ export function abnormalFindings(interp: Interpretation) {
 export function explorePath(testKey: string): { structure: string; inside?: InsideId; simulation?: string } | null {
   const test = testByKey.get(testKey);
   if (!test) return null;
-  const withInside = test.structures.find((sid) => ORGANS[sid]?.inside);
+  // Hemogram testleri doğrudan kan hücreleri sahnesine (dalak üzerinden) bağlanır.
+  const withInside = test.group === 'hemogram' && test.structures.includes('spleen') ? 'spleen' : test.structures.find((sid) => ORGANS[sid]?.inside);
   const structure = withInside ?? test.structures.find((sid) => structureById.get(sid)?.asset) ?? test.structures[0];
   if (!structure) return null;
   return { structure, inside: ORGANS[structure]?.inside, simulation: test.simulation };

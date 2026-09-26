@@ -39,6 +39,7 @@ const SCENES: Partial<Record<InsideId, LazyExoticComponent<ComponentType<InsideS
   adacik: lazy(() => import('./inside/scenes/IsletScene')),
   folikul: lazy(() => import('./inside/scenes/FollicleScene')),
   ilik: lazy(() => import('./inside/scenes/MarrowScene')),
+  kan: lazy(() => import('./inside/scenes/BloodScene')),
 };
 
 /** Açılış yalnızca oturumda bir kez oynar. */
