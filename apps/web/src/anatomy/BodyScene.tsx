@@ -2,7 +2,7 @@ import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { Color, FrontSide, Mesh, MeshStandardMaterial, ShaderMaterial } from 'three';
 import type { ModelPart } from './models';
-import { HIGHLIGHT, TRANSLUCENT, colorFor } from './palette';
+import { TRANSLUCENT, colorFor, highlightColor } from './palette';
 import type { StructureHighlight } from './highlight';
 import { SCHEMATIC_PARTS, type SchematicPart } from './schematic';
 
@@ -53,7 +53,8 @@ interface Visual {
   targetOpacity: number;
   emissive: number;
   targetEmissive: number;
-  pulse: boolean;
+  /** 0: nabız yok; 1–3: sapma derecesi (hız ve derinlik artar). */
+  pulse: number;
 }
 
 function Animator({ visuals, skin, skinTarget, reducedMotion }: { visuals: RefObject<Map<string, Visual>>; skin: RefObject<ShaderMaterial | null>; skinTarget: number; reducedMotion: boolean }) {
@@ -74,8 +75,9 @@ function Animator({ visuals, skin, skinTarget, reducedMotion }: { visuals: RefOb
         v.mat.needsUpdate = true;
       }
       v.mat.opacity = v.opacity;
-      if (v.pulse && !reducedMotion) {
-        v.mat.emissiveIntensity = v.targetEmissive * (0.55 + 0.45 * (0.5 + 0.5 * Math.sin(t * 3.4)));
+      if (v.pulse > 0 && !reducedMotion) {
+        const depth = 0.22 + 0.13 * v.pulse;
+        v.mat.emissiveIntensity = v.targetEmissive * (1 - depth + depth * (0.5 + 0.5 * Math.sin(t * (1.6 + 0.9 * v.pulse))));
         busy = true;
       } else if (Math.abs(v.emissive - v.targetEmissive) > 0.003) {
         v.emissive += (v.targetEmissive - v.emissive) * k;
@@ -109,7 +111,7 @@ interface PartViewProps {
   targetOpacity: number;
   emissiveColor: string | null;
   emissive: number;
-  pulse: boolean;
+  pulse: number;
   pickable: boolean;
   visuals: RefObject<Map<string, Visual>>;
   onPick: BodySceneProps['onPick'];
@@ -121,7 +123,7 @@ function PartView({ part, visible, color, targetOpacity, emissiveColor, emissive
   const material = useMemo(() => new MeshStandardMaterial({ roughness: 0.46, metalness: 0.02, envMapIntensity: 1 }), []);
 
   useEffect(() => {
-    const v: Visual = { mat: material, opacity: targetOpacity, targetOpacity, emissive: 0, targetEmissive: 0, pulse: false };
+    const v: Visual = { mat: material, opacity: targetOpacity, targetOpacity, emissive: 0, targetEmissive: 0, pulse: 0 };
     const registry = visuals.current;
     registry.set(part.id, v);
     return () => {
@@ -243,7 +245,7 @@ export function BodyScene(props: BodySceneProps) {
         const base = TRANSLUCENT[p.structure] ?? 1;
         const targetOpacity = !inFocus ? DIM : focusParts && !partFocused ? Math.min(base, 0.22) : base;
         const isHovered = !!hovered && (hovered.whole ? hovered.structure === p.structure : hovered.partId === p.id);
-        const emissiveColor = h ? HIGHLIGHT[h.status] : (focusParts?.has(p.id) ?? false) || isHovered ? accent : null;
+        const emissiveColor = h ? highlightColor(h.status, h.score) : (focusParts?.has(p.id) ?? false) || isHovered ? accent : null;
         return (
           <PartView
             key={p.id}
@@ -252,8 +254,8 @@ export function BodyScene(props: BodySceneProps) {
             color={colorFor(p.structure, p.label)}
             targetOpacity={targetOpacity}
             emissiveColor={emissiveColor}
-            emissive={h ? (isHovered ? 1.2 : 0.85) : isHovered ? 0.28 : 0.35}
-            pulse={!!h && inFocus}
+            emissive={h ? (isHovered ? 1.25 : 0.45 + 0.22 * h.score) : isHovered ? 0.28 : 0.35}
+            pulse={h && inFocus ? h.score : 0}
             pickable={inFocus && visible}
             visuals={visuals}
             onPick={onPick}

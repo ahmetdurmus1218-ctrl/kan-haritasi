@@ -83,10 +83,15 @@ with sync_playwright() as p:
     page.wait_for_timeout(500)
     page.screenshot(path=SHOTS / "24-sonuclarim.png", full_page=True)
     check(page.get_by_text("LDL kolesterol").count() >= 1, "Sonuçlarım listesinde LDL")
-    page.get_by_text("LDL kolesterol").first.click()
+    check(page.get_by_text("Genel durum").count() == 1, "kişisel genel değerlendirme")
+    check(page.get_by_text("Karaciğer hücre enzimlerinde artış").count() == 1, "karaciğer paterni (ALT yüksek)")
+    check(page.get_by_text("Birden fazla lipid değeri istenmeyen yönde").count() == 1, "lipid paterni")
+    page.locator("li button:has-text('LDL kolesterol')").first.click()
     page.get_by_text("Bu test neyi ölçer?").wait_for()
     page.screenshot(path=SHOTS / "25-ldl-detay.png", full_page=True)
     check(page.get_by_text("Doktoruna sorabileceklerin").count() == 1, "öğren paneli")
+    check(page.get_by_text("Senin sonucun ne anlama geliyor?").count() == 1, "kişisel yorum")
+    check(page.get_by_text("Orta derecede yüksek").count() >= 1, "sapma derecesi (LDL 178 / 130)")
 
     # --- Vücutta göster → keşif yolu → eğitimsel simülasyon
     page.get_by_role("button", name="Vücutta göster").click()

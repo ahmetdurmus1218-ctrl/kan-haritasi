@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { PROCESSES, type ProcessId, type SystemId, TESTS, formatNumber, structureById, systemById, testByKey } from '@kh/catalog';
+import { type Interpretation, PROCESSES, type ProcessId, type SystemId, TESTS, formatNumber, structureById, systemById, testByKey } from '@kh/catalog';
 import type { TestSeries } from '../lib/useReports';
 import type { StructureHighlight } from '../anatomy/highlight';
 import { ORGANS } from '../anatomy/organs';
 import { vesselLabel, isVein } from '../anatomy/names';
-import { HIGHLIGHT } from '../anatomy/palette';
+import { highlightColor } from '../anatomy/palette';
+import { CriticalBanner, FindingBlock, PatternList, SeverityBar, SeverityChip } from '../components/interpretation';
 import { go } from '../state/router';
 import { StatusPill } from '../components/results';
 import { INSIDE, type InsideId } from './inside/registry';
@@ -31,9 +32,12 @@ function Title({ caps, title, accent, note }: { caps: string; title: string; acc
   );
 }
 
-function TestRow({ testKey, series }: { testKey: string; series?: TestSeries }) {
+const SCORE_WORD = ['', 'hafif', 'orta', 'belirgin'];
+
+function TestRow({ testKey, series, interp }: { testKey: string; series?: TestSeries; interp?: Interpretation }) {
   const test = testByKey.get(testKey);
   if (!test) return null;
+  const f = interp?.findings.find((x) => x.testKey === testKey);
   return (
     <li>
       <button
@@ -49,7 +53,7 @@ function TestRow({ testKey, series }: { testKey: string; series?: TestSeries }) 
             <span className="text-xs text-fg-faint">Sonucun yok</span>
           )}
         </span>
-        {series && <StatusPill status={series.latest.result.status} />}
+        {f ? <SeverityChip finding={f} /> : series && <StatusPill status={series.latest.result.status} />}
       </button>
     </li>
   );
@@ -69,15 +73,54 @@ function sortTests(keys: string[], series: SeriesMap): string[] {
 
 /* ---------------------------------------------------------------- Vücut (başlangıç) */
 
-export function BodyIntroPanel({ highlights, series, hasReports }: { highlights: Map<string, StructureHighlight>; series: SeriesMap; hasReports: boolean }) {
-  const marked = [...highlights.entries()];
+export function BodyIntroPanel({
+  highlights,
+  series,
+  hasReports,
+  interp,
+  onEnter,
+}: {
+  highlights: Map<string, StructureHighlight>;
+  series: SeriesMap;
+  hasReports: boolean;
+  interp: Interpretation;
+  onEnter: (scene: string, from: string) => void;
+}) {
+  const marked = [...highlights.entries()].sort((a, b) => b[1].score - a[1].score);
+  const hasFindings = interp.findings.length > 0;
   return (
     <div>
       <Title caps="Seviye 1 · Vücut" title="İnsan vücudu" accent="#37d6c4" />
-      <p className="text-sm leading-relaxed text-fg-muted">
-        Döndürmek için sürükle, yakınlaşmak için kaydır veya iki parmakla sıkıştır. Bir organa dokunduğunda kamera ona gider; oradan dokuya, hücreye ve
-        süreçlere inebilirsin.
-      </p>
+      {hasFindings ? (
+        <section className="space-y-4">
+          <CriticalBanner critical={interp.critical} />
+          <div>
+            <Caps className="text-fg-faint">Senin durumun</Caps>
+            <p className="mt-2 text-sm leading-relaxed text-fg">{interp.overall.text}</p>
+            <div className="mt-3">
+              <SeverityBar interp={interp} />
+            </div>
+          </div>
+          {interp.patterns.length > 0 && (
+            <div>
+              <Caps className="text-fg-faint">Birlikte değerlendirme</Caps>
+              <div className="mt-2">
+                <PatternList patterns={interp.patterns.slice(0, 4)} compact onEnter={onEnter} />
+              </div>
+              {interp.patterns.length > 4 && (
+                <button type="button" className="mt-2 text-xs text-accent underline-offset-4 hover:underline" onClick={() => go({ name: 'results' })}>
+                  Tümü ({interp.patterns.length}) → Sonuçlarım
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+      ) : (
+        <p className="text-sm leading-relaxed text-fg-muted">
+          Döndürmek için sürükle, yakınlaşmak için kaydır veya iki parmakla sıkıştır. Bir organa dokunduğunda kamera ona gider; oradan dokuya, hücreye ve
+          süreçlere inebilirsin.
+        </p>
+      )}
       {marked.length > 0 ? (
         <section className="mt-7">
           <Caps className="text-fg-faint">Sonuçlarına göre işaretli yapılar</Caps>
@@ -92,13 +135,16 @@ export function BodyIntroPanel({ highlights, series, hasReports }: { highlights:
                     onClick={() => go({ name: 'body', structure: sid })}
                     className="flex w-full items-center gap-3 border-b border-ink-700/70 py-2.5 text-left transition hover:bg-white/[0.03]"
                   >
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: HIGHLIGHT[h.status] }} />
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: highlightColor(h.status, h.score) }} />
                     <span className="flex-1 text-sm">{s.nameTr}</span>
                     <span className="truncate text-xs text-fg-faint">
                       {h.tests
                         .map((t) => `${testByKey.get(t.key)?.nameTr.split(' (')[0] ?? t.key} ${t.status === 'high' ? '▲' : t.status === 'low' ? '▼' : ''}`)
                         .slice(0, 2)
                         .join(' · ')}
+                    </span>
+                    <span className="w-14 shrink-0 text-right text-[11px]" style={{ color: highlightColor(h.status, h.score) }}>
+                      {SCORE_WORD[Math.min(3, Math.round(h.score))]}
                     </span>
                   </button>
                 </li>
@@ -122,6 +168,12 @@ export function BodyIntroPanel({ highlights, series, hasReports }: { highlights:
           )}
         </p>
       )}
+      {hasFindings && (
+        <p className="mt-6 text-xs leading-relaxed text-fg-faint">
+          Döndürmek için sürükle, yakınlaşmak için kaydır. Bir organa dokunduğunda kamera ona gider; organ panelinde o yapıyla ilgili sonuçlarının yorumu
+          görünür.
+        </p>
+      )}
       <p className="mt-8 text-[11px] leading-relaxed text-fg-faint">
         Model: HuBMAP İnsan Referans Atlası, erkek referans vücudu (CC BY 4.0). Senin vücudunun taraması değildir. Tiroid, hipofiz, hipotalamus ve
         böbreküstü bezleri şematiktir.
@@ -132,8 +184,21 @@ export function BodyIntroPanel({ highlights, series, hasReports }: { highlights:
 
 /* ---------------------------------------------------------------- Sistem */
 
-export function SystemPanel({ system, highlights, series }: { system: SystemId; highlights: Map<string, StructureHighlight>; series: SeriesMap }) {
+export function SystemPanel({
+  system,
+  highlights,
+  series,
+  interp,
+  onEnter,
+}: {
+  system: SystemId;
+  highlights: Map<string, StructureHighlight>;
+  series: SeriesMap;
+  interp: Interpretation;
+  onEnter: (scene: string, from: string) => void;
+}) {
   const accent = systemColor(system);
+  const summary = interp.systems.find((x) => x.system === system);
   const structures = structuresOfSystem(system);
   const tests = sortTests(
     TESTS.filter((t) => t.systems.includes(system)).map((t) => t.key),
@@ -142,6 +207,13 @@ export function SystemPanel({ system, highlights, series }: { system: SystemId; 
   return (
     <div>
       <Title caps="Seviye 2 · Sistem" title={systemById.get(system)?.nameTr ?? system} accent={accent} />
+      {summary && (
+        <section className="mb-6 space-y-3">
+          <Caps className="text-fg-faint">Senin sonuçların</Caps>
+          <p className="text-sm leading-relaxed text-fg">{summary.text}</p>
+          <PatternList patterns={summary.patterns} compact onEnter={onEnter} />
+        </section>
+      )}
       <p className="text-sm leading-relaxed text-fg-muted">{SYSTEM_TEXT[system]}</p>
       <section className="mt-7">
         <Caps className="text-fg-faint">Yapılar</Caps>
@@ -156,7 +228,7 @@ export function SystemPanel({ system, highlights, series }: { system: SystemId; 
                   onClick={() => go({ name: 'body', structure: sid })}
                   className="flex w-full items-center gap-3 border-b border-ink-700/70 py-2.5 text-left text-sm transition hover:bg-white/[0.03]"
                 >
-                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: h ? HIGHLIGHT[h.status] : 'transparent', border: h ? 'none' : `1px solid ${accent}` }} />
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: h ? highlightColor(h.status, h.score) : 'transparent', border: h ? 'none' : `1px solid ${accent}` }} />
                   <span className="flex-1">{s?.nameTr ?? sid}</span>
                   {s?.schematic && <Caps className="text-[9px] text-fg-faint">Şematik</Caps>}
                 </button>
@@ -170,7 +242,7 @@ export function SystemPanel({ system, highlights, series }: { system: SystemId; 
           <Caps className="text-fg-faint">Bu sistemle ilişkili sonuçların</Caps>
           <ul className="mt-2">
             {tests.map((k) => (
-              <TestRow key={k} testKey={k} series={series.get(k)} />
+              <TestRow key={k} testKey={k} series={series.get(k)} interp={interp} />
             ))}
           </ul>
         </section>
@@ -181,7 +253,7 @@ export function SystemPanel({ system, highlights, series }: { system: SystemId; 
 
 /* ---------------------------------------------------------------- Organ */
 
-type OrganTab = 'anatomy' | 'function' | 'labs' | 'processes';
+type OrganTab = 'mine' | 'anatomy' | 'labs' | 'processes';
 
 export interface VesselPart {
   /** Grubun ilk parçası (seçim anahtarı). */
@@ -202,6 +274,8 @@ export function OrganPanel({
   selectedPart,
   onSelectPart,
   onEnter,
+  onEnterScene,
+  interp,
 }: {
   structure: string;
   highlights: Map<string, StructureHighlight>;
@@ -210,8 +284,12 @@ export function OrganPanel({
   selectedPart: string | null;
   onSelectPart: (id: string | null) => void;
   onEnter: (scene: InsideId) => void;
+  onEnterScene: (scene: string, from: string) => void;
+  interp: Interpretation;
 }) {
-  const [tab, setTab] = useState<OrganTab>('anatomy');
+  const mineFindings = interp.findings.filter((f) => f.structures.includes(structure));
+  const minePatterns = interp.patterns.filter((p) => p.structures.includes(structure));
+  const [tab, setTab] = useState<OrganTab>(mineFindings.length || minePatterns.length ? 'mine' : 'anatomy');
   const s = structureById.get(structure);
   const info = ORGANS[structure];
   const system = s?.systems[0];
@@ -235,10 +313,10 @@ export function OrganPanel({
 
       {h && (
         <div className="mb-5 flex items-start gap-2.5 text-sm">
-          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: HIGHLIGHT[h.status] }} />
+          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: highlightColor(h.status, h.score) }} />
           <p className="text-fg-muted">
-            {h.tests.map((t) => testByKey.get(t.key)?.nameTr).join(', ')} sonucun bu yapıyla ilişkili süreçlerle bağlantılı. Bu, yapıda bir sorun olduğunu
-            göstermez.
+            {h.tests.map((t) => testByKey.get(t.key)?.nameTr).join(', ')} sonucun ({SCORE_WORD[Math.min(3, Math.round(h.score))]} sapma) bu yapıyla ilişkili
+            süreçlerle bağlantılı. Bu, yapıda bir sorun olduğunu göstermez.
           </p>
         </div>
       )}
@@ -264,16 +342,18 @@ export function OrganPanel({
             value={tab}
             onChange={setTab}
             tabs={[
+              ['mine', 'Sonuçların'],
               ['anatomy', 'Anatomi'],
-              ['function', 'İşlev'],
-              ['labs', 'İlgili tahliller'],
+              ['labs', 'Tahliller'],
               ['processes', 'Süreçler'],
             ]}
           />
           <div className="pt-5" role="tabpanel">
+            {tab === 'mine' && <MinePanel findings={mineFindings} patterns={minePatterns} tests={tests} series={series} interp={interp} onEnter={onEnterScene} />}
             {tab === 'anatomy' && (
               <div className="space-y-4 text-sm leading-relaxed text-fg-muted">
                 <p>{info?.location ?? s.blurb}</p>
+                {info?.function && <p>{info.function}</p>}
                 {info?.anatomy && (
                   <ul className="space-y-1">
                     {info.anatomy.map((a) => (
@@ -305,12 +385,11 @@ export function OrganPanel({
                 )}
               </div>
             )}
-            {tab === 'function' && <p className="text-sm leading-relaxed text-fg-muted">{info?.function ?? s.blurb}</p>}
             {tab === 'labs' && (
               <ul>
                 {tests.length === 0 && <li className="text-sm text-fg-faint">Katalogda bu yapıyla ilişkilendirilmiş test yok.</li>}
                 {tests.map((k) => (
-                  <TestRow key={k} testKey={k} series={series.get(k)} />
+                  <TestRow key={k} testKey={k} series={series.get(k)} interp={interp} />
                 ))}
               </ul>
             )}
@@ -332,6 +411,67 @@ export function OrganPanel({
   );
 }
 
+function MinePanel({
+  findings,
+  patterns,
+  tests,
+  series,
+  interp,
+  onEnter,
+}: {
+  findings: Interpretation['findings'];
+  patterns: Interpretation['patterns'];
+  tests: string[];
+  series: SeriesMap;
+  interp: Interpretation;
+  onEnter: (scene: string, from: string) => void;
+}) {
+  const off = findings.filter((f) => f.status === 'high' || f.status === 'low' || f.severity === 'borderline');
+  const fine = findings.filter((f) => !off.includes(f));
+  const missing = tests.filter((k) => !series.has(k));
+  if (!findings.length) {
+    return (
+      <div className="space-y-3 text-sm text-fg-muted">
+        <p>Bu yapıyla ilişkili bir sonucun yok.</p>
+        {missing.length > 0 && (
+          <p className="text-xs text-fg-faint">
+            Bu yapıyla ilişkili testler: {missing.map((k) => testByKey.get(k)?.nameTr.split(' (')[0]).slice(0, 8).join(', ')}.
+          </p>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-5">
+      {patterns.length > 0 && <PatternList patterns={patterns} compact onEnter={onEnter} />}
+      {off.length > 0 && (
+        <div className="space-y-2.5">
+          <Caps className="text-fg-faint">Aralık dışı veya sınırda</Caps>
+          {off.map((f) => (
+            <FindingBlock key={f.testKey} finding={f} showName />
+          ))}
+        </div>
+      )}
+      {fine.length > 0 && (
+        <div>
+          <Caps className="text-fg-faint">Aralıkta ({fine.length})</Caps>
+          <ul className="mt-1">
+            {fine.map((f) => (
+              <TestRow key={f.testKey} testKey={f.testKey} series={series.get(f.testKey)} interp={interp} />
+            ))}
+          </ul>
+        </div>
+      )}
+      {missing.length > 0 && (
+        <p className="text-xs leading-relaxed text-fg-faint">
+          Sonucu olmayan ilişkili testler: {missing.map((k) => testByKey.get(k)?.nameTr.split(' (')[0]).slice(0, 8).join(', ')}
+          {missing.length > 8 ? '…' : '.'}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /* ---------------------------------------------------------------- Tahlil odağı */
 
 /** Test → süreç → yapı → içeri gir yolu (örn. LDL → koroner arterler → damar içi → simülasyon). */
@@ -344,9 +484,11 @@ export function explorePath(testKey: string): { structure: string; inside?: Insi
   return { structure, inside: ORGANS[structure]?.inside, simulation: test.simulation };
 }
 
-export function TestPanel({ testKey, series, onEnter }: { testKey: string; series: SeriesMap; onEnter: (scene: string, from: string) => void }) {
+export function TestPanel({ testKey, series, onEnter, interp }: { testKey: string; series: SeriesMap; onEnter: (scene: string, from: string) => void; interp: Interpretation }) {
   const test = testByKey.get(testKey);
   if (!test) return <p className="text-sm text-fg-muted">Bilinmeyen test.</p>;
+  const finding = interp.findings.find((f) => f.testKey === testKey);
+  const related = interp.patterns.filter((p) => p.tests.includes(testKey));
   const s = series.get(testKey);
   const system = test.systems[0];
   const accent = systemColor(system);
@@ -361,6 +503,12 @@ export function TestPanel({ testKey, series, onEnter }: { testKey: string; serie
         </div>
       ) : (
         <p className="mb-5 text-sm text-fg-faint">Bu test için onaylı sonucun yok; ilişkili yapılar gösteriliyor.</p>
+      )}
+      {finding && (
+        <div className="mb-6 space-y-3">
+          <FindingBlock finding={finding} />
+          <PatternList patterns={related} compact onEnter={onEnter} />
+        </div>
       )}
 
       <Caps className="text-fg-faint">Keşif yolu</Caps>

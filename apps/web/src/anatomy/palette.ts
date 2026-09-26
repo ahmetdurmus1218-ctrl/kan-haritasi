@@ -54,6 +54,18 @@ export const HIGHLIGHT = {
   mixed: '#c58cff',
 } as const;
 
+/** Yön (renk tonu) × derece (hafif / orta / belirgin). Belirgin yükseklik kırmızıya kayar. */
+const HIGHLIGHT_SCALE: Record<keyof typeof HIGHLIGHT, [string, string, string]> = {
+  high: ['#f5c96a', '#f59a3c', '#ef5a4c'],
+  low: ['#9cc6ff', '#6aa8ff', '#6275ff'],
+  mixed: ['#d4b0ff', '#c58cff', '#a66bff'],
+};
+
+/** score: 0–3 (yorum motorunun derece ağırlığı). */
+export function highlightColor(status: keyof typeof HIGHLIGHT, score: number): string {
+  return HIGHLIGHT_SCALE[status][score >= 3 ? 2 : score >= 2 ? 1 : 0];
+}
+
 /**
  * Katman düğmeleri için yapının "birincil" sistemi. Kan ve kemik iliği (hematolojik) bir
  * katman değildir: kemik iliği omurgada, dalakta vb. gösterilir.

@@ -5,3 +5,4 @@ export * from './anatomy';
 export * from './match';
 export * from './evaluate';
 export * from './content';
+export * from './interpret';

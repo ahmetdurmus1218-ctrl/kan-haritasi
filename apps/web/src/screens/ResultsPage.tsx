@@ -5,9 +5,12 @@ import { type TestSeries, buildSeries, useReports } from '../lib/useReports';
 import { formatDate } from '../lib/format';
 import { Banner } from '../components/ui';
 import { RangeBar, STATUS_TEXT, StatusPill } from '../components/results';
+import { CriticalBanner, FindingBlock, PatternList, SeverityBar, SeverityChip, SystemGrid } from '../components/interpretation';
+import { findingMap, useInterpretation, useSex } from '../lib/interpretation';
 import { BodyIcon, ChartIcon, ChevronLeftIcon, ChevronRightIcon, SpinnerIcon, UploadIcon } from '../components/icons';
 
 const ORDER: Record<ResultStatus, number> = { high: 0, low: 1, unknown: 2, normal: 3 };
+const SEV_ORDER = { marked: 0, moderate: 1, mild: 2, borderline: 3, unknown: 4, normal: 5 } as const;
 
 function display(series: TestSeries) {
   const r = series.latest.result;
@@ -24,8 +27,11 @@ function trend(series: TestSeries): '↑' | '↓' | '' {
 
 export function ResultsPage() {
   const { reports, error } = useReports();
-  const [filter, setFilter] = useState<'all' | 'abnormal'>('all');
+  const [filter, setFilter] = useState<'all' | 'abnormal' | 'borderline'>('all');
   const series = useMemo(() => (reports ? buildSeries(reports) : []), [reports]);
+  const sex = useSex();
+  const interp = useInterpretation(series, sex);
+  const findings = useMemo(() => findingMap(interp), [interp]);
 
   if (error) return <div className="p-6"><Banner tone="error">Sonuçlar yüklenemedi.</Banner></div>;
   if (!reports) {
@@ -37,9 +43,13 @@ export function ResultsPage() {
   }
 
   const abnormal = series.filter((s) => s.latest.result.status === 'high' || s.latest.result.status === 'low');
-  const shown = filter === 'abnormal' ? abnormal : series;
+  const borderline = series.filter((s) => findings.get(s.test.key)?.severity === 'borderline');
+  const shown = filter === 'abnormal' ? abnormal : filter === 'borderline' ? borderline : series;
+  const sevRank = (s: TestSeries) => SEV_ORDER[findings.get(s.test.key)?.severity ?? 'unknown'];
   const groups = new Map<string, TestSeries[]>();
-  for (const s of [...shown].sort((a, b) => ORDER[a.latest.result.status] - ORDER[b.latest.result.status] || a.test.nameTr.localeCompare(b.test.nameTr, 'tr'))) {
+  for (const s of [...shown].sort(
+    (a, b) => ORDER[a.latest.result.status] - ORDER[b.latest.result.status] || sevRank(a) - sevRank(b) || a.test.nameTr.localeCompare(b.test.nameTr, 'tr'),
+  )) {
     groups.set(s.test.group, [...(groups.get(s.test.group) ?? []), s]);
   }
   const lastDate = reports[0] ? (reports[0].reportDate ?? reports[0].createdAt.slice(0, 10)) : null;
@@ -64,6 +74,41 @@ export function ResultsPage() {
         </div>
       ) : (
         <>
+          <div className="mb-8 space-y-4">
+            <CriticalBanner critical={interp.critical} />
+            <section className="surface p-5" aria-labelledby="genel-degerlendirme">
+              <p className="label-caps mb-1.5">Kişisel değerlendirme</p>
+              <h2 id="genel-degerlendirme" className="text-lg font-semibold tracking-tight">
+                Genel durum
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-fg-muted">{interp.overall.text}</p>
+              <div className="mt-4">
+                <SeverityBar interp={interp} />
+              </div>
+              <p className="mt-4 text-[11px] leading-relaxed text-fg-faint">
+                Her sonuç önce laboratuvarın kendi referans aralığına göre, sonra aralıktan ne kadar saptığına göre (hafif / orta / belirgin)
+                derecelendirilir. Bazı testlerde yaygın kılavuz kategorileri de gösterilir. Kural tabanlıdır, cihazında hesaplanır; teşhis değildir.
+              </p>
+            </section>
+            {interp.patterns.length > 0 && (
+              <section aria-labelledby="birlikte">
+                <h2 id="birlikte" className="label-caps mb-2">
+                  Birlikte değerlendirme ({interp.patterns.length})
+                </h2>
+                <PatternList patterns={interp.patterns} />
+              </section>
+            )}
+            {interp.systems.length > 0 && (
+              <section aria-labelledby="sistemler">
+                <h2 id="sistemler" className="label-caps mb-2">
+                  Sistemlere göre
+                </h2>
+                <SystemGrid interp={interp} />
+              </section>
+            )}
+          </div>
+
+          <h2 className="mb-3 text-lg font-semibold tracking-tight">Tüm sonuçlar</h2>
           <div className="mb-5 grid grid-cols-3 gap-2 sm:max-w-md">
             <SummaryTile label="Yüksek" value={series.filter((s) => s.latest.result.status === 'high').length} tone="text-high" />
             <SummaryTile label="Düşük" value={series.filter((s) => s.latest.result.status === 'low').length} tone="text-low" />
@@ -74,6 +119,7 @@ export function ResultsPage() {
               [
                 ['all', 'Tümü'],
                 ['abnormal', `Aralık dışı (${abnormal.length})`],
+                ['borderline', `Sınırda (${borderline.length})`],
               ] as const
             ).map(([k, label]) => (
               <button
@@ -96,25 +142,31 @@ export function ResultsPage() {
               <section key={group}>
                 <h2 className="label-caps mb-2">{GROUP_LABEL[group as keyof typeof GROUP_LABEL]}</h2>
                 <ul className="divide-y divide-ink-700 overflow-hidden rounded-2xl border border-ink-600/60 bg-ink-850/60">
-                  {list.map((s) => (
-                    <li key={s.test.key}>
-                      <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-ink-800/60" onClick={() => go({ name: 'result', key: s.test.key })}>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[15px] font-medium">{s.test.nameTr}</span>
-                          <span className="block text-xs text-fg-muted">
-                            {formatDate(s.latest.date)}
-                            {s.latest.result.refText ? ` · aralık ${s.latest.result.refText}` : ''}
-                            {s.latest.result.refSource === 'catalog' ? ' (genel)' : ''}
+                  {list.map((s) => {
+                    const f = findings.get(s.test.key);
+                    return (
+                      <li key={s.test.key}>
+                        <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-ink-800/60" onClick={() => go({ name: 'result', key: s.test.key })}>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[15px] font-medium">{s.test.nameTr}</span>
+                            <span className="block text-xs text-fg-muted">
+                              {formatDate(s.latest.date)}
+                              {s.latest.result.refText ? ` · aralık ${s.latest.result.refText}` : ''}
+                              {s.latest.result.refSource === 'catalog' ? ' (genel)' : ''}
+                            </span>
+                            {f?.category && <span className="mt-0.5 block truncate text-[11px] text-fg-faint">{f.category}</span>}
                           </span>
-                        </span>
-                        <span className={`text-right text-sm font-semibold tabular-nums ${STATUS_TEXT[s.latest.result.status]}`}>
-                          {display(s)} <span className="text-fg-faint">{trend(s)}</span>
-                        </span>
-                        <StatusPill status={s.latest.result.status} />
-                        <ChevronRightIcon size={16} className="text-fg-faint" />
-                      </button>
-                    </li>
-                  ))}
+                          <span className="flex flex-col items-end gap-1">
+                            <span className={`text-right text-sm font-semibold tabular-nums ${STATUS_TEXT[s.latest.result.status]}`}>
+                              {display(s)} <span className="text-fg-faint">{trend(s)}</span>
+                            </span>
+                            {f ? <SeverityChip finding={f} /> : <StatusPill status={s.latest.result.status} />}
+                          </span>
+                          <ChevronRightIcon size={16} className="shrink-0 text-fg-faint" />
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ))}
@@ -140,7 +192,12 @@ function SummaryTile({ label, value, tone }: { label: string; value: number; ton
 export function ResultDetail({ testKey }: { testKey: string }) {
   const { reports } = useReports();
   const test = testByKey.get(testKey);
-  const series = useMemo(() => (reports ? buildSeries(reports).find((s) => s.test.key === testKey) : undefined), [reports, testKey]);
+  const all = useMemo(() => (reports ? buildSeries(reports) : []), [reports]);
+  const series = all.find((s) => s.test.key === testKey);
+  const sex = useSex();
+  const interp = useInterpretation(all, sex);
+  const finding = interp.findings.find((f) => f.testKey === testKey);
+  const related = interp.patterns.filter((p) => p.tests.includes(testKey));
   const content = CONTENT[testKey];
 
   if (!test) return <div className="p-6"><Banner tone="error">Bilinmeyen test.</Banner></div>;
@@ -196,6 +253,22 @@ export function ResultDetail({ testKey }: { testKey: string }) {
           )}
         </div>
       </div>
+
+      {finding && (
+        <section className="mt-4 space-y-3" aria-labelledby="senin-sonucun">
+          {finding.critical && <CriticalBanner critical={[finding]} />}
+          <h2 id="senin-sonucun" className="label-caps">
+            Senin sonucun ne anlama geliyor?
+          </h2>
+          <FindingBlock finding={finding} />
+          {related.length > 0 && (
+            <>
+              <h3 className="label-caps pt-2">Diğer sonuçlarınla birlikte</h3>
+              <PatternList patterns={related} />
+            </>
+          )}
+        </section>
+      )}
 
       {content && (
         <div className="mt-4 space-y-4">

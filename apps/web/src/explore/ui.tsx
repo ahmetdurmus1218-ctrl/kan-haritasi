@@ -1,6 +1,6 @@
 import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import type { SkinMode } from '../anatomy/BodyScene';
-import { HIGHLIGHT } from '../anatomy/palette';
+import { HIGHLIGHT, highlightColor } from '../anatomy/palette';
 import { ChevronRightIcon, MinimizeIcon, RotateCcwIcon, XIcon, ZoomInIcon, ZoomOutIcon } from '../components/icons';
 
 /** Küçük, aralıklı büyük harf etiket (bilimsel etiket dili). */
@@ -158,16 +158,26 @@ export function Tooltip({ ref }: { ref: Ref<HTMLDivElement> }) {
 
 export function Legend() {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-fg-muted">
-      <span className="flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full" style={{ background: HIGHLIGHT.high }} /> Yüksek sonuçla ilişkili
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full" style={{ background: HIGHLIGHT.low }} /> Düşük sonuçla ilişkili
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full" style={{ background: HIGHLIGHT.mixed }} /> İkisi birden
-      </span>
+    <div className="space-y-2 text-[11px] text-fg-muted">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full" style={{ background: HIGHLIGHT.high }} /> Yüksek sonuçla ilişkili
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full" style={{ background: HIGHLIGHT.low }} /> Düşük sonuçla ilişkili
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full" style={{ background: HIGHLIGHT.mixed }} /> İkisi birden
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="flex gap-0.5">
+          {[1, 2, 3].map((n) => (
+            <span key={n} className="h-2 w-4 rounded-sm" style={{ background: highlightColor('high', n), opacity: 0.45 + n * 0.18 }} />
+          ))}
+        </span>
+        Parlaklık ve nabız: sapmanın derecesi (hafif → orta → belirgin)
+      </div>
     </div>
   );
 }

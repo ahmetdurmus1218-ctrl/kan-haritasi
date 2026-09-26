@@ -8,6 +8,7 @@ import { useUnlockedVault } from '../state/VaultContext';
 import { type Route, go } from '../state/router';
 import { buildSeries, useReports } from '../lib/useReports';
 import { loadSex } from '../lib/reports';
+import { severityWeights, useInterpretation } from '../lib/interpretation';
 import { highlightsFrom } from '../anatomy/highlight';
 import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene';
 import { ORGANS } from '../anatomy/organs';
@@ -98,7 +99,9 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   /* ---------------------------------------------------------- veri */
   const series = useMemo(() => (reports ? buildSeries(reports) : []), [reports]);
   const seriesMap = useMemo(() => new Map(series.map((s) => [s.test.key, s])), [series]);
-  const highlights = useMemo(() => highlightsFrom(series, focusTest), [series, focusTest]);
+  const interp = useInterpretation(series, sex);
+  const weights = useMemo(() => severityWeights(interp), [interp]);
+  const highlights = useMemo(() => highlightsFrom(series, focusTest, weights), [series, focusTest, weights]);
   const boxes = useMemo(() => structureBoxes(models.parts), [models.parts]);
   const vessels = useMemo(() => (structure ? vesselParts(models.parts, structure) : []), [models.parts, structure]);
   const part = vessels.find((v) => v.id === partKey) ?? null;
@@ -465,7 +468,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       )}
 
       {/* Sistem menüsü */}
-      {shownKey === 'body' && !structure && (
+      {shownKey === 'body' && !structure && !focusTest && (
         <nav
           aria-label="Vücut sistemleri"
           className="pointer-events-auto absolute inset-x-0 top-12 z-10 flex gap-1.5 overflow-x-auto px-4 pb-2 md:inset-x-auto md:left-6 md:top-24 md:w-48 md:flex-col md:gap-0 md:overflow-visible md:px-0"
@@ -513,13 +516,15 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                 selectedPart={partKey}
                 onSelectPart={setPartKey}
                 onEnter={(scene) => enter(scene, structure)}
+                onEnterScene={(scene, from) => enter(scene, from)}
+                interp={interp}
               />
             ) : system ? (
-              <SystemPanel system={system} highlights={highlights} series={seriesMap} />
+              <SystemPanel system={system} highlights={highlights} series={seriesMap} interp={interp} onEnter={(scene, from) => enter(scene, from)} />
             ) : focusTest ? (
-              <TestPanel testKey={focusTest} series={seriesMap} onEnter={(scene, from) => enter(scene, from)} />
+              <TestPanel testKey={focusTest} series={seriesMap} interp={interp} onEnter={(scene, from) => enter(scene, from)} />
             ) : (
-              <BodyIntroPanel highlights={highlights} series={seriesMap} hasReports={!!reports?.length} />
+              <BodyIntroPanel highlights={highlights} series={seriesMap} hasReports={!!reports?.length} interp={interp} onEnter={(scene, from) => enter(scene, from)} />
             )}
           </div>
         </ContextSheet>
