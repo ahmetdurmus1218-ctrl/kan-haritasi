@@ -7,6 +7,9 @@ export type VaultErrorCode =
   | 'ALREADY_INITIALIZED'
   | 'UNSUPPORTED_VERSION'
   | 'INVALID_INPUT'
+  | 'AUTH_CANCELLED'
+  | 'AUTH_UNAVAILABLE'
+  | 'KEY_INVALIDATED'
   | 'STORAGE';
 
 /**

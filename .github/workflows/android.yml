@@ -1,0 +1,96 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Web çekirdeğini derle
+        run: pnpm build
+      - name: Güvenlik kapıları (CSP, izleme alan adları)
+        run: pnpm check:security
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: İmza anahtarı (tanımlıysa gizli anahtar, yoksa depodaki hata ayıklama anahtarı)
+        env:
+          KH_KEYSTORE_B64: ${{ secrets.KH_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KH_KEYSTORE_B64" ]; then
+            echo "$KH_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kh-release.jks"
+            echo "KH_KEYSTORE_PATH=$RUNNER_TEMP/kh-release.jks" >> "$GITHUB_ENV"
+            echo "::notice::Gizli imza anahtarı kullanılıyor."
+          else
+            echo "::warning::KH_KEYSTORE_B64 tanımlı değil; APK depodaki HATA AYIKLAMA anahtarıyla imzalanıyor (README)."
+          fi
+
+      - name: APK derle
+        working-directory: apps/android
+        env:
+          KH_KEYSTORE_PASSWORD: ${{ secrets.KH_KEYSTORE_PASSWORD }}
+          KH_KEY_ALIAS: ${{ secrets.KH_KEY_ALIAS }}
+          KH_KEY_PASSWORD: ${{ secrets.KH_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --stacktrace --no-daemon
+
+      - name: APK'da INTERNET izni olmamalı
+        run: |
+          AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)aapt2
+          APK=$(ls apps/android/app/build/outputs/apk/release/*.apk | head -1)
+          "$AAPT2" dump permissions "$APK" | tee perms.txt
+          if grep -q "android.permission.INTERNET" perms.txt; then
+            echo "::error::APK INTERNET izni içeriyor"; exit 1
+          fi
+          "$AAPT2" dump badging "$APK" | head -3
+
+      - name: APK'yı adlandır
+        id: name
+        run: |
+          VERSION="1.0.${GITHUB_RUN_NUMBER}"
+          mkdir -p out
+          cp apps/android/app/build/outputs/apk/release/*.apk "out/KanHaritasi-${VERSION}.apk"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          sha256sum out/*.apk | tee out/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KanHaritasi-APK-${{ steps.name.outputs.version }}
+          path: out/
+          retention-days: 30
+
+      - name: "Son sürüm: telefondan indirilebilir yayın (apk-son)"
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.name.outputs.version }}
+        run: |
+          gh release delete apk-son --yes --cleanup-tag || true
+          gh release create apk-son out/*.apk out/SHA256SUMS.txt \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "Kan Haritası ${VERSION} (son derleme)" \
+            --notes "main dalının son derlemesi (${GITHUB_SHA::7}). APK'yı telefondan indirip kur. Veriler yalnızca cihazda, şifreli; uygulamanın internet izni yoktur."

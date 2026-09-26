@@ -14,6 +14,8 @@ import {
   utf8,
   type Argon2Params,
   type Bytes,
+  type KeyWrapper,
+  type WrappedMasterKey,
 } from '../index';
 
 // Testlerde hızlı ama sınırlar içinde Argon2 parametreleri.
@@ -97,7 +99,7 @@ describe('kasa kurulumu ve kilit', () => {
   it('meta verisinde devasa Argon2 parametreleri kabul edilmez (DoS koruması)', async () => {
     const { records, blobs } = await newVault();
     const meta = (await records.getMeta())!;
-    (meta.wrapped as unknown as { params: Argon2Params }).params.memoryKiB = 64 * 1024 * 1024;
+    (meta.keys![0] as unknown as { params: Argon2Params }).params.memoryKiB = 64 * 1024 * 1024;
     await records.putMeta(meta);
     await expectCode(Vault.unlock(records, blobs, new PassphraseKeyWrapper(PASS, FAST)), 'INVALID_INPUT');
   });
@@ -287,5 +289,81 @@ describe('IndexedDB deposu', () => {
     const blobs = new MemoryBlobStore();
     await expect(blobs.put('../../etc/passwd', new Uint8Array(1))).rejects.toThrow();
     await expect(blobs.get('user123/report.pdf')).rejects.toThrow();
+  });
+});
+
+/** Android Keystore yerine geçen test sarmalayıcısı: anahtarı sabit bir maskeyle "sarar". */
+class FakeDeviceWrapper implements KeyWrapper {
+  readonly scheme = 'test-device-v1';
+  constructor(private readonly behaviour: 'ok' | 'cancel' = 'ok') {}
+  async wrap(mk: Bytes): Promise<WrappedMasterKey> {
+    if (this.behaviour === 'cancel') throw new VaultError('AUTH_CANCELLED');
+    return { scheme: this.scheme, data: toBase64(mk.map((b) => b ^ 0x5a)) };
+  }
+  async unwrap(w: WrappedMasterKey): Promise<Bytes> {
+    if (this.behaviour === 'cancel') throw new VaultError('AUTH_CANCELLED');
+    return fromBase64(w.data as string).map((b) => b ^ 0x5a);
+  }
+}
+
+describe('birden fazla kilit açma yöntemi', () => {
+  it('cihaz kilidi + kurtarma parolası: ikisi de aynı kasayı açar', async () => {
+    const s = stores();
+    const v = await Vault.create(s.records, s.blobs, [new FakeDeviceWrapper(), new PassphraseKeyWrapper(PASS, FAST)], { chunkSize: CHUNK });
+    const info = await addPdf(v);
+    expect(await Vault.schemes(s.records)).toEqual(['test-device-v1', 'argon2id-aesgcm-v1']);
+    const a = await Vault.unlock(s.records, s.blobs, new FakeDeviceWrapper(), { chunkSize: CHUNK });
+    const b = await Vault.unlock(s.records, s.blobs, new PassphraseKeyWrapper(PASS, FAST), { chunkSize: CHUNK });
+    expect((await a.readFile(info.id)).bytes).toEqual((await b.readFile(info.id)).bytes);
+  });
+
+  it('kurulumda cihaz doğrulaması iptal edilirse kasa oluşmaz', async () => {
+    const s = stores();
+    await expectCode(Vault.create(s.records, s.blobs, [new FakeDeviceWrapper('cancel'), new PassphraseKeyWrapper(PASS, FAST)]), 'AUTH_CANCELLED');
+    expect(await Vault.isInitialized(s.records)).toBe(false);
+  });
+
+  it('parola değiştirme: eski parola artık açmaz, yenisi açar, veriler korunur', async () => {
+    const { records, blobs, vault } = await newVault();
+    const info = await addPdf(vault);
+    const reopened = await Vault.unlock(records, blobs, new PassphraseKeyWrapper(PASS, FAST), {
+      chunkSize: CHUNK,
+      rewrap: [new PassphraseKeyWrapper('yepyeni-parola-777', FAST)],
+    });
+    expect(reopened.lastRewrap).toBe('ok');
+    await expectCode(Vault.unlock(records, blobs, new PassphraseKeyWrapper(PASS, FAST)), 'WRONG_PASSPHRASE');
+    const v2 = await Vault.unlock(records, blobs, new PassphraseKeyWrapper('yepyeni-parola-777', FAST), { chunkSize: CHUNK });
+    expect((await v2.readFile(info.id)).info.id).toBe(info.id);
+  });
+
+  it('kurtarma parolasıyla açılıp cihaz kilidi yeniden bağlanabilir; yeniden bağlama iptal edilse de kilit açılır', async () => {
+    const { records, blobs } = await newVault();
+    const failed = await Vault.unlock(records, blobs, new PassphraseKeyWrapper(PASS, FAST), { rewrap: [new FakeDeviceWrapper('cancel')] });
+    expect(failed.locked).toBe(false);
+    expect(failed.lastRewrap).toBe('failed');
+    expect(await Vault.schemes(records)).toEqual(['argon2id-aesgcm-v1']);
+
+    const ok = await Vault.unlock(records, blobs, new PassphraseKeyWrapper(PASS, FAST), { rewrap: [new FakeDeviceWrapper()] });
+    expect(ok.lastRewrap).toBe('ok');
+    expect(await Vault.schemes(records)).toEqual(['argon2id-aesgcm-v1', 'test-device-v1']);
+    await expect(Vault.unlock(records, blobs, new FakeDeviceWrapper())).resolves.toBeInstanceOf(Vault);
+
+    await ok.removeUnlockMethod('test-device-v1');
+    expect(await Vault.schemes(records)).toEqual(['argon2id-aesgcm-v1']);
+    await expectCode(ok.removeUnlockMethod('argon2id-aesgcm-v1'), 'INVALID_INPUT');
+  });
+
+  it('kayıtlı olmayan yöntemle açma denemesi reddedilir', async () => {
+    const { records, blobs } = await newVault();
+    await expectCode(Vault.unlock(records, blobs, new FakeDeviceWrapper()), 'NOT_FOUND');
+  });
+
+  it('sürüm 1 meta (tek anahtar) hâlâ açılır', async () => {
+    const { records, blobs, vault } = await newVault();
+    const info = await addPdf(vault);
+    const meta = (await records.getMeta())!;
+    await records.putMeta({ formatVersion: 1, createdAt: meta.createdAt, wrapped: meta.keys![0] });
+    const v = await Vault.unlock(records, blobs, new PassphraseKeyWrapper(PASS, FAST), { chunkSize: CHUNK });
+    expect((await v.readFile(info.id)).info.id).toBe(info.id);
   });
 });

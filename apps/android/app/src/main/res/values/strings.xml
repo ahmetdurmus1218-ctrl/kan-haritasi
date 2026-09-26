@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kan Haritası</string>
+    <string name="prompt_title">Kan Haritası</string>
+    <string name="prompt_wrap_subtitle">Kasayı cihaz kilidine bağlamak için doğrula</string>
+    <string name="prompt_unwrap_subtitle">Kasayı açmak için doğrula</string>
+    <string name="webview_unsupported_title">Android System WebView güncel değil</string>
+    <string name="webview_unsupported_body">Kan Haritası, Android System WebView\'in 111 veya daha yeni bir sürümünü gerektirir. Google Play\'den "Android System WebView" uygulamasını güncelleyip tekrar aç.</string>
+    <string name="webview_missing_body">Bu cihazda Android System WebView bulunamadı veya devre dışı.</string>
+</resources>

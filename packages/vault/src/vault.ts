@@ -2,8 +2,8 @@ import { type Bytes, fromBase64, fromUtf8, toBase64, utf8, wipe } from './bytes'
 import { KEY_BYTES, importAesKey, open, randomBytes, randomId, seal, sha256Hex } from './crypto';
 import { DEFAULT_CHUNK_SIZE, decryptChunks, encryptChunks } from './fileCrypto';
 import { VaultError } from './errors';
-import type { KeyWrapper } from './kdf';
-import { type BlobStore, type EncryptedRecord, type RecordKind, type RecordStore, VAULT_FORMAT_VERSION } from './stores';
+import type { KeyWrapper, WrappedMasterKey } from './kdf';
+import { type BlobStore, type EncryptedRecord, type RecordKind, type RecordStore, VAULT_FORMAT_VERSION, keysOf } from './stores';
 
 export type FileKind = 'pdf' | 'jpeg' | 'png';
 
@@ -104,28 +104,85 @@ export class Vault {
     return (await records.getMeta()) !== undefined;
   }
 
-  static async create(records: RecordStore, blobs: BlobStore, wrapper: KeyWrapper, options: VaultOptions = {}): Promise<Vault> {
+  /** Kasada hangi kilit açma yöntemlerinin kayıtlı olduğu (ör. parola, Android cihaz kilidi). */
+  static async schemes(records: RecordStore): Promise<string[]> {
+    const meta = await records.getMeta();
+    return meta ? keysOf(meta).map((k) => k.scheme) : [];
+  }
+
+  /**
+   * Yeni kasa. Birden fazla sarmalayıcı verilebilir: Android'de cihaz kilidi (günlük kullanım)
+   * + kurtarma parolası (cihaz kilidi kaldırılırsa veya anahtar geçersizleşirse).
+   * Sarmalayıcılar sırayla çalışır; biyometrik istemler üst üste binmez.
+   */
+  static async create(records: RecordStore, blobs: BlobStore, wrappers: KeyWrapper | KeyWrapper[], options: VaultOptions = {}): Promise<Vault> {
+    const list = Array.isArray(wrappers) ? wrappers : [wrappers];
+    if (list.length === 0 || new Set(list.map((w) => w.scheme)).size !== list.length) throw new VaultError('INVALID_INPUT', 'bad wrappers');
     if (await Vault.isInitialized(records)) throw new VaultError('ALREADY_INITIALIZED');
     const raw = randomBytes(KEY_BYTES);
     try {
-      const wrapped = await wrapper.wrap(raw);
-      await records.putMeta({ formatVersion: VAULT_FORMAT_VERSION, createdAt: new Date().toISOString(), wrapped });
+      const keys: WrappedMasterKey[] = [];
+      for (const w of list) keys.push(await w.wrap(raw));
+      await records.putMeta({ formatVersion: VAULT_FORMAT_VERSION, createdAt: new Date().toISOString(), keys });
       return new Vault(records, blobs, await importAesKey(raw), options);
     } finally {
       wipe(raw);
     }
   }
 
-  static async unlock(records: RecordStore, blobs: BlobStore, wrapper: KeyWrapper, options: VaultOptions = {}): Promise<Vault> {
+  /**
+   * Kilidi açar. `rewrap` verilirse ana anahtar, kilit açılırken bu sarmalayıcılarla yeniden
+   * sarılır (aynı türdeki eski kayıt değiştirilir). Kullanımlar: parola değiştirme, kurtarma
+   * parolasıyla açıldıktan sonra cihaz kilidini yeniden bağlama. Yeniden sarma başarısız olursa
+   * kilit yine açılır; sonuç `lastRewrap` alanındadır.
+   */
+  static async unlock(
+    records: RecordStore,
+    blobs: BlobStore,
+    wrapper: KeyWrapper,
+    options: VaultOptions & { rewrap?: KeyWrapper[] } = {},
+  ): Promise<Vault> {
     const meta = await records.getMeta();
     if (!meta) throw new VaultError('NOT_INITIALIZED');
-    if (meta.formatVersion !== VAULT_FORMAT_VERSION) throw new VaultError('UNSUPPORTED_VERSION');
-    const raw = await wrapper.unwrap(meta.wrapped);
+    if (meta.formatVersion !== 1 && meta.formatVersion !== VAULT_FORMAT_VERSION) throw new VaultError('UNSUPPORTED_VERSION');
+    const keys = keysOf(meta);
+    const entry = keys.find((k) => k.scheme === wrapper.scheme);
+    if (!entry) throw new VaultError('NOT_FOUND', 'no key for this unlock method');
+    const raw = await wrapper.unwrap(entry);
     try {
-      return new Vault(records, blobs, await importAesKey(raw), options);
+      const vault = new Vault(records, blobs, await importAesKey(raw), options);
+      if (options.rewrap?.length) {
+        try {
+          const replaced = new Set(options.rewrap.map((w) => w.scheme));
+          const fresh: WrappedMasterKey[] = [];
+          for (const w of options.rewrap) fresh.push(await w.wrap(raw));
+          await records.putMeta({
+            formatVersion: VAULT_FORMAT_VERSION,
+            createdAt: meta.createdAt,
+            keys: [...keys.filter((k) => !replaced.has(k.scheme)), ...fresh],
+          });
+          vault.lastRewrap = 'ok';
+        } catch {
+          vault.lastRewrap = 'failed';
+        }
+      }
+      return vault;
     } finally {
       wipe(raw);
     }
+  }
+
+  /** Son `unlock` çağrısındaki yeniden sarmanın sonucu. */
+  lastRewrap: 'none' | 'ok' | 'failed' = 'none';
+
+  /** Belirli bir kilit açma yöntemini kaldırır (en az bir yöntem kalmalıdır). */
+  async removeUnlockMethod(scheme: string): Promise<void> {
+    this.#key();
+    const meta = await this.#records.getMeta();
+    if (!meta) throw new VaultError('NOT_INITIALIZED');
+    const keys = keysOf(meta).filter((k) => k.scheme !== scheme);
+    if (keys.length === 0) throw new VaultError('INVALID_INPUT', 'last unlock method');
+    await this.#records.putMeta({ formatVersion: VAULT_FORMAT_VERSION, createdAt: meta.createdAt, keys });
   }
 
   /**

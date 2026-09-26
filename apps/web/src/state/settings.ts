@@ -6,9 +6,13 @@ export interface Settings {
   autoLockMinutes: 0 | 1 | 5 | 15;
   unlockFailures: number;
   unlockBlockedUntil: number;
+  /** Android: kullanıcı cihaz kilidiyle açmayı seçti (anahtar kaybolursa yeniden bağlanır). */
+  deviceUnlockWanted: boolean;
+  /** Sonuçlarda gösterilecek cinsiyet (yalnızca raporda aralık yoksa genel aralık seçimi için). */
+  profileSex: 'unspecified' | 'female' | 'male';
 }
 
-const DEFAULTS: Settings = { autoLockMinutes: 5, unlockFailures: 0, unlockBlockedUntil: 0 };
+const DEFAULTS: Settings = { autoLockMinutes: 5, unlockFailures: 0, unlockBlockedUntil: 0, deviceUnlockWanted: false, profileSex: 'unspecified' };
 const PREFIX = 'kh.setting.';
 
 export const AUTO_LOCK_OPTIONS: Settings['autoLockMinutes'][] = [0, 1, 5, 15];
@@ -21,6 +25,8 @@ export function readSetting<K extends keyof Settings>(key: K): Settings[K] {
     if (key === 'autoLockMinutes') {
       return (AUTO_LOCK_OPTIONS.includes(value as Settings['autoLockMinutes']) ? value : DEFAULTS[key]) as Settings[K];
     }
+    if (key === 'deviceUnlockWanted') return (typeof value === 'boolean' ? value : DEFAULTS[key]) as Settings[K];
+    if (key === 'profileSex') return (['unspecified', 'female', 'male'].includes(value as string) ? value : DEFAULTS[key]) as Settings[K];
     return (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : DEFAULTS[key]) as Settings[K];
   } catch {
     return DEFAULTS[key];

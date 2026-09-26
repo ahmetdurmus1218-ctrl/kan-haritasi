@@ -1,10 +1,11 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { MIN_PASSPHRASE_LENGTH, isVaultError } from '@kh/vault';
 import { useVault } from '../state/VaultContext';
 import { nextBlockDelayMs, readSetting, writeSetting } from '../state/settings';
 import { userMessage } from '../lib/messages';
 import { Banner, Dialog } from '../components/ui';
-import { DropIcon, EyeIcon, EyeOffIcon, LockIcon, ShieldIcon, SpinnerIcon } from '../components/icons';
+import { DropIcon, EyeIcon, EyeOffIcon, FingerprintIcon, LockIcon, ShieldIcon, SpinnerIcon } from '../components/icons';
+import { DEVICE_KEY_SCHEME } from '@kh/platform';
 
 function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -28,7 +29,7 @@ function AuthLayout({ children }: { children: ReactNode }) {
   );
 }
 
-function PassphraseField({
+export function PassphraseField({
   id,
   label,
   value,
@@ -75,7 +76,8 @@ function PassphraseField({
 }
 
 export function SetupScreen() {
-  const { create } = useVault();
+  const { create, info } = useVault();
+  const deviceAvailable = info?.deviceAuth === 'available';
   const [pass, setPass] = useState('');
   const [confirm, setConfirm] = useState('');
   const [understood, setUnderstood] = useState(false);
@@ -95,7 +97,7 @@ export function SetupScreen() {
     // Argon2id ana iş parçacığında çalışır; önce döndürücünün çizilmesine izin ver.
     await new Promise((r) => setTimeout(r, 30));
     try {
-      await create(pass);
+      await create(pass, deviceAvailable);
     } catch (err) {
       setError(userMessage(err));
       setBusy(false);
@@ -108,11 +110,22 @@ export function SetupScreen() {
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Kasanı oluştur</h1>
           <p className="mt-2 text-sm leading-relaxed text-fg-muted">
-            Raporların ve sonuçların yalnızca bu cihazda, bu parolayla şifrelenmiş olarak saklanır. Hesap yok, sunucu yok.
+            Raporların ve sonuçların yalnızca bu cihazda, şifrelenmiş olarak saklanır. Hesap yok, sunucu yok.
           </p>
+          {deviceAvailable && (
+            <p className="mt-2 text-sm leading-relaxed text-fg-muted">
+              Günlük kullanımda <strong className="text-fg">parmak izi, yüz veya ekran kilidinle</strong> açılır. Aşağıdaki parola{' '}
+              <strong className="text-fg">kurtarma parolasıdır</strong>: cihaz kilidin değişirse verilerine onunla ulaşırsın.
+            </p>
+          )}
+          {info?.deviceAuth === 'none_enrolled' && (
+            <p className="mt-2 text-sm leading-relaxed text-fg-muted">
+              Cihazında ekran kilidi yok; kasa şimdilik yalnızca parolayla açılır. Ekran kilidi ekledikten sonra Gizlilik ekranından cihaz kilidini bağlayabilirsin.
+            </p>
+          )}
         </div>
 
-        <PassphraseField id="pass" label="Parola" value={pass} onChange={setPass} autoComplete="new-password" autoFocus />
+        <PassphraseField id="pass" label={deviceAvailable ? 'Kurtarma parolası' : 'Parola'} value={pass} onChange={setPass} autoComplete="new-password" autoFocus />
         <div className="-mt-3 flex items-center gap-2 text-xs">
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-ink-700">
             <div
@@ -120,24 +133,17 @@ export function SetupScreen() {
               style={{ width: `${Math.min(100, (length / 16) * 100)}%` }}
             />
           </div>
-          <span className={tooShort ? 'text-fg-faint' : 'text-accent'}>
-            {tooShort ? `en az ${MIN_PASSPHRASE_LENGTH} karakter` : 'uygun'}
-          </span>
+          <span className={tooShort ? 'text-fg-faint' : 'text-accent'}>{tooShort ? `en az ${MIN_PASSPHRASE_LENGTH} karakter` : 'uygun'}</span>
         </div>
 
         <PassphraseField id="confirm" label="Parolayı tekrar yaz" value={confirm} onChange={setConfirm} autoComplete="new-password" />
         {mismatch && <p className="-mt-3 text-xs text-danger">Parolalar aynı değil.</p>}
 
         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-ink-600 bg-ink-900/60 p-3 text-sm leading-relaxed">
-          <input
-            type="checkbox"
-            className="mt-1 h-4 w-4 accent-[var(--color-accent)]"
-            checked={understood}
-            onChange={(e) => setUnderstood(e.target.checked)}
-          />
+          <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--color-accent)]" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} />
           <span className="text-fg-muted">
-            Parolamı unutursam verilerimin <strong className="text-fg">kurtarılamayacağını</strong> anlıyorum. Kimse, uygulamayı yapanlar dahil,
-            parolamı sıfırlayamaz.
+            Parolamı unutursam{deviceAvailable ? ' ve cihaz kilidim değişirse' : ''} verilerimin <strong className="text-fg">kurtarılamayacağını</strong> anlıyorum. Kimse,
+            uygulamayı yapanlar dahil, parolamı sıfırlayamaz.
           </span>
         </label>
 
@@ -146,7 +152,7 @@ export function SetupScreen() {
         <button type="submit" className="btn-primary w-full py-3" disabled={!canSubmit}>
           {busy ? (
             <>
-              <SpinnerIcon size={16} /> Anahtar türetiliyor…
+              <SpinnerIcon size={16} /> {deviceAvailable ? 'Cihaz kilidi bekleniyor…' : 'Anahtar türetiliyor…'}
             </>
           ) : (
             <>
@@ -160,7 +166,9 @@ export function SetupScreen() {
 }
 
 export function UnlockScreen() {
-  const { unlock, destroyAll } = useVault();
+  const { unlockWithPassphrase, unlockWithDevice, destroyAll, schemes, info } = useVault();
+  const deviceReady = info?.deviceAuth === 'available' && schemes.includes(DEVICE_KEY_SCHEME);
+  const [mode, setMode] = useState<'device' | 'passphrase'>(deviceReady ? 'device' : 'passphrase');
   const [pass, setPass] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -169,6 +177,7 @@ export function UnlockScreen() {
   const [forgotOpen, setForgotOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [wiping, setWiping] = useState(false);
+  const autoTried = useRef(false);
 
   const waitSeconds = Math.max(0, Math.ceil((blockedUntil - now) / 1000));
 
@@ -178,6 +187,26 @@ export function UnlockScreen() {
     return () => clearInterval(t);
   }, [waitSeconds]);
 
+  const tryDevice = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await unlockWithDevice();
+    } catch (err) {
+      setError(userMessage(err));
+      if (isVaultError(err, 'KEY_INVALIDATED') || isVaultError(err, 'AUTH_UNAVAILABLE') || isVaultError(err, 'NOT_FOUND')) setMode('passphrase');
+      setBusy(false);
+    }
+  }, [unlockWithDevice]);
+
+  // Cihaz kilidi kuruluysa istem ekran açılınca bir kez kendiliğinden gelir.
+  useEffect(() => {
+    if (deviceReady && !autoTried.current) {
+      autoTried.current = true;
+      void tryDevice();
+    }
+  }, [deviceReady, tryDevice]);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!pass || busy || waitSeconds > 0) return;
@@ -185,7 +214,7 @@ export function UnlockScreen() {
     setError(null);
     await new Promise((r) => setTimeout(r, 30));
     try {
-      await unlock(pass);
+      await unlockWithPassphrase(pass);
       writeSetting('unlockFailures', 0);
       writeSetting('unlockBlockedUntil', 0);
     } catch (err) {
@@ -215,32 +244,59 @@ export function UnlockScreen() {
 
   return (
     <AuthLayout>
-      <form onSubmit={onSubmit} className="surface space-y-5 p-6">
+      <div className="surface space-y-5 p-6">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ink-700 text-fg-muted">
             <LockIcon size={18} />
           </div>
           <div>
             <h1 className="text-lg font-semibold tracking-tight">Kasa kilitli</h1>
-            <p className="text-sm text-fg-muted">Devam etmek için parolanı gir.</p>
+            <p className="text-sm text-fg-muted">{mode === 'device' ? 'Cihaz kilidinle doğrula.' : deviceReady ? 'Kurtarma parolanı gir.' : 'Devam etmek için parolanı gir.'}</p>
           </div>
         </div>
-        <PassphraseField id="unlock" label="Parola" value={pass} onChange={setPass} autoComplete="current-password" autoFocus />
-        {error && <Banner tone="error">{error}</Banner>}
-        {waitSeconds > 0 && <Banner tone="warn">Çok sayıda hatalı deneme. {waitSeconds} saniye sonra tekrar dene.</Banner>}
-        <button type="submit" className="btn-primary w-full py-3" disabled={!pass || busy || waitSeconds > 0}>
-          {busy ? (
-            <>
-              <SpinnerIcon size={16} /> Açılıyor…
-            </>
-          ) : (
-            'Kilidi aç'
-          )}
-        </button>
-        <button type="button" className="w-full text-center text-sm text-fg-muted underline-offset-4 hover:text-fg hover:underline" onClick={() => setForgotOpen(true)}>
+
+        {mode === 'device' ? (
+          <>
+            {error && <Banner tone="error">{error}</Banner>}
+            <button type="button" className="btn-primary w-full py-3" onClick={tryDevice} disabled={busy}>
+              {busy ? <SpinnerIcon size={16} /> : <FingerprintIcon size={18} />} Cihaz kilidiyle aç
+            </button>
+            <button
+              type="button"
+              className="w-full text-center text-sm text-fg-muted underline-offset-4 hover:text-fg hover:underline"
+              onClick={() => {
+                setError(null);
+                setMode('passphrase');
+              }}
+            >
+              Kurtarma parolasıyla aç
+            </button>
+          </>
+        ) : (
+          <form onSubmit={onSubmit} className="space-y-5">
+            <PassphraseField id="unlock" label={deviceReady ? 'Kurtarma parolası' : 'Parola'} value={pass} onChange={setPass} autoComplete="current-password" autoFocus />
+            {error && <Banner tone="error">{error}</Banner>}
+            {waitSeconds > 0 && <Banner tone="warn">Çok sayıda hatalı deneme. {waitSeconds} saniye sonra tekrar dene.</Banner>}
+            <button type="submit" className="btn-primary w-full py-3" disabled={!pass || busy || waitSeconds > 0}>
+              {busy ? (
+                <>
+                  <SpinnerIcon size={16} /> Açılıyor…
+                </>
+              ) : (
+                'Kilidi aç'
+              )}
+            </button>
+            {deviceReady && (
+              <button type="button" className="w-full text-center text-sm text-fg-muted hover:text-fg" onClick={() => setMode('device')}>
+                Cihaz kilidine dön
+              </button>
+            )}
+          </form>
+        )}
+        <button type="button" className="w-full text-center text-sm text-fg-faint underline-offset-4 hover:text-fg hover:underline" onClick={() => setForgotOpen(true)}>
           Parolamı unuttum
         </button>
-      </form>
+      </div>
 
       <Dialog
         open={forgotOpen}
@@ -262,8 +318,8 @@ export function UnlockScreen() {
         }
       >
         <p>
-          Veriler parolanla şifrelendiği için parola olmadan açılamaz. Yeniden başlamak için bu cihazdaki tüm belgeleri ve sonuçları silebilirsin.
-          Bu işlem geri alınamaz.
+          Veriler şifreli olduğu için parola (veya cihaz kilidi) olmadan açılamaz. Şifreli bir yedeğin varsa yeni kasayı kurduktan sonra geri yükleyebilirsin. Yeniden başlamak için
+          bu cihazdaki tüm belgeleri ve sonuçları silebilirsin; bu işlem geri alınamaz.
         </p>
         <label htmlFor="confirm-wipe" className="mt-4 block text-fg">
           Onaylamak için <strong>SİL</strong> yaz

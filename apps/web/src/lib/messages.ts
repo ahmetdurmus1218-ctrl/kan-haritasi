@@ -12,6 +12,9 @@ const VAULT_MESSAGES: Partial<Record<VaultErrorCode, string>> = {
   NOT_FOUND: 'Belge bulunamadı. Silinmiş olabilir.',
   INVALID_INPUT: 'Girilen değer geçerli değil.',
   UNSUPPORTED_VERSION: 'Bu veriler uygulamanın daha yeni bir sürümüyle oluşturulmuş.',
+  AUTH_CANCELLED: 'Doğrulama iptal edildi.',
+  AUTH_UNAVAILABLE: 'Cihaz kilidi şu an kullanılamıyor. Kurtarma parolanla açabilirsin.',
+  KEY_INVALIDATED: 'Cihaz kilidi anahtarı artık geçerli değil (ör. ekran kilidi kaldırıldı). Kurtarma parolanla aç; anahtar yeniden oluşturulur.',
 };
 
 const mb = (n: number) => Math.round(n / (1024 * 1024));

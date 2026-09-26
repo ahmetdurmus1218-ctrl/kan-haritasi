@@ -1,14 +1,16 @@
 import type { PlatformAdapter } from '@kh/platform';
 import { PassphraseKeyWrapper } from '@kh/vault';
 
-/** Web kabuğu: parola + Argon2id, tarayıcı indirmesi. Android kabuğu Faz 2'de aynı arayüzü uygular. */
+/** Web kabuğu: parola + Argon2id, tarayıcı indirmesi, sekme görünürlüğü. */
 export const webPlatform: PlatformAdapter = {
   platform: 'web',
+  async info() {
+    return { platform: 'web', deviceAuth: 'not_applicable' };
+  },
   keys: {
-    method: 'passphrase',
-    wrapper(secret) {
-      return new PassphraseKeyWrapper(secret ?? '');
-    },
+    passphrase: (secret) => new PassphraseKeyWrapper(secret),
+    device: () => null,
+    forget: async () => undefined,
   },
   files: {
     async save(fileName, bytes, mimeType) {
@@ -22,15 +24,16 @@ export const webPlatform: PlatformAdapter = {
         document.body.append(a);
         a.click();
         a.remove();
+        return true;
       } finally {
         // İndirme başlasın diye kısa süre sonra bırakılır; çözülmüş veri bellekte kalmaz.
         setTimeout(() => URL.revokeObjectURL(url), 10_000);
       }
     },
   },
-  screen: {
-    setSecure() {
-      // Web'de karşılığı yok; sekme gizlenince içerik arayüzde bulanıklaştırılır.
-    },
+  onLifecycle(listener) {
+    const handler = () => listener(document.visibilityState === 'hidden' ? 'background' : 'foreground');
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
   },
 };

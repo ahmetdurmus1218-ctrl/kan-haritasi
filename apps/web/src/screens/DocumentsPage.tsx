@@ -6,7 +6,7 @@ import { type Route } from '../state/router';
 import { processUpload, type UploadPhase } from '../lib/upload';
 import { formatBytes, formatDate, KIND_LABEL } from '../lib/format';
 import { userMessage } from '../lib/messages';
-import { webPlatform } from '../platform-web';
+import { platform } from '../platform';
 
 const uploadDeps = {
   countPdfPages: async (bytes: Uint8Array) => (await import('../lib/pdf')).countPdfPages(bytes),
@@ -37,11 +37,11 @@ interface QueueItem {
   file?: FileInfo;
 }
 
-export async function downloadOriginal(vault: Vault, id: string): Promise<void> {
+export async function downloadOriginal(vault: Vault, id: string): Promise<boolean> {
   const { info, bytes } = await vault.readFile(id);
   const { ext } = splitExtension(info.originalFileName);
   const name = sanitizeFileName(ext ? `${info.displayName}.${ext}` : info.displayName);
-  await webPlatform.files.save(name, bytes, info.mimeType);
+  return platform.files.save(name, bytes, info.mimeType);
 }
 
 export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {

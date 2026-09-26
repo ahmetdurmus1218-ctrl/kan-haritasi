@@ -1,13 +1,22 @@
 import type { Bytes } from './bytes';
 import type { WrappedMasterKey } from './kdf';
 
-export const VAULT_FORMAT_VERSION = 1;
+export const VAULT_FORMAT_VERSION = 2;
 
-/** Açık (şifresiz) tutulan tek kayıt: yalnızca sarılı ana anahtar ve biçim bilgisi. */
+/**
+ * Açık (şifresiz) tutulan tek kayıt: yalnızca sarılı ana anahtar(lar) ve biçim bilgisi.
+ * Sürüm 2: birden fazla kilit açma yöntemi (`keys`). Sürüm 1: tek `wrapped`.
+ */
 export interface VaultMeta {
   formatVersion: number;
   createdAt: string;
-  wrapped: WrappedMasterKey;
+  keys?: WrappedMasterKey[];
+  wrapped?: WrappedMasterKey;
+}
+
+export function keysOf(meta: VaultMeta): WrappedMasterKey[] {
+  if (Array.isArray(meta.keys)) return meta.keys;
+  return meta.wrapped ? [meta.wrapped] : [];
 }
 
 export type RecordKind = 'file';

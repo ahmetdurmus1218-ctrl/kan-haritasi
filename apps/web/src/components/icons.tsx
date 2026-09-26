@@ -202,3 +202,11 @@ export const DropIcon = (p: IconProps) => (
     <path d="M8.5 15.5h2.2l1-2.3 1.6 4.3 1-2h1.2" />
   </Icon>
 );
+export const FingerprintIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 11v2.5c0 2.2-.6 4.3-1.7 6" />
+    <path d="M8.5 10.5a3.5 3.5 0 0 1 7 0v2c0 2.6-.5 5-1.5 7.2" />
+    <path d="M5.5 16.5c.6-1.6 1-3.4 1-5.2a5.5 5.5 0 0 1 11 0v1.2" />
+    <path d="M4 12a8 8 0 0 1 14.4-4.8M19.6 11c.3 1.7.3 3.4 0 5" />
+  </Icon>
+);
