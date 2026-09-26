@@ -61,6 +61,10 @@ with sync_playwright() as p:
     page.screenshot(path=SHOTS / "21-kaynak-vurgu.png")
     page.get_by_role("button", name="Onayla ve kaydet (14)").click()
     page.get_by_role("heading", name="Sonuçlar").wait_for(timeout=10000)
+    try:
+        page.get_by_text("5 tanesi aralık dışı").first.wait_for(timeout=15000)
+    except Exception:
+        print("özet:", [t[:120] for t in page.locator("text=/sonuç ·/").all_inner_texts()])
     check(page.get_by_text("5 tanesi aralık dışı").count() == 1, "kaydedilen raporda 5 aralık dışı sonuç (ALT, T.kolesterol, LDL, TG yüksek; ferritin düşük)")
     page.screenshot(path=SHOTS / "22-kaydedildi.png")
 
