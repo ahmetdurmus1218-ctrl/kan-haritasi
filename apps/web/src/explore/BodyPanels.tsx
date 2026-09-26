@@ -101,6 +101,32 @@ export function BodyIntroPanel({
               <SeverityBar interp={interp} />
             </div>
           </div>
+          {abnormalFindings(interp).length > 0 && (
+            <div>
+              <Caps className="text-fg-faint">Bulguların ({abnormalFindings(interp).length})</Caps>
+              <ul className="mt-2">
+                {abnormalFindings(interp).map((f) => (
+                  <li key={f.testKey}>
+                    <button
+                      type="button"
+                      onClick={() => go({ name: 'body', focus: f.testKey })}
+                      className="flex w-full items-center gap-3 border-b border-ink-700/70 py-2.5 text-left transition hover:bg-white/[0.03]"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-fg">{f.name}</span>
+                        <span className="block truncate text-[11px] text-fg-faint">
+                          {f.structures.map((sid) => structureById.get(sid)?.nameTr.split(' (')[0]).filter(Boolean).slice(0, 3).join(' · ')}
+                          {f.nonSpecific ? ' · tek organa özgü değil' : ''}
+                        </span>
+                      </span>
+                      <SeverityChip finding={f} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[11px] leading-relaxed text-fg-faint">Bir bulguya dokun: ilgili yapılar vurgulanır, kamera yaklaşır ve açıklaması açılır.</p>
+            </div>
+          )}
           {interp.patterns.length > 0 && (
             <div>
               <Caps className="text-fg-faint">Birlikte değerlendirme</Caps>
@@ -497,6 +523,14 @@ function MinePanel({
   );
 }
 
+/** Aralık dışı bulgular: önce kritik, sonra derece. */
+export function abnormalFindings(interp: Interpretation) {
+  const w = { marked: 3, moderate: 2, mild: 1, borderline: 0.5, normal: 0, unknown: 0 } as const;
+  return interp.findings
+    .filter((f) => f.status === 'high' || f.status === 'low')
+    .sort((a, b) => Number(b.critical) - Number(a.critical) || w[b.severity] - w[a.severity] || a.name.localeCompare(b.name, 'tr'));
+}
+
 /* ---------------------------------------------------------------- Tahlil odağı */
 
 /** Test → süreç → yapı → içeri gir yolu (örn. LDL → koroner arterler → damar içi → simülasyon). */
@@ -514,12 +548,35 @@ export function TestPanel({ testKey, series, onEnter, interp }: { testKey: strin
   if (!test) return <p className="text-sm text-fg-muted">Bilinmeyen test.</p>;
   const finding = interp.findings.find((f) => f.testKey === testKey);
   const related = interp.patterns.filter((p) => p.tests.includes(testKey));
+  const list = abnormalFindings(interp);
+  const at = list.findIndex((f) => f.testKey === testKey);
   const s = series.get(testKey);
   const system = test.systems[0];
   const accent = systemColor(system);
   const path = explorePath(testKey);
   return (
     <div>
+      {at >= 0 && list.length > 1 && (
+        <div className="-mt-1 mb-4 flex items-center justify-between text-xs text-fg-muted">
+          <button
+            type="button"
+            className="rounded-full border border-ink-600 px-2.5 py-1 transition hover:text-fg"
+            onClick={() => go({ name: 'body', focus: list[(at - 1 + list.length) % list.length]!.testKey })}
+          >
+            ‹ Önceki bulgu
+          </button>
+          <span className="tabular-nums">
+            Bulgu {at + 1}/{list.length}
+          </span>
+          <button
+            type="button"
+            className="rounded-full border border-ink-600 px-2.5 py-1 transition hover:text-fg"
+            onClick={() => go({ name: 'body', focus: list[(at + 1) % list.length]!.testKey })}
+          >
+            Sonraki bulgu ›
+          </button>
+        </div>
+      )}
       <Title caps="Tahlil · Vücutta göster" title={test.nameTr} accent={accent} />
       {s ? (
         <div className="mb-5 flex items-center gap-3">

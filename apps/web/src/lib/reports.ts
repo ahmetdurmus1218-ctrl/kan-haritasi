@@ -35,6 +35,34 @@ export interface StoredResult {
   reportFlag?: 'H' | 'L';
   userEdited: boolean;
   source?: SourceBox;
+  /** Okuma güveni (0–1) ve okuma sırasında görülen sorunlar; elle girilen/düzeltilen değerlerde yok sayılır. */
+  confidence?: number;
+  issues?: IssueCode[];
+  /** Kullanıcı sonradan "belgeyle karşılaştırdım, doğru" dedi. */
+  verified?: boolean;
+}
+
+/** Kullanıcının belgeyle karşılaştırması gereken okuma sorunları. */
+const VERIFY_ISSUES: IssueCode[] = ['LOW_OCR_CONFIDENCE', 'IMPLAUSIBLE', 'FLAG_CONFLICT', 'AMBIGUOUS_DECIMAL', 'UNIT_MISSING', 'UNIT_UNKNOWN', 'NAME_FUZZY', 'DUPLICATE', 'RANGE_SEX_SPECIFIC'];
+
+/** Kaydedilmiş ama okuma güveni düşük / sorunlu ve kullanıcının henüz doğrulamadığı sonuç mu? */
+export function needsVerification(r: StoredResult): boolean {
+  if (r.userEdited || r.verified) return false;
+  return (r.confidence ?? 1) < 0.75 || (r.issues ?? []).some((i) => VERIFY_ISSUES.includes(i));
+}
+
+export function verificationIssues(r: StoredResult): IssueCode[] {
+  const list = (r.issues ?? []).filter((i) => VERIFY_ISSUES.includes(i));
+  if (!list.length && (r.confidence ?? 1) < 0.75) list.push('LOW_OCR_CONFIDENCE');
+  return list;
+}
+
+/** Bir sonucu "belgeyle karşılaştırıldı, doğru" olarak işaretler. */
+export async function markVerified(vault: Vault, reportId: string, testKey: string): Promise<void> {
+  const report = (await listReports(vault)).find((r) => r.id === reportId);
+  if (!report) return;
+  const next: StoredReport = { ...report, results: report.results.map((r) => (r.testKey === testKey ? { ...r, verified: true } : r)) };
+  await vault.putRecord('report', report.id, next);
 }
 
 /** Bir belgeden çıkarılıp kullanıcının onayladığı rapor. Ham metin saklanmaz. */
@@ -230,6 +258,7 @@ export function toStoredResult(row: ReviewRow): StoredResult {
     ...(row.reportFlag ? { reportFlag: row.reportFlag } : {}),
     userEdited: row.userEdited,
     source: row.source,
+    ...(row.userEdited ? {} : { confidence: Math.round(row.confidence * 100) / 100, ...(row.issues.length ? { issues: row.issues } : {}) }),
   };
 }
 

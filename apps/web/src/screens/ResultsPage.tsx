@@ -4,10 +4,12 @@ import { go } from '../state/router';
 import { type TestSeries, buildSeries, useReports } from '../lib/useReports';
 import { formatDate } from '../lib/format';
 import { Banner } from '../components/ui';
-import { RangeBar, STATUS_TEXT, StatusPill } from '../components/results';
+import { ISSUE_TEXT, RangeBar, STATUS_TEXT, StatusPill } from '../components/results';
+import { markVerified, needsVerification, verificationIssues } from '../lib/reports';
+import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { CriticalBanner, FindingBlock, PatternList, SeverityBar, SeverityChip, SystemGrid } from '../components/interpretation';
 import { findingMap, useInterpretation, useSex } from '../lib/interpretation';
-import { BodyIcon, ChartIcon, ChevronLeftIcon, ChevronRightIcon, SpinnerIcon, UploadIcon } from '../components/icons';
+import { AlertIcon, BodyIcon, ChartIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileTextIcon, SpinnerIcon, UploadIcon } from '../components/icons';
 
 const ORDER: Record<ResultStatus, number> = { high: 0, low: 1, unknown: 2, normal: 3 };
 const SEV_ORDER = { marked: 0, moderate: 1, mild: 2, borderline: 3, unknown: 4, normal: 5 } as const;
@@ -43,6 +45,8 @@ export function ResultsPage() {
   }
 
   const abnormal = series.filter((s) => s.latest.result.status === 'high' || s.latest.result.status === 'low');
+  const toVerify = series.filter((s) => needsVerification(s.latest.result));
+  const involved = interp.systems.filter((x) => x.status !== 'ok');
   const borderline = series.filter((s) => findings.get(s.test.key)?.severity === 'borderline');
   const shown = filter === 'abnormal' ? abnormal : filter === 'borderline' ? borderline : series;
   const sevRank = (s: TestSeries) => SEV_ORDER[findings.get(s.test.key)?.severity ?? 'unknown'];
@@ -62,6 +66,29 @@ export function ResultsPage() {
         <p className="mt-1.5 text-sm text-fg-muted">
           {series.length ? `${series.length} test · ${reports.length} rapor${lastDate ? ` · son rapor ${formatDate(lastDate)}` : ''}` : 'Henüz onaylanmış sonuç yok.'}
         </p>
+        {series.length > 0 && (
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <SummaryTile label="Aralık dışı" value={abnormal.length} tone="text-high" />
+            <SummaryTile label="Aralıkta" value={series.filter((s) => s.latest.result.status === 'normal').length} tone="text-accent" />
+            <SummaryTile label="Doğrulaman gereken" value={toVerify.length} tone={toVerify.length ? 'text-[#f5b14c]' : 'text-fg-faint'} />
+            <SummaryTile label="İlgili sistem" value={involved.length} tone="text-fg" />
+          </div>
+        )}
+        {involved.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {involved.map((x) => (
+              <button
+                key={x.system}
+                type="button"
+                onClick={() => go({ name: 'body', system: x.system })}
+                className="inline-flex items-center gap-1.5 rounded-full border border-ink-600 px-2.5 py-1 text-xs text-fg-muted transition hover:border-ink-500 hover:text-fg"
+              >
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: systemById.get(x.system)?.color }} />
+                {x.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {series.length === 0 ? (
@@ -76,6 +103,7 @@ export function ResultsPage() {
         <>
           <div className="mb-8 space-y-4">
             <CriticalBanner critical={interp.critical} />
+            {toVerify.length > 0 && <VerifyList series={toVerify} />}
             <section className="surface p-5" aria-labelledby="genel-degerlendirme">
               <p className="label-caps mb-1.5">Kişisel değerlendirme</p>
               <h2 id="genel-degerlendirme" className="text-lg font-semibold tracking-tight">
@@ -109,11 +137,6 @@ export function ResultsPage() {
           </div>
 
           <h2 className="mb-3 text-lg font-semibold tracking-tight">Tüm sonuçlar</h2>
-          <div className="mb-5 grid grid-cols-3 gap-2 sm:max-w-md">
-            <SummaryTile label="Yüksek" value={series.filter((s) => s.latest.result.status === 'high').length} tone="text-high" />
-            <SummaryTile label="Düşük" value={series.filter((s) => s.latest.result.status === 'low').length} tone="text-low" />
-            <SummaryTile label="Normal" value={series.filter((s) => s.latest.result.status === 'normal').length} tone="text-accent" />
-          </div>
           <div className="mb-4 flex flex-wrap items-center gap-2">
             {(
               [
@@ -145,8 +168,8 @@ export function ResultsPage() {
                   {list.map((s) => {
                     const f = findings.get(s.test.key);
                     return (
-                      <li key={s.test.key}>
-                        <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-ink-800/60" onClick={() => go({ name: 'result', key: s.test.key })}>
+                      <li key={s.test.key} className="flex items-stretch">
+                        <button type="button" className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2 text-left transition hover:bg-ink-800/60" onClick={() => go({ name: 'result', key: s.test.key })}>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-[15px] font-medium">{s.test.nameTr}</span>
                             <span className="block text-xs text-fg-muted">
@@ -155,6 +178,11 @@ export function ResultsPage() {
                               {s.latest.result.refSource === 'catalog' ? ' (genel)' : ''}
                             </span>
                             {f?.category && <span className="mt-0.5 block truncate text-[11px] text-fg-faint">{f.category}</span>}
+                            {needsVerification(s.latest.result) && (
+                              <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-[#f5b14c]">
+                                <AlertIcon size={11} /> Okuma doğrulanmadı
+                              </span>
+                            )}
                           </span>
                           <span className="flex flex-col items-end gap-1">
                             <span className={`text-right text-sm font-semibold tabular-nums ${STATUS_TEXT[s.latest.result.status]}`}>
@@ -163,6 +191,15 @@ export function ResultsPage() {
                             {f ? <SeverityChip finding={f} /> : <StatusPill status={s.latest.result.status} />}
                           </span>
                           <ChevronRightIcon size={16} className="shrink-0 text-fg-faint" />
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-12 shrink-0 items-center justify-center border-l border-ink-700 text-fg-faint transition hover:bg-ink-800/60 hover:text-accent"
+                          onClick={() => go({ name: 'body', focus: s.test.key })}
+                          aria-label={`${s.test.nameTr}: vücutta göster`}
+                          title="Vücutta göster"
+                        >
+                          <BodyIcon size={17} />
                         </button>
                       </li>
                     );
@@ -175,6 +212,56 @@ export function ResultsPage() {
         </>
       )}
     </div>
+  );
+}
+
+/** Okuma güveni düşük veya sorunlu olup kullanıcının henüz doğrulamadığı sonuçlar. */
+function VerifyList({ series }: { series: TestSeries[] }) {
+  const vault = useUnlockedVault();
+  const { bump } = useVault();
+  const [busy, setBusy] = useState<string | null>(null);
+  return (
+    <section className="rounded-2xl border border-[#f5b14c]/40 bg-[#f5b14c]/[0.06] p-4" aria-labelledby="dogrula">
+      <h2 id="dogrula" className="flex items-center gap-2 text-sm font-semibold text-fg">
+        <AlertIcon size={16} className="text-[#f5b14c]" /> Doğrulaman gereken değerler ({series.length})
+      </h2>
+      <p className="mt-1 text-xs leading-relaxed text-fg-muted">
+        Bu değerler fotoğraftan/belgeden düşük güvenle okundu veya okurken bir sorun görüldü. Belgedeki değerle karşılaştır; yanlışsa belgeyi açıp düzelt.
+        Yorumlar kaydedilen değere göre yapılır.
+      </p>
+      <ul className="mt-3 divide-y divide-ink-700/70">
+        {series.map((s) => {
+          const r = s.latest.result;
+          return (
+            <li key={s.test.key} className="flex flex-wrap items-center gap-2 py-2.5 text-sm">
+              <span className="min-w-0 flex-1">
+                <span className="font-medium text-fg">{s.test.nameTr}</span> <span className="tabular-nums text-fg-muted">{display(s)}</span>
+                <span className="block text-[11px] text-fg-faint">{verificationIssues(r).map((i) => ISSUE_TEXT[i]).join(' ')}</span>
+              </span>
+              <button type="button" className="btn-ghost px-2.5 py-1 text-xs" onClick={() => go({ name: 'document', id: s.latest.report.fileId })}>
+                <FileTextIcon size={13} /> Belgede kontrol et
+              </button>
+              <button
+                type="button"
+                className="btn-ghost px-2.5 py-1 text-xs"
+                disabled={busy === s.test.key}
+                onClick={async () => {
+                  setBusy(s.test.key);
+                  try {
+                    await markVerified(vault, s.latest.report.id, s.test.key);
+                    bump();
+                  } finally {
+                    setBusy(null);
+                  }
+                }}
+              >
+                <CheckIcon size={13} /> Doğru
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
