@@ -1,9 +1,9 @@
 workflow: Android APK
-run: 36255797412
-sha: f92f1f47e34b28faa6aa0d5b488eca71b66938b1
-conclusion: cancelled
+run: 36255827181
+sha: 07d84673aea561c47a26bb77c40c88654b2db4cc
+conclusion: success
 
-apk: cancelled
+apk: success
   - Set up job: success
   - Run actions/checkout@v4: success
   - Run pnpm/action-setup@v4: success
@@ -12,16 +12,16 @@ apk: cancelled
   - Web çekirdeğini derle: success
   - Güvenlik kapıları (CSP, izleme alan adları): success
   - Run actions/setup-java@v4: success
-  - Run gradle/actions/setup-gradle@v4: cancelled
-  - İmza anahtarı (tanımlıysa gizli anahtar, yoksa depodaki hata ayıklama anahtarı): skipped
-  - APK derle: skipped
-  - APK'da INTERNET izni olmamalı: skipped
-  - APK'yı adlandır: skipped
-  - Run actions/upload-artifact@v4: skipped
-  - Son sürüm: telefondan indirilebilir yayın (apk-son): skipped
-  - Post Run gradle/actions/setup-gradle@v4: skipped
+  - Run gradle/actions/setup-gradle@v4: success
+  - İmza anahtarı (tanımlıysa gizli anahtar, yoksa depodaki hata ayıklama anahtarı): success
+  - APK derle: success
+  - APK'da INTERNET izni olmamalı: success
+  - APK'yı adlandır: success
+  - Run actions/upload-artifact@v4: success
+  - Son sürüm: telefondan indirilebilir yayın (apk-son): success
+  - Post Run gradle/actions/setup-gradle@v4: success
   - Post Run actions/setup-java@v4: success
-  - Post Run actions/setup-node@v4: skipped
+  - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
