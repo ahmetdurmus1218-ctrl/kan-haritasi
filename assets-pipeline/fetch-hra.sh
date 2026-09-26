@@ -21,5 +21,6 @@ git -c gc.auto=0 checkout -q FETCH_HEAD -- LICENSE \
   VH_Male/v1.2/VH_M_Kidney_L.glb VH_Male/v1.2/VH_M_Kidney_R.glb VH_Male/v1.2/VH_M_Ureter_L.glb \
   VH_Male/v1.2/VH_M_Ureter_R.glb VH_Male/v1.2/VH_M_Urinary_Bladder.glb VH_Male/v1.2/VH_M_Prostate.glb \
   VH_Male/v1.2/Allen_M_Brain.glb VH_Male/v1.2/VH_M_Spinal_Cord.glb \
-  VH_Male/v1.2/VH_M_Spleen.glb VH_Male/v1.2/VH_M_Thymus.glb
+  VH_Male/v1.2/VH_M_Spleen.glb VH_Male/v1.2/VH_M_Thymus.glb \
+  VH_Male/v1.2/VH_M_Eye_L.glb VH_Male/v1.2/VH_M_Eye_R.glb VH_Male/v1.4/3d-vh-m-larynx.glb
 echo "HRA kaynakları: $DEST"

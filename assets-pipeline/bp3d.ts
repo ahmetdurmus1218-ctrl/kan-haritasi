@@ -120,7 +120,36 @@ export interface Bp3dGroup {
   /** "bones|Sol el kemikleri" gibi düğüm adı. */
   key: string;
   ids: string[];
+  /**
+   * Yerel hizalama (metre): iki farklı vücut arasında küçük bezler komşu HRA organlarına göre
+   * yerleştirilir (hipofiz beyin tabanına, böbreküstü bezleri böbreklerin üst kutbuna).
+   */
+  offset?: [number, number, number];
 }
+
+/**
+ * BodyParts3D'den alınan organlar (HRA'da olmayanlar). Uyum hedefleri: hipofiz/hipotalamus için HRA
+ * beyninin tabanı (0, 0.786, 0.012), böbreküstü bezleri için HRA böbreklerinin üst kutbu.
+ */
+export const BP3D_ORGANS: Record<'digestive' | 'endocrine' | 'reproductive', Bp3dGroup[]> = {
+  digestive: [
+    { key: 'stomach', ids: ['FMA7148'] },
+    { key: 'esophagus', ids: ['FMA7131'] },
+  ],
+  endocrine: [
+    { key: 'pituitary', ids: ['FMA13889'], offset: [0.003, -0.017, -0.018] },
+    { key: 'hypothalamus', ids: ['FMA62008nsn'], offset: [0.003, -0.017, -0.018] },
+    { key: 'adrenals|Sağ böbreküstü bezi', ids: ['FMA15629'], offset: [-0.019, 0.016, 0.014] },
+    { key: 'adrenals|Sol böbreküstü bezi', ids: ['FMA15630'], offset: [0.024, 0.017, 0.009] },
+  ],
+  reproductive: [
+    { key: 'testes|Sağ testis ve epididim', ids: ['FMA7211', 'FMA18256'] },
+    { key: 'testes|Sol testis ve epididim', ids: ['FMA7212', 'FMA18257'] },
+    { key: 'male-genitals|Seminal veziküller', ids: ['FMA19387', 'FMA19388'] },
+    { key: 'male-genitals|Sperm kanalları (duktus deferens)', ids: ['FMA19235', 'FMA19236'] },
+    { key: 'male-genitals|Penis', ids: ['FMA18247', 'FMA19617nsn', 'FMA19618'] },
+  ],
+};
 
 export interface Bp3dSet {
   skin: Bp3dGroup[];
@@ -223,6 +252,9 @@ export function bp3dDocument(groups: Bp3dGroup[], sceneName: string): Document {
   const scene = doc.createScene(sceneName);
   for (const g of groups) {
     const arrays = g.ids.map(readStl);
+    if (g.offset) {
+      for (const a of arrays) for (let i = 0; i < a.length; i += 3) for (let k = 0; k < 3; k++) a[i + k]! += g.offset[k]!;
+    }
     const total = arrays.reduce((n, a) => n + a.length, 0);
     const pos = new Float32Array(total);
     let o = 0;

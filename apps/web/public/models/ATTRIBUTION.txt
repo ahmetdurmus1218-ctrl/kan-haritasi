@@ -5,13 +5,18 @@
    Kaynak: https://github.com/hubmapconsortium/ccf-3d-reference-object-library (commit f1a3a63)
    Lisans: https://creativecommons.org/licenses/by/4.0/
 
-2) Deri, iskelet ve kaslar (body.glb, skeleton.glb, muscles.glb):
+2) Deri, iskelet, kaslar, mide, yemek borusu, hipofiz, hipotalamus, böbreküstü bezleri, erkek üreme
+   organları, bazı gövde damarları (body.glb, skeleton.glb, muscles.glb, endocrine.glb, reproductive.glb;
+   digestive.glb ve cardio.glb içindeki ilgili parçalar):
    BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan.
    Kaynak: http://lifesciencedb.jp/bp3d/ — kopya: https://github.com/Kevin-Mattheus-Moerman/BodyParts3D (commit f0eeb6e)
    Lisans: https://creativecommons.org/licenses/by-sa/2.1/jp/deed.en
-   Bu üç dosya (uyarlanmış eser) aynı lisansla (CC BY-SA 2.1 JP) dağıtılır.
+   Bu parçalardan üretilen model dosyaları (uyarlanmış eser) aynı lisansla (CC BY-SA 2.1 JP) dağıtılır.
+
+3) Kol ve bacak damarları: bu uygulama için BodyParts3D kemiklerinden türetilen ŞEMATİK tüpler.
 
 Değişiklikler: sahne düzleştirildi, parçalar yapıya/bölgeye göre birleştirildi, BodyParts3D parçaları HRA
-koordinat sistemine benzerlik dönüşümüyle taşındı (iki farklı vücut; uyum yaklaşıktır), ağlar sadeleştirildi
-(meshoptimizer), nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı. Tiroid, hipofiz, hipotalamus ve
-böbreküstü bezleri uygulamada şematik olarak çizilir ve bu kaynaklardan gelmez.
+koordinat sistemine benzerlik dönüşümüyle taşındı (iki farklı vücut; uyum yaklaşıktır; hipofiz, hipotalamus ve
+böbreküstü bezleri komşu HRA organlarına göre ayrıca kaydırıldı), ağlar sadeleştirildi (meshoptimizer),
+nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı. Tiroid bezi iki kaynakta da olmadığından uygulamada
+şematik olarak çizilir.

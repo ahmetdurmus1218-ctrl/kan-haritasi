@@ -100,9 +100,12 @@ export const STRUCTURES: readonly Structure[] = [
   { id: 'skin', nameTr: 'Deri', systems: ['integumentary'], asset: 'body', modelMatch: ['skin'], blurb: 'Güneş ışığıyla D vitamini yapımının başladığı organ.' },
   // Şematik yapılar (HRA'da model yok; konumu temsil eden basit şekiller)
   { id: 'thyroid', nameTr: 'Tiroid (şematik)', systems: ['endocrine'], asset: 'schematic', modelMatch: ['schematic_thyroid'], schematic: true, drill: 'thyroid-follicle', blurb: 'Boyunda, metabolizmayı düzenleyen T3/T4 hormonlarını üreten bez.' },
-  { id: 'pituitary', nameTr: 'Hipofiz (şematik)', systems: ['endocrine', 'nervous'], asset: 'schematic', modelMatch: ['schematic_pituitary'], schematic: true, blurb: 'TSH, prolaktin, ACTH gibi hormonları salgılayan bez.' },
-  { id: 'hypothalamus', nameTr: 'Hipotalamus (şematik)', systems: ['endocrine', 'nervous'], asset: 'schematic', modelMatch: ['schematic_hypothalamus'], schematic: true, blurb: 'Hipofizi yöneten beyin bölgesi.' },
-  { id: 'adrenals', nameTr: 'Böbreküstü bezleri (şematik)', systems: ['endocrine'], asset: 'schematic', modelMatch: ['schematic_adrenal'], schematic: true, blurb: 'Kortizol ve aldosteron üreten bezler.' },
+  { id: 'pituitary', nameTr: 'Hipofiz', systems: ['endocrine', 'nervous'], asset: 'endocrine', modelMatch: [], blurb: 'TSH, FSH, LH, prolaktin, ACTH gibi hormonları salgılayan, diğer bezleri yöneten bez.' },
+  { id: 'hypothalamus', nameTr: 'Hipotalamus', systems: ['endocrine', 'nervous'], asset: 'endocrine', modelMatch: [], blurb: 'Hipofizi yöneten beyin bölgesi.' },
+  { id: 'adrenals', nameTr: 'Böbreküstü bezleri', systems: ['endocrine'], asset: 'endocrine', modelMatch: [], blurb: 'Kortizol, aldosteron, adrenalin ve DHEA-S üreten bezler.' },
+  { id: 'stomach', nameTr: 'Mide', systems: ['digestive'], asset: 'digestive', modelMatch: [], blurb: 'Besinleri asit ve enzimlerle sindirmeye başlayan organ; B12 emilimi için gereken iç faktörü üretir.' },
+  { id: 'esophagus', nameTr: 'Yemek borusu', systems: ['digestive'], asset: 'digestive', modelMatch: [], blurb: 'Yutulan besinleri boğazdan mideye taşıyan kaslı boru.' },
+  { id: 'eyes', nameTr: 'Gözler', systems: ['nervous'], asset: 'nervous', modelMatch: [], blurb: 'Görme organı. Retina damarları uzun süreli yüksek kan şekeri ve tansiyondan etkilenebilir.' },
   // Üreme sistemi (erkek referans vücudu; kadın üreme organlarının modeli yok)
   { id: 'testes', nameTr: 'Testisler', systems: ['reproductive', 'endocrine'], asset: 'reproductive', modelMatch: [], blurb: 'Sperm ve testosteron üreten erkek üreme bezleri; üstlerinde epididim bulunur.' },
   { id: 'male-genitals', nameTr: 'Erkek üreme yolları', systems: ['reproductive'], asset: 'reproductive', modelMatch: [], blurb: 'Sperm kanalları (duktus deferens), seminal veziküller ve penis.' },

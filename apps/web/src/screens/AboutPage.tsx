@@ -59,14 +59,16 @@ export function AboutPage() {
           Organlar ve damarlar bu kaynaktandır.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-fg-muted">
-          Deri, tam iskelet ve kaslar: BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan (CC BY-SA
-          2.1 JP). Kaynak: lifesciencedb.jp/bp3d — kopya: github.com/Kevin-Mattheus-Moerman/BodyParts3D (commit f0eeb6e). Bu parçalardan üretilen
-          model dosyaları (body.glb, skeleton.glb, muscles.glb) aynı lisansla dağıtılır.
+          Deri, tam iskelet, kaslar, mide, yemek borusu, hipofiz, hipotalamus, böbreküstü bezleri, erkek üreme organları ve bazı gövde damarları:
+          BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan (CC BY-SA 2.1 JP). Kaynak:
+          lifesciencedb.jp/bp3d — kopya: github.com/Kevin-Mattheus-Moerman/BodyParts3D (commit f0eeb6e). Bu parçalardan üretilen model dosyaları
+          aynı lisansla dağıtılır.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-fg-muted">
           Yapılan değişiklikler: sahne düzleştirildi, parçalar yapıya ve bölgeye göre birleştirildi, BodyParts3D parçaları HRA koordinatlarına benzerlik
-          dönüşümüyle taşındı (iki farklı vücut olduğundan uyum yaklaşıktır), ağlar sadeleştirildi, nicemlendi ve sıkıştırıldı. Tiroid, hipofiz,
-          hipotalamus ve böbreküstü bezleri bu kaynaklarda olmadığından şematik şekillerle gösterilir. Kol ve bacak damarları ile mide modeli yoktur.
+          dönüşümüyle taşındı (iki farklı vücut olduğundan uyum yaklaşıktır), ağlar sadeleştirildi, nicemlendi ve sıkıştırıldı. Tiroid bezi iki
+          kaynakta da olmadığından şematik şekille, kol ve bacak damarları kemiklere göre şematik tüplerle gösterilir. Kadın üreme organlarının modeli
+          yoktur (her iki kaynak da erkek referans vücududur).
         </p>
         <p className="mt-3 text-sm leading-relaxed text-fg-muted">
           Doku ve hücre sahneleri (damar içi, alveol, nefron, lobül, adacık, folikül, kemik iliği) bu uygulama için prosedürel olarak üretilmiş temsili

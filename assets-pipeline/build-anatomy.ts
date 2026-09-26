@@ -24,7 +24,7 @@ import { EXTMeshoptCompression, KHRMeshQuantization, ALL_EXTENSIONS } from '@glt
 import { clearNodeTransform, dedup, flatten, joinPrimitives, meshopt, normals, prune, quantize, simplify, weld, getBounds } from '@gltf-transform/functions';
 import { MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import { type ModelAsset, structureById, structureForNode } from '@kh/catalog';
-import { BP3D_COMMIT, BP3D_REPO, bp3dDocument, planBp3d } from './bp3d';
+import { BP3D_COMMIT, BP3D_ORGANS, BP3D_REPO, bp3dDocument, planBp3d } from './bp3d';
 import { limbVesselDocument, trunkVesselDocument } from './limbs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -63,6 +63,9 @@ const SOURCES: SourceSpec[] = [
   { file: 'VH_Male/v1.2/Allen_M_Brain.glb', asset: 'nervous', structure: 'brain', tris: 48000 },
   { file: 'VH_Male/v1.2/VH_M_Spinal_Cord.glb', asset: 'nervous', structure: 'spinal-cord', tris: 8000 },
   { file: 'VH_Male/v1.2/VH_M_Spleen.glb', asset: 'immune', structure: 'spleen', tris: 8000 },
+  { file: 'VH_Male/v1.2/VH_M_Eye_L.glb', asset: 'nervous', structure: 'eyes', tris: 3000 },
+  { file: 'VH_Male/v1.2/VH_M_Eye_R.glb', asset: 'nervous', structure: 'eyes', tris: 3000 },
+  { file: 'VH_Male/v1.4/3d-vh-m-larynx.glb', asset: 'respiratory', structure: 'airways', tris: 6000 },
   { file: 'VH_Male/v1.2/VH_M_Thymus.glb', asset: 'immune', structure: 'thymus', tris: 2800 },
 ];
 
@@ -180,7 +183,7 @@ async function loadBp3d(asset: keyof typeof BP3D_BUDGET): Promise<Document> {
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
-  const assets = [...new Set<Exclude<ModelAsset, 'schematic'>>(['body', 'skeleton', ...SOURCES.map((s) => s.asset), 'muscles'])];
+  const assets = [...new Set<Exclude<ModelAsset, 'schematic'>>(['body', 'skeleton', ...SOURCES.map((s) => s.asset), 'endocrine', 'reproductive', 'muscles'])];
   const manifest: Record<string, unknown> = {
     source: 'HuBMAP Human Reference Atlas — 3D Reference Object Library (VH Male), CC BY 4.0; BodyParts3D 3.0 (DBCLS), CC BY-SA 2.1 JP (skin, skeleton, muscles)',
     bp3d: { repo: BP3D_REPO, commit: BP3D_COMMIT },
@@ -198,6 +201,12 @@ async function main() {
     const { mergeDocuments } = await import('@gltf-transform/functions');
     if (asset === 'body' || asset === 'skeleton' || asset === 'muscles') mergeDocuments(target, await loadBp3d(asset));
     if (asset === 'cardio') for (const d of await loadExtraVessels()) mergeDocuments(target, d);
+    if (asset === 'digestive' || asset === 'endocrine' || asset === 'reproductive') {
+      const groups = BP3D_ORGANS[asset];
+      const doc = bp3dDocument(groups, asset);
+      await simplifyTo(doc, { digestive: 14000, endocrine: 6000, reproductive: 9000 }[asset], `BodyParts3D ${asset}`, groups.length);
+      mergeDocuments(target, doc);
+    }
     for (const spec of SOURCES.filter((s) => s.asset === asset)) {
       const src = await loadSource(spec);
       mergeDocuments(target, src);
@@ -255,16 +264,21 @@ async function main() {
    Kaynak: https://github.com/hubmapconsortium/ccf-3d-reference-object-library (commit f1a3a63)
    Lisans: https://creativecommons.org/licenses/by/4.0/
 
-2) Deri, iskelet ve kaslar (body.glb, skeleton.glb, muscles.glb):
+2) Deri, iskelet, kaslar, mide, yemek borusu, hipofiz, hipotalamus, böbreküstü bezleri, erkek üreme
+   organları, bazı gövde damarları (body.glb, skeleton.glb, muscles.glb, endocrine.glb, reproductive.glb;
+   digestive.glb ve cardio.glb içindeki ilgili parçalar):
    BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan.
    Kaynak: http://lifesciencedb.jp/bp3d/ — kopya: ${BP3D_REPO} (commit ${BP3D_COMMIT.slice(0, 7)})
    Lisans: https://creativecommons.org/licenses/by-sa/2.1/jp/deed.en
-   Bu üç dosya (uyarlanmış eser) aynı lisansla (CC BY-SA 2.1 JP) dağıtılır.
+   Bu parçalardan üretilen model dosyaları (uyarlanmış eser) aynı lisansla (CC BY-SA 2.1 JP) dağıtılır.
+
+3) Kol ve bacak damarları: bu uygulama için BodyParts3D kemiklerinden türetilen ŞEMATİK tüpler.
 
 Değişiklikler: sahne düzleştirildi, parçalar yapıya/bölgeye göre birleştirildi, BodyParts3D parçaları HRA
-koordinat sistemine benzerlik dönüşümüyle taşındı (iki farklı vücut; uyum yaklaşıktır), ağlar sadeleştirildi
-(meshoptimizer), nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı. Tiroid, hipofiz, hipotalamus ve
-böbreküstü bezleri uygulamada şematik olarak çizilir ve bu kaynaklardan gelmez.
+koordinat sistemine benzerlik dönüşümüyle taşındı (iki farklı vücut; uyum yaklaşıktır; hipofiz, hipotalamus ve
+böbreküstü bezleri komşu HRA organlarına göre ayrıca kaydırıldı), ağlar sadeleştirildi (meshoptimizer),
+nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı. Tiroid bezi iki kaynakta da olmadığından uygulamada
+şematik olarak çizilir.
 `,
   );
 }

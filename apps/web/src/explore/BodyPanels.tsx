@@ -175,9 +175,9 @@ export function BodyIntroPanel({
         </p>
       )}
       <p className="mt-8 text-[11px] leading-relaxed text-fg-faint">
-        Modeller: organlar ve damarlar HuBMAP İnsan Referans Atlası (CC BY 4.0); deri, iskelet ve kaslar BodyParts3D (DBCLS, CC BY-SA 2.1 JP).
-        İki farklı referans vücuttur, uyum yaklaşıktır; senin vücudunun taraması değildir. Tiroid, hipofiz, hipotalamus ve böbreküstü bezleri
-        şematiktir. Kol ve bacak damarları modelde yoktur.
+        Modeller: organlar ve damarların çoğu HuBMAP İnsan Referans Atlası (CC BY 4.0); deri, iskelet, kaslar, mide, yemek borusu, hipofiz,
+        böbreküstü bezleri ve erkek üreme organları BodyParts3D (DBCLS, CC BY-SA 2.1 JP). İki farklı erkek referans vücududur, uyum yaklaşıktır;
+        senin vücudunun taraması değildir. Tiroid bezi ile kol ve bacak damarları şematiktir; kadın üreme organlarının modeli yoktur.
       </p>
     </div>
   );
@@ -320,7 +320,9 @@ export function OrganPanel({
               ? 'Bu bez modelde yok; konumu şematik bir şekille gösteriliyor.'
               : s.approximate
                 ? 'ŞEMATİK: bu damarların gerçek modeli yok; yolları kemiklere göre yaklaşık çizildi.'
-                : undefined
+                : !s.asset
+                  ? '3D MODELİ YOK: uygulamadaki vücut erkek referans modelidir; bu yapı modelde gösterilemiyor.'
+                  : undefined
         }
       />
 

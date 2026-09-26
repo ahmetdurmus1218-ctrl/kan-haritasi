@@ -29,7 +29,7 @@ Kurulumda "bilinmeyen kaynak" izni istenir. APK, derleme sırasında `INTERNET` 
 | **Verilerimi indir** | Şifresiz ZIP: orijinaller + `sonuclar.json` + `sonuclar.csv` (açık uyarıyla) |
 | **Gizlilik** | Veri akışı, depolama, açma yöntemleri (parola, Android'de parmak izi/yüz/PIN), otomatik kilit, profil, tüm verileri sil |
 
-Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zekâ **BAĞLI DEĞİL**, dört bez **şematik**; kol-bacak damarları ve mide modeli yoktur.
+Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zekâ **BAĞLI DEĞİL**; tiroid bezi ve kol-bacak damarları **şematik**; kadın üreme organlarının **3D modeli yok**.
 
 ## Güvenlik modeli (kısa)
 
@@ -95,7 +95,7 @@ packages/
   parser/     PDF metin katmanı / OCR satırlarından sonuç çıkarma
   platform/   PlatformAdapter (web, Android köprüsü)
 apps/web/     Vite + React + Tailwind; three.js / React Three Fiber
-  src/anatomy/   model yükleme, malzemeler, yapı eşlemesi, şematik bezler
+  src/anatomy/   model yükleme, malzemeler, yapı eşlemesi, şematik tiroid
   src/explore/   Keşfet ekranı, sinematik kamera, gürültü geçişi, paneller
   src/explore/inside/   içeri-gir sahneleri, aşama/nesne içerikleri
 apps/android/ Kotlin + Compose kabuğu (WebView, Keystore, SAF)
@@ -106,7 +106,7 @@ fixtures/     yalnızca sentetik raporlar
 
 ## Bilinen sınırlar
 
-- **Vücut modeli:** Erkek referans vücudu: organlar ve damarlar HRA'dan, deri, tam iskelet ve kaslar BodyParts3D'den (iki farklı vücut, benzerlik dönüşümüyle hizalandı; uyum yaklaşıktır). Senin taraman değildir. Kol ve bacak damarları ile mide modeli yok. Tiroid, hipofiz, hipotalamus ve böbreküstü şematiktir.
+- **Vücut modeli:** Erkek referans vücudu: organlar ve damarlar HRA'dan, deri, tam iskelet ve kaslar BodyParts3D'den (iki farklı vücut, benzerlik dönüşümüyle hizalandı; uyum yaklaşıktır). Senin taraman değildir. Tiroid bezi ile kol-bacak damarları şematiktir; kadın üreme organlarının modeli yoktur.
 - **Doku ve hücre sahneleri** temsilidir: prosedürel üretilmiştir, ölçekler anlaşılır olsun diye değiştirilmiştir.
 - **OCR** fotoğraf kalitesine bağlıdır. Düşük güvenli satırlar işaretlenir ve hiçbir değer onaysız kaydedilmez.
 - **Veri kalıcılığı:** Web'de tarayıcı, depolama dolarsa veriyi silebilir. Düzenli şifreli yedek al.

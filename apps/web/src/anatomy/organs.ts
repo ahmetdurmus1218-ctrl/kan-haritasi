@@ -162,6 +162,45 @@ export const ORGANS: Record<string, OrganInfo> = {
     view: [20, 8],
     inside: 'ilik',
   },
+  stomach: {
+    location: 'Karnın sol üst bölümünde, diyaframın altında; karaciğerin sol lobunun ve dalağın komşusu.',
+    function: 'Besinleri asit ve pepsin enzimiyle sindirmeye başlar, karıştırır ve bağırsağa azar azar iletir. B12 vitamininin emilmesi için gereken iç faktörü üretir; mide asidini baskılayan ilaçlar ve mide iltihabı B12 ve demir emilimini etkileyebilir.',
+    anatomy: ['Kardiya (giriş)', 'Fundus', 'Gövde', 'Pilor (çıkış)'],
+    view: [10, 8],
+  },
+  esophagus: {
+    location: 'Boğazdan başlayıp nefes borusunun ve kalbin arkasından geçerek mideye uzanır.',
+    function: 'Kas dalgalarıyla (peristaltizm) yutulan lokmayı mideye taşır; alt ucundaki büzücü kas mide içeriğinin geri kaçmasını önler.',
+    view: [60, 5],
+  },
+  eyes: {
+    location: 'Kafatasındaki göz çukurlarında.',
+    function: 'Işığı retinada sinir sinyaline çevirir. Retinanın küçük damarları uzun süreli yüksek kan şekeri ve yüksek tansiyondan etkilenebilir; bu yüzden diyabette düzenli göz muayenesi önerilir.',
+    anatomy: ['Kornea', 'Lens', 'Retina', 'Görme siniri'],
+    view: [0, 5],
+  },
+  testes: {
+    location: 'Skrotum (torba) içinde, vücudun dışında; üstlerinde epididim bulunur.',
+    function: 'Sperm üretir ve testosteronun büyük kısmını salgılar. Hipofizden gelen LH testosteron yapımını, FSH sperm yapımını uyarır.',
+    anatomy: ['Testis', 'Epididim'],
+    view: [0, 10],
+  },
+  'male-genitals': {
+    location: 'Pelvis ve dış genital bölge.',
+    function: 'Spermi testislerden taşıyan kanallar (duktus deferens), sıvı üreten seminal veziküller ve prostat birlikte meni oluşturur.',
+    anatomy: ['Duktus deferens', 'Seminal veziküller', 'Penis'],
+    view: [30, 10],
+  },
+  ovaries: {
+    location: 'Kadında pelvis içinde, rahmin iki yanında (bu modelde yok).',
+    function: 'Yumurta hücrelerini olgunlaştırır; östrojen ve progesteron üretir. Hipofizden gelen FSH ve LH ile yönetilir.',
+    view: [0, 10],
+  },
+  uterus: {
+    location: 'Kadında pelvis içinde, mesanenin arkasında (bu modelde yok).',
+    function: 'Gebeliğin geliştiği organ; iç tabakası her adet döngüsünde hormonlara göre kalınlaşıp dökülür.',
+    view: [0, 10],
+  },
   'limb-vessels': {
     location: 'Kollar ve bacaklar boyunca, kemiklere ve kaslara eşlik ederek.',
     function: 'Atardamarlar oksijenli kanı kaslara ve dokulara taşır; toplardamarlar kanı kalbe geri getirir. Bacak toplardamarlarındaki kapakçıklar kanın yerçekimine karşı yukarı akmasına yardım eder. Uzun süre hareketsizlik bacak toplardamarlarında pıhtı riskini artırabilir.',

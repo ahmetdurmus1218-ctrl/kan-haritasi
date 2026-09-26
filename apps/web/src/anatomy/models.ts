@@ -23,7 +23,7 @@ export interface ModelPart {
   box: Box3;
 }
 
-export const LOAD_ORDER: LoadableAsset[] = ['body', 'skeleton', 'digestive', 'urinary', 'respiratory', 'nervous', 'immune', 'cardio'];
+export const LOAD_ORDER: LoadableAsset[] = ['body', 'skeleton', 'endocrine', 'digestive', 'urinary', 'reproductive', 'respiratory', 'nervous', 'immune', 'cardio'];
 /** İstenince yüklenenler (ör. kaslar, katman açılınca). */
 export const OPTIONAL_ASSETS: LoadableAsset[] = ['muscles'];
 

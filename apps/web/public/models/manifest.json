@@ -232,8 +232,8 @@
   },
   "respiratory": {
    "file": "respiratory.glb",
-   "bytes": 1776188,
-   "triangles": 69797,
+   "bytes": 1935344,
+   "triangles": 75797,
    "bounds": {
     "min": [
      -0.1247,
@@ -242,20 +242,21 @@
     ],
     "max": [
      0.1335,
-     0.6601,
+     0.7002,
      0.0973
     ]
    },
    "nodes": [
     "lungs",
     "airways",
+    "airways",
     "airways"
    ]
   },
   "digestive": {
    "file": "digestive.glb",
-   "bytes": 1491580,
-   "triangles": 58633,
+   "bytes": 1798524,
+   "triangles": 70659,
    "bounds": {
     "min": [
      -0.1332,
@@ -264,11 +265,13 @@
     ],
     "max": [
      0.1431,
-     0.4544,
+     0.6748,
      0.139
     ]
    },
    "nodes": [
+    "stomach",
+    "esophagus",
     "liver",
     "gallbladder",
     "pancreas",
@@ -303,8 +306,8 @@
   },
   "nervous": {
    "file": "nervous.glb",
-   "bytes": 1566324,
-   "triangles": 55999,
+   "bytes": 1907684,
+   "triangles": 71792,
    "bounds": {
     "min": [
      -0.0683,
@@ -314,12 +317,14 @@
     "max": [
      0.0681,
      0.9025,
-     0.0821
+     0.0962
     ]
    },
    "nodes": [
     "brain",
-    "spinal-cord"
+    "spinal-cord",
+    "eyes",
+    "eyes"
    ]
   },
   "immune": {
@@ -341,6 +346,53 @@
    "nodes": [
     "spleen",
     "thymus"
+   ]
+  },
+  "endocrine": {
+   "file": "endocrine.glb",
+   "bytes": 176948,
+   "triangles": 5996,
+   "bounds": {
+    "min": [
+     -0.0804,
+     0.3203,
+     -0.0457
+    ],
+    "max": [
+     0.0784,
+     0.8106,
+     0.0165
+    ]
+   },
+   "nodes": [
+    "pituitary",
+    "hypothalamus",
+    "adrenals|Sağ böbreküstü bezi",
+    "adrenals|Sol böbreküstü bezi"
+   ]
+  },
+  "reproductive": {
+   "file": "reproductive.glb",
+   "bytes": 254620,
+   "triangles": 9196,
+   "bounds": {
+    "min": [
+     -0.0717,
+     -0.1057,
+     -0.0695
+    ],
+    "max": [
+     0.0971,
+     0.0808,
+     0.0875
+    ]
+   },
+   "nodes": [
+    "testes|Sağ testis ve epididim",
+    "testes|Sol testis ve epididim",
+    "male-genitals|Seminal veziküller",
+    "male-genitals|Sperm kanalları (duktus deferens)",
+    "male-genitals|Penis"
    ]
   },
   "muscles": {

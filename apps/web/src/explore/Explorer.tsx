@@ -51,7 +51,7 @@ function layerAllows(layers: Layers, structure: string): boolean {
   if (structure === 'skeletal-muscle') return layers.muscles;
   if (CARDIO_LAYER.has(structure)) return layers.cardio;
   if (structure === 'lungs' || structure === 'airways') return layers.respiratory;
-  if (structure === 'brain' || structure === 'spinal-cord') return layers.nervous;
+  if (structure === 'brain' || structure === 'spinal-cord' || structure === 'eyes') return layers.nervous;
   return layers.organs;
 }
 
@@ -124,7 +124,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 
   const isVisible = useCallback(
     (sid: string) => {
-      if (sid === 'prostate' && sex === 'female') return false;
+      // Model erkek referans vücududur; kadın kullanıcıda erkek üreme organları gösterilmez.
+      if ((sid === 'prostate' || sid === 'testes' || sid === 'male-genitals') && sex === 'female') return false;
       return layerAllows(layers, sid);
     },
     [layers, sex],

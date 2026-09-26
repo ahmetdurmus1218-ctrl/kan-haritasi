@@ -33,6 +33,11 @@ const COLORS: Record<string, string> = {
   hypothalamus: '#9d7fe0',
   adrenals: '#d9a441',
   'skeletal-muscle': '#b4574e',
+  stomach: '#e59a7c',
+  esophagus: '#d98a78',
+  eyes: '#eef0f2',
+  testes: '#e3b1c4',
+  'male-genitals': '#d59aae',
 };
 
 export const VEIN_COLOR = '#4a6fd6';

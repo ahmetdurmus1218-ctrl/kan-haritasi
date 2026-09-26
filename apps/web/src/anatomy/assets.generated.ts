@@ -53,8 +53,8 @@ export const MODEL_ASSETS = {
   },
   "respiratory": {
     "file": "respiratory.glb",
-    "bytes": 1776188,
-    "triangles": 69797,
+    "bytes": 1935344,
+    "triangles": 75797,
     "bounds": {
       "min": [
         -0.1247,
@@ -63,15 +63,15 @@ export const MODEL_ASSETS = {
       ],
       "max": [
         0.1335,
-        0.6601,
+        0.7002,
         0.0973
       ]
     }
   },
   "digestive": {
     "file": "digestive.glb",
-    "bytes": 1491580,
-    "triangles": 58633,
+    "bytes": 1798524,
+    "triangles": 70659,
     "bounds": {
       "min": [
         -0.1332,
@@ -80,7 +80,7 @@ export const MODEL_ASSETS = {
       ],
       "max": [
         0.1431,
-        0.4544,
+        0.6748,
         0.139
       ]
     }
@@ -104,8 +104,8 @@ export const MODEL_ASSETS = {
   },
   "nervous": {
     "file": "nervous.glb",
-    "bytes": 1566324,
-    "triangles": 55999,
+    "bytes": 1907684,
+    "triangles": 71792,
     "bounds": {
       "min": [
         -0.0683,
@@ -115,7 +115,7 @@ export const MODEL_ASSETS = {
       "max": [
         0.0681,
         0.9025,
-        0.0821
+        0.0962
       ]
     }
   },
@@ -133,6 +133,40 @@ export const MODEL_ASSETS = {
         0.1363,
         0.5758,
         0.0608
+      ]
+    }
+  },
+  "endocrine": {
+    "file": "endocrine.glb",
+    "bytes": 176948,
+    "triangles": 5996,
+    "bounds": {
+      "min": [
+        -0.0804,
+        0.3203,
+        -0.0457
+      ],
+      "max": [
+        0.0784,
+        0.8106,
+        0.0165
+      ]
+    }
+  },
+  "reproductive": {
+    "file": "reproductive.glb",
+    "bytes": 254620,
+    "triangles": 9196,
+    "bounds": {
+      "min": [
+        -0.0717,
+        -0.1057,
+        -0.0695
+      ],
+      "max": [
+        0.0971,
+        0.0808,
+        0.0875
       ]
     }
   },

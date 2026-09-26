@@ -454,7 +454,7 @@ export const TESTS: readonly LabTestDef[] = [
     key: 'b12', loinc: '2132-9', nameTr: 'Vitamin B12', group: 'vitamin',
     aliases: ['Vitamin B12', 'B12 vitamini', 'Kobalamin', 'B12', 'Vit B12'],
     unit: 'pg/mL', conversions: { 'pg/ml': [1], 'pmol/l': [1.355] }, ranges: [{ min: 197, max: 771 }],
-    plausible: [20, 5000], decimals: 0, processes: ['b12-folate'], structures: ['bones', 'small-intestine', 'spinal-cord', 'brain'], systems: ['hematologic', 'nervous', 'digestive'],
+    plausible: [20, 5000], decimals: 0, processes: ['b12-folate'], structures: ['bones', 'stomach', 'small-intestine', 'spinal-cord', 'brain'], systems: ['hematologic', 'nervous', 'digestive'],
   },
   {
     key: 'folate', loinc: '2284-8', nameTr: 'Folat', group: 'vitamin',
