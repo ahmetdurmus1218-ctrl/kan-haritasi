@@ -6,6 +6,7 @@ import { type Route } from '../state/router';
 import { processUpload, type UploadPhase } from '../lib/upload';
 import { formatBytes, formatDate, KIND_LABEL } from '../lib/format';
 import { userMessage } from '../lib/messages';
+import { deleteDocument } from '../lib/reports';
 import { platform } from '../platform';
 
 const uploadDeps = {
@@ -319,8 +320,8 @@ function UploadRow({ item, onOpen, onDismiss }: { item: QueueItem; onOpen: (id: 
         ))}
       </div>
       {item.file && (item.phase === 'done' || item.phase === 'duplicate') && (
-        <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => onOpen(item.file!.id)}>
-          Aç
+        <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={() => onOpen(item.file!.id)}>
+          {item.phase === 'done' ? 'Aç ve oku' : 'Aç'}
         </button>
       )}
       {!working && (
@@ -375,7 +376,7 @@ export function DocumentRow({
         <button type="button" className="icon-btn" onClick={onRename} aria-label="Yeniden adlandır" title="Yeniden adlandır">
           <PencilIcon />
         </button>
-        <button type="button" className="icon-btn hidden sm:inline-flex" disabled aria-label="Yeniden analiz et (Faz 3)" title="Yeniden analiz: okuma hattı Faz 3'te bağlanacak">
+        <button type="button" className="icon-btn hidden sm:inline-flex" onClick={onOpen} aria-label="Sonuçları gör veya yeniden oku" title="Sonuçları gör veya yeniden oku">
           <RefreshIcon />
         </button>
         <button type="button" className="icon-btn hover:text-danger" onClick={onDelete} aria-label="Sil" title="Sil">
@@ -461,7 +462,7 @@ function DeleteDialog({ file, onClose, onDeleted }: { file: FileInfo | null; onC
     if (!file) return;
     setBusy(true);
     try {
-      await vault.deleteFile(file.id);
+      await deleteDocument(vault, file.id);
       onDeleted();
     } catch (e) {
       setError(userMessage(e));
@@ -488,8 +489,7 @@ function DeleteDialog({ file, onClose, onDeleted }: { file: FileInfo | null; onC
       }
     >
       <p>
-        <strong className="text-fg">{file?.displayName}</strong> ve şifreleme anahtarı bu cihazdan silinecek. Belgeden çıkarılan sonuçlar da (Faz 3) onunla birlikte
-        silinir. Bu işlem geri alınamaz.
+        <strong className="text-fg">{file?.displayName}</strong>, şifreleme anahtarı ve bu belgeden çıkarılan tüm sonuçlar bu cihazdan silinecek. Bu işlem geri alınamaz.
       </p>
       {error && (
         <div className="mt-3">

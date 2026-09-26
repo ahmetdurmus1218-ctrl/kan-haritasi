@@ -7,14 +7,25 @@ type NavKey = 'documents' | 'results' | 'body' | 'timeline' | 'privacy';
 
 const NAV: { key: NavKey; label: string; icon: (p: { size?: number }) => ReactNode; phase?: number }[] = [
   { key: 'documents', label: 'Belgeler', icon: FolderIcon },
-  { key: 'results', label: 'Sonuçlar', icon: ListIcon, phase: 3 },
+  { key: 'results', label: 'Sonuçlar', icon: ListIcon },
   { key: 'body', label: 'Vücut', icon: BodyIcon, phase: 4 },
   { key: 'timeline', label: 'Zaman', icon: ChartIcon, phase: 6 },
   { key: 'privacy', label: 'Gizlilik', icon: ShieldIcon },
 ];
 
 function activeKey(route: Route): NavKey {
-  return route.name === 'document' ? 'documents' : route.name;
+  switch (route.name) {
+    case 'document':
+      return 'documents';
+    case 'result':
+      return 'results';
+    case 'simulation':
+      return 'body';
+    case 'about':
+      return 'privacy';
+    default:
+      return route.name;
+  }
 }
 
 export function AppShell({ route, children }: { route: Route; children: ReactNode }) {

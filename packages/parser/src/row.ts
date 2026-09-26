@@ -189,7 +189,7 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
   let confidence = match.score >= 1 ? 0.55 : 0.4;
   if (match.score < 1) issues.push('NAME_FUZZY');
 
-  let canonicalValue: number | null = null;
+  let canonicalValue: number | null;
   if (!unitFound) {
     // Birim yazılmamış: kanonik birim varsayılır ama düşük güvenle.
     canonicalValue = parsedValue.value;

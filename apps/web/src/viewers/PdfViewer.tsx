@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { PasswordResponses, Util, type PDFDocumentProxy, type RenderTask } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import type { SourceBox } from '@kh/parser';
 import { openPdf } from '../lib/pdf';
 import { Banner, ToolbarGroup } from '../components/ui';
 import {
@@ -18,7 +19,7 @@ import { clampZoom, useElementWidth, useFullscreen, usePinchZoom } from './hooks
 
 const norm = (s: string) => s.toLocaleLowerCase('tr').normalize('NFC');
 
-export function PdfViewer({ bytes, onDownload }: { bytes: Uint8Array; onDownload: () => void }) {
+export function PdfViewer({ bytes, onDownload, highlight = null }: { bytes: Uint8Array; onDownload: () => void; highlight?: SourceBox | null }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -75,7 +76,16 @@ export function PdfViewer({ bytes, onDownload }: { bytes: Uint8Array; onDownload
     [numPages],
   );
 
-  // Geçerli sayfayı çiz (+ arama eşleşmelerini vurgula)
+  // Onay ekranında "Belgede göster": ilgili sayfaya git.
+  useEffect(() => {
+    if (highlight && numPages && highlight.page !== page) {
+      setPage(Math.min(numPages, Math.max(1, highlight.page)));
+      setPageInput(String(highlight.page));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlight, numPages]);
+
+  // Geçerli sayfayı çiz (+ arama eşleşmelerini ve seçili satırı vurgula)
   useEffect(() => {
     if (!doc || width === 0) return;
     let cancelled = false;
@@ -96,9 +106,27 @@ export function PdfViewer({ bytes, onDownload }: { bytes: Uint8Array; onDownload
       canvas.style.height = `${Math.floor(viewport.height)}px`;
       task = p.render({ canvas, viewport, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined });
       await task.promise;
-      if (cancelled || !activeQuery) return;
+      if (cancelled) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
+      if (highlight && highlight.page === page) {
+        const k = viewport.scale;
+        const pad = 3;
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.fillStyle = 'rgba(55, 214, 196, 0.16)';
+        ctx.strokeStyle = 'rgba(55, 214, 196, 0.95)';
+        ctx.lineWidth = 2;
+        const rx = highlight.x * k - pad;
+        const ry = highlight.y * k - pad;
+        const rw = highlight.w * k + pad * 2;
+        const rh = highlight.h * k + pad * 2;
+        ctx.fillRect(rx, ry, rw, rh);
+        ctx.strokeRect(rx, ry, rw, rh);
+        ctx.restore();
+        scrollRef.current?.scrollTo({ top: Math.max(0, ry - 80), left: Math.max(0, rx - 24), behavior: 'smooth' });
+      }
+      if (!activeQuery) return;
       const q = norm(activeQuery);
       const content = await p.getTextContent();
       ctx.save();
@@ -120,7 +148,7 @@ export function PdfViewer({ bytes, onDownload }: { bytes: Uint8Array; onDownload
       cancelled = true;
       task?.cancel();
     };
-  }, [doc, page, zoom, width, activeQuery]);
+  }, [doc, page, zoom, width, activeQuery, highlight]);
 
   async function runSearch(e: FormEvent) {
     e.preventDefault();

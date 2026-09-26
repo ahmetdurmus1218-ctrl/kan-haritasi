@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { SourceBox } from '@kh/parser';
 import { DownloadIcon, MaximizeIcon, RotateCcwIcon, RotateCwIcon, SpinnerIcon, ZoomInIcon, ZoomOutIcon } from '../components/icons';
 import { Banner, ToolbarGroup } from '../components/ui';
 import { clampZoom, useElementWidth, useFullscreen, usePinchZoom } from './hooks';
@@ -7,7 +8,17 @@ import { clampZoom, useElementWidth, useFullscreen, usePinchZoom } from './hooks
  * Çözülmüş görseli yalnızca bu bileşenin ömrü boyunca bir blob: URL'si olarak gösterir;
  * bileşen kapanınca URL bırakılır. Boyut zaten yüklemede başlıktan doğrulandı.
  */
-export function ImageViewer({ bytes, mimeType, onDownload }: { bytes: Uint8Array<ArrayBuffer>; mimeType: string; onDownload: () => void }) {
+export function ImageViewer({
+  bytes,
+  mimeType,
+  onDownload,
+  highlight = null,
+}: {
+  bytes: Uint8Array<ArrayBuffer>;
+  mimeType: string;
+  onDownload: () => void;
+  highlight?: SourceBox | null;
+}) {
   const rootRef = useRef<HTMLDivElement>(null);
   const areaRef = useRef<HTMLDivElement>(null);
   const [url, setUrl] = useState<string | null>(null);
@@ -78,13 +89,8 @@ export function ImageViewer({ bytes, mimeType, onDownload }: { bytes: Uint8Array
         ) : null}
         {url && (
           <div className="relative mx-auto" style={{ width: Math.max(box.w, rw * scale + pad), height: Math.max(box.h, rh * scale + pad) }}>
-            <img
-              src={url}
-              alt="Yüklenen rapor görseli"
-              draggable={false}
-              onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
-              onError={() => setFailed(true)}
-              className="absolute left-1/2 top-1/2 max-w-none rounded-sm shadow-xl shadow-black/40 select-none"
+            <div
+              className="absolute left-1/2 top-1/2"
               style={{
                 width: natural ? natural.w * scale : undefined,
                 height: natural ? natural.h * scale : undefined,
@@ -92,7 +98,27 @@ export function ImageViewer({ bytes, mimeType, onDownload }: { bytes: Uint8Array
                 visibility: natural ? 'visible' : 'hidden',
                 transition: 'transform 180ms ease',
               }}
-            />
+            >
+              <img
+                src={url}
+                alt="Yüklenen rapor görseli"
+                draggable={false}
+                onLoad={(e) => setNatural({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })}
+                onError={() => setFailed(true)}
+                className="h-full w-full max-w-none select-none rounded-sm shadow-xl shadow-black/40"
+              />
+              {highlight && natural && (
+                <div
+                  className="pointer-events-none absolute rounded-sm border-2 border-accent bg-accent/15"
+                  style={{
+                    left: (highlight.x * natural.w) / (highlight.pageW ?? natural.w) * scale - 3,
+                    top: (highlight.y * natural.h) / (highlight.pageH ?? natural.h) * scale - 3,
+                    width: (highlight.w * natural.w) / (highlight.pageW ?? natural.w) * scale + 6,
+                    height: (highlight.h * natural.h) / (highlight.pageH ?? natural.h) * scale + 6,
+                  }}
+                />
+              )}
+            </div>
           </div>
         )}
       </div>

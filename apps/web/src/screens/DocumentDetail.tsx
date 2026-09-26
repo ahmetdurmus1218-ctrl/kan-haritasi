@@ -4,16 +4,18 @@ import { useUnlockedVault } from '../state/VaultContext';
 import type { Route } from '../state/router';
 import { userMessage } from '../lib/messages';
 import { formatBytes, formatDateTime, KIND_LABEL } from '../lib/format';
+import { releaseOcr } from '../lib/ocr';
 import { ImageViewer } from '../viewers/ImageViewer';
-import { Banner, StatusTag } from '../components/ui';
-import { ChevronLeftIcon, ChevronRightIcon, ListIcon, SpinnerIcon } from '../components/icons';
+import { Banner } from '../components/ui';
+import { ChevronLeftIcon, FileTextIcon, ListIcon, SpinnerIcon } from '../components/icons';
 import { downloadOriginal } from './DocumentsPage';
+import { type Highlight, ReportPanel } from './ReportPanel';
 
 // PDF.js büyük olduğu için yalnızca bir PDF açıldığında yüklenir.
 const PdfViewer = lazy(() => import('../viewers/PdfViewer').then((m) => ({ default: m.PdfViewer })));
 
 /**
- * Belge detayı: solda görüntüleyici, sağda çıkarılan sonuçlar.
+ * Belge detayı: solda görüntüleyici, sağda çıkarılan sonuçlar (mobilde iki sekme).
  * Çözülmüş baytlar yalnızca bu ekran açıkken bellekte tutulur.
  */
 export function DocumentDetail({ id, navigate }: { id: string; navigate: (r: Route) => void }) {
@@ -21,6 +23,8 @@ export function DocumentDetail({ id, navigate }: { id: string; navigate: (r: Rou
   const [state, setState] = useState<{ info: FileInfo; bytes: Bytes } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState<Highlight>(null);
+  const [tab, setTab] = useState<'doc' | 'results'>('results');
 
   useEffect(() => {
     let cancelled = false;
@@ -31,20 +35,24 @@ export function DocumentDetail({ id, navigate }: { id: string; navigate: (r: Rou
     return () => {
       cancelled = true;
       setState(null);
+      void releaseOcr();
     };
   }, [vault, id]);
-
-  const back = () => navigate({ name: 'documents' });
 
   const download = () => {
     setDownloadError(null);
     downloadOriginal(vault, id).catch((e) => setDownloadError(userMessage(e)));
   };
 
+  const showSource = (h: Highlight) => {
+    setHighlight(h);
+    if (h) setTab('doc');
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-2 border-b border-ink-700 px-2 py-2 md:px-4">
-        <button type="button" className="icon-btn" onClick={back} aria-label="Belgelere dön">
+        <button type="button" className="icon-btn" onClick={() => navigate({ name: 'documents' })} aria-label="Belgelere dön">
           <ChevronLeftIcon />
         </button>
         <div className="min-w-0 flex-1">
@@ -72,65 +80,53 @@ export function DocumentDetail({ id, navigate }: { id: string; navigate: (r: Rou
           <SpinnerIcon size={16} /> Şifre çözülüyor ve doğrulanıyor…
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <div className="min-h-0 flex-1">
-            {state.info.kind === 'pdf' ? (
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center gap-2 text-sm text-fg-muted">
-                    <SpinnerIcon size={16} /> Görüntüleyici yükleniyor…
-                  </div>
-                }
+        <>
+          {/* Mobil: sekmeler */}
+          <div className="grid grid-cols-2 border-b border-ink-700 lg:hidden" role="tablist">
+            {(
+              [
+                ['results', 'Sonuçlar', ListIcon],
+                ['doc', 'Belge', FileTextIcon],
+              ] as const
+            ).map(([key, label, Icon]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                className={`flex items-center justify-center gap-2 py-2.5 text-sm ${tab === key ? 'border-b-2 border-accent text-fg' : 'text-fg-muted'}`}
+                onClick={() => setTab(key)}
               >
-                <PdfViewer bytes={state.bytes} onDownload={download} />
-              </Suspense>
-            ) : (
-              <ImageViewer bytes={state.bytes} mimeType={state.info.mimeType} onDownload={download} />
-            )}
+                <Icon size={16} /> {label}
+              </button>
+            ))}
           </div>
-          <ExtractedResultsPanel />
-        </div>
+
+          <div className="flex min-h-0 flex-1">
+            <div className={`min-h-0 flex-1 ${tab === 'doc' ? 'block' : 'hidden'} lg:block`}>
+              {state.info.kind === 'pdf' ? (
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center gap-2 text-sm text-fg-muted">
+                      <SpinnerIcon size={16} /> Görüntüleyici yükleniyor…
+                    </div>
+                  }
+                >
+                  <PdfViewer bytes={state.bytes} onDownload={download} highlight={highlight?.box ?? null} />
+                </Suspense>
+              ) : (
+                <ImageViewer bytes={state.bytes} mimeType={state.info.mimeType} onDownload={download} highlight={highlight?.box ?? null} />
+              )}
+            </div>
+            <aside
+              className={`min-h-0 w-full flex-col bg-ink-900/60 lg:flex lg:w-[440px] lg:border-l lg:border-ink-700 ${tab === 'results' ? 'flex' : 'hidden'}`}
+              aria-label="Çıkarılan sonuçlar"
+            >
+              <ReportPanel info={state.info} bytes={state.bytes} highlight={highlight} onHighlight={showSource} />
+            </aside>
+          </div>
+        </>
       )}
     </div>
-  );
-}
-
-/** Faz 3'te okuma hattı bağlanana kadar dürüstçe boş: sahte sonuç gösterilmez. Mobilde katlanır. */
-function ExtractedResultsPanel() {
-  const [open, setOpen] = useState(false);
-  return (
-    <aside className="border-t border-ink-700 bg-ink-900/60 lg:w-[360px] lg:border-l lg:border-t-0" aria-label="Çıkarılan sonuçlar">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left lg:pointer-events-none lg:pt-5"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-      >
-        <span className="flex items-center gap-2 font-medium">
-          <ListIcon size={17} /> Çıkarılan sonuçlar
-        </span>
-        <span className="flex items-center gap-2">
-          <StatusTag>NOT CONNECTED</StatusTag>
-          <ChevronRightIcon size={16} className={`text-fg-muted transition lg:hidden ${open ? 'rotate-90' : ''}`} />
-        </span>
-      </button>
-      <div className={`px-5 pb-5 ${open ? 'block' : 'hidden'} lg:block`}>
-        <p className="text-sm leading-relaxed text-fg-muted">
-          Rapor okuma hattı (PDF metni, OCR, test eşleme ve onay ekranı) Faz 3'te bağlanacak. Bu belgeden henüz hiçbir sonuç çıkarılmadı ve vücut modeline hiçbir şey
-          uygulanmadı.
-        </p>
-        <div className="mt-5 space-y-2" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center justify-between rounded-xl border border-dashed border-ink-600 px-3.5 py-3">
-              <div className="space-y-1.5">
-                <div className="h-2.5 w-16 rounded bg-ink-700" />
-                <div className="h-2 w-24 rounded bg-ink-800" />
-              </div>
-              <div className="h-6 w-20 rounded-lg bg-ink-800" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </aside>
   );
 }

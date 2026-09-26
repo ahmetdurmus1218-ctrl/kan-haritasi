@@ -24,7 +24,8 @@ async function getWorker(): Promise<TesseractWorker> {
         if (m.status === 'recognizing text' && progressListener) progressListener(m.progress);
       },
     });
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO, preserve_interword_spaces: '1' });
+    // user_defined_dpi: çözünürlük tahmin uyarısını önler; görseller OCR öncesi ~300 dpi'ye ölçeklenir.
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO, preserve_interword_spaces: '1', user_defined_dpi: '300' });
     return worker;
   })();
   try {

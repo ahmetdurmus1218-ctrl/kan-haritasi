@@ -6,6 +6,7 @@ import { DocumentsPage } from './screens/DocumentsPage';
 import { DocumentDetail } from './screens/DocumentDetail';
 import { PrivacyPage } from './screens/PrivacyPage';
 import { ComingSoon } from './screens/ComingSoon';
+import { ResultDetail, ResultsPage } from './screens/ResultsPage';
 import { Banner } from './components/ui';
 import { SpinnerIcon } from './components/icons';
 
@@ -35,10 +36,16 @@ function Gate() {
         <AppShell route={route}>
           {route.name === 'document' ? (
             <DocumentDetail key={route.id} id={route.id} navigate={navigate} />
-          ) : route.name === 'privacy' ? (
+          ) : route.name === 'privacy' || route.name === 'about' ? (
             <PrivacyPage />
-          ) : route.name === 'results' || route.name === 'body' || route.name === 'timeline' ? (
-            <ComingSoon page={route.name} />
+          ) : route.name === 'results' ? (
+            <ResultsPage />
+          ) : route.name === 'result' ? (
+            <ResultDetail key={route.key} testKey={route.key} />
+          ) : route.name === 'body' || route.name === 'simulation' ? (
+            <ComingSoon page="body" />
+          ) : route.name === 'timeline' ? (
+            <ComingSoon page="timeline" />
           ) : (
             <DocumentsPage navigate={navigate} />
           )}
