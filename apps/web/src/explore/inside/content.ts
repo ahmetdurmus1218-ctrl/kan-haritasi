@@ -71,6 +71,7 @@ export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
       ldl: { name: 'LDL parçacığı', text: 'Düşük yoğunluklu lipoprotein. Kolesterolü karaciğerden dokulara taşır. Tahlildeki “LDL kolesterol” bu parçacıklardaki kolesterol miktarıdır.', size: 'yaklaşık 20–25 nanometre (burada büyütülmüş)' },
       hdl: { name: 'HDL parçacığı', text: 'Yüksek yoğunluklu lipoprotein. Fazla kolesterolü dokulardan alıp karaciğere geri taşımaya katkıda bulunur.', size: 'yaklaşık 8–12 nanometre (burada büyütülmüş)' },
       platelet: { name: 'Trombosit', text: 'Kanamayı durduran küçük hücre parçası. Damar hasarında ilk yanıt verenlerdendir.', size: 'yaklaşık 2–3 mikrometre' },
+      vldl: { name: 'Trigliseritten zengin lipoprotein (VLDL)', text: 'Karaciğerin ürettiği, trigliserid taşıyan büyük lipoprotein. Trigliserid yüksekken sayıları artar; çok yüksek değerlerde plazma bulanık (sütümsü) görünebilir. Sahnede yalnızca trigliseridin yüksek olduğu durumda görünür.', size: 'yaklaşık 30–80 nanometre (burada büyütülmüş)' },
       endothelium: { name: 'Endotel', text: 'Damarın iç yüzeyini döşeyen tek katlı hücre tabakası. Akışı, pıhtılaşmayı ve damar genişliğini düzenleyen maddeler salgılar.' },
       wall: { name: 'Damar duvarı', text: 'İç (intima), orta (media, düz kas) ve dış (adventisya) katmanlardan oluşur. Ateroskleroz intimada gelişir.' },
       oxldl: { name: 'Değişmiş (oksitlenmiş) LDL', text: 'Duvarda tutulup kimyasal olarak değişmiş LDL. Bağışıklık hücrelerini çeker.' },
@@ -118,6 +119,7 @@ export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
       tubule: { name: 'Tübül', text: 'Süzüntüden gerekli maddeleri geri emen, bazılarını salgılayan kanal.' },
       creatinine: { name: 'Kreatinin', text: 'Kas metabolizmasının atık ürünü. Serbestçe süzülür, çok az geri emilir.' },
       albumin: { name: 'Albumin', text: 'Kanın ana proteini. Sağlıklı süzgeçten geçemeyecek kadar büyüktür.' },
+      urea: { name: 'Üre', text: 'Proteinlerin yıkımından karaciğerde oluşan atık. Süzülür; bir kısmı geri emilir. Sıvı kaybında ve böbrek süzmesi azaldığında kanda artar.' },
       water: { name: 'Su ve tuzlar', text: 'Süzülür; büyük kısmı tübülde geri emilir.' },
       rbc: { name: 'Alyuvar', text: 'Süzgeçten geçmez, kanda kalır.' },
     },
@@ -133,6 +135,7 @@ export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
       { title: 'Enzimler kana geçer', text: 'Hepatositler zorlandığında içlerindeki ALT ve AST gibi enzimler kana daha fazla geçer. Kan tahlilinde ölçülen budur.' },
     ],
     objects: {
+      albumin: { name: 'Albumin', text: 'Hepatositlerin ürettiği ana kan proteini. Sıvıyı damar içinde tutar, birçok maddeyi taşır. Uzun süreli düşüklük karaciğerin yapım kapasitesi, beslenme ya da idrarla kayıpla ilişkili olabilir.' },
       hepatocyte: { name: 'Hepatosit', text: 'Karaciğerin ana hücresi; metabolizmanın büyük kısmını yürütür.', size: 'yaklaşık 20–30 mikrometre' },
       sinusoid: { name: 'Sinüzoid', text: 'Hepatosit sıraları arasındaki geçirgen, geniş kılcal damar.' },
       centralvein: { name: 'Merkez ven', text: 'Lobülün ortasında kanı toplayan toplardamar; hepatik venlere açılır.' },
@@ -154,6 +157,7 @@ export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
       { title: 'Hücreler glukozu alır', text: 'İnsülin kas ve yağ hücrelerinde reseptörüne bağlanır; hücre zarına glukoz kanalları (GLUT4) taşınır ve glukoz hücreye girer. Kan şekeri düşer.' },
     ],
     objects: {
+      rbc: { name: 'Alyuvar (HbA1c)', text: 'Kandaki glukoz alyuvardaki hemoglobine yavaşça yapışır (glikozillenme). HbA1c bunun oranını ölçer ve alyuvarlar ~120 gün yaşadığı için son 2–3 ayın ortalama kan şekerini yansıtır. Sarımsı alyuvarlar bu oranı temsil eder (abartılı ölçek).' },
       beta: { name: 'Beta hücresi', text: 'İnsülin üreten ve depolayan hücre; adacığın çoğunluğunu oluşturur.' },
       alpha: { name: 'Alfa hücresi', text: 'Kan şekeri düşünce glukagon salgılayarak karaciğerden glukoz salınmasını sağlar.' },
       delta: { name: 'Delta hücresi', text: 'Somatostatin salgılar; diğer adacık hormonlarını dengeler.' },
@@ -195,6 +199,7 @@ export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
       { title: 'Kana çıkış', text: 'Olgunlaşan hücreler sinüzoid duvarından geçerek dolaşıma katılır. Alyuvarlar yaklaşık 120 gün yaşar.' },
     ],
     objects: {
+      iron: { name: 'Demir', text: 'Hemoglobin yapımı için gereklidir. Kanda transferrine bağlı taşınır, alyuvar öncüllerine verilir; fazlası ferritin olarak (karaciğer, dalak, ilik) depolanır. Ferritin düşükse depolar azalmıştır.' },
       stem: { name: 'Kan kök hücresi', text: 'Tüm kan hücrelerinin kaynağı.' },
       erythroblast: { name: 'Eritroblast', text: 'Olgunlaşmakta olan alyuvar öncüsü; çekirdeğini atarak alyuvara dönüşür.' },
       rbc: { name: 'Alyuvar', text: 'Olgun, çekirdeksiz oksijen taşıyıcı hücre.' },

@@ -16,7 +16,7 @@ import {
   SphereGeometry,
   Vector3,
 } from 'three';
-import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, useAtmosphere, useDisposable, useEased, useSimClock, useStageCamera } from '../kit';
+import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, scaled, useAtmosphere, useDisposable, useEased, useSimClock, useStageCamera } from '../kit';
 
 /**
  * Damar içi ve LDL–ateroskleroz EĞİTİMSEL SİMÜLASYONU.
@@ -69,6 +69,7 @@ const WALL_FRAG = /* glsl */ `
   precision highp float;
   uniform float uLipid;
   uniform float uInflam;
+  uniform float uActivate;
   uniform float uWindow;
   uniform float uPlaque;
   uniform float uTime;
@@ -124,6 +125,8 @@ const WALL_FRAG = /* glsl */ `
     // İnflamasyon: yapışma molekülleri (soluk mavi-mor noktalar)
     float dots = step(0.86, fract(sin(dot(floor(vCell * 3.0), vec2(12.9898, 78.233))) * 43758.5453));
     col += vec3(0.35, 0.4, 1.0) * dots * uInflam * lesion * (0.6 + 0.4 * sin(uTime * 3.0));
+    // Kişisel: CRP yüksekse tüm iç yüzeyde hafif inflamasyon işaretleri
+    col += vec3(0.35, 0.4, 1.0) * dots * uActivate * 0.5 * (0.6 + 0.4 * sin(uTime * 3.0 + vCell.x));
 
     // Işık: kameradan (endoskop) + kenar
     vec3 N = normalize(vNormalV);
@@ -195,14 +198,20 @@ function shotFor(stage: number) {
   };
 }
 
+/** Tipik sayılar ve kişisel değere göre ayrılan üst sınırlar. */
 const RBC_N = 240;
+const RBC_MAX = 330;
 const LDL_N = 110;
+const LDL_MAX = 290;
 const HDL_N = 80;
+const HDL_MAX = 160;
 const PLT_N = 26;
+const PLT_MAX = 80;
+const TRL_MAX = 90;
 const RETAIN = 14;
 const MONO_N = 5;
 
-export default function VesselScene({ state, onSelect, reducedMotion }: InsideSceneProps) {
+export default function VesselScene({ state, onSelect, reducedMotion, params }: InsideSceneProps) {
   useAtmosphere('#0d0206', FOG, 0.3);
   useStageCamera(shotFor(state.stage), { min: 0.05, max: 3 }, { position: [0, 0.1, 8.2], target: [0, 0, 0] });
   const time = useSimClock(state, reducedMotion);
@@ -212,6 +221,15 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
   const lipid = useEased(stage >= 3 ? (stage >= 6 ? 1 : 0.55) : stage === 2 ? 0.2 : 0, 0.8);
   const inflam = useEased(stage >= 4 && stage <= 6 ? 1 : 0, 1.2);
   const windowA = useEased(stage >= 2 ? 0.62 : 0, 1.2);
+  // Kişisel: trigliserid yüksekse plazma bulanıklaşır; CRP yüksekse iç yüzeyde inflamasyon işaretleri
+  const milk = useEased(Math.max(0, Math.min(1, ((params.tg ?? 1) - 1.5) / 3.5)), 1.5);
+  const activate = useEased(Math.max(0, Math.min(1, ((params.inflam ?? 0.5) - 1) / 4)), 1.5);
+  const nRbc = scaled(RBC_N, params.rbc, RBC_MAX);
+  const nLdl = scaled(LDL_N, params.ldl, LDL_MAX);
+  const nHdl = scaled(HDL_N, params.hdl, HDL_MAX);
+  const nPlt = scaled(PLT_N, params.plt, PLT_MAX);
+  const nTrl = Math.min(TRL_MAX, Math.round(Math.max(0, (params.tg ?? 1) - 1.1) * 16));
+  const rbcSize = 0.13 * (params.rbcSize ?? 1);
 
   const wallGeo = useDisposable(() => {
     const g = new CylinderGeometry(R, R, HALF * 2, 160, 180, true);
@@ -229,6 +247,7 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
           uPlaque: { value: 0 },
           uLipid: { value: 0 },
           uInflam: { value: 0 },
+          uActivate: { value: 0 },
           uWindow: { value: 0 },
           uTime: { value: 0 },
           uPulse: { value: 1 },
@@ -260,6 +279,7 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
   const dropMat = useDisposable(() => new MeshStandardMaterial({ color: '#ffe08a', roughness: 0.25, emissive: '#6a4a00', emissiveIntensity: 0.5 }));
   const markerMat = useDisposable(() => new MeshStandardMaterial({ color: '#5eead4', emissive: '#5eead4', emissiveIntensity: 1.5, wireframe: true, transparent: true, opacity: 0.7 }));
   const markerGeo = useDisposable(() => new SphereGeometry(1, 16, 10));
+  const trlMat = useDisposable(() => new MeshStandardMaterial({ color: '#fff4dc', roughness: 0.3, emissive: '#5a4a30', emissiveIntensity: 0.45, transparent: true, opacity: 0.9 }));
 
   // Plazma: çok küçük ışık benekleri (ölçek ve akış hissi)
   const plasma = useMemo(() => {
@@ -280,13 +300,16 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
   const plasmaMat = useDisposable(
     () =>
       new ShaderMaterial({
-        uniforms: { uColor: { value: new Color('#ffcdbf') } },
-        vertexShader: /* glsl */ `void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = 26.0 / -mv.z; gl_Position = projectionMatrix * mv; }`,
+        uniforms: { uColor: { value: new Color('#ffcdbf') }, uMilk: { value: 0 } },
+        vertexShader: /* glsl */ `
+          uniform float uMilk;
+          void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); gl_PointSize = (26.0 + 30.0 * uMilk) / -mv.z; gl_Position = projectionMatrix * mv; }`,
         fragmentShader: /* glsl */ `
           uniform vec3 uColor;
+          uniform float uMilk;
           void main() {
             float d = length(gl_PointCoord - 0.5);
-            float a = smoothstep(0.5, 0.0, d) * 0.22;
+            float a = smoothstep(0.5, 0.0, d) * (0.22 + 0.4 * uMilk);
             gl_FragColor = vec4(uColor, a);
             #include <colorspace_fragment>
           }`,
@@ -298,10 +321,11 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
 
   const flows = useMemo(
     () => ({
-      rbc: makeFlow(RBC_N, 1, 0.84),
-      ldl: makeFlow(LDL_N, 2, 0.93),
-      hdl: makeFlow(HDL_N, 3, 0.95),
-      plt: makeFlow(PLT_N, 4, 0.9),
+      rbc: makeFlow(RBC_MAX, 1, 0.84),
+      ldl: makeFlow(LDL_MAX, 2, 0.93),
+      hdl: makeFlow(HDL_MAX, 3, 0.95),
+      plt: makeFlow(PLT_MAX, 4, 0.9),
+      trl: makeFlow(TRL_MAX, 5, 0.9),
     }),
     [],
   );
@@ -327,6 +351,7 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
   const ldlRef = useRef<InstancedMesh>(null);
   const hdlRef = useRef<InstancedMesh>(null);
   const pltRef = useRef<InstancedMesh>(null);
+  const trlRef = useRef<InstancedMesh>(null);
   const retRef = useRef<InstancedMesh>(null);
   const monoRef = useRef<InstancedMesh>(null);
   const dropRef = useRef<InstancedMesh>(null);
@@ -360,6 +385,8 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
     u.uPlaque!.value = plaque.current;
     u.uLipid!.value = lipid.current;
     u.uInflam!.value = inflam.current;
+    u.uActivate!.value = activate.current;
+    plasmaMat.uniforms.uMilk!.value = milk.current;
     u.uWindow!.value = windowA.current;
     u.uTime!.value = t;
     u.uSelected!.value = state.selected === 'endothelium' || state.selected === 'wall' || state.selected === 'plaque' ? 1 : 0;
@@ -379,6 +406,7 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
 
     const place = (mesh: InstancedMesh | null, f: Flow, n: number, size: number, flat: boolean, spinRate: number, skip?: (i: number) => boolean) => {
       if (!mesh) return;
+      mesh.count = n;
       for (let i = 0; i < n; i++) {
         if (skip?.(i)) {
           tmpM.makeScale(0, 0, 0);
@@ -402,11 +430,12 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
       mesh.instanceMatrix.needsUpdate = true;
     };
 
-    place(rbcRef.current, flows.rbc, RBC_N, 0.13, true, 0.8);
+    place(rbcRef.current, flows.rbc, nRbc, rbcSize, true, 0.8);
     const retaining = stage >= 2;
-    place(ldlRef.current, flows.ldl, LDL_N, 0.045, false, 0.5, (i) => retaining && i < RETAIN);
-    place(hdlRef.current, flows.hdl, HDL_N, 0.028, false, 0.5);
-    place(pltRef.current, flows.plt, PLT_N, 0.05, false, 1.2);
+    place(ldlRef.current, flows.ldl, nLdl, 0.045, false, 0.5, (i) => retaining && i < RETAIN);
+    place(hdlRef.current, flows.hdl, nHdl, 0.028, false, 0.5);
+    place(pltRef.current, flows.plt, nPlt, 0.05, false, 1.2);
+    place(trlRef.current, flows.trl, nTrl, 0.075, false, 0.3);
 
     // Tutulan LDL: akıştan duvara süzülür, sonra değişir (oksidasyon)
     const ret = retRef.current;
@@ -504,7 +533,7 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
     if (marker) {
       let visible = false;
       if (sel && state.selected) {
-        const mesh = { rbc: rbcRef.current, ldl: ldlRef.current, hdl: hdlRef.current, platelet: pltRef.current, oxldl: retRef.current, monocyte: monoRef.current }[sel.kind];
+        const mesh = { rbc: rbcRef.current, ldl: ldlRef.current, hdl: hdlRef.current, platelet: pltRef.current, vldl: trlRef.current, oxldl: retRef.current, monocyte: monoRef.current }[sel.kind];
         if (mesh) {
           mesh.getMatrixAt(sel.id, tmpM);
           tmpM.decompose(tmpP, tmpQ, tmpS);
@@ -547,10 +576,11 @@ export default function VesselScene({ state, onSelect, reducedMotion }: InsideSc
       <hemisphereLight args={['#ffd0c8', '#200006', 0.5]} />
       <Headlight intensity={6} color="#ffe6de" distance={10} />
       <mesh geometry={wallGeo} material={wallMat} onClick={pickWall} renderOrder={1} />
-      <instancedMesh ref={rbcRef} args={[rbcGeo, rbcMat, RBC_N]} onClick={pick('rbc')} frustumCulled={false} />
-      <instancedMesh ref={ldlRef} args={[ldlGeo, ldlMat, LDL_N]} onClick={pick('ldl')} frustumCulled={false} />
-      <instancedMesh ref={hdlRef} args={[ldlGeo, hdlMat, HDL_N]} onClick={pick('hdl')} frustumCulled={false} />
-      <instancedMesh ref={pltRef} args={[pltGeo, pltMat, PLT_N]} onClick={pick('platelet')} frustumCulled={false} />
+      <instancedMesh ref={rbcRef} args={[rbcGeo, rbcMat, RBC_MAX]} onClick={pick('rbc')} frustumCulled={false} />
+      <instancedMesh ref={ldlRef} args={[ldlGeo, ldlMat, LDL_MAX]} onClick={pick('ldl')} frustumCulled={false} />
+      <instancedMesh ref={hdlRef} args={[ldlGeo, hdlMat, HDL_MAX]} onClick={pick('hdl')} frustumCulled={false} />
+      <instancedMesh ref={pltRef} args={[pltGeo, pltMat, PLT_MAX]} onClick={pick('platelet')} frustumCulled={false} />
+      <instancedMesh ref={trlRef} args={[ldlGeo, trlMat, TRL_MAX]} onClick={pick('vldl')} frustumCulled={false} />
       <instancedMesh ref={retRef} args={[ldlGeo, retMat, RETAIN]} onClick={pick('oxldl')} frustumCulled={false} />
       <instancedMesh ref={monoRef} args={[monoGeo, monoMat, MONO_N]} onClick={pick('monocyte')} frustumCulled={false} />
       <instancedMesh ref={dropRef} args={[dropGeo, dropMat, MONO_N * 7]} raycast={() => null} frustumCulled={false} />

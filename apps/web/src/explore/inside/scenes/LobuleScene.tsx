@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useThree } from '@react-three/fiber';
 import { Color, MeshPhysicalMaterial, MeshStandardMaterial, Quaternion, SphereGeometry, Vector3 } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
+import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, scaled, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
 import { Cells, type CellSpec, CurveMovers, Hoppers, type Hop, Tubes, curve, makePick } from '../micro';
 
 /**
@@ -22,7 +23,7 @@ const SHOTS = [
   { position: [1.8, 2.2, -1.2], target: [1.3, 0, -0.9] },
 ] as const;
 
-export default function LobuleScene({ state, onSelect, reducedMotion }: InsideSceneProps) {
+export default function LobuleScene({ state, onSelect, reducedMotion, params }: InsideSceneProps) {
   const shot = SHOTS[state.stage] ?? SHOTS[0];
   useAtmosphere('#0b0604', ['#0b0604', 7, 20], 0.45);
   useStageCamera({ position: [...shot.position], target: [...shot.target] }, { min: 0.8, max: 14 }, { position: [0, 13, 8], target: [0, 0, 0] });
@@ -90,6 +91,18 @@ export default function LobuleScene({ state, onSelect, reducedMotion }: InsideSc
   }, []);
 
   const tint = useMemo(() => new Color('#e0564a'), []);
+  const jaundice = useMemo(() => new Color('#e8d24a'), []);
+  // Kişisel: enzim sızıntısı (ALT/AST üst sınırın katı), bilirubin rengi, albumin yapımı, safra kanalı enzimleri
+  const alt = params.alt ?? 0.5;
+  const leak = Math.min(120, Math.round(10 * alt));
+  const stress = Math.max(0, Math.min(1, (alt - 1) / 4));
+  const yellow = Math.max(0, Math.min(0.55, ((params.bili ?? 1) - 1.7) / 6));
+  const ggt = Math.max(0, Math.min(1, ((params.ggt ?? 0.5) - 1) / 3));
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    bdMat.emissiveIntensity = 0.4 + 1.2 * ggt;
+    invalidate();
+  }, [bdMat, ggt, invalidate]);
   const cv = useMemo(() => [curve([[0, -0.5, 0], [0, 0.5, 0]])], []);
   const pv = useMemo(() => geo.corners.map((c) => curve([[c.x - 0.12, -0.45, c.z], [c.x - 0.12, 0.45, c.z]])), [geo]);
   const ha = useMemo(() => geo.corners.map((c) => curve([[c.x + 0.16, -0.45, c.z + 0.1], [c.x + 0.16, 0.45, c.z + 0.1]])), [geo]);
@@ -109,8 +122,9 @@ export default function LobuleScene({ state, onSelect, reducedMotion }: InsideSc
         animate={(i, t, out) => {
           const scale = stage === 2 ? 1 + 0.04 * Math.sin(t * 2.4 + i * 0.3) : 1;
           // İnstance rengi malzeme rengiyle çarpılır: beyaz = değişmemiş hepatosit.
-          if (stage === 4 && geo.stressed.has(i)) out.copy(tint).offsetHSL(0, 0, 0.08 * Math.sin(t * 3 + i));
+          if (geo.stressed.has(i) && (stage === 4 || stress > 0)) out.set('#ffffff').lerp(tint, stage === 4 ? 1 : 0.35 + 0.65 * stress).offsetHSL(0, 0, 0.08 * Math.sin(t * 3 + i));
           else out.set('#ffffff');
+          if (yellow > 0) out.lerp(jaundice, yellow);
           return { scale, color: true };
         }}
       />
@@ -120,9 +134,9 @@ export default function LobuleScene({ state, onSelect, reducedMotion }: InsideSc
       <Tubes curves={bd} radius={0.07} material={bdMat} onClick={pick('bile')} />
       <CurveMovers curves={geo.sinusoids} count={reducedMotion ? 110 : 220} geometry={rbcGeo} material={rbcMat} time={time} speed={0.07} size={0.11} flat jitter={0.05} onClick={pick('rbc')} />
       <Cells cells={geo.kupffer} geometry={kupGeo} material={kupMat} onClick={pick('kupffer')} time={time} animate={(i, t) => ({ scale: 1 + 0.08 * Math.sin(t * 2 + i) })} />
-      <Hoppers hops={geo.albHops} count={40} geometry={small} material={albMat} time={time} duration={3} size={0.045} active={stage === 2} onClick={pick('hepatocyte')} />
+      <Hoppers hops={geo.albHops} count={52} shown={scaled(40, params.alb, 52)} geometry={small} material={albMat} time={time} duration={3} size={0.045} active={stage === 2} onClick={pick('albumin')} />
       <Hoppers hops={geo.bile} count={70} geometry={small} material={bileMat} time={time} duration={3.4} size={0.04} seed={7} active={stage === 3} onClick={pick('bile')} />
-      <Hoppers hops={geo.altHops} count={32} geometry={small} material={altMat} time={time} duration={2.6} size={0.05} seed={11} active={stage === 4} onClick={pick('alt')} />
+      <Hoppers hops={geo.altHops} count={120} shown={stage === 4 ? Math.max(32, leak) : leak} geometry={small} material={altMat} time={time} duration={2.6} size={0.05} seed={11} active={stage === 4 || leak > 0} onClick={pick('alt')} />
     </group>
   );
 }

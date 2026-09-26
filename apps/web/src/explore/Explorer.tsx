@@ -26,6 +26,7 @@ import { INSIDE, type InsideId, resolveInside } from './inside/registry';
 import { INSIDE_CONTENT } from './inside/content';
 import { useInside } from './inside/state';
 import { InsidePanel, SimulationBadge } from './inside/InsidePanel';
+import { personalFor } from './inside/personal';
 import type { InsideSceneProps } from './inside/kit';
 
 type ExploreRoute = Extract<Route, { name: 'body' }> | Extract<Route, { name: 'simulation' }>;
@@ -355,6 +356,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   }
 
   const SceneComp = shownInside ? SCENES[shownInside] : undefined;
+  const personal = useMemo(() => (shownInside ? personalFor(shownInside, interp, INSIDE_CONTENT[shownInside].tests) : null), [shownInside, interp]);
+  const sceneParams = personal ? (insideState?.view === 'typical' ? personal.typical : personal.params) : {};
   const ready = shownInside ? INSIDE[shownInside].ready && !!SceneComp : true;
 
   if (!webgl) {
@@ -418,7 +421,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
               />
               {shown !== 'body' && SceneComp && insideState && (
                 <Suspense fallback={null}>
-                  <SceneComp state={insideState} onSelect={insideActions.select} reducedMotion={reducedMotion} />
+                  <SceneComp state={insideState} onSelect={insideActions.select} reducedMotion={reducedMotion} params={sceneParams} />
                 </Suspense>
               )}
             </>
@@ -532,7 +535,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       {shownInside && insideState && (
         <ContextSheet onSize={onCover} label="Simülasyon paneli" onClose={goUp}>
           {ready ? (
-            <InsidePanel state={insideState} actions={insideActions} series={seriesMap} />
+            personal && <InsidePanel state={insideState} actions={insideActions} personal={personal} />
           ) : (
             <p className="text-sm text-fg-muted">Bu sahne henüz hazır değil (HAZIR DEĞİL).</p>
           )}

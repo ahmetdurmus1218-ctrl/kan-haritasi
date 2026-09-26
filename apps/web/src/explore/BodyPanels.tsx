@@ -289,7 +289,9 @@ export function OrganPanel({
 }) {
   const mineFindings = interp.findings.filter((f) => f.structures.includes(structure));
   const minePatterns = interp.patterns.filter((p) => p.structures.includes(structure));
-  const [tab, setTab] = useState<OrganTab>(mineFindings.length || minePatterns.length ? 'mine' : 'anatomy');
+  // Seçim yapılmadıkça: sonucu varsa "Sonuçların", yoksa "Anatomi" (sonuçlar sonradan yüklenebilir).
+  const [picked, setTab] = useState<OrganTab | null>(null);
+  const tab: OrganTab = picked ?? (mineFindings.length || minePatterns.length ? 'mine' : 'anatomy');
   const s = structureById.get(structure);
   const info = ORGANS[structure];
   const system = s?.systems[0];

@@ -4,6 +4,7 @@ import type { CameraControlsImpl } from '@react-three/drei';
 import { BufferGeometry, Color, Fog, IcosahedronGeometry, LatheGeometry, Vector2, Vector3 } from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { InsideState } from './state';
+import type { SceneParams } from './personal';
 
 /**
  * İçeri-gir sahneleri için ortak araçlar. Bu sahnelerdeki her şey prosedürel ve temsilidir
@@ -14,6 +15,13 @@ export interface InsideSceneProps {
   state: InsideState;
   onSelect: (key: string | null) => void;
   reducedMotion: boolean;
+  /** Kişinin değerlerinden türetilen sahne düğmeleri (1 = tipik düzey). */
+  params: SceneParams;
+}
+
+/** Tipik sayıyı düğmeye göre ölçekler (tamsayı, sınırlı). */
+export function scaled(base: number, factor: number | undefined, max = base * 3): number {
+  return Math.max(0, Math.min(Math.round(max), Math.round(base * (factor ?? 1))));
 }
 
 /** Sahne ortamı: arka plan, sis ve ortam ışığı yoğunluğu; sahneden çıkınca geri alınır. */

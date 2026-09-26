@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Color, DoubleSide, type Group, MeshPhysicalMaterial, MeshStandardMaterial, SphereGeometry, Vector3 } from 'three';
-import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
+import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, scaled, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
 import { Cells, type CellSpec, CurveMovers, Hoppers, type Hop, Tubes, curve, fibonacciSphere, makePick, sphereCurve } from '../micro';
 
 /**
@@ -27,7 +27,7 @@ const SHOTS = [
   { position: [0.4, 0.4, 3.4], target: [0, 0, 0] },
 ] as const;
 
-export default function AlveolusScene({ state, onSelect, reducedMotion }: InsideSceneProps) {
+export default function AlveolusScene({ state, onSelect, reducedMotion, params }: InsideSceneProps) {
   const shot = SHOTS[state.stage] ?? SHOTS[0];
   useAtmosphere('#040b10', ['#040b10', 5, 16], 0.5);
   useStageCamera({ position: [...shot.position], target: [...shot.target] }, { min: 0.6, max: 10 }, { position: [0.5, 1.5, 12], target: [0, 0, 0] });
@@ -130,19 +130,20 @@ export default function AlveolusScene({ state, onSelect, reducedMotion }: Inside
         <Tubes curves={bronchiole} radius={0.32} material={airMat} onClick={pick('alveolus')} />
         <CurveMovers
           curves={capillaries}
-          count={reducedMotion ? 90 : 180}
+          count={reducedMotion ? 125 : 245}
+          shown={scaled(reducedMotion ? 90 : 180, params.rbc, reducedMotion ? 125 : 245)}
           geometry={rbcGeo}
           material={rbcMat}
           time={time}
           speed={0.09}
-          size={0.07}
+          size={0.07 * (params.rbcSize ?? 1)}
           flat
           onClick={pick('rbc')}
           color={(u, _i, out) => (stage >= 2 ? out.copy(deoxy).lerp(oxy, Math.min(1, u * 1.6)) : out.copy(deoxy).lerp(oxy, 0.35))}
         />
         <Cells cells={type2} geometry={t2Geo} material={t2Mat} onClick={pick('type2')} time={time} animate={(i, t, out) => (stage === 4 ? { scale: 1 + 0.15 * Math.sin(t * 3 + i), color: !!out.set('#ffc2e0') } : undefined)} />
         <Cells cells={macrophages} geometry={macGeo} material={macMat} onClick={pick('macrophage')} time={time} animate={(i, t) => ({ scale: 1 + 0.06 * Math.sin(t * 2 + i) })} />
-        <Hoppers hops={hopsO2} count={90} geometry={small} material={o2Mat} time={time} duration={2.6} size={0.03} active={stage >= 2} onClick={pick('o2')} />
+        <Hoppers hops={hopsO2} count={125} shown={scaled(90, params.rbc, 125)} geometry={small} material={o2Mat} time={time} duration={2.6} size={0.03} active={stage >= 2} onClick={pick('o2')} />
         <Hoppers hops={hopsCO2} count={70} geometry={small} material={co2Mat} time={time} duration={3.1} size={0.034} seed={9} active={stage >= 3} onClick={pick('co2')} />
         <Hoppers hops={surf} count={40} geometry={small} material={surfMat} time={time} duration={3.5} size={0.028} seed={13} active={stage === 4} onClick={pick('type2')} />
       </group>

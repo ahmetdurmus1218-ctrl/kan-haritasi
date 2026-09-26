@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { CapsuleGeometry, IcosahedronGeometry, MeshPhysicalMaterial, MeshStandardMaterial, SphereGeometry, Vector3 } from 'three';
-import { Headlight, type InsideSceneProps, bumpySphere, rng, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
+import { CapsuleGeometry, Color, IcosahedronGeometry, MeshPhysicalMaterial, MeshStandardMaterial, SphereGeometry, Vector3 } from 'three';
+import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, scaled, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
 import { Cells, type CellSpec, CurveMovers, Hoppers, type Hop, Tubes, curve, makePick } from '../micro';
 
 /**
@@ -19,7 +19,7 @@ const SHOTS = [
   { position: [6.2, 1.6, 4.4], target: [4.0, -0.2, 0] },
 ] as const;
 
-export default function IsletScene({ state, onSelect, reducedMotion }: InsideSceneProps) {
+export default function IsletScene({ state, onSelect, reducedMotion, params }: InsideSceneProps) {
   const shot = SHOTS[state.stage] ?? SHOTS[0];
   useAtmosphere('#0a050b', ['#0a050b', 7, 20], 0.45);
   useStageCamera({ position: [...shot.position], target: [...shot.target] }, { min: 0.8, max: 14 }, { position: [0.5, 3, 14], target: [0, 0, 0] });
@@ -41,6 +41,14 @@ export default function IsletScene({ state, onSelect, reducedMotion }: InsideSce
   const muscleGeo = useDisposable(() => new CapsuleGeometry(0.9, 3.4, 8, 24).rotateZ(Math.PI / 2));
   const muscleMat = useDisposable(() => new MeshPhysicalMaterial({ color: '#c45a5a', roughness: 0.5, transparent: true, opacity: 0.55, emissive: '#2a0808', emissiveIntensity: 0.4, depthWrite: false }));
   const glutMat = useDisposable(() => new MeshStandardMaterial({ color: '#7ff0d8', emissive: '#1a7a6a', emissiveIntensity: 1 }));
+  const rbcGeo = useDisposable(() => rbcGeometry(14));
+  const rbcMat = useDisposable(() => new MeshStandardMaterial({ roughness: 0.45, emissive: '#2a0306', emissiveIntensity: 0.4 }));
+  const red = useMemo(() => new Color('#b3202c'), []);
+  const sugared = useMemo(() => new Color('#e0b040'), []);
+  // Kişisel: glukoz miktarı, glikozillenmiş alyuvar oranı (HbA1c), insülin salgısı
+  const glu = params.glucose ?? 1;
+  const glyc = Math.max(0.04, Math.min(0.9, ((params.a1c ?? 1) * 5.2 - 4) / 6));
+  const ins = params.insulin ?? 1;
 
   const geo = useMemo(() => {
     const r = rng(51);
@@ -107,9 +115,22 @@ export default function IsletScene({ state, onSelect, reducedMotion }: InsideSce
       <Cells cells={geo.alpha} geometry={cellGeo} material={alphaMat} onClick={pick('alpha')} />
       <Cells cells={geo.delta} geometry={cellGeo} material={deltaMat} onClick={pick('delta')} />
       <Tubes curves={geo.caps} radius={0.07} material={capMat} onClick={pick('capillary')} segments={96} />
-      <CurveMovers curves={geo.caps} count={stage >= 2 ? 90 : 36} geometry={glucGeo} material={glucMat} time={time} speed={0.06} size={0.05} onClick={pick('glucose')} />
+      <CurveMovers curves={geo.caps} count={400} shown={scaled(stage >= 2 ? 90 : 50, glu, 400)} geometry={glucGeo} material={glucMat} time={time} speed={0.06} size={0.05} onClick={pick('glucose')} />
+      <CurveMovers
+        curves={geo.caps}
+        count={48}
+        geometry={rbcGeo}
+        material={rbcMat}
+        time={time}
+        speed={0.05}
+        size={0.13}
+        flat
+        seed={13}
+        onClick={pick('rbc')}
+        color={(_u, i, out) => (i < 48 * glyc ? out.copy(red).lerp(sugared, 0.7) : out.copy(red))}
+      />
       <Hoppers hops={geo.glucIn} count={50} geometry={glucGeo} material={glucMat} time={time} duration={2.6} size={0.05} active={stage >= 2} onClick={pick('glucose')} />
-      <Hoppers hops={geo.insOut} count={70} geometry={small} material={insMat} time={time} duration={2.2} size={0.04} seed={9} active={stage >= 3} onClick={pick('insulin')} />
+      <Hoppers hops={geo.insOut} count={300} shown={scaled(stage >= 3 ? 70 : 14, ins, 300)} geometry={small} material={insMat} time={time} duration={2.2} size={0.04} seed={9} onClick={pick('insulin')} />
       <Hoppers hops={geo.glucagonOut} count={24} geometry={small} material={glucagonMat} time={time} duration={3} size={0.035} seed={4} active={stage === 1} onClick={pick('glucagon')} />
       <mesh geometry={muscleGeo} material={muscleMat} position={TARGET} onClick={pick('target')} />
       <Cells cells={geo.gluts} geometry={small} material={glutMat} onClick={pick('target')} visible={stage === 4} />

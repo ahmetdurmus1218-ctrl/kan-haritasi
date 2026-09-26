@@ -80,9 +80,13 @@ export function CurveMovers({
   onClick,
   visible = true,
   flat = false,
+  shown,
 }: {
   curves: Curve<Vector3>[];
+  /** Ayrılan en fazla örnek sayısı. */
   count: number;
+  /** Görünen örnek sayısı (kişisel değere göre değişir; yeniden oluşturmadan). */
+  shown?: number;
   geometry: BufferGeometry;
   material: Material;
   time: RefObject<number>;
@@ -114,7 +118,8 @@ export function CurveMovers({
     const mesh = ref.current;
     if (!mesh) return;
     const t = time.current ?? 0;
-    for (let i = 0; i < data.length; i++) {
+    mesh.count = Math.min(data.length, Math.max(0, shown ?? data.length));
+    for (let i = 0; i < mesh.count; i++) {
       const d = data[i]!;
       const cv = curves[d.c]!;
       const u = (d.o + t * speed * d.v) % 1;
@@ -154,9 +159,11 @@ export function Hoppers({
   fade = true,
   onClick,
   color,
+  shown,
 }: {
   hops: Hop[];
   count: number;
+  shown?: number;
   geometry: BufferGeometry;
   material: Material;
   time: RefObject<number>;
@@ -178,7 +185,8 @@ export function Hoppers({
     const mesh = ref.current;
     if (!mesh) return;
     const t = time.current ?? 0;
-    for (let i = 0; i < data.length; i++) {
+    mesh.count = Math.min(data.length, Math.max(0, shown ?? data.length));
+    for (let i = 0; i < mesh.count; i++) {
       const d = data[i]!;
       const hop = hops[d.h];
       if (!active || !hop) {

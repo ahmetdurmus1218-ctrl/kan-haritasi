@@ -80,9 +80,20 @@ function sceneTarget(p: Pattern): { scene: NonNullable<Pattern['scene']>; from: 
 }
 
 /** Birlikte anlam taşıyan sonuçlar için kart. */
-export function PatternCard({ pattern: p, compact = false, onEnter }: { pattern: Pattern; compact?: boolean; onEnter?: (scene: string, from: string) => void }) {
+export function PatternCard({
+  pattern: p,
+  compact = false,
+  onEnter,
+  hideScene,
+}: {
+  pattern: Pattern;
+  compact?: boolean;
+  onEnter?: (scene: string, from: string) => void;
+  /** İçinde bulunulan sahne: ona tekrar "içeri gir" gösterilmez. */
+  hideScene?: string;
+}) {
   const [open, setOpen] = useState(false);
-  const target = sceneTarget(p);
+  const target = p.scene === hideScene ? null : sceneTarget(p);
   const body = p.structures.find((s) => structureById.get(s)?.asset || structureById.get(s)?.schematic) ?? p.structures[0];
   return (
     <article className="rounded-2xl border bg-ink-850/60 p-4" style={{ borderColor: `${LEVEL_COLOR[p.level]}40` }}>
@@ -140,12 +151,24 @@ export function PatternCard({ pattern: p, compact = false, onEnter }: { pattern:
   );
 }
 
-export function PatternList({ patterns, compact, onEnter, empty }: { patterns: Pattern[]; compact?: boolean; onEnter?: (scene: string, from: string) => void; empty?: string }) {
+export function PatternList({
+  patterns,
+  compact,
+  onEnter,
+  empty,
+  hideScene,
+}: {
+  patterns: Pattern[];
+  compact?: boolean;
+  onEnter?: (scene: string, from: string) => void;
+  empty?: string;
+  hideScene?: string;
+}) {
   if (!patterns.length) return empty ? <p className="text-sm text-fg-faint">{empty}</p> : null;
   return (
     <div className="space-y-3">
       {sortPatterns(patterns).map((p) => (
-        <PatternCard key={p.id} pattern={p} compact={compact} onEnter={onEnter} />
+        <PatternCard key={p.id} pattern={p} compact={compact} onEnter={onEnter} hideScene={hideScene} />
       ))}
     </div>
   );

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { DoubleSide, MeshPhysicalMaterial, MeshStandardMaterial, SphereGeometry, Vector3 } from 'three';
-import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
+import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, scaled, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
 import { Cells, type CellSpec, CurveMovers, Hoppers, type Hop, Tubes, curve, makePick } from '../micro';
 
 /**
@@ -24,7 +24,7 @@ const SINUS = curve([
   [6, 1.2, -0.6],
 ]);
 
-export default function MarrowScene({ state, onSelect, reducedMotion }: InsideSceneProps) {
+export default function MarrowScene({ state, onSelect, reducedMotion, params }: InsideSceneProps) {
   const shot = SHOTS[state.stage] ?? SHOTS[0];
   useAtmosphere('#0b0708', ['#0b0708', 7, 20], 0.45);
   useStageCamera({ position: [...shot.position], target: [...shot.target] }, { min: 0.8, max: 14 }, { position: [0.6, 3.5, 14], target: [0, 0, 0] });
@@ -47,6 +47,8 @@ export default function MarrowScene({ state, onSelect, reducedMotion }: InsideSc
   const rbcMat = useDisposable(() => new MeshStandardMaterial({ color: '#b3202c', roughness: 0.45, emissive: '#2a0306', emissiveIntensity: 0.4 }));
   const pltGeo = useDisposable(() => new SphereGeometry(1, 10, 6).scale(1, 0.35, 1));
   const pltMat = useDisposable(() => new MeshStandardMaterial({ color: '#f0c8e0', roughness: 0.5, emissive: '#3a1a30', emissiveIntensity: 0.4 }));
+  const ironGeo = useDisposable(() => new SphereGeometry(1, 8, 6));
+  const ironMat = useDisposable(() => new MeshStandardMaterial({ color: '#d98a3a', roughness: 0.4, emissive: '#6a3000', emissiveIntensity: 0.9 }));
 
   const geo = useMemo(() => {
     const r = rng(71);
@@ -68,7 +70,9 @@ export default function MarrowScene({ state, onSelect, reducedMotion }: InsideSc
     const wbcOut: Hop[] = wbc.map((c) => toSinus(c.p));
     const pltOut: Hop[] = Array.from({ length: 16 }, () => ({ from: mega[0]!.p.clone().add(new Vector3((r() - 0.5) * 0.6, 0.3, (r() - 0.5) * 0.5)), to: SINUS.getPointAt(0.66 + r() * 0.12) }));
     const division: Hop[] = stem.map((c) => ({ from: c.p.clone(), to: c.p.clone().add(new Vector3(0.35, 0.2, 0.1)) }));
-    return { bones, fat, stem, ery, wbc, mega, eryOut, wbcOut, pltOut, division };
+    // Demir: sinüzoidden alyuvar öncüllerine (hemoglobin yapımı için)
+    const ironIn: Hop[] = ery.map((c) => ({ from: SINUS.getPointAt(Math.min(0.95, Math.max(0.05, (c.p.x + 6) / 12 + (r() - 0.5) * 0.05))), to: c.p.clone() }));
+    return { bones, fat, stem, ery, wbc, mega, eryOut, wbcOut, pltOut, division, ironIn };
   }, []);
 
   return (
@@ -80,14 +84,30 @@ export default function MarrowScene({ state, onSelect, reducedMotion }: InsideSc
       <Tubes curves={[SINUS]} radius={0.55} material={sinusMat} onClick={pick('sinusoid')} segments={100} radial={24} />
       <Cells cells={geo.fat} geometry={fatGeo} material={fatMat} onClick={pick('fat')} />
       <Cells cells={geo.stem} geometry={cellGeo} material={stemMat} onClick={pick('stem')} time={time} animate={(i, t) => (stage === 1 ? { scale: 1 + 0.12 * Math.sin(t * 3 + i) } : undefined)} />
-      <Cells cells={geo.ery} geometry={cellGeo} material={eryMat} onClick={pick('erythroblast')} visible={stage >= 2} />
+      <Cells cells={geo.ery} geometry={cellGeo} material={eryMat} onClick={pick('erythroblast')} />
+      <Hoppers hops={geo.ironIn} count={120} shown={scaled(30, params.iron, 120)} geometry={ironGeo} material={ironMat} time={time} duration={3.4} size={0.035} seed={47} onClick={pick('iron')} />
       <Cells cells={geo.wbc} geometry={wbcGeo} material={wbcMat} onClick={pick('wbc')} visible={stage >= 3} />
       <Cells cells={geo.mega} geometry={megaGeo} material={megaMat} onClick={pick('megakaryocyte')} visible={stage >= 3} time={time} animate={(_i, t) => ({ scale: 1 + 0.04 * Math.sin(t * 2) })} />
       <Hoppers hops={geo.division} count={7} geometry={cellGeo} material={stemMat} time={time} duration={3} size={0.16} active={stage === 1} onClick={pick('stem')} />
-      <Hoppers hops={geo.eryOut} count={22} geometry={rbcGeo} material={rbcMat} time={time} duration={4} size={0.2} seed={3} active={stage === 2 || stage === 4} onClick={pick('rbc')} />
-      <Hoppers hops={geo.wbcOut} count={8} geometry={wbcGeo} material={wbcMat} time={time} duration={4.4} size={0.16} seed={5} active={stage === 4} onClick={pick('wbc')} />
-      <Hoppers hops={geo.pltOut} count={30} geometry={pltGeo} material={pltMat} time={time} duration={3} size={0.07} seed={7} active={stage >= 3} onClick={pick('platelet')} />
-      <CurveMovers curves={[SINUS]} count={reducedMotion ? 40 : 80} geometry={rbcGeo} material={rbcMat} time={time} speed={0.05} size={0.2} flat jitter={0.55} onClick={pick('rbc')} />
+      <Hoppers hops={geo.eryOut} count={30} shown={scaled(22, params.rbc, 30)} geometry={rbcGeo} material={rbcMat} time={time} duration={4} size={0.2 * (params.rbcSize ?? 1)} seed={3} active={stage === 2 || stage === 4} onClick={pick('rbc')} />
+      <Hoppers hops={geo.wbcOut} count={40} shown={scaled(8, params.wbc, 40)} geometry={wbcGeo} material={wbcMat} time={time} duration={4.4} size={0.16} seed={5} active={stage === 4} onClick={pick('wbc')} />
+      <Hoppers hops={geo.pltOut} count={90} shown={scaled(30, params.plt, 90)} geometry={pltGeo} material={pltMat} time={time} duration={3} size={0.07} seed={7} active={stage >= 3} onClick={pick('platelet')} />
+      {/* Kişisel: sinüzoiddeki olgun hücreler senin sayımına göre */}
+      <CurveMovers
+        curves={[SINUS]}
+        count={reducedMotion ? 55 : 110}
+        shown={scaled(reducedMotion ? 40 : 80, params.rbc, reducedMotion ? 55 : 110)}
+        geometry={rbcGeo}
+        material={rbcMat}
+        time={time}
+        speed={0.05}
+        size={0.2 * (params.rbcSize ?? 1)}
+        flat
+        jitter={0.55}
+        onClick={pick('rbc')}
+      />
+      <CurveMovers curves={[SINUS]} count={40} shown={scaled(8, params.wbc, 40)} geometry={wbcGeo} material={wbcMat} time={time} speed={0.035} size={0.17} jitter={0.5} seed={41} onClick={pick('wbc')} />
+      <CurveMovers curves={[SINUS]} count={72} shown={scaled(24, params.plt, 72)} geometry={pltGeo} material={pltMat} time={time} speed={0.05} size={0.07} jitter={0.55} seed={43} onClick={pick('platelet')} />
     </group>
   );
 }

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { MeshPhysicalMaterial, MeshStandardMaterial, SphereGeometry, Vector3 } from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { Headlight, type InsideSceneProps, bumpySphere, rng, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
+import { Headlight, type InsideSceneProps, bumpySphere, rng, scaled, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
 import { Cells, type CellSpec, CurveMovers, Hoppers, type Hop, Tubes, curve, faceOut, fibonacciSphere, makePick } from '../micro';
 
 /**
@@ -26,7 +26,7 @@ const SHOTS = [
   { position: [0.2, 1.8, 7.2], target: [0, 0, -0.3] },
 ] as const;
 
-export default function FollicleScene({ state, onSelect, reducedMotion }: InsideSceneProps) {
+export default function FollicleScene({ state, onSelect, reducedMotion, params }: InsideSceneProps) {
   const shot = SHOTS[state.stage] ?? SHOTS[0];
   useAtmosphere('#0a0508', ['#0a0508', 7, 19], 0.45);
   useStageCamera({ position: [...shot.position], target: [...shot.target] }, { min: 0.8, max: 14 }, { position: [0.4, 2, 13], target: [0, 0, 0] });
@@ -87,7 +87,9 @@ export default function FollicleScene({ state, onSelect, reducedMotion }: Inside
     return { cells, colloids, caps, tsh, iodine, hormones, ccells };
   }, []);
 
-  const tshCount = stage === 1 ? 40 : stage === 4 ? 10 : stage >= 2 ? 20 : 0;
+  // Kişisel: TSH sinyali, kana verilen T4/T3 (değerle orantılı)
+  const tshCount = scaled(stage === 1 ? 40 : stage === 4 ? 10 : stage >= 2 ? 20 : 14, params.tsh, 200);
+  const t4Count = scaled(stage >= 3 ? 30 : 20, params.t4, 110);
 
   return (
     <group>
@@ -112,11 +114,11 @@ export default function FollicleScene({ state, onSelect, reducedMotion }: Inside
       <Cells cells={geo.colloids} geometry={sphere} material={colloidMat} onClick={pick('colloid')} />
       <Cells cells={geo.ccells} geometry={cGeo} material={cMat} onClick={pick('ccell')} />
       <Tubes curves={geo.caps} radius={0.09} material={capMat} onClick={pick('capillary')} segments={80} />
-      <Hoppers hops={geo.tsh} count={Math.max(1, tshCount)} geometry={small} material={tshMat} time={time} duration={3} size={0.05} active={tshCount > 0} onClick={pick('tsh')} />
+      <Hoppers hops={geo.tsh} count={200} shown={tshCount} geometry={small} material={tshMat} time={time} duration={3} size={0.05} active={tshCount > 0} onClick={pick('tsh')} />
       <Hoppers hops={geo.iodine} count={40} geometry={small} material={iodMat} time={time} duration={3.2} size={0.035} seed={8} active={stage === 2} onClick={pick('iodine')} />
-      <Hoppers hops={geo.hormones} count={44} geometry={small} material={t4Mat} time={time} duration={2.8} size={0.05} seed={12} active={stage >= 3} onClick={pick('t4')} />
-      <Hoppers hops={geo.hormones} count={12} geometry={small} material={t3Mat} time={time} duration={3.1} size={0.045} seed={19} active={stage >= 3} onClick={pick('t3')} />
-      <CurveMovers curves={geo.caps} count={stage >= 3 ? 30 : 1} geometry={small} material={t4Mat} time={time} speed={0.08} size={stage >= 3 ? 0.05 : 0} seed={5} onClick={pick('t4')} />
+      <Hoppers hops={geo.hormones} count={160} shown={scaled(44, params.t4, 160)} geometry={small} material={t4Mat} time={time} duration={2.8} size={0.05} seed={12} active={stage >= 3} onClick={pick('t4')} />
+      <Hoppers hops={geo.hormones} count={48} shown={scaled(12, params.t3, 48)} geometry={small} material={t3Mat} time={time} duration={3.1} size={0.045} seed={19} active={stage >= 3} onClick={pick('t3')} />
+      <CurveMovers curves={geo.caps} count={110} shown={t4Count} geometry={small} material={t4Mat} time={time} speed={0.08} size={0.05} seed={5} onClick={pick('t4')} />
     </group>
   );
 }

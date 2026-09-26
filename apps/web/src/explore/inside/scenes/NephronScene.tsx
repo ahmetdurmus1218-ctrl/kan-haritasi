@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { DoubleSide, MeshPhysicalMaterial, MeshStandardMaterial, SphereGeometry, Vector3 } from 'three';
-import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
+import { Headlight, type InsideSceneProps, bumpySphere, rbcGeometry, rng, scaled, useAtmosphere, useDisposable, useSimClock, useStageCamera } from '../kit';
 import { Cells, type CellSpec, CurveMovers, Hoppers, type Hop, Tubes, curve, fibonacciSphere, makePick } from '../micro';
 
 /**
@@ -15,7 +15,7 @@ const SHOTS = [
   { position: [3.6, 1.6, 4.6], target: [2.6, -0.4, 0] },
 ] as const;
 
-export default function NephronScene({ state, onSelect, reducedMotion }: InsideSceneProps) {
+export default function NephronScene({ state, onSelect, reducedMotion, params }: InsideSceneProps) {
   const shot = SHOTS[state.stage] ?? SHOTS[0];
   useAtmosphere('#07060f', ['#07060f', 6, 18], 0.5);
   useStageCamera({ position: [...shot.position], target: [...shot.target] }, { min: 0.8, max: 12 }, { position: [1.5, 2.5, 13], target: [0.8, 0, 0] });
@@ -37,6 +37,9 @@ export default function NephronScene({ state, onSelect, reducedMotion }: InsideS
   const waterMat = useDisposable(() => new MeshStandardMaterial({ color: '#8fd8ff', emissive: '#1f6a9a', emissiveIntensity: 0.9 }));
   const creaMat = useDisposable(() => new MeshStandardMaterial({ color: '#ffb86b', emissive: '#8a4a00', emissiveIntensity: 0.9 }));
   const albMat = useDisposable(() => new MeshStandardMaterial({ color: '#8ee89a', emissive: '#1a5a24', emissiveIntensity: 0.6 }));
+  const ureaMat = useDisposable(() => new MeshStandardMaterial({ color: '#e6f0ff', emissive: '#4a5a7a', emissiveIntensity: 0.7 }));
+  const gfr = params.gfr ?? 1;
+  const nAlb = scaled(8, params.alb, 10);
 
   const geo = useMemo(() => {
     const r = rng(33);
@@ -81,7 +84,7 @@ export default function NephronScene({ state, onSelect, reducedMotion }: InsideS
   }, []);
 
   const flowCurves = useMemo(() => [geo.afferent, ...geo.loops, geo.efferent], [geo]);
-  const albumin = useMemo<CellSpec[]>(() => geo.loops.slice(0, 8).map((l, i) => ({ p: l.getPointAt(0.3 + (i % 3) * 0.2), s: 0.075 })), [geo]);
+  const albumin = useMemo<CellSpec[]>(() => geo.loops.slice(0, 10).map((l, i) => ({ p: l.getPointAt(0.3 + (i % 3) * 0.2), s: 0.075 })), [geo]);
 
   return (
     <group>
@@ -98,10 +101,13 @@ export default function NephronScene({ state, onSelect, reducedMotion }: InsideS
       <Tubes curves={[geo.tubule]} radius={0.22} material={tubuleMat} onClick={pick('tubule')} segments={120} radial={16} />
       <Cells cells={geo.podocytes} geometry={podoGeo} material={podoMat} onClick={pick('podocyte')} />
       <CurveMovers curves={flowCurves} count={reducedMotion ? 60 : 120} geometry={rbcGeo} material={rbcMat} time={time} speed={0.12} size={0.08} flat onClick={pick('rbc')} />
-      <Cells cells={albumin} geometry={small} material={albMat} onClick={pick('albumin')} time={time} animate={(i, t) => ({ scale: 1 + 0.08 * Math.sin(t * 4 + i) })} visible={stage >= 2} />
-      <Hoppers hops={geo.filt} count={80} geometry={small} material={waterMat} time={time} duration={2.4} size={0.028} active={stage >= 2} onClick={pick('water')} />
-      <Hoppers hops={geo.crea} count={36} geometry={small} material={creaMat} time={time} duration={2.8} size={0.036} seed={17} active={stage >= 2} onClick={pick('creatinine')} />
-      <CurveMovers curves={[geo.tubule]} count={stage >= 2 ? 40 : 0} geometry={small} material={creaMat} time={time} speed={0.06} size={0.036} jitter={0.18} seed={23} onClick={pick('creatinine')} />
+      <Cells cells={albumin} geometry={small} material={albMat} onClick={pick('albumin')} time={time} animate={(i, t) => ({ scale: i < nAlb ? 1 + 0.08 * Math.sin(t * 4 + i) : 0 })} />
+      {/* Kişisel: kandaki kreatinin ve üre (değer yükseldikçe artar) */}
+      <CurveMovers curves={flowCurves} count={90} shown={scaled(16, params.crea, 90)} geometry={small} material={creaMat} time={time} speed={0.12} size={0.034} jitter={0.05} seed={31} onClick={pick('creatinine')} />
+      <CurveMovers curves={flowCurves} count={80} shown={scaled(16, params.urea, 80)} geometry={small} material={ureaMat} time={time} speed={0.12} size={0.026} jitter={0.05} seed={37} onClick={pick('urea')} />
+      <Hoppers hops={geo.filt} count={104} shown={scaled(80, gfr, 104)} geometry={small} material={waterMat} time={time} duration={2.4 / Math.max(0.35, gfr)} size={0.028} onClick={pick('water')} />
+      <Hoppers hops={geo.crea} count={48} shown={scaled(36, gfr, 48)} geometry={small} material={creaMat} time={time} duration={2.8} size={0.036} seed={17} active={stage >= 2} onClick={pick('creatinine')} />
+      <CurveMovers curves={[geo.tubule]} count={52} shown={stage >= 2 ? scaled(40, gfr, 52) : 0} geometry={small} material={creaMat} time={time} speed={0.06} size={0.036} jitter={0.18} seed={23} onClick={pick('creatinine')} />
       <Hoppers hops={geo.reabsorb} count={50} geometry={small} material={waterMat} time={time} duration={2.2} size={0.028} seed={29} active={stage >= 3} onClick={pick('water')} />
     </group>
   );
