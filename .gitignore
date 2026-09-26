@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+apps/web/public/pdfjs/
+*.log
+.DS_Store
+tests/e2e/.shots/

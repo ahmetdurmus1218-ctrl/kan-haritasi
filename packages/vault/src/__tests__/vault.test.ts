@@ -1,0 +1,291 @@
+import { describe, expect, it } from 'vitest';
+import 'fake-indexeddb/auto';
+import {
+  IndexedDbBlobStore,
+  IndexedDbRecordStore,
+  MemoryBlobStore,
+  MemoryRecordStore,
+  PassphraseKeyWrapper,
+  Vault,
+  VaultError,
+  fromBase64,
+  openVaultDb,
+  toBase64,
+  utf8,
+  type Argon2Params,
+  type Bytes,
+} from '../index';
+
+// Testlerde hızlı ama sınırlar içinde Argon2 parametreleri.
+const FAST: Argon2Params = { memoryKiB: 8 * 1024, iterations: 1, parallelism: 1 };
+const PASS = 'doğru-parola-123';
+const CHUNK = 1024;
+
+function stores() {
+  return { records: new MemoryRecordStore(), blobs: new MemoryBlobStore() };
+}
+
+function bytesOf(length: number, seed = 7): Bytes {
+  const b = new Uint8Array(length);
+  for (let i = 0; i < length; i++) b[i] = (i * 31 + seed) & 0xff;
+  return b;
+}
+
+async function newVault() {
+  const s = stores();
+  const vault = await Vault.create(s.records, s.blobs, new PassphraseKeyWrapper(PASS, FAST), { chunkSize: CHUNK });
+  return { ...s, vault };
+}
+
+async function addPdf(vault: Vault, bytes: Bytes = bytesOf(3000), name = 'Kan Tahlili.pdf') {
+  return vault.addFile({ bytes, originalFileName: name, displayName: 'Kan Tahlili', mimeType: 'application/pdf', kind: 'pdf' });
+}
+
+async function expectCode(p: Promise<unknown>, code: VaultError['code']) {
+  await expect(p).rejects.toSatisfy((e: unknown) => e instanceof VaultError && e.code === code);
+}
+
+function containsSubsequence(hay: Uint8Array, needle: Uint8Array): boolean {
+  outer: for (let i = 0; i + needle.length <= hay.length; i++) {
+    for (let j = 0; j < needle.length; j++) if (hay[i + j] !== needle[j]) continue outer;
+    return true;
+  }
+  return false;
+}
+
+describe('kasa kurulumu ve kilit', () => {
+  it('doğru parolayla açılır, yanlış parolayla açılmaz', async () => {
+    const { records, blobs, vault } = await newVault();
+    const info = await addPdf(vault);
+    vault.lock();
+
+    await expectCode(Vault.unlock(records, blobs, new PassphraseKeyWrapper('yanlış-parola-99', FAST)), 'WRONG_PASSPHRASE');
+
+    const reopened = await Vault.unlock(records, blobs, new PassphraseKeyWrapper(PASS, FAST), { chunkSize: CHUNK });
+    expect((await reopened.readFile(info.id)).info.displayName).toBe('Kan Tahlili');
+  });
+
+  it('parola Unicode normalizasyonundan bağımsızdır (NFC/NFD)', async () => {
+    const s = stores();
+    const nfc = 'şifre-çözüm-ğüı'.normalize('NFC');
+    await Vault.create(s.records, s.blobs, new PassphraseKeyWrapper(nfc, FAST));
+    await expect(Vault.unlock(s.records, s.blobs, new PassphraseKeyWrapper(nfc.normalize('NFD'), FAST))).resolves.toBeInstanceOf(Vault);
+  });
+
+  it('kısa parolayı reddeder', async () => {
+    const s = stores();
+    await expectCode(Vault.create(s.records, s.blobs, new PassphraseKeyWrapper('kisa', FAST)), 'INVALID_INPUT');
+    expect(await Vault.isInitialized(s.records)).toBe(false);
+  });
+
+  it('ikinci kez kurulamaz', async () => {
+    const { records, blobs } = await newVault();
+    await expectCode(Vault.create(records, blobs, new PassphraseKeyWrapper(PASS, FAST)), 'ALREADY_INITIALIZED');
+  });
+
+  it('kilitlendikten sonra hiçbir işlem yapılamaz', async () => {
+    const { vault } = await newVault();
+    const info = await addPdf(vault);
+    vault.lock();
+    expect(vault.locked).toBe(true);
+    await expectCode(vault.readFile(info.id), 'LOCKED');
+    await expectCode(vault.listFiles(), 'LOCKED');
+    await expectCode(addPdf(vault), 'LOCKED');
+    await expectCode(vault.deleteFile(info.id), 'LOCKED');
+  });
+
+  it('meta verisinde devasa Argon2 parametreleri kabul edilmez (DoS koruması)', async () => {
+    const { records, blobs } = await newVault();
+    const meta = (await records.getMeta())!;
+    (meta.wrapped as unknown as { params: Argon2Params }).params.memoryKiB = 64 * 1024 * 1024;
+    await records.putMeta(meta);
+    await expectCode(Vault.unlock(records, blobs, new PassphraseKeyWrapper(PASS, FAST)), 'INVALID_INPUT');
+  });
+});
+
+describe('dosya saklama ve indirme', () => {
+  it('orijinal dosya bayt bayt aynı geri döner (çok parçalı)', async () => {
+    const { vault } = await newVault();
+    const original = bytesOf(CHUNK * 3 + 17);
+    const info = await addPdf(vault, original);
+    const { bytes } = await vault.readFile(info.id);
+    expect(bytes).toEqual(original);
+    expect(info.size).toBe(original.length);
+    expect(info.sha256).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('boyutu parça boyutunun tam katı olan dosya da doğru döner', async () => {
+    const { vault } = await newVault();
+    const original = bytesOf(CHUNK * 2);
+    expect((await vault.readFile((await addPdf(vault, original)).id)).bytes).toEqual(original);
+  });
+
+  it('depoda açık metin, dosya adı veya görünen ad bulunmaz', async () => {
+    const { vault, records, blobs } = await newVault();
+    const marker = utf8('LDL 178 mg/dL HASTA-ADI-ORNEK');
+    const content = new Uint8Array(4096);
+    content.set(marker, 100);
+    await addPdf(vault, content, 'ozel-rapor-ismi.pdf');
+
+    for (const blob of blobs.blobs.values()) expect(containsSubsequence(blob, marker)).toBe(false);
+    for (const r of records.records.values()) {
+      const serialized = JSON.stringify(r);
+      expect(serialized).not.toContain('ozel-rapor-ismi');
+      expect(serialized).not.toContain('Kan Tahlili');
+      expect(containsSubsequence(fromBase64(r.ct), utf8('ozel-rapor-ismi'))).toBe(false);
+    }
+  });
+
+  it('aynı içerik SHA-256 ile bulunur (çift yükleme kontrolü)', async () => {
+    const { vault } = await newVault();
+    const info = await addPdf(vault, bytesOf(500, 3));
+    const again = await vault.findBySha256(info.sha256);
+    expect(again?.id).toBe(info.id);
+  });
+
+  it('yeniden adlandırma çalışır; kontrol ve yön karakterleri reddedilir', async () => {
+    const { vault } = await newVault();
+    const info = await addPdf(vault);
+    expect((await vault.renameFile(info.id, '  Eylül Check-up  ')).displayName).toBe('Eylül Check-up');
+    await expectCode(vault.renameFile(info.id, 'rapor\u202efdp.exe'), 'INVALID_INPUT');
+    await expectCode(vault.renameFile(info.id, 'a\u0000b'), 'INVALID_INPUT');
+    await expectCode(vault.renameFile(info.id, '   '), 'INVALID_INPUT');
+    await expectCode(vault.renameFile(info.id, 'x'.repeat(121)), 'INVALID_INPUT');
+  });
+});
+
+describe('kurcalama tespiti', () => {
+  it('şifreli gövdede tek bayt değişirse dosya açılmaz', async () => {
+    const { vault, blobs } = await newVault();
+    const info = await addPdf(vault, bytesOf(CHUNK * 2 + 5));
+    const [key, blob] = [...blobs.blobs.entries()][0]!;
+    blob[blob.length - 40]! ^= 0x01;
+    blobs.blobs.set(key, blob);
+    await expectCode(vault.readFile(info.id), 'INTEGRITY');
+  });
+
+  it('parçaların sırası değiştirilirse dosya açılmaz', async () => {
+    const { vault, blobs } = await newVault();
+    const info = await addPdf(vault, bytesOf(CHUNK * 3 + 10));
+    const [key, blob] = [...blobs.blobs.entries()][0]!;
+    const seg = 12 + CHUNK + 16;
+    const header = 8;
+    const swapped = new Uint8Array(blob);
+    swapped.set(blob.subarray(header + seg, header + 2 * seg), header);
+    swapped.set(blob.subarray(header, header + seg), header + seg);
+    blobs.blobs.set(key, swapped);
+    await expectCode(vault.readFile(info.id), 'INTEGRITY');
+  });
+
+  it('son parça kesilirse (truncation) dosya açılmaz', async () => {
+    const { vault, blobs } = await newVault();
+    const info = await addPdf(vault, bytesOf(CHUNK * 3 + 10));
+    const [key, blob] = [...blobs.blobs.entries()][0]!;
+    const seg = 12 + CHUNK + 16;
+    blobs.blobs.set(key, blob.slice(0, 8 + 3 * seg));
+    await expectCode(vault.readFile(info.id), 'INTEGRITY');
+  });
+
+  it('bir dosyanın gövdesi başka dosyanın kaydına taşınırsa açılmaz', async () => {
+    const { vault, records, blobs } = await newVault();
+    const a = await addPdf(vault, bytesOf(2000, 1));
+    const b = await addPdf(vault, bytesOf(2000, 2));
+    const [keyA, keyB] = [...blobs.blobs.keys()];
+    const blobA = blobs.blobs.get(keyA!)!;
+    blobs.blobs.set(keyB!, blobA);
+    const results = await Promise.allSettled([vault.readFile(a.id), vault.readFile(b.id)]);
+    expect(results.filter((r) => r.status === 'rejected')).toHaveLength(1);
+    expect(records.records.size).toBe(2);
+  });
+
+  it('şifreli kayıt değişirse veya başka kimliğe taşınırsa listede görünmez', async () => {
+    const { vault, records } = await newVault();
+    const a = await addPdf(vault, bytesOf(100, 1));
+    const b = await addPdf(vault, bytesOf(100, 2));
+
+    const recA = records.records.get(a.id)!;
+    const ct = fromBase64(recA.ct);
+    ct[5]! ^= 0xff;
+    records.records.set(a.id, { ...recA, ct: toBase64(ct) });
+
+    const recB = records.records.get(b.id)!;
+    records.records.set('11111111-2222-4333-8444-555555555555', { ...recB, id: '11111111-2222-4333-8444-555555555555' });
+
+    const { files, corruptIds } = await vault.listFiles();
+    expect(files.map((f) => f.id)).toEqual([b.id]);
+    expect(corruptIds.sort()).toEqual([a.id, '11111111-2222-4333-8444-555555555555'].sort());
+    await expectCode(vault.readFile(a.id), 'INTEGRITY');
+  });
+});
+
+describe('silme', () => {
+  it('silinen dosyanın kaydı, anahtarı ve gövdesi kalmaz', async () => {
+    const { vault, records, blobs } = await newVault();
+    const keep = await addPdf(vault, bytesOf(1500, 1));
+    const gone = await addPdf(vault, bytesOf(1500, 2));
+
+    await vault.deleteFile(gone.id);
+
+    expect(records.records.has(gone.id)).toBe(false);
+    expect(blobs.blobs.size).toBe(1);
+    await expectCode(vault.readFile(gone.id), 'NOT_FOUND');
+    expect((await vault.listFiles()).files.map((f) => f.id)).toEqual([keep.id]);
+  });
+
+  it('kayıt silinip gövde kalsa bile (yarım silme) gövde okunamaz ve temizlenir', async () => {
+    const { vault, records, blobs } = await newVault();
+    const info = await addPdf(vault);
+    const staleBlob = [...blobs.blobs.values()][0]!;
+    await records.delete(info.id); // gövde silinmeden önce süreç öldü gibi
+
+    await expectCode(vault.readFile(info.id), 'NOT_FOUND');
+    // Anahtar kayıtla birlikte gitti; eski gövde hiçbir kayda bağlı değil.
+    expect([...blobs.blobs.values()][0]).toEqual(staleBlob);
+
+    expect(await vault.sweepOrphans()).toBe(1);
+    expect(blobs.blobs.size).toBe(0);
+  });
+
+  it('tüm verileri sil: ana anahtar dahil her şey gider, kasa yeniden kurulabilir', async () => {
+    const { vault, records, blobs } = await newVault();
+    await addPdf(vault);
+    await vault.destroyAll();
+    expect(vault.locked).toBe(true);
+    expect(await Vault.isInitialized(records)).toBe(false);
+    expect(records.records.size).toBe(0);
+    expect(blobs.blobs.size).toBe(0);
+    await expect(Vault.create(records, blobs, new PassphraseKeyWrapper('yeni-parola-456', FAST))).resolves.toBeInstanceOf(Vault);
+  });
+
+  it('parolayı unutan kullanıcı kilidi açmadan her şeyi silebilir', async () => {
+    const { vault, records, blobs } = await newVault();
+    await addPdf(vault);
+    vault.lock();
+    await Vault.destroyWithoutUnlock(records, blobs);
+    expect(await Vault.isInitialized(records)).toBe(false);
+    expect(blobs.blobs.size).toBe(0);
+  });
+});
+
+describe('IndexedDB deposu', () => {
+  it('gerçek IndexedDB arayüzüyle uçtan uca çalışır', async () => {
+    const db = await openVaultDb();
+    const records = new IndexedDbRecordStore(db);
+    const blobs = new IndexedDbBlobStore(db);
+    const vault = await Vault.create(records, blobs, new PassphraseKeyWrapper(PASS, FAST), { chunkSize: CHUNK });
+    const original = bytesOf(CHUNK * 2 + 99);
+    const info = await addPdf(vault, original);
+    expect((await vault.readFile(info.id)).bytes).toEqual(original);
+    await vault.deleteFile(info.id);
+    expect(await blobs.keys()).toEqual([]);
+    await vault.destroyAll();
+    expect(await records.getMeta()).toBeUndefined();
+    db.close();
+  });
+
+  it('depolama anahtarı olarak yol ifadeleri kabul edilmez', async () => {
+    const blobs = new MemoryBlobStore();
+    await expect(blobs.put('../../etc/passwd', new Uint8Array(1))).rejects.toThrow();
+    await expect(blobs.get('user123/report.pdf')).rejects.toThrow();
+  });
+});

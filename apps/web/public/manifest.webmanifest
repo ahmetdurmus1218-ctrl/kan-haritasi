@@ -1,0 +1,16 @@
+{
+  "name": "Kan Haritası",
+  "short_name": "Kan Haritası",
+  "description": "Tahlil sonuçlarını vücudunda keşfet. Veriler yalnızca bu cihazda, şifreli.",
+  "lang": "tr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070a0f",
+  "theme_color": "#070a0f",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
