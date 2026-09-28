@@ -59,17 +59,16 @@ export function ImagingStudyCard({ study, compact = false }: { study: ImagingStu
         </span>
         <ChevronRightIcon size={16} className="mt-2 shrink-0 text-fg-faint" />
       </button>
-      {region?.structure && (
-        <button
-          type="button"
-          className="flex w-12 shrink-0 items-center justify-center border-l border-ink-700 text-fg-faint transition hover:bg-ink-800/60 hover:text-accent"
-          onClick={() => go({ name: 'body', structure: region.structure })}
-          aria-label={`${region.label}: vücutta göster`}
-          title="Vücutta göster"
-        >
-          <BodyIcon size={17} />
-        </button>
-      )}
+      {/* Bölge yoksa belge açılır; orada "Vücutta göster" önce bölgeyi sorar. */}
+      <button
+        type="button"
+        className="flex w-12 shrink-0 items-center justify-center border-l border-ink-700 text-fg-faint transition hover:bg-ink-800/60 hover:text-accent"
+        onClick={() => go(region?.structure ? { name: 'body', structure: region.structure } : { name: 'document', id: study.head.id })}
+        aria-label={region ? `${region.label}: vücutta göster` : 'Vücutta göster (önce bölgeyi seç)'}
+        title={region ? 'Vücutta göster' : 'Vücutta göstermek için bölgeyi seç'}
+      >
+        <BodyIcon size={17} />
+      </button>
     </li>
   );
 }

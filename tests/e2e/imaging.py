@@ -42,7 +42,11 @@ def canvas_brightness(page):
 
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path=os.environ.get("CHROME_PATH") or None)
+    # WebGL: başsız tarayıcıda yazılımsal (SwiftShader) çizim — "vücutta göster" 3B ekranı için
+    browser = p.chromium.launch(
+        executable_path=os.environ.get("CHROME_PATH") or None,
+        args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
+    )
     ctx = browser.new_context(viewport={"width": 1366, "height": 900}, device_scale_factor=1)
     ctx.set_default_timeout(60000)
     page = ctx.new_page()
@@ -94,9 +98,12 @@ with sync_playwright() as p:
     page.wait_for_timeout(200)
     check(abs(canvas_brightness(page) - before) > 1 and page.get_by_text("WL 600 · WW 1200").count() == 0, "sağ tıkla sürükleme kontrastı değiştiriyor")
     page.screenshot(path=SHOTS / "62-mr-goruntuleyici.png")
-    page.get_by_role("button", name="Beyin / kafa bölgesini 3B vücutta göster").click()
+    page.get_by_role("button", name="Vücutta göster · Beyin / kafa").click()
     page.wait_for_timeout(500)
     check("#/vucut/yapi/brain" in page.url, "vücutta göster → beyin")
+    page.get_by_text("Görüntülemelerin (1)").wait_for(timeout=120000)
+    check(page.get_by_text("MR · 15 Mar 2026 · 8 kesit").count() == 1, "3B organ panelinde MR çalışması")
+    page.screenshot(path=SHOTS / "62b-vucutta-mr.png")
 
     # --- BT: tek dosya, BT pencere ön ayarları
     page.goto(URL + "#/belgeler")
@@ -150,6 +157,13 @@ with sync_playwright() as p:
     page.wait_for_timeout(400)
     check(page.get_by_text("Bu fotoğraf bir görüntüye (film) benziyor").count() == 1, "film fotoğrafında rapor okuma kendiliğinden başlamadı")
     page.screenshot(path=SHOTS / "67-rontgen-film-foto.png")
+    # Bölgesi bilinmeyen görüntü: "Vücutta göster" önce bölgeyi sorar, seçince 3B'de açar
+    page.get_by_role("button", name="Vücutta göster", exact=True).click()
+    page.get_by_label("Vücutta gösterilecek bölge").select_option(label="Göğüs / akciğer")
+    page.wait_for_url("**/#/vucut/yapi/lungs", timeout=20000)
+    page.get_by_text("Görüntülemelerin (", exact=False).wait_for(timeout=120000)
+    check(page.get_by_text("Röntgen · ", exact=False).count() >= 1, "bölge seçilince röntgen 3B'de akciğerde görünüyor")
+    page.screenshot(path=SHOTS / "67b-vucutta-rontgen.png")
 
     # --- Kâğıt BT raporunun fotoğrafı: kendiliğinden okunur, BT kesitiyle bağlanır
     page.goto(URL + "#/belgeler")

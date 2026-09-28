@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { type Interpretation, PROCESSES, type PartDef, type ProcessId, type SystemId, TESTS, formatNumber, partDef, partsOf, structureById, systemById, testByKey } from '@kh/catalog';
 import type { TestSeries } from '../lib/useReports';
+import type { ImagingStudy } from '../lib/imagingStudies';
+import { CATEGORY_LABEL } from '../lib/imaging';
+import { formatDate } from '../lib/format';
 import type { StructureHighlight } from '../anatomy/highlight';
 import { CONNECTIONS, ORGANS, insidesOf } from '../anatomy/organs';
 import { isVein, partLabel, partLatin } from '../anatomy/names';
@@ -300,6 +303,37 @@ export interface VesselPart {
   def?: PartDef;
 }
 
+/** Organ panelinde: bu bölgenin görüntülemeleri ve raporlarının sonucu; dokununca belge açılır. */
+function ImagingBlock({ studies, accent }: { studies: ImagingStudy[]; accent: string }) {
+  return (
+    <section className="mb-6 space-y-2" aria-label="Görüntülemelerin">
+      <Caps className="text-fg-faint">Görüntülemelerin ({studies.length})</Caps>
+      {studies.slice(0, 4).map((st) => {
+        const conclusion = st.conclusion ?? st.linked?.conclusion;
+        return (
+          <button
+            key={st.key}
+            type="button"
+            onClick={() => go({ name: 'document', id: st.head.id })}
+            className="kh-holo-btn block w-full rounded-xl border px-3 py-2.5 text-left transition"
+            style={{ borderColor: `${accent}66` }}
+          >
+            <span className="block text-sm text-fg">
+              {CATEGORY_LABEL[st.category]} · {formatDate(st.date)}
+              {st.files.length > 1 ? ` · ${st.files.length} kesit` : ''}
+            </span>
+            <span className="mt-0.5 line-clamp-2 block text-xs leading-snug text-fg-muted">
+              {conclusion ? `Sonuç: ${conclusion}` : 'Rapor metni yok · görüntüyü açmak için dokun'}
+            </span>
+          </button>
+        );
+      })}
+      {studies.length > 4 && <p className="text-[11px] text-fg-faint">+{studies.length - 4} görüntüleme daha · Sonuçlar ekranında</p>}
+      <p className="text-[11px] leading-relaxed text-fg-faint">Model, görüntülenen bölgenin genel yerini gösterir; rapordaki bir bulgunun yerini göstermez.</p>
+    </section>
+  );
+}
+
 /** "Temelde nasıl çalışır" / "Sonucuma göre" düğme çifti (organ panelinde ve bulutta aynı dil). */
 export function HowItWorks({ accent, hasMine, onEnter }: { accent: string; hasMine: boolean; onEnter: (mode: SimulationMode) => void }) {
   return (
@@ -334,6 +368,7 @@ export function OrganPanel({
   onEnterScene,
   interp,
   initialTab,
+  imaging = [],
 }: {
   structure: string;
   body: 'male' | 'female';
@@ -347,6 +382,8 @@ export function OrganPanel({
   onEnterScene: (scene: string, from: string) => void;
   interp: Interpretation;
   initialTab?: OrganTab;
+  /** Bu yapının bölgesine ait görüntüleme çalışmaları (MR, BT, röntgen…). */
+  imaging?: ImagingStudy[];
 }) {
   const mineFindings = interp.findings.filter((f) => f.structures.includes(structure));
   const minePatterns = interp.patterns.filter((p) => p.structures.includes(structure));
@@ -406,6 +443,8 @@ export function OrganPanel({
           </p>
         </div>
       )}
+
+      {!part && imaging.length > 0 && <ImagingBlock studies={imaging} accent={accent} />}
 
       {!part && insides[0] && (
         <div className="mb-6 space-y-2">

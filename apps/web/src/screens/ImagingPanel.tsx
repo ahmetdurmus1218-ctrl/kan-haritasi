@@ -38,6 +38,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [suggested, setSuggested] = useState<{ region?: string; date?: string } | null>(null);
+  const [pickRegion, setPickRegion] = useState(false);
   /** Fotoğraf bir rapor kâğıdı/ekranı mı (kendiliğinden okunur) yoksa film mi? */
   const [photoKind, setPhotoKind] = useState<'document' | 'film' | 'unknown' | null>(null);
   const studies = useImagingStudies();
@@ -160,6 +161,42 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           </div>
         </div>
 
+        {/* Vücutta göster: bölge biliniyorsa doğrudan; bilinmiyorsa önce bölge sorulur. */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            className="btn-primary w-full justify-center"
+            onClick={() => (region?.structure ? go({ name: 'body', structure: region.structure }) : setPickRegion((v) => !v))}
+          >
+            <BodyIcon size={16} /> {region?.structure ? `Vücutta göster · ${region.label}` : 'Vücutta göster'}
+          </button>
+          {!region?.structure && pickRegion && (
+            <label className="block rounded-xl border border-accent/30 bg-accent/5 p-3 text-xs text-fg-muted">
+              Görüntülenen bölgeyi seç; seçince 3B vücutta açılır ve belgeye kaydedilir.
+              <select
+                className="field mt-2 py-2 text-sm"
+                defaultValue=""
+                aria-label="Vücutta gösterilecek bölge"
+                onChange={(e) => {
+                  const r = regionByKey.get(e.target.value);
+                  if (!r) return;
+                  void updateMeta({ region: r.key }).then(() => r.structure && go({ name: 'body', structure: r.structure }));
+                }}
+              >
+                <option value="" disabled>
+                  Bölge seç…
+                </option>
+                {REGIONS.map((r) => (
+                  <option key={r.key} value={r.key}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <p className="text-[11px] leading-relaxed text-fg-faint">3B model, görüntülenen bölgenin vücuttaki genel yerini gösterir; görüntüdeki bir bulgunun yerini göstermez.</p>
+        </div>
+
         <Banner tone="info">
           Kan Haritası görüntüyü ve raporu <strong>yorumlamaz</strong>, bulgu çıkarmaz. Görüntüyü cihazında şifreli saklar ve gösterir; rapordaki terimlerin genel anlamını açıklar.
           Değerlendirme, raporu yazan ve seni takip eden hekime aittir.
@@ -226,12 +263,6 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
               </button>
             </div>
           )}
-          {region?.structure && (
-            <button type="button" className="btn-ghost w-full justify-center" onClick={() => go({ name: 'body', structure: region.structure })}>
-              <BodyIcon size={16} /> {region.label} bölgesini 3B vücutta göster
-            </button>
-          )}
-          {region?.structure && <p className="text-[11px] leading-relaxed text-fg-faint">3B model, görüntülenen bölgenin vücuttaki genel yerini gösterir; görüntüdeki bir bulgunun yerini göstermez.</p>}
         </section>
 
         {error && <Banner tone="error">{error}</Banner>}
