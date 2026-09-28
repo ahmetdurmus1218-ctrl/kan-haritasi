@@ -1,7 +1,7 @@
 workflow: CI
-run: 36274020173
-sha: 8d86a9918733491061becc4e20768e9561ef732c
-conclusion: success
+run: 36430929869
+sha: 1bc60af2de34867e57cbff80d6cae99cd36cff8b
+conclusion: failure
 
 dependencies: success
   - Set up job: success
@@ -10,7 +10,7 @@ dependencies: success
   - Bağımlılık açıkları (OSV): success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-e2e: success
+e2e: failure
   - Set up job: success
   - Run actions/checkout@v4: success
   - Run pnpm/action-setup@v4: success
@@ -21,16 +21,16 @@ e2e: success
   - Playwright (Chromium): success
   - Önizleme sunucusu: success
   - Belgeler ve kasa (smoke): success
-  - Okuma → sonuçlar → vücutta göster → simülasyon: success
-  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
-  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
-  - Run actions/upload-artifact@v4: success
-  - Post Run actions/setup-python@v5: success
-  - Post Run actions/setup-node@v4: success
+  - Okuma → sonuçlar → vücutta göster → simülasyon: failure
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: skipped
+  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: skipped
+  - Run actions/upload-artifact@v4: failure
+  - Post Run actions/setup-python@v5: skipped
+  - Post Run actions/setup-node@v4: skipped
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-web: success
+web: failure
   - Set up job: success
   - Run actions/checkout@v4: success
   - Run pnpm/action-setup@v4: success
@@ -41,9 +41,100 @@ web: success
   - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
   - Derleme: success
   - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
-  - Run actions/upload-artifact@v4: success
-  - Post Run actions/setup-node@v4: success
+  - Run actions/upload-artifact@v4: failure
+  - Post Run actions/setup-node@v4: skipped
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	﻿2026-09-28T13:47:25.2429013Z ##[group]Run python tests/e2e/flow.py "$RUNNER_TEMP/shots"
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2429506Z ^[[36;1mpython tests/e2e/flow.py "$RUNNER_TEMP/shots"^[[0m
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2492144Z shell: /usr/bin/bash -e {0}
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2492403Z env:
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2492670Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2493069Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2493516Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib/pkgconfig
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2493953Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2494342Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2494760Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2495173Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:47:25.2495500Z ##[endgroup]
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6561179Z Traceback (most recent call last):
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6562185Z PASS PDF'ten 14 sonuç okundu
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6564014Z   File "/home/runner/work/kan-haritasi/kan-haritasi/tests/e2e/flow.py", line 110, in <module>
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6565654Z PASS kaydedilen raporda 5 aralık dışı sonuç (ALT, T.kolesterol, LDL, TG yüksek; ferritin düşük)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6570665Z     page.screenshot(path=SHOTS / "27-simulasyon.png")
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6571489Z PASS fotoğraftan OCR ile 9 sonuç okundu
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6572908Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/sync_api/_generated.py", line 9784, in screenshot
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6574054Z PASS Sonuçlarım listesinde LDL
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6574703Z     self._sync(
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6575198Z PASS kişisel genel değerlendirme
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6576462Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6577542Z PASS karaciğer paterni (ALT yüksek)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6578496Z     return task.result()
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6578944Z PASS lipid paterni
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6579501Z            ^^^^^^^^^^^^^
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6579924Z PASS öğren paneli
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6581074Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/_impl/_page.py", line 817, in screenshot
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6582008Z PASS kişisel yorum
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6582666Z     encoded_binary = await self._channel.send(
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6583191Z PASS sapma derecesi (LDL 178 / 130)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6583856Z                      ^^^^^^^^^^^^^^^^^^^^^^^^^
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6584367Z PASS LDL için vücut rotası
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6585500Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 69, in send
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6586555Z PASS LDL → koroner arterler bağlantısı
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6587358Z     return await self._connection.wrap_api_call(
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6588040Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6589604Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 559, in wrap_api_call
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6591122Z     raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6592393Z playwright._impl._errors.TimeoutError: Page.screenshot: Timeout 30000ms exceeded.
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6593198Z Call log:
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6593663Z   - taking page screenshot
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6594234Z   - waiting for fonts to load...
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6594758Z   - fonts loaded
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:14.6595087Z 
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-28T13:49:15.6710062Z ##[error]Process completed with exit code 1.
+e2e	Run actions/upload-artifact@v4	﻿2026-09-28T13:49:15.6805008Z ##[group]Run actions/upload-artifact@v4
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6805315Z with:
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6805522Z   name: e2e-ekran-goruntuleri
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6805793Z   path: /home/runner/work/_temp/shots
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6806063Z   retention-days: 7
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6806281Z   if-no-files-found: warn
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6806510Z   compression-level: 6
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6806734Z   overwrite: false
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6806953Z   include-hidden-files: false
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6807187Z env:
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6807423Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6807802Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6808409Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib/pkgconfig
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6808830Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6809205Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6809591Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6810012Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:15.6810332Z ##[endgroup]
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:17.6704657Z (node:3348) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:17.6717224Z (Use `node --trace-deprecation ...` to show where the warning was created)
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:17.6722192Z With the provided path, there will be 19 files uploaded
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:17.6722699Z Artifact name is valid!
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:17.6722989Z Root directory input is valid!
+e2e	Run actions/upload-artifact@v4	2026-09-28T13:49:17.6735875Z ##[error]Failed to CreateArtifact: Artifact storage quota has been hit. Unable to upload any new artifacts. Usage is recalculated every 6-12 hours.
+e2e	Run actions/upload-artifact@v4	More info on storage limits: https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions#calculating-minute-and-storage-spending
+web	Run actions/upload-artifact@v4	﻿2026-09-28T13:47:10.9784310Z ##[group]Run actions/upload-artifact@v4
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9784635Z with:
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9784826Z   name: web-dist
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9785038Z   path: apps/web/dist
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9785597Z   retention-days: 7
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9785897Z   if-no-files-found: warn
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9786143Z   compression-level: 6
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9786373Z   overwrite: false
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9786590Z   include-hidden-files: false
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9786826Z env:
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9787064Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:10.9787377Z ##[endgroup]
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:11.1688892Z (node:2619) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:11.1730233Z (Use `node --trace-deprecation ...` to show where the warning was created)
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:11.2854415Z With the provided path, there will be 272 files uploaded
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:11.2855650Z Artifact name is valid!
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:11.2856172Z Root directory input is valid!
+web	Run actions/upload-artifact@v4	2026-09-28T13:47:11.5122007Z ##[error]Failed to CreateArtifact: Artifact storage quota has been hit. Unable to upload any new artifacts. Usage is recalculated every 6-12 hours.
+web	Run actions/upload-artifact@v4	More info on storage limits: https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions#calculating-minute-and-storage-spending
