@@ -1,24 +1,8 @@
 workflow: CI
-run: 36437155717
-sha: ba43cb88c363de07521c5dc33754ba350ad267cc
+run: 36471658717
+sha: 2e41a39e26ad270beeaa5997daf007f1ab5dcd20
 conclusion: success
 
-web: success
-  - Set up job: success
-  - Run actions/checkout@v4: success
-  - Run pnpm/action-setup@v4: success
-  - Run actions/setup-node@v4: success
-  - Run pnpm install --frozen-lockfile: success
-  - Lint (güvenlik kuralları dahil): success
-  - Tip denetimi: success
-  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
-  - Derleme: success
-  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
-  - Run actions/upload-artifact@v4: success
-  - Post Run actions/setup-node@v4: success
-  - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
 e2e: success
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -33,6 +17,7 @@ e2e: success
   - Okuma → sonuçlar → vücutta göster → simülasyon: success
   - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
   - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
+  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
   - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
   - Run actions/upload-artifact@v4: success
   - Post Run actions/setup-python@v5: success
@@ -45,6 +30,22 @@ dependencies: success
   - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
   - Run actions/checkout@v4: success
   - Bağımlılık açıkları (OSV): success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
+web: success
+  - Set up job: success
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Lint (güvenlik kuralları dahil): success
+  - Tip denetimi: success
+  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
+  - Derleme: success
+  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
+  - Run actions/upload-artifact@v4: success
+  - Post Run actions/setup-node@v4: success
+  - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
