@@ -5,7 +5,8 @@ import { AppShell } from './screens/AppShell';
 import { DocumentsPage } from './screens/DocumentsPage';
 import { DocumentDetail } from './screens/DocumentDetail';
 import { PrivacyPage } from './screens/PrivacyPage';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useSyncExternalStore } from 'react';
+import { subscribeUpdate, updateReady } from './lib/updates';
 import { TimelinePage } from './screens/TimelinePage';
 import { AboutPage } from './screens/AboutPage';
 import { CoveragePage } from './screens/CoveragePage';
@@ -74,10 +75,31 @@ function Gate() {
   }
 }
 
+/** Yeni web sürümü indirildiğinde: kullanıcı istediği an yeniler (kasa yeniden kilitlenir). */
+function UpdateNotice() {
+  const ready = useSyncExternalStore(subscribeUpdate, updateReady, () => false);
+  const { status } = useVault();
+  if (!ready) return null;
+  return (
+    <div role="status" className="fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 md:bottom-6">
+      <div className="flex max-w-md items-center gap-3 rounded-2xl border border-accent/40 bg-ink-850 px-4 py-3 text-sm shadow-2xl shadow-black/40">
+        <span className="min-w-0 flex-1">
+          Uygulamanın yeni sürümü hazır.
+          {status.kind === 'unlocked' ? <span className="block text-xs text-fg-muted">Yenileyince kasa kilitlenir; parolanla yeniden açarsın.</span> : null}
+        </span>
+        <button type="button" className="btn-primary shrink-0 px-3 py-1.5 text-xs" onClick={() => location.reload()}>
+          Yenile
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function App() {
   return (
     <VaultProvider>
       <Gate />
+      <UpdateNotice />
     </VaultProvider>
   );
 }
