@@ -1,9 +1,9 @@
 workflow: Android APK
-run: 36430929891
-sha: 1bc60af2de34867e57cbff80d6cae99cd36cff8b
-conclusion: failure
+run: 36434422681
+sha: b707b3844fe5ad3d8dc258309d9becb2c4927de1
+conclusion: success
 
-apk: failure
+apk: success
   - Set up job: success
   - Run actions/checkout@v4: success
   - Run pnpm/action-setup@v4: success
@@ -16,67 +16,14 @@ apk: failure
   - İmza anahtarı (tanımlıysa gizli anahtar, yoksa depodaki hata ayıklama anahtarı): success
   - APK derle: success
   - APK'da INTERNET izni olmamalı: success
-  - APK'da çalışma zamanı dosyaları eksiksiz olmalı: failure
-  - APK'yı adlandır: skipped
-  - Run actions/upload-artifact@v4: skipped
-  - Son sürüm: telefondan indirilebilir yayın (apk-son): skipped
+  - APK'da çalışma zamanı dosyaları eksiksiz olmalı: success
+  - APK'yı adlandır: success
+  - Run actions/upload-artifact@v4: success
+  - Son sürüm: telefondan indirilebilir yayın (apk-son): success
   - Post Run gradle/actions/setup-gradle@v4: success
   - Post Run actions/setup-java@v4: success
-  - Post Run actions/setup-node@v4: skipped
+  - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	﻿2026-09-28T13:48:08.2514030Z ##[group]Run APK=$(ls apps/android/app/build/outputs/apk/release/*.apk | head -1)
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2514622Z ^[[36;1mAPK=$(ls apps/android/app/build/outputs/apk/release/*.apk | head -1)^[[0m
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2515121Z ^[[36;1munzip -l "$APK" | awk '{print $4}' | grep '^assets/web/' > apk-assets.txt^[[0m
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2515628Z ^[[36;1mecho "OCR ve modeller:"; grep -E '^assets/web/(ocr|models)/' apk-assets.txt^[[0m
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2516212Z ^[[36;1m# Android paketleme ".gz" uzantısını siler; web tarafı hiçbir dosyayı bu adla istememeli.^[[0m
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2516857Z ^[[36;1mif grep -E '\.gz$' apk-assets.txt; then echo "::error::APK'da .gz uzantılı varlık var"; exit 1; fi^[[0m
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2517757Z ^[[36;1mfor f in index.html ocr/worker.min.js ocr/tesseract-core-simd-lstm.wasm.js ocr/tur.traineddata \^[[0m
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2518378Z ^[[36;1m         models/body.glb models/skeleton.glb models/muscles.glb models/cardio.glb; do^[[0m
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2518947Z ^[[36;1m  grep -qx "assets/web/$f" apk-assets.txt || { echo "::error::APK'da eksik: $f"; exit 1; }^[[0m
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2519391Z ^[[36;1mdone^[[0m
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2570977Z shell: /usr/bin/bash -e {0}
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2571164Z env:
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2571347Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2571616Z   JAVA_HOME: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2571916Z   JAVA_HOME_17_X64: /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/17.0.20-1/x64
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2572929Z   GRADLE_ACTION_ID: gradle/actions/setup-gradle
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2573255Z   GRADLE_USER_HOME: /home/runner/.gradle
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2573546Z   GRADLE_BUILD_ACTION_SETUP_COMPLETED: true
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2573834Z   GRADLE_BUILD_ACTION_CACHE_RESTORED: true
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2574234Z   DEVELOCITY_INJECTION_INIT_SCRIPT_NAME: gradle-actions.inject-develocity.init.gradle
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2574659Z   DEVELOCITY_INJECTION_CUSTOM_VALUE: gradle-actions
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2574960Z   GITHUB_DEPENDENCY_GRAPH_ENABLED: false
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2575231Z ##[endgroup]
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2733790Z OCR ve modeller:
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2741853Z assets/web/models/ATTRIBUTION.txt
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2742321Z assets/web/models/f/body.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2755620Z assets/web/models/f/cardio.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2756006Z assets/web/models/f/digestive.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2765543Z assets/web/models/f/endocrine.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2766175Z assets/web/models/f/immune.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2768265Z assets/web/models/f/muscles.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2768826Z assets/web/models/f/nervous.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2769373Z assets/web/models/f/reproductive.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2769853Z assets/web/models/f/respiratory.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2770355Z assets/web/models/f/skeleton.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2771024Z assets/web/models/f/urinary.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2771449Z assets/web/models/m/body.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2771879Z assets/web/models/m/cardio.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2772320Z assets/web/models/m/digestive.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2772784Z assets/web/models/m/endocrine.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2773233Z assets/web/models/m/immune.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2773788Z assets/web/models/m/muscles.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2774231Z assets/web/models/m/nervous.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2774683Z assets/web/models/m/reproductive.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2775153Z assets/web/models/m/respiratory.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2775605Z assets/web/models/m/skeleton.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2776052Z assets/web/models/m/urinary.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2776488Z assets/web/models/manifest.json
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2777218Z assets/web/ocr/tesseract-core-simd-lstm.wasm.js
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2777733Z assets/web/ocr/tur.traineddata
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2778158Z assets/web/ocr/worker.min.js
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2814808Z ##[error]APK'da eksik: models/body.glb
-apk	APK'da çalışma zamanı dosyaları eksiksiz olmalı	2026-09-28T13:48:08.2817081Z ##[error]Process completed with exit code 1.
