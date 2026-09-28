@@ -8,7 +8,9 @@ Sunucu yok, hesap yok. Raporlar ve sonuçlar yalnızca cihazda, şifreli durur. 
 
 ## iPhone, iPad ve bilgisayarda (web)
 
-**https://ahmetdurmus1218-ctrl.github.io/kan-haritasi/** — Safari, Chrome, Edge ve Firefox'ta çalışır; her `main` gönderiminde güncellenir.
+**https://ahmetdurmus1218-ctrl.github.io/kan-haritasi/** — Safari, Chrome, Edge ve Firefox'ta çalışır; her `main` gönderiminde güncellenir (`gh-pages` dalı).
+
+> İlk kurulumda bir kez: GitHub'da **Settings → Pages → Build and deployment → Source: Deploy from a branch → `gh-pages` / `(root)` → Save**.
 
 - **iPhone/iPad:** Safari'de aç → Paylaş → **Ana Ekrana Ekle**. Uygulama gibi tam ekran açılır, ilk açılıştan sonra çevrimdışı da çalışır.
 - Web sürümünde de her şey cihazda kalır: sayfa yalnızca uygulama dosyalarını indirir, rapor ve sonuçlar tarayıcının şifreli kasasında durur.
