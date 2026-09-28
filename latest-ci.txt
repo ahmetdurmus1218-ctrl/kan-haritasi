@@ -1,8 +1,24 @@
 workflow: CI
-run: 36434422731
-sha: b707b3844fe5ad3d8dc258309d9becb2c4927de1
+run: 36437155717
+sha: ba43cb88c363de07521c5dc33754ba350ad267cc
 conclusion: success
 
+web: success
+  - Set up job: success
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Lint (güvenlik kuralları dahil): success
+  - Tip denetimi: success
+  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
+  - Derleme: success
+  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
+  - Run actions/upload-artifact@v4: success
+  - Post Run actions/setup-node@v4: success
+  - Post Run pnpm/action-setup@v4: success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 e2e: success
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -20,22 +36,6 @@ e2e: success
   - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
   - Run actions/upload-artifact@v4: success
   - Post Run actions/setup-python@v5: success
-  - Post Run actions/setup-node@v4: success
-  - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-web: success
-  - Set up job: success
-  - Run actions/checkout@v4: success
-  - Run pnpm/action-setup@v4: success
-  - Run actions/setup-node@v4: success
-  - Run pnpm install --frozen-lockfile: success
-  - Lint (güvenlik kuralları dahil): success
-  - Tip denetimi: success
-  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
-  - Derleme: success
-  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
-  - Run actions/upload-artifact@v4: success
   - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
