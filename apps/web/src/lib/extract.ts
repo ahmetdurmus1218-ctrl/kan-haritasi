@@ -1,6 +1,6 @@
 import type { FileInfo } from '@kh/vault';
 import type { Sex } from '@kh/catalog';
-import { type ReportDraft, type TextItem, draftScore, mergeOcrDrafts, parseReport, pdfTextToItems } from '@kh/parser';
+import { type ReportDraft, type TextItem, buildLines, draftScore, extractReportDate, mergeOcrDrafts, parseReport, pdfTextToItems } from '@kh/parser';
 import { openPdf } from './pdf';
 import { type OcrStage, looksLikeScreenshot, prepareImage, recognizeCanvas } from './ocr';
 
@@ -116,4 +116,68 @@ export async function extractDraft(
   };
   const draft = parseReport(items, opts);
   return usedOcr ? mergeOcrDrafts(draft, parseReport(altItems, opts)) : draft;
+}
+
+/**
+ * Görüntüleme (MR, BT, röntgen…) raporunun düz metni. Tahlil tablosu aranmaz; satırlar okunduğu
+ * sırayla birleştirilir. PDF metin katmanı varsa OCR çalışmaz.
+ */
+export async function extractReportText(
+  info: FileInfo,
+  bytes: Uint8Array<ArrayBuffer>,
+  onProgress?: (p: ExtractProgress) => void,
+): Promise<{ text: string; method: 'text' | 'ocr' | 'mixed'; date?: string }> {
+  const items: TextItem[] = [];
+  const pageSizes = new Map<number, { w: number; h: number }>();
+  let usedOcr = false;
+  let usedText = false;
+  if (info.kind === 'pdf') {
+    const task = openPdf(bytes);
+    try {
+      const doc = await task.promise;
+      for (let p = 1; p <= doc.numPages; p++) {
+        onProgress?.({ phase: 'text', page: p, pages: doc.numPages });
+        const page = await doc.getPage(p);
+        const viewport = page.getViewport({ scale: 1 });
+        pageSizes.set(p, { w: viewport.width, h: viewport.height });
+        const content = await page.getTextContent();
+        const pageItems = pdfTextToItems(content.items as never, p, viewport);
+        if (pageItems.reduce((n, it) => n + it.text.replace(/\s/g, '').length, 0) >= MIN_TEXT_CHARS) {
+          items.push(...pageItems);
+          usedText = true;
+          continue;
+        }
+        usedOcr = true;
+        const scale = OCR_TARGET_WIDTH / viewport.width;
+        const vp = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(vp.width);
+        canvas.height = Math.floor(vp.height);
+        await page.render({ canvas, viewport: vp }).promise;
+        const [block] = await recognizeCanvas(canvas, p, scale, (o) => onProgress?.({ phase: 'ocr', page: p, pages: doc.numPages, stage: o.stage, fraction: o.fraction }), undefined, ['block']);
+        items.push(...block!);
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+    } finally {
+      void task.destroy();
+    }
+  } else if (info.kind === 'jpeg' || info.kind === 'png') {
+    usedOcr = true;
+    onProgress?.({ phase: 'ocr', page: 1, pages: 1, stage: 'prepare', fraction: 0 });
+    const mode = (await looksLikeScreenshot(bytes, info.mimeType)) ? 'screen' : 'document';
+    const img = await prepareImage(bytes, info.mimeType, mode);
+    pageSizes.set(1, { w: img.width, h: img.height });
+    const [block] = await recognizeCanvas(img.canvas, 1, img.scale, (o) => onProgress?.({ phase: 'ocr', page: 1, pages: 1, stage: o.stage, fraction: o.fraction }), img.offset, ['block']);
+    items.push(...block!);
+    img.canvas.width = 0;
+    img.canvas.height = 0;
+  }
+  onProgress?.({ phase: 'parse', page: 1, pages: 1 });
+  const lines = buildLines(items, pageSizes);
+  const text = lines
+    .map((l) => l.text.trim())
+    .filter(Boolean)
+    .join('\n');
+  return { text, method: usedOcr && usedText ? 'mixed' : usedOcr ? 'ocr' : 'text', date: extractReportDate(lines) };
 }

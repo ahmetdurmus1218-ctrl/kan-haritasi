@@ -6,6 +6,8 @@ import { formatDate } from '../lib/format';
 import { Banner } from '../components/ui';
 import { StatusPill } from '../components/results';
 import { BodyIcon, ChartIcon, FileTextIcon, SpinnerIcon, UploadIcon } from '../components/icons';
+import { useImagingStudies } from '../lib/imagingStudies';
+import { CATEGORY_LABEL, regionByKey } from '../lib/imaging';
 
 /**
  * Zaman çizelgesi: bir testin raporlar boyunca değişimi ve rapor geçmişi.
@@ -33,6 +35,7 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
     [series],
   );
   const selected = sorted.find((s) => s.test.key === testKey) ?? sorted[0];
+  const studies = useImagingStudies() ?? [];
 
   if (error) return <div className="p-6"><Banner tone="error">Sonuçlar yüklenemedi.</Banner></div>;
   if (!reports) {
@@ -49,7 +52,7 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
         <p className="label-caps mb-1.5">Zaman</p>
         <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">Sonuçların zaman içinde</h1>
         <p className="mt-1.5 text-sm text-fg-muted">
-          {reports.length} rapor · {series.length} test. Bir noktaya dokunarak o raporu ve ilgili biyolojik sistemi açabilirsin.
+          {reports.length} rapor · {series.length} test{studies.length ? ` · ${studies.length} görüntüleme` : ''}. Bir noktaya dokunarak o raporu ve ilgili biyolojik sistemi açabilirsin.
         </p>
       </div>
 
@@ -87,13 +90,36 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
         </div>
       )}
 
-      {reports.length > 0 && (
+      {reports.length + studies.length > 0 && (
         <section className="mt-10">
           <p className="label-caps mb-3">Rapor geçmişi</p>
           <ol className="relative space-y-0 border-l border-ink-600 pl-5">
-            {[...reports]
-              .sort((a, b) => reportDate(b).localeCompare(reportDate(a)))
-              .map((r) => {
+            {[
+              ...reports.map((r) => ({ kind: 'lab' as const, date: reportDate(r), r })),
+              ...studies.map((st) => ({ kind: 'imaging' as const, date: st.date, st })),
+            ]
+              .sort((a, b) => b.date.localeCompare(a.date))
+              .map((e) => {
+                if (e.kind === 'imaging') {
+                  const { st } = e;
+                  const region = st.region ? regionByKey.get(st.region)?.label : undefined;
+                  return (
+                    <li key={st.key} className="relative pb-5">
+                      <span className="absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-sm border-2 border-ink-950 bg-high" aria-hidden="true" />
+                      <button type="button" onClick={() => go({ name: 'document', id: st.head.id })} className="text-left">
+                        <span className="block text-sm text-fg">
+                          {formatDate(st.date)} · {CATEGORY_LABEL[st.category]}
+                          {region ? ` · ${region}` : ''}
+                        </span>
+                        <span className="line-clamp-2 text-xs text-fg-muted">
+                          {st.conclusion ? `Sonuç: ${st.conclusion}` : 'Görüntüleme · rapor metni yok'}
+                          {st.dateKnown ? '' : ' · çekim tarihi girilmedi (yükleme tarihi)'}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                }
+                const { r } = e;
                 const abnormal = r.results.filter((x) => x.status === 'high' || x.status === 'low').length;
                 return (
                   <li key={r.id} className="relative pb-5">

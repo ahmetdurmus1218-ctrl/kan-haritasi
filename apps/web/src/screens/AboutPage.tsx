@@ -17,6 +17,7 @@ const LICENSES: { name: string; use: string; license: string }[] = [
   { name: 'Tesseract.js 7 · tesseract.js-core', use: 'Fotoğraftan metin okuma (OCR), cihazda', license: 'Apache-2.0' },
   { name: 'Tesseract Türkçe eğitim verisi (tur · tessdata_best, tamsayı)', use: 'OCR dil modelleri', license: 'Apache-2.0' },
   { name: 'hash-wasm', use: 'Argon2id anahtar türetme', license: 'MIT' },
+  { name: 'DICOM okuyucu (uygulamanın kendi kodu)', use: 'MR, BT, röntgen, ultrason görüntülerini cihazda açma', license: '—' },
   { name: 'Tailwind CSS 4', use: 'Stil (derleme zamanı)', license: 'MIT' },
   { name: 'AndroidX, Jetpack Compose, Kotlin', use: 'Android kabuğu', license: 'Apache-2.0' },
 ];

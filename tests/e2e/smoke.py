@@ -62,7 +62,7 @@ with sync_playwright() as p:
     fake = SHOTS / "sahte.pdf"
     fake.write_text("<html><script>alert(1)</script></html>")
     page.set_input_files("input[type=file][multiple]", [str(PDF), str(PNG), str(fake)])
-    page.get_by_text("Dosyanın içeriği PDF, JPG veya PNG değil.").wait_for(timeout=20000)
+    page.get_by_text("Dosyanın içeriği PDF, JPG, PNG veya desteklenen bir DICOM değil.").wait_for(timeout=20000)
     page.locator('ul li').nth(1).wait_for(timeout=20000)
     page.screenshot(path=SHOTS / "03-yuklendi.png", full_page=True)
     check(page.locator("ul li").count() == 2, "iki geçerli dosya listede, sahte dosya reddedildi")

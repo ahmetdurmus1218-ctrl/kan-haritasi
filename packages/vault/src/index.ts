@@ -5,8 +5,8 @@ export { DEFAULT_ARGON2, MIN_PASSPHRASE_LENGTH, PassphraseKeyWrapper } from './k
 export type { Argon2Params, KeyWrapper, WrappedMasterKey } from './kdf';
 export * from './stores';
 export { DEFAULT_CHUNK_SIZE } from './fileCrypto';
-export { Vault, MAX_DISPLAY_NAME } from './vault';
-export type { FileInfo, FileKind, NewFileInput, VaultOptions } from './vault';
+export { Vault, MAX_DISPLAY_NAME, DOC_CATEGORIES } from './vault';
+export type { DocCategory, FileInfo, FileKind, FileMeta, NewFileInput, VaultOptions } from './vault';
 export { IndexedDbBlobStore, IndexedDbRecordStore, openVaultDb } from './idb';
 export { OpfsBlobStore, openBrowserStores } from './opfs';
 export type { BrowserStores } from './opfs';

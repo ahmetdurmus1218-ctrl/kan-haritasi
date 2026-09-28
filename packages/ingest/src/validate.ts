@@ -1,10 +1,14 @@
+import { DicomError, type DicomSummary, MEDIA_DIRECTORY_SOP, isDicom, parseDicom, summarizeDicom } from './dicom';
+
 /**
- * Yüklenen dosyanın gerçekten desteklenen bir PDF/JPEG/PNG olduğunu, çözümlemeden
+ * Yüklenen dosyanın gerçekten desteklenen bir PDF/JPEG/PNG/DICOM olduğunu, çözümlemeden
  * (decode etmeden) yalnızca baytlara bakarak doğrular. Uzantı ve tarayıcının bildirdiği
  * MIME türü asla tek başına güvenilmez; belirleyici olan dosya imzasıdır.
  */
 export const DEFAULT_LIMITS = {
   maxBytes: 20 * 1024 * 1024,
+  /** MR/BT dosyaları (DICOM) çok kesitli olabilir; ayrıca daha yüksek sınır. */
+  maxDicomBytes: 60 * 1024 * 1024,
   maxPdfPages: 30,
   maxPixels: 40_000_000,
   maxSide: 8000,
@@ -12,18 +16,19 @@ export const DEFAULT_LIMITS = {
 
 export type UploadLimits = { [K in keyof typeof DEFAULT_LIMITS]: number };
 
-export type DetectedKind = 'pdf' | 'jpeg' | 'png';
+export type DetectedKind = 'pdf' | 'jpeg' | 'png' | 'dicom';
 
 export const MIME_BY_KIND: Record<DetectedKind, string> = {
   pdf: 'application/pdf',
   jpeg: 'image/jpeg',
   png: 'image/png',
+  dicom: 'application/dicom',
 };
 
-const CANONICAL_EXT: Record<DetectedKind, string> = { pdf: 'pdf', jpeg: 'jpg', png: 'png' };
-const EXT_KIND: Record<string, DetectedKind> = { pdf: 'pdf', jpg: 'jpeg', jpeg: 'jpeg', png: 'png' };
+const CANONICAL_EXT: Record<DetectedKind, string> = { pdf: 'pdf', jpeg: 'jpg', png: 'png', dicom: 'dcm' };
+const EXT_KIND: Record<string, DetectedKind> = { pdf: 'pdf', jpg: 'jpeg', jpeg: 'jpeg', png: 'png', dcm: 'dicom', dicom: 'dicom' };
 
-export const ACCEPT_ATTRIBUTE = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png';
+export const ACCEPT_ATTRIBUTE = '.pdf,.jpg,.jpeg,.png,.dcm,.dicom,application/pdf,image/jpeg,image/png,application/dicom';
 
 export type RejectCode =
   | 'EMPTY'
@@ -33,9 +38,10 @@ export type RejectCode =
   | 'EXTENSION_MISMATCH'
   | 'IMAGE_TOO_LARGE'
   | 'TOO_MANY_PAGES'
+  | 'DICOM_NO_IMAGE'
   | 'CORRUPT';
 
-export type UploadWarning = 'EXTENSION_CORRECTED' | 'MIME_MISMATCH' | 'PDF_ENCRYPTED' | 'PDF_HAS_SCRIPT';
+export type UploadWarning = 'EXTENSION_CORRECTED' | 'MIME_MISMATCH' | 'PDF_ENCRYPTED' | 'PDF_HAS_SCRIPT' | 'DICOM_NOT_VIEWABLE';
 
 export interface AcceptedUpload {
   ok: true;
@@ -47,6 +53,8 @@ export interface AcceptedUpload {
   displayName: string;
   width?: number;
   height?: number;
+  /** DICOM ise: modalite, bölge, tarih, seri (kimlik bilgisi yok). */
+  dicom?: DicomSummary;
   warnings: UploadWarning[];
 }
 
@@ -125,6 +133,7 @@ const IHDR = ascii('IHDR');
 export function detectKind(bytes: Uint8Array): DetectedKind | null {
   if (startsWith(bytes, PNG_SIG)) return 'png';
   if (startsWith(bytes, JPEG_SIG)) return 'jpeg';
+  if (isDicom(bytes)) return 'dicom';
   // PDF standardı başlığın ilk 1024 bayt içinde olmasına izin verir.
   if (indexOfBytes(bytes, PDF_HEADER, 0, 1024) !== -1) return 'pdf';
   return null;
@@ -182,20 +191,21 @@ export function inspectPdf(b: Uint8Array): { encrypted: boolean; hasScript: bool
 export function validateUpload(input: UploadInput, limits: UploadLimits = DEFAULT_LIMITS): UploadValidation {
   const { bytes } = input;
   if (bytes.length === 0) return reject('EMPTY');
-  if (bytes.length > limits.maxBytes) return reject('TOO_LARGE');
+  const kind = detectKind(bytes);
+  if (bytes.length > (kind === 'dicom' ? Math.max(limits.maxBytes, limits.maxDicomBytes) : limits.maxBytes)) return reject('TOO_LARGE');
 
   const cleanName = sanitizeFileName(input.fileName);
+  if (kind === 'dicom') return validateDicom(bytes, cleanName, input.declaredMime, limits);
+
   const { stem, ext } = splitExtension(cleanName);
   if (ext && !(ext in EXT_KIND)) return reject('UNSUPPORTED_EXTENSION');
-
-  const kind = detectKind(bytes);
   if (!kind) return reject('UNSUPPORTED_TYPE');
 
   const warnings: UploadWarning[] = [];
   const extKind = ext ? EXT_KIND[ext] : undefined;
   if (extKind && extKind !== kind) {
     // JPEG ↔ PNG karışıklığı zararsızdır (telefonlar bazen yanlış uzantı verir); PDF ↔ görsel değildir.
-    if (extKind === 'pdf' || kind === 'pdf') return reject('EXTENSION_MISMATCH');
+    if (extKind === 'pdf' || kind === 'pdf' || extKind === 'dicom') return reject('EXTENSION_MISMATCH');
     warnings.push('EXTENSION_CORRECTED');
   }
   if (input.declaredMime && input.declaredMime !== MIME_BY_KIND[kind]) warnings.push('MIME_MISMATCH');
@@ -217,4 +227,41 @@ export function validateUpload(input: UploadInput, limits: UploadLimits = DEFAUL
     return reject('IMAGE_TOO_LARGE');
   }
   return { ...base, width: size.width, height: size.height };
+}
+
+/**
+ * DICOM: CD'lerdeki dosyaların çoğunun uzantısı yoktur ya da "IM000001", "1.2.840…" gibi adlar taşır;
+ * bu yüzden uzantı yok sayılır, belirleyici olan 128. bayttaki "DICM" imzası ve okunabilen başlıktır.
+ */
+function validateDicom(bytes: Uint8Array, cleanName: string, declaredMime: string | undefined, limits: UploadLimits): UploadValidation {
+  const { stem, ext } = splitExtension(cleanName);
+  const known = ext === 'dcm' || ext === 'dicom';
+  if (ext && ext in EXT_KIND && !known) return reject('EXTENSION_MISMATCH');
+  let info;
+  try {
+    info = parseDicom(bytes);
+  } catch (e) {
+    return reject(e instanceof DicomError && e.code === 'UNSUPPORTED' ? 'UNSUPPORTED_TYPE' : 'CORRUPT');
+  }
+  if (info.sopClassUid === MEDIA_DIRECTORY_SOP || !info.pixel) return reject('DICOM_NO_IMAGE');
+  if (info.rows <= 0 || info.columns <= 0) return reject('CORRUPT');
+  if (info.rows > limits.maxSide || info.columns > limits.maxSide || info.rows * info.columns > limits.maxPixels) return reject('IMAGE_TOO_LARGE');
+
+  const summary = summarizeDicom(info);
+  const warnings: UploadWarning[] = [];
+  if (declaredMime && declaredMime !== MIME_BY_KIND.dicom && declaredMime !== 'application/octet-stream') warnings.push('MIME_MISMATCH');
+  if (!summary.decodable) warnings.push('DICOM_NOT_VIEWABLE');
+  const displayName = known ? stem : cleanName;
+  const fileName = known ? cleanName : `${cleanName}.dcm`;
+  return {
+    ok: true,
+    kind: 'dicom',
+    mimeType: MIME_BY_KIND.dicom,
+    fileName: fileName.length > MAX_FILE_NAME ? sanitizeFileName(fileName) : fileName,
+    displayName,
+    width: info.columns,
+    height: info.rows,
+    dicom: summary,
+    warnings,
+  };
 }

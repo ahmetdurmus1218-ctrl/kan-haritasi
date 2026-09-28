@@ -1,6 +1,8 @@
 import type { Vault } from '@kh/vault';
 import { STATUS_LABEL, testByKey } from '@kh/catalog';
 import { listReports } from './reports';
+import { listImagingNotes } from './imagingRecords';
+import { CATEGORY_LABEL, isImaging, regionByKey } from './imaging';
 import { makeZip, safeEntryName, type ZipEntry } from './zip';
 
 /**
@@ -19,8 +21,8 @@ export async function buildExport(vault: Vault, onProgress?: (done: number, tota
 
   for (let i = 0; i < files.length; i++) {
     const { info, bytes } = await vault.readFile(files[i]!.id);
-    const ext = info.kind === 'pdf' ? '.pdf' : info.kind === 'png' ? '.png' : '.jpg';
-    const base = safeEntryName(info.displayName.replace(/\.(pdf|png|jpe?g)$/i, ''), `belge-${i + 1}`);
+    const ext = info.kind === 'pdf' ? '.pdf' : info.kind === 'png' ? '.png' : info.kind === 'dicom' ? '.dcm' : '.jpg';
+    const base = safeEntryName(info.displayName.replace(/\.(pdf|png|jpe?g|dcm)$/i, ''), `belge-${i + 1}`);
     let name = `belgeler/${base}${ext}`;
     for (let n = 2; used.has(name); n++) name = `belgeler/${base}-${n}${ext}`;
     used.add(name);
@@ -47,8 +49,22 @@ export async function buildExport(vault: Vault, onProgress?: (done: number, tota
     })),
   );
 
+  const notes = await listImagingNotes(vault);
+  const goruntulemeler = files
+    .filter((f) => isImaging(f.category))
+    .map((f) => ({
+      belge: fileNames.get(f.id) ?? null,
+      tur: CATEGORY_LABEL[f.category],
+      bolge: f.region ? (regionByKey.get(f.region)?.label ?? f.region) : null,
+      cekimTarihi: f.studyDate ?? null,
+      seri: f.seriesUid ?? null,
+      kesit: f.sliceIndex ?? null,
+      raporMetni: notes.find((n) => n.fileId === f.id)?.text ?? null,
+    }));
+
   const json = {
     uygulama: 'Kan Haritası',
+    goruntulemeler,
     olusturma: new Date().toISOString(),
     not: 'Bu dosya şifresizdir. Sonuçlar bilgilendirme amaçlıdır; tanı yerine geçmez.',
     raporlar: reports.map((r) => ({
@@ -91,8 +107,8 @@ export async function buildExport(vault: Vault, onProgress?: (done: number, tota
         '',
         'Bu arşiv ŞİFRESİZDİR. Kimlerle paylaştığına ve nerede sakladığına dikkat et.',
         '',
-        'belgeler/      Yüklediğin orijinal rapor dosyaları (değiştirilmedi)',
-        'sonuclar.json  Onayladığın tüm sonuçlar',
+        'belgeler/      Yüklediğin orijinal dosyalar: tahlil raporları, MR/BT/röntgen görüntüleri (.dcm) ve raporları (değiştirilmedi)',
+        'sonuclar.json  Onayladığın tüm sonuçlar ve görüntüleme belgelerinin türü, bölgesi, tarihi, rapor metni',
         'sonuclar.csv   Aynı sonuçlar; Excel/LibreOffice ile açılabilir (ayraç: ;)',
         '',
         'Sonuçlar bilgilendirme amaçlıdır ve tıbbi tanı yerine geçmez.',

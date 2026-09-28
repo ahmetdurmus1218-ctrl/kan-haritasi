@@ -23,4 +23,4 @@ export function formatBytes(n: number): string {
   return `${v.toLocaleString('tr-TR', { maximumFractionDigits: v < 10 ? 1 : 0 })} ${units[i]}`;
 }
 
-export const KIND_LABEL = { pdf: 'PDF', jpeg: 'JPG', png: 'PNG' } as const;
+export const KIND_LABEL = { pdf: 'PDF', jpeg: 'JPG', png: 'PNG', dicom: 'DICOM' } as const;

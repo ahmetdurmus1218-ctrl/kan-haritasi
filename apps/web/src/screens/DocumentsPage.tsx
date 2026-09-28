@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
-import { ACCEPT_ATTRIBUTE, sanitizeFileName, splitExtension } from '@kh/ingest';
-import { type FileInfo, MAX_DISPLAY_NAME, type Vault } from '@kh/vault';
+import { ACCEPT_ATTRIBUTE, isDicom, sanitizeFileName, splitExtension } from '@kh/ingest';
+import { DOC_CATEGORIES, type DocCategory, type FileInfo, MAX_DISPLAY_NAME, type Vault } from '@kh/vault';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { type Route } from '../state/router';
 import { processUpload, type UploadPhase } from '../lib/upload';
+import { CATEGORY_LABEL, CATEGORY_SHORT, CATEGORY_UPLOAD_TITLE, isImaging, regionByKey } from '../lib/imaging';
+import { type DocGroup, groupDocuments } from '../lib/documents';
 import { formatBytes, formatDate, KIND_LABEL } from '../lib/format';
 import { userMessage } from '../lib/messages';
 import { deleteDocument } from '../lib/reports';
@@ -19,8 +21,10 @@ import {
   DownloadIcon,
   EyeIcon,
   FileTextIcon,
+  FolderIcon,
   ImageIcon,
   PencilIcon,
+  ScanIcon,
   RefreshIcon,
   SpinnerIcon,
   TrashIcon,
@@ -29,6 +33,16 @@ import {
   AlertIcon,
 } from '../components/icons';
 
+interface BatchProgress {
+  total: number;
+  done: number;
+  added: number;
+  duplicates: number;
+  failed: number;
+  /** Klasörden seçilip DICOM olmadığı için atlanan dosyalar. */
+  skipped: number;
+}
+
 interface QueueItem {
   key: string;
   name: string;
@@ -36,6 +50,29 @@ interface QueueItem {
   message?: string;
   notes: string[];
   file?: FileInfo;
+  batch?: BatchProgress;
+}
+
+interface UploadJob {
+  item: QueueItem;
+  files: File[];
+  category: DocCategory;
+}
+
+/** Bu sayıdan fazla dosya tek satırda, toplu ilerlemeyle gösterilir (ör. bir MR serisinin yüzlerce kesiti). */
+const BATCH_THRESHOLD = 6;
+const MAX_FOLDER_FILES = 3000;
+
+/** Klasör seçiminde yalnızca DICOM imzalı dosyalar alınır (CD'deki görüntüleyici programları, DICOMDIR vb. atlanır). */
+async function pickDicomFiles(list: File[]): Promise<{ files: File[]; skipped: number }> {
+  const files: File[] = [];
+  let skipped = Math.max(0, list.length - MAX_FOLDER_FILES);
+  for (const f of list.slice(0, MAX_FOLDER_FILES)) {
+    const ok = f.size >= 132 && f.name.toUpperCase() !== 'DICOMDIR' && isDicom(new Uint8Array(await f.slice(0, 132).arrayBuffer()));
+    if (ok) files.push(f);
+    else skipped++;
+  }
+  return { files, skipped };
 }
 
 export async function downloadOriginal(vault: Vault, id: string): Promise<boolean> {
@@ -52,8 +89,9 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
   const [corrupt, setCorrupt] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
-  const [renaming, setRenaming] = useState<FileInfo | null>(null);
-  const [deleting, setDeleting] = useState<FileInfo | null>(null);
+  const [renaming, setRenaming] = useState<DocGroup | null>(null);
+  const [deleting, setDeleting] = useState<DocGroup | null>(null);
+  const [filter, setFilter] = useState<'all' | 'lab' | 'imaging'>('all');
   const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const uploading = useRef(false);
@@ -74,29 +112,89 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
     };
   }, [vault, revision]);
 
-  const pending = useRef<{ item: QueueItem; file: File }[]>([]);
+  const pending = useRef<UploadJob[]>([]);
 
   const enqueue = useCallback(
-    async (list: File[]) => {
+    async (list: File[], category: DocCategory, folder = false) => {
       if (!list.length) return;
-      const items: QueueItem[] = list.map((f, i) => ({
-        key: `${Date.now()}-${i}-${Math.random().toString(36).slice(2)}`,
-        name: sanitizeFileName(f.name),
-        phase: 'checking',
-        notes: [],
-      }));
-      setQueue((q) => [...items, ...q]);
-      pending.current.push(...items.map((item, i) => ({ item, file: list[i]! })));
+      let chosen = list;
+      let skipped = 0;
+      if (folder) ({ files: chosen, skipped } = await pickDicomFiles(list));
+      const key = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      let jobs: UploadJob[];
+      if (chosen.length > BATCH_THRESHOLD || folder) {
+        const item: QueueItem = {
+          key: key(),
+          name: folder ? `Klasör · ${chosen.length} DICOM dosyası` : `${chosen.length} dosya`,
+          phase: chosen.length ? 'checking' : 'error',
+          message: chosen.length ? undefined : 'Klasörde DICOM (MR, BT, röntgen) görüntü dosyası bulunamadı.',
+          notes: [],
+          batch: { total: chosen.length, done: 0, added: 0, duplicates: 0, failed: 0, skipped },
+        };
+        jobs = chosen.length ? [{ item, files: chosen, category }] : [];
+        setQueue((q) => [item, ...q]);
+      } else {
+        jobs = chosen.map((f) => ({ item: { key: key(), name: sanitizeFileName(f.name), phase: 'checking', notes: [] }, files: [f], category }));
+        setQueue((q) => [...jobs.map((j) => j.item), ...q]);
+      }
+      pending.current.push(...jobs);
       if (uploading.current) return; // çalışan döngü yeni öğeleri de alır
       uploading.current = true;
       try {
         // Dosyalar sırayla işlenir: aynı anda tek dosya belleğe açılır.
-        for (let next = pending.current.shift(); next; next = pending.current.shift()) {
-          const { item, file } = next;
+        for (let job = pending.current.shift(); job; job = pending.current.shift()) {
+          const { item } = job;
           const update = (patch: Partial<QueueItem>) => setQueue((q) => q.map((x) => (x.key === item.key ? { ...x, ...patch } : x)));
-          const outcome = await processUpload(vault, file, uploadDeps, (phase) => update({ phase }));
-          update({ phase: outcome.phase, message: outcome.message, notes: outcome.notes, file: outcome.file });
-          if (outcome.phase === 'done') bump();
+          // Kasadaki liste iş başına bir kez çözülür; çift kayıt denetimi bellekteki tablodan yapılır.
+          const known = new Map<string, FileInfo>();
+          let listed = false;
+          try {
+            for (const f of (await vault.listFiles()).files) known.set(f.sha256, f);
+            listed = true;
+          } catch {
+            // Liste çözülemezse processUpload kasaya kendisi sorar.
+          }
+          const deps = listed ? { ...uploadDeps, findExisting: async (sha: string) => known.get(sha) } : uploadDeps;
+          if (!item.batch) {
+            const outcome = await processUpload(vault, job.files[0]!, deps, (phase) => update({ phase }), { category: job.category });
+            update({ phase: outcome.phase, message: outcome.message, notes: outcome.notes, file: outcome.file });
+            if (outcome.phase === 'done') {
+              known.set(outcome.file!.sha256, outcome.file!);
+              bump();
+            }
+            continue;
+          }
+          const b = { ...item.batch };
+          let first: FileInfo | undefined;
+          const errors = new Set<string>();
+          const notes = new Set<string>();
+          for (const file of job.files) {
+            const outcome = await processUpload(vault, file, deps, undefined, { category: job.category });
+            b.done++;
+            if (outcome.phase === 'done') {
+              b.added++;
+              known.set(outcome.file!.sha256, outcome.file!);
+              // "Aç" serinin ilk kesitini açsın.
+              if (!first || (outcome.file!.sliceIndex ?? Infinity) < (first.sliceIndex ?? Infinity)) first = outcome.file;
+              if (b.added % 50 === 0) bump();
+            } else if (outcome.phase === 'duplicate') {
+              b.duplicates++;
+              first ??= outcome.file;
+            } else {
+              b.failed++;
+              if (outcome.message) errors.add(outcome.message);
+            }
+            for (const n of outcome.notes) notes.add(n);
+            update({ batch: { ...b } });
+          }
+          update({
+            phase: b.added + b.duplicates > 0 ? (b.added > 0 ? 'done' : 'duplicate') : 'error',
+            message: b.added + b.duplicates > 0 ? undefined : ([...errors][0] ?? 'Dosyalar yüklenemedi.'),
+            notes: [...notes, ...[...errors].map((e) => `Okunamayan dosya: ${e}`)].slice(0, 4),
+            file: first,
+            batch: { ...b },
+          });
+          bump();
         }
       } finally {
         uploading.current = false;
@@ -117,18 +215,21 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
   }
 
   const doneCount = queue.filter((q) => q.phase === 'done').length;
+  const groups = files ? groupDocuments(files) : null;
+  const imagingCount = groups?.filter((g) => isImaging(g.head.category)).length ?? 0;
+  const shown = groups?.filter((g) => filter === 'all' || (filter === 'imaging') === isImaging(g.head.category));
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="label-caps mb-1.5">Belgelerim</p>
-          <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">Laboratuvar raporların</h1>
-          <p className="mt-1.5 text-sm text-fg-muted">Yalnızca bu cihazda, dosya başına ayrı anahtarla şifreli.</p>
+          <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">Tahlil ve görüntüleme belgelerin</h1>
+          <p className="mt-1.5 text-sm text-fg-muted">Laboratuvar raporları, MR, tomografi, röntgen ve ultrason. Yalnızca bu cihazda, dosya başına ayrı anahtarla şifreli.</p>
         </div>
         {files && files.length > 0 && (
           <p className="text-sm text-fg-muted">
-            {files.length} belge · {formatBytes(files.reduce((n, f) => n + f.size, 0))}
+            {groups!.length} belge · {formatBytes(files.reduce((n, f) => n + f.size, 0))}
           </p>
         )}
       </div>
@@ -173,6 +274,29 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
         {loadError && <Banner tone="error">{loadError}</Banner>}
       </div>
 
+      {imagingCount > 0 && groups && (
+        <div className="mt-3 flex gap-1.5" role="radiogroup" aria-label="Belge filtresi">
+          {(
+            [
+              ['all', `Tümü · ${groups.length}`],
+              ['lab', `Tahliller · ${groups.length - imagingCount}`],
+              ['imaging', `Görüntüleme · ${imagingCount}`],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              role="radio"
+              aria-checked={filter === k}
+              className={`rounded-full border px-3 py-1 text-xs transition ${filter === k ? 'border-accent/40 bg-accent/10 text-fg' : 'border-ink-600 text-fg-muted hover:text-fg'}`}
+              onClick={() => setFilter(k)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <section className="mt-3" aria-label="Belgeler">
         {files === null && !loadError ? (
           <div className="flex items-center gap-2 py-10 text-sm text-fg-muted">
@@ -181,19 +305,21 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
         ) : files && files.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
             <p className="font-medium">Henüz belge yok</p>
-            <p className="mt-1 text-sm text-fg-muted">İlk tahlil raporunu yukarıdan yükle; PDF veya telefonla çekilmiş fotoğraf olabilir.</p>
+            <p className="mt-1 text-sm text-fg-muted">İlk tahlil raporunu ya da MR, tomografi, röntgen belgeni yukarıdan yükle; PDF, fotoğraf veya CD'deki DICOM dosyaları olabilir.</p>
           </div>
         ) : (
           <ul className="divide-y divide-ink-700 overflow-hidden rounded-2xl border border-ink-600/60 bg-ink-850/60">
-            {files?.map((f) => (
+            {shown?.map((g) => (
               <DocumentRow
-                key={f.id}
-                file={f}
-                busy={busyId === f.id}
-                onOpen={() => navigate({ name: 'document', id: f.id })}
-                onDownload={() => onDownload(f)}
-                onRename={() => setRenaming(f)}
-                onDelete={() => setDeleting(f)}
+                key={g.key}
+                file={g.head}
+                count={g.files.length}
+                size={g.files.reduce((n, f) => n + f.size, 0)}
+                busy={busyId === g.head.id}
+                onOpen={() => navigate({ name: 'document', id: g.head.id })}
+                onDownload={() => onDownload(g.head)}
+                onRename={() => setRenaming(g)}
+                onDelete={() => setDeleting(g)}
               />
             ))}
           </ul>
@@ -201,7 +327,7 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
       </section>
 
       <RenameDialog
-        file={renaming}
+        group={renaming}
         onClose={() => setRenaming(null)}
         onSaved={() => {
           setRenaming(null);
@@ -209,12 +335,13 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
         }}
       />
       <DeleteDialog
-        file={deleting}
+        group={deleting}
         onClose={() => setDeleting(null)}
         onDeleted={() => {
+          const ids = new Set(deleting?.files.map((f) => f.id));
           setDeleting(null);
-          setNotice('Belge ve anahtarı kalıcı olarak silindi.');
-          setQueue((q) => q.filter((x) => x.file?.id !== deleting?.id));
+          setNotice(ids.size > 1 ? `${ids.size} kesit ve anahtarları kalıcı olarak silindi.` : 'Belge ve anahtarı kalıcı olarak silindi.');
+          setQueue((q) => q.filter((x) => !x.file || !ids.has(x.file.id)));
           bump();
         }}
       />
@@ -222,13 +349,23 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
   );
 }
 
-function DropZone({ onFiles }: { onFiles: (files: File[]) => void }) {
+function DropZone({ onFiles }: { onFiles: (files: File[], category: DocCategory, folder?: boolean) => void }) {
   const [over, setOver] = useState(false);
+  const [category, setCategory] = useState<DocCategory>('lab');
   const pickRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
+  const imaging = isImaging(category);
+  // Klasör seçimi masaüstü tarayıcılarda çalışır; Android uygulaması ve dokunmatik cihazlarda çoklu dosya seçimi kullanılır.
+  const [folderPick] = useState(() => platform.platform === 'web' && typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches);
 
-  const take = (list: FileList | null) => {
-    if (list?.length) onFiles([...list]);
+  // Klasör seçimi (CD/USB'deki DICOM klasörü). React bu özniteliği tanımadığı için elle eklenir.
+  useEffect(() => {
+    folderRef.current?.setAttribute('webkitdirectory', '');
+  }, [imaging]);
+
+  const take = (list: FileList | null, folder = false) => {
+    if (list?.length) onFiles([...list], category, folder);
   };
 
   const onDrop = (e: DragEvent) => {
@@ -245,32 +382,68 @@ function DropZone({ onFiles }: { onFiles: (files: File[]) => void }) {
       }}
       onDragLeave={() => setOver(false)}
       onDrop={onDrop}
-      className={`relative overflow-hidden rounded-2xl border border-dashed px-6 py-9 text-center transition ${
+      className={`relative overflow-hidden rounded-2xl border border-dashed px-4 py-7 text-center transition sm:px-6 ${
         over ? 'border-accent bg-accent/8' : 'border-ink-500 bg-ink-850/50'
       }`}
     >
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/25 bg-accent/10 text-accent">
-        <UploadIcon size={22} />
+      <div className="mb-5 flex flex-wrap justify-center gap-1.5" role="radiogroup" aria-label="Belge türü">
+        {DOC_CATEGORIES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            role="radio"
+            aria-checked={category === c}
+            onClick={() => setCategory(c)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+              category === c ? 'border-accent/50 bg-accent/12 text-fg' : 'border-ink-600 text-fg-muted hover:border-ink-500 hover:text-fg'
+            }`}
+          >
+            {CATEGORY_LABEL[c]}
+          </button>
+        ))}
       </div>
-      <h2 className="text-base font-semibold">Laboratuvar Raporunu Yükle</h2>
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/25 bg-accent/10 text-accent">
+        {imaging ? <ScanIcon size={22} /> : <UploadIcon size={22} />}
+      </div>
+      <h2 className="text-base font-semibold">{CATEGORY_UPLOAD_TITLE[category]}</h2>
       <p className="mt-1 text-sm text-fg-muted">
-        <span className="hidden md:inline">PDF veya fotoğraf sürükleyip bırak</span>
-        <span className="md:hidden">PDF seç veya raporun fotoğrafını çek</span>
+        {imaging ? (
+          <>Raporun PDF'i veya fotoğrafı, filmin fotoğrafı ya da CD/USB'deki DICOM görüntü dosyaları</>
+        ) : (
+          <>
+            <span className="hidden md:inline">PDF veya fotoğraf sürükleyip bırak</span>
+            <span className="md:hidden">PDF seç veya raporun fotoğrafını çek</span>
+          </>
+        )}
       </p>
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <button type="button" className="btn-primary" onClick={() => pickRef.current?.click()}>
           <FileTextIcon size={16} /> Dosya seç
         </button>
+        {imaging && folderPick && (
+          <button type="button" className="btn-ghost" onClick={() => folderRef.current?.click()}>
+            <FolderIcon size={16} /> DICOM klasörü seç
+          </button>
+        )}
         <button type="button" className="btn-ghost md:hidden" onClick={() => cameraRef.current?.click()}>
           <CameraIcon size={16} /> Fotoğraf çek
         </button>
       </div>
-      <p className="mt-4 text-xs text-fg-faint">PDF, JPG, PNG · en fazla 20 MB · dosya bu cihazdan çıkmaz</p>
+      <p className="mt-4 text-xs text-fg-faint">
+        {imaging ? 'PDF, JPG, PNG, DICOM (.dcm veya uzantısız) · DICOM için en fazla 60 MB · dosya bu cihazdan çıkmaz' : 'PDF, JPG, PNG · en fazla 20 MB · dosya bu cihazdan çıkmaz'}
+      </p>
+      {imaging && (
+        <p className="mt-1 text-xs text-fg-faint">
+          MR ve tomografi CD'lerinde görüntüler genellikle DICOM klasöründedir.{' '}
+          {folderPick ? 'Klasörü seçersen' : 'Dosyaları birlikte seçersen'} aynı seriye ait kesitler tek görüntüleyicide bir arada gösterilir.
+        </p>
+      )}
       <input
         ref={pickRef}
         type="file"
         className="sr-only"
-        accept={ACCEPT_ATTRIBUTE}
+        // CD'lerdeki DICOM dosyalarının çoğu uzantısızdır; tür filtresi onları gizlerdi. İçerik yüklemede imzasıyla doğrulanır.
+        accept={imaging ? undefined : ACCEPT_ATTRIBUTE}
         multiple
         tabIndex={-1}
         onChange={(e) => {
@@ -278,6 +451,19 @@ function DropZone({ onFiles }: { onFiles: (files: File[]) => void }) {
           e.target.value = '';
         }}
       />
+      {imaging && folderPick && (
+        <input
+          ref={folderRef}
+          type="file"
+          className="sr-only"
+          tabIndex={-1}
+          aria-label="DICOM klasörü"
+          onChange={(e) => {
+            take(e.target.files, true);
+            e.target.value = '';
+          }}
+        />
+      )}
       <input
         ref={cameraRef}
         type="file"
@@ -296,13 +482,26 @@ function DropZone({ onFiles }: { onFiles: (files: File[]) => void }) {
 
 function UploadRow({ item, onOpen, onDismiss }: { item: QueueItem; onOpen: (id: string) => void; onDismiss: () => void }) {
   const working = item.phase === 'checking' || item.phase === 'encrypting';
-  const label = {
-    checking: 'Doğrulanıyor…',
-    encrypting: 'Şifreleniyor…',
-    done: 'Şifrelendi ve kaydedildi',
-    duplicate: 'Bu dosya zaten yüklü',
-    error: item.message ?? '',
-  }[item.phase];
+  const b = item.batch;
+  const label = b
+    ? working
+      ? `İşleniyor ${b.done}/${b.total}…`
+      : item.phase === 'error'
+        ? (item.message ?? '')
+        : [
+            b.added ? `${b.added} dosya şifrelendi ve kaydedildi` : '',
+            b.duplicates ? `${b.duplicates} zaten yüklü` : '',
+            b.failed ? `${b.failed} okunamadı` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')
+    : {
+        checking: 'Doğrulanıyor…',
+        encrypting: 'Şifreleniyor…',
+        done: 'Şifrelendi ve kaydedildi',
+        duplicate: 'Bu dosya zaten yüklü',
+        error: item.message ?? '',
+      }[item.phase];
   const tone = item.phase === 'error' ? 'text-danger' : item.phase === 'duplicate' ? 'text-high' : item.phase === 'done' ? 'text-accent' : 'text-fg-muted';
 
   return (
@@ -313,6 +512,12 @@ function UploadRow({ item, onOpen, onDismiss }: { item: QueueItem; onOpen: (id: 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{item.name}</p>
         <p className={`mt-0.5 text-xs ${tone}`}>{label}</p>
+        {b && working && (
+          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-ink-700">
+            <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${b.total ? Math.round((b.done / b.total) * 100) : 0}%` }} />
+          </div>
+        )}
+        {b && b.skipped > 0 && <p className="mt-0.5 text-xs text-fg-muted">DICOM olmayan {b.skipped} dosya (ör. DICOMDIR, görüntüleyici programı) atlandı.</p>}
         {item.notes.map((n) => (
           <p key={n} className="mt-0.5 text-xs text-fg-muted">
             {n}
@@ -321,7 +526,7 @@ function UploadRow({ item, onOpen, onDismiss }: { item: QueueItem; onOpen: (id: 
       </div>
       {item.file && (item.phase === 'done' || item.phase === 'duplicate') && (
         <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={() => onOpen(item.file!.id)}>
-          {item.phase === 'done' ? 'Aç ve oku' : 'Aç'}
+          {item.phase === 'done' && !b ? 'Aç ve oku' : 'Aç'}
         </button>
       )}
       {!working && (
@@ -335,6 +540,8 @@ function UploadRow({ item, onOpen, onDismiss }: { item: QueueItem; onOpen: (id: 
 
 export function DocumentRow({
   file,
+  count = 1,
+  size,
   busy,
   onOpen,
   onDownload,
@@ -342,6 +549,10 @@ export function DocumentRow({
   onDelete,
 }: {
   file: FileInfo;
+  /** DICOM serisindeki kesit sayısı. */
+  count?: number;
+  /** Serinin toplam boyutu. */
+  size?: number;
   busy: boolean;
   onOpen: () => void;
   onDownload: () => void;
@@ -349,20 +560,29 @@ export function DocumentRow({
   onDelete: () => void;
 }) {
   const isPdf = file.kind === 'pdf';
+  const imaging = isImaging(file.category);
+  const region = file.region ? regionByKey.get(file.region)?.label : undefined;
   return (
     <li className="group flex items-center gap-3 px-3 py-3 transition hover:bg-ink-800/60 md:px-4">
       <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label={`${file.displayName} belgesini görüntüle`}>
         <span
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
-            isPdf ? 'border-accent/25 bg-accent/8 text-accent' : 'border-low/25 bg-low/8 text-low'
+            imaging ? 'border-high/25 bg-high/8 text-high' : isPdf ? 'border-accent/25 bg-accent/8 text-accent' : 'border-low/25 bg-low/8 text-low'
           }`}
         >
-          {isPdf ? <FileTextIcon size={19} /> : <ImageIcon size={19} />}
+          {imaging ? <ScanIcon size={19} /> : isPdf ? <FileTextIcon size={19} /> : <ImageIcon size={19} />}
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-[15px] font-medium">{file.displayName}</span>
-          <span className="mt-0.5 block text-xs text-fg-muted">
-            {formatDate(file.createdAt)} · {KIND_LABEL[file.kind]} · {formatBytes(file.size)}
+          <span className="flex items-center gap-2">
+            {imaging && (
+              <span className="shrink-0 rounded-md border border-high/30 bg-high/10 px-1.5 py-px text-[10px] font-semibold tracking-wide text-high">{CATEGORY_SHORT[file.category]}</span>
+            )}
+            <span className="block truncate text-[15px] font-medium">{file.displayName}</span>
+          </span>
+          <span className="mt-0.5 block truncate text-xs text-fg-muted">
+            {formatDate(file.studyDate ?? file.createdAt)}
+            {region ? ` · ${region}` : ''} · {KIND_LABEL[file.kind]}
+            {count > 1 ? ` · ${count} kesit` : ''} · {formatBytes(size ?? file.size)}
           </span>
         </span>
       </button>
@@ -376,9 +596,11 @@ export function DocumentRow({
         <button type="button" className="icon-btn" onClick={onRename} aria-label="Yeniden adlandır" title="Yeniden adlandır">
           <PencilIcon />
         </button>
-        <button type="button" className="icon-btn hidden sm:inline-flex" onClick={onOpen} aria-label="Sonuçları gör veya yeniden oku" title="Sonuçları gör veya yeniden oku">
-          <RefreshIcon />
-        </button>
+        {!imaging && (
+          <button type="button" className="icon-btn hidden sm:inline-flex" onClick={onOpen} aria-label="Sonuçları gör veya yeniden oku" title="Sonuçları gör veya yeniden oku">
+            <RefreshIcon />
+          </button>
+        )}
         <button type="button" className="icon-btn hover:text-danger" onClick={onDelete} aria-label="Sil" title="Sil">
           <TrashIcon />
         </button>
@@ -387,7 +609,8 @@ export function DocumentRow({
   );
 }
 
-function RenameDialog({ file, onClose, onSaved }: { file: FileInfo | null; onClose: () => void; onSaved: () => void }) {
+function RenameDialog({ group, onClose, onSaved }: { group: DocGroup | null; onClose: () => void; onSaved: () => void }) {
+  const file = group?.head ?? null;
   const vault = useUnlockedVault();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -405,7 +628,7 @@ function RenameDialog({ file, onClose, onSaved }: { file: FileInfo | null; onClo
     if (!file || !valid) return;
     setBusy(true);
     try {
-      await vault.renameFile(file.id, trimmed);
+      for (const f of group?.files ?? [file]) await vault.renameFile(f.id, trimmed);
       onSaved();
     } catch (e) {
       setError(userMessage(e));
@@ -440,7 +663,9 @@ function RenameDialog({ file, onClose, onSaved }: { file: FileInfo | null; onClo
           Görünen ad
         </label>
         <input id="rename" className="field" value={name} maxLength={MAX_DISPLAY_NAME} onChange={(e) => setName(e.target.value)} autoFocus autoComplete="off" />
-        <p className="mt-2 text-xs text-fg-faint">Yalnızca görünen ad değişir; orijinal dosya aynen kalır.</p>
+        <p className="mt-2 text-xs text-fg-faint">
+          Yalnızca görünen ad değişir; orijinal dosya aynen kalır.{group && group.files.length > 1 ? ` Serideki ${group.files.length} kesitin hepsine uygulanır.` : ''}
+        </p>
         {error && (
           <div className="mt-3">
             <Banner tone="error">{error}</Banner>
@@ -451,7 +676,9 @@ function RenameDialog({ file, onClose, onSaved }: { file: FileInfo | null; onClo
   );
 }
 
-function DeleteDialog({ file, onClose, onDeleted }: { file: FileInfo | null; onClose: () => void; onDeleted: () => void }) {
+function DeleteDialog({ group, onClose, onDeleted }: { group: DocGroup | null; onClose: () => void; onDeleted: () => void }) {
+  const file = group?.head ?? null;
+  const many = (group?.files.length ?? 0) > 1;
   const vault = useUnlockedVault();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -462,7 +689,7 @@ function DeleteDialog({ file, onClose, onDeleted }: { file: FileInfo | null; onC
     if (!file) return;
     setBusy(true);
     try {
-      await deleteDocument(vault, file.id);
+      for (const f of group?.files ?? [file]) await deleteDocument(vault, f.id);
       onDeleted();
     } catch (e) {
       setError(userMessage(e));
@@ -489,7 +716,8 @@ function DeleteDialog({ file, onClose, onDeleted }: { file: FileInfo | null; onC
       }
     >
       <p>
-        <strong className="text-fg">{file?.displayName}</strong>, şifreleme anahtarı ve bu belgeden çıkarılan tüm sonuçlar bu cihazdan silinecek. Bu işlem geri alınamaz.
+        <strong className="text-fg">{file?.displayName}</strong>
+        {many ? ` serisinin ${group!.files.length} kesiti` : ''}, şifreleme {many ? 'anahtarları' : 'anahtarı'} ve bu belgeden çıkarılan tüm sonuçlar ve notlar bu cihazdan silinecek. Bu işlem geri alınamaz.
       </p>
       {error && (
         <div className="mt-3">

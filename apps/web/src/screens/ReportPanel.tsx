@@ -9,7 +9,9 @@ import {
   testByKey,
 } from '@kh/catalog';
 import { type MissingValue, type ReportDraft, type SourceBox, type UnrecognizedRow, needsReview, parseRange } from '@kh/parser';
-import type { Bytes, FileInfo } from '@kh/vault';
+import type { Bytes, DocCategory, FileInfo } from '@kh/vault';
+import { CATEGORY_LABEL, type ImagingCategory } from '../lib/imaging';
+import { classifyPhoto } from '../lib/photo';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { go } from '../state/router';
 import type { ExtractProgress } from '../lib/extract';
@@ -59,10 +61,46 @@ const rowId = (r: ReviewRow, i: number) => `${r.testKey}-${i}`;
 
 // ---------------------------------------------------------------------------------------------
 
-export function ReportPanel({ info, bytes, highlight, onHighlight }: { info: FileInfo; bytes: Bytes; highlight: Highlight; onHighlight: (h: Highlight) => void }) {
+const IMAGING_CHOICES: ImagingCategory[] = ['mr', 'ct', 'xray', 'us', 'other'];
+
+/** Tahlil olarak yüklenmiş bir görüntüleme belgesini tek dokunuşla doğru türe taşır. */
+function ImagingChoice({ text, onChoose, onLab }: { text: string; onChoose: (c: DocCategory) => void; onLab?: () => void }) {
+  return (
+    <div className="space-y-2.5 rounded-xl border border-high/30 bg-high/8 p-3.5 text-sm">
+      <p className="leading-relaxed">{text}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {IMAGING_CHOICES.map((c) => (
+          <button key={c} type="button" className="rounded-full border border-ink-500 px-3 py-1 text-xs hover:border-accent/50 hover:text-fg" onClick={() => onChoose(c)}>
+            {CATEGORY_LABEL[c]}
+          </button>
+        ))}
+      </div>
+      {onLab && (
+        <button type="button" className="text-xs text-fg-muted underline-offset-4 hover:text-fg hover:underline" onClick={onLab}>
+          Hayır, tahlil raporu olarak oku
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function ReportPanel({
+  info,
+  bytes,
+  highlight,
+  onHighlight,
+  onCategoryChange,
+}: {
+  info: FileInfo;
+  bytes: Bytes;
+  highlight: Highlight;
+  onHighlight: (h: Highlight) => void;
+  /** Belge aslında bir görüntüleme (MR, röntgen…) ise türünü değiştirir. */
+  onCategoryChange?: (c: DocCategory) => void;
+}) {
   const vault = useUnlockedVault();
   const { bump } = useVault();
-  const [mode, setMode] = useState<'loading' | 'saved' | 'extracting' | 'review' | 'error'>('loading');
+  const [mode, setMode] = useState<'loading' | 'saved' | 'extracting' | 'review' | 'error' | 'film'>('loading');
   const [saved, setSaved] = useState<StoredReport | null>(null);
   const [draft, setDraft] = useState<{ rows: ReviewRow[]; unrecognized: UnrecognizedRow[]; missing?: MissingValue[]; meta: Pick<ReportDraft, 'reportDate' | 'labName' | 'method'> } | null>(null);
   const [progress, setProgress] = useState<ExtractProgress | null>(null);
@@ -102,6 +140,9 @@ export function ReportPanel({ info, bytes, highlight, onHighlight }: { info: Fil
       if (existing) {
         setSaved(existing);
         setMode('saved');
+      } else if (info.kind !== 'pdf' && onCategoryChange && (await classifyPhoto(bytes, info.mimeType)) === 'film') {
+        // Koyu, gri bir fotoğraf büyük olasılıkla film/görüntüdür: uzun OCR'dan önce sor.
+        if (!cancelled) setMode('film');
       } else {
         void analyze();
       }
@@ -114,6 +155,7 @@ export function ReportPanel({ info, bytes, highlight, onHighlight }: { info: Fil
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vault, info.id, analyze]);
 
   const editSaved = () => {
@@ -154,6 +196,20 @@ export function ReportPanel({ info, bytes, highlight, onHighlight }: { info: Fil
         </div>
       )}
       {mode === 'extracting' && <ExtractingView progress={progress} kind={info.kind} onCancel={cancelOcr} />}
+      {mode === 'film' && onCategoryChange && (
+        <div className="p-5">
+          <ImagingChoice
+            text="Bu fotoğraf bir tahlil raporundan çok bir görüntüye (röntgen, MR veya tomografi filmi) benziyor. Görüntüleme olarak işaretlersen kontrast, negatif ve döndürme araçlarıyla incelenir."
+            onChoose={onCategoryChange}
+            onLab={() => void analyze()}
+          />
+        </div>
+      )}
+      {(mode === 'error' || (mode === 'review' && draft && draft.rows.length === 0 && !saved)) && onCategoryChange && (
+        <div className="px-5 pt-5">
+          <ImagingChoice text="Tahlil değeri bulunamadı. Bu belge bir görüntüleme (MR, tomografi, röntgen, ultrason) görüntüsü ya da raporu mu?" onChoose={onCategoryChange} />
+        </div>
+      )}
       {mode === 'error' && (
         <div className="space-y-3 p-5">
           <Banner tone="error">{error ?? 'Rapor okunamadı.'}</Banner>
@@ -204,14 +260,14 @@ const STAGE_TEXT: Record<OcrStage, string> = {
   recognize: 'Metin tanınıyor',
 };
 
-function ocrMessage(e: OcrError): string {
+export function ocrMessage(e: OcrError): string {
   const where = STAGE_TEXT[e.stage].split(' (')[0]!.toLocaleLowerCase('tr');
   if (e.code === 'CANCELLED') return 'Okuma iptal edildi.';
   if (e.code === 'STALLED') return `Görüntüden okuma "${where}" aşamasında uzun süre ilerlemedi ve durduruldu. Telefonun belleği yetmemiş olabilir; uygulamayı kapatıp açarak tekrar dene ya da daha yakından çekilmiş bir fotoğraf kullan.`;
   return `Görüntüden okuma "${where}" aşamasında başarısız oldu${e.detail ? ` (${e.detail})` : ''}. Tekrar deneyebilir ya da değerleri elle girebilirsin.`;
 }
 
-function ExtractingView({ progress, kind, onCancel }: { progress: ExtractProgress | null; kind: FileInfo['kind']; onCancel: () => void }) {
+export function ExtractingView({ progress, kind, onCancel }: { progress: ExtractProgress | null; kind: FileInfo['kind']; onCancel: () => void }) {
   const [started] = useState(() => Date.now());
   const [, tick] = useState(0);
   useEffect(() => {

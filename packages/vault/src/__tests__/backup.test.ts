@@ -66,6 +66,32 @@ describe('şifreli yedek (.khyedek)', () => {
     expect(await target.getRecord('profile', 'profile')).toEqual({ sex: 'male' });
   });
 
+  it('görüntüleme belgesinin türü ve rapor metni yedekte korunur', async () => {
+    const vault = await newVault();
+    const mr = await vault.addFile({
+      bytes: bytesOf(4000, 9),
+      originalFileName: 'IM1.dcm',
+      displayName: 'Beyin MR',
+      mimeType: 'application/dicom',
+      kind: 'dicom',
+      category: 'mr',
+      region: 'beyin',
+      studyDate: '2026-03-15',
+      seriesUid: '1.2.3',
+      sliceIndex: 2,
+    });
+    await vault.putRecord('imaging', 'i1', { id: 'i1', fileId: mr.id, text: 'SONUÇ: Normal.' });
+    const { bytes } = await createBackup(vault, BACKUP_PASS, { params: FAST });
+
+    const target = await newVault('baska-cihaz-parolasi');
+    await restoreBackup(target, bytes, BACKUP_PASS);
+    const [restored] = (await target.listFiles()).files;
+    expect(restored).toMatchObject({ kind: 'dicom', category: 'mr', region: 'beyin', studyDate: '2026-03-15', seriesUid: '1.2.3', sliceIndex: 2 });
+    const imaging = (await target.listRecords<{ fileId: string; text: string }>('imaging')).items;
+    expect(imaging).toHaveLength(1);
+    expect(imaging[0]!.value).toMatchObject({ fileId: restored!.id, text: 'SONUÇ: Normal.' });
+  });
+
   it('aynı kasaya tekrar yüklemek kopya oluşturmaz', async () => {
     const { vault } = await seeded();
     const { bytes } = await createBackup(vault, BACKUP_PASS, { params: FAST });

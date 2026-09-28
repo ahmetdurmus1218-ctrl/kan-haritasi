@@ -26,7 +26,7 @@ export const BACKUP_EXTENSION = '.khyedek';
 const MAGIC = utf8('KHYEDEK1');
 const PACK = utf8('KHPACK1');
 const MAX_HEADER = 4096;
-const BACKUP_KINDS = ['report', 'alias', 'profile'] as const;
+const BACKUP_KINDS = ['report', 'alias', 'profile', 'imaging'] as const;
 type BackupKind = (typeof BACKUP_KINDS)[number];
 
 interface BackupHeader {
@@ -198,7 +198,19 @@ export async function restoreBackup(vault: Vault, data: Bytes, passphrase: strin
         idMap.set(f.id, existing.id);
         filesSkipped++;
       } else {
-        const added = await vault.addFile({ bytes, originalFileName: f.originalFileName, displayName: f.displayName, mimeType: f.mimeType, kind: f.kind, createdAt: f.createdAt });
+        const added = await vault.addFile({
+          bytes,
+          originalFileName: f.originalFileName,
+          displayName: f.displayName,
+          mimeType: f.mimeType,
+          kind: f.kind,
+          createdAt: f.createdAt,
+          category: f.category,
+          region: f.region,
+          studyDate: f.studyDate,
+          seriesUid: f.seriesUid,
+          sliceIndex: f.sliceIndex,
+        });
         idMap.set(f.id, added.id);
         filesAdded++;
       }
@@ -217,6 +229,17 @@ export async function restoreBackup(vault: Vault, data: Bytes, passphrase: strin
       await vault.putRecord('report', id, { ...value, id, fileId });
       haveReportFor.add(fileId);
       reportsAdded++;
+    }
+
+    // Görüntüleme raporu metinleri: raporlarla aynı kural.
+    const haveImagingFor = new Set((await vault.listRecords<{ fileId?: string }>('imaging')).items.map((r) => r.value.fileId));
+    for (const r of manifest.records.imaging ?? []) {
+      const value = r.value as { fileId?: string };
+      const fileId = value.fileId ? idMap.get(value.fileId) : undefined;
+      if (!fileId || haveImagingFor.has(fileId)) continue;
+      const id = randomId();
+      await vault.putRecord('imaging', id, { ...value, id, fileId });
+      haveImagingFor.add(fileId);
     }
 
     let aliasesMerged = 0;

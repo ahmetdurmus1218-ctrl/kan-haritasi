@@ -259,3 +259,16 @@ export const KeyboardIcon = (p: IconProps) => (
     <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />
   </Icon>
 );
+export const ScanIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
+    <ellipse cx="12" cy="12" rx="4" ry="5" />
+    <path d="M12 7v10" />
+  </Icon>
+);
+export const ContrastIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor" />
+  </Icon>
+);

@@ -12,6 +12,7 @@ import {
 } from '@kh/catalog';
 import type { IssueCode, ParsedRow, ReportDraft, SourceBox } from '@kh/parser';
 import { type Vault, randomId } from '@kh/vault';
+import { deleteImagingNotes } from './imagingRecords';
 
 export const PARSER_VERSION = '1';
 
@@ -115,6 +116,7 @@ export async function saveReport(vault: Vault, report: Omit<StoredReport, 'id' |
 /** Belgeyi ve ondan çıkarılan tüm sonuçları siler. */
 export async function deleteDocument(vault: Vault, fileId: string): Promise<void> {
   for (const r of (await listReports(vault)).filter((x) => x.fileId === fileId)) await vault.deleteRecord('report', r.id);
+  await deleteImagingNotes(vault, fileId);
   await vault.deleteFile(fileId);
 }
 

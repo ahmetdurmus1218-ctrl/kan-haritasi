@@ -194,6 +194,7 @@ class NativeBridge(
             "application/pdf",
             "image/jpeg",
             "image/png",
+            "application/dicom",
             "application/zip",
             "application/json",
             "text/csv",

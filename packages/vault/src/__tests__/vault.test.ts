@@ -408,3 +408,58 @@ describe('genel şifreli kayıtlar', () => {
     expect(corruptIds).toEqual([]);
   });
 });
+
+describe('görüntüleme belgeleri (MR, BT, röntgen)', () => {
+  it('tür, bölge, tarih ve seri bilgisi şifreli kayıtta saklanır', async () => {
+    const { vault, records } = await newVault();
+    const f = await vault.addFile({
+      bytes: bytesOf(2000, 3),
+      originalFileName: 'IM0001.dcm',
+      displayName: 'IM0001',
+      mimeType: 'application/dicom',
+      kind: 'dicom',
+      category: 'mr',
+      region: 'beyin',
+      studyDate: '2026-03-15',
+      seriesUid: '1.2.840.1',
+      sliceIndex: 4,
+    });
+    expect(f).toMatchObject({ kind: 'dicom', category: 'mr', region: 'beyin', studyDate: '2026-03-15', seriesUid: '1.2.840.1', sliceIndex: 4 });
+    // Açık metin depoda görünmez.
+    const all = JSON.stringify(await records.list());
+    expect(all).not.toContain('beyin');
+    expect(all).not.toContain('1.2.840.1');
+    expect((await vault.getFileInfo(f.id)).category).toBe('mr');
+  });
+
+  it('eski kayıtlar tahlil sayılır', async () => {
+    const { vault } = await newVault();
+    const f = await addPdf(vault);
+    expect(f.category).toBe('lab');
+    expect(f.region).toBeUndefined();
+  });
+
+  it('tür ve bölge sonradan değiştirilebilir, temizlenebilir', async () => {
+    const { vault } = await newVault();
+    const f = await addPdf(vault);
+    const a = await vault.updateFileMeta(f.id, { category: 'ct', region: 'toraks', studyDate: '2025-12-01' });
+    expect(a).toMatchObject({ category: 'ct', region: 'toraks', studyDate: '2025-12-01' });
+    const b = await vault.updateFileMeta(f.id, { region: null, studyDate: null });
+    expect(b.category).toBe('ct');
+    expect(b.region).toBeUndefined();
+    expect(b.studyDate).toBeUndefined();
+    expect((await vault.readFile(f.id)).bytes).toEqual(bytesOf(3000));
+  });
+
+  it('geçersiz bilgiler reddedilir', async () => {
+    const { vault } = await newVault();
+    const f = await addPdf(vault);
+    await expectCode(vault.updateFileMeta(f.id, { category: 'virus' as never }), 'INVALID_INPUT');
+    await expectCode(vault.updateFileMeta(f.id, { region: '../x' }), 'INVALID_INPUT');
+    await expectCode(vault.updateFileMeta(f.id, { studyDate: '15.03.2026' }), 'INVALID_INPUT');
+    await expectCode(
+      vault.addFile({ bytes: bytesOf(10), originalFileName: 'a.dcm', displayName: 'a', mimeType: 'application/dicom', kind: 'dicom', seriesUid: '<script>' }),
+      'INVALID_INPUT',
+    );
+  });
+});
