@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { CRITICAL_ADVICE, type Finding, type Interpretation, type Pattern, type Severity, SEVERITY_LABEL, structureById, systemById, testByKey } from '@kh/catalog';
 import { go } from '../state/router';
-import { ORGANS } from '../anatomy/organs';
-import { INSIDE } from '../explore/inside/registry';
+import { insidesOf } from '../anatomy/organs';
+import { INSIDE, type InsideId } from '../explore/inside/registry';
 import { LEVEL_COLOR, LEVEL_LABEL, SEVERITY_COLOR, severityPhrase, sortPatterns } from '../lib/interpretation';
 import { AlertIcon, BodyIcon, ChevronRightIcon } from './icons';
 
@@ -75,7 +75,7 @@ export function SeverityChip({ finding }: { finding: Pick<Finding, 'severity' | 
 
 function sceneTarget(p: Pattern): { scene: NonNullable<Pattern['scene']>; from: string } | null {
   if (!p.scene) return null;
-  const from = p.structures.find((s) => ORGANS[s]?.inside === p.scene) ?? p.structures[0];
+  const from = p.structures.find((s) => insidesOf(s).includes(p.scene as InsideId)) ?? p.structures[0];
   return from ? { scene: p.scene, from } : null;
 }
 

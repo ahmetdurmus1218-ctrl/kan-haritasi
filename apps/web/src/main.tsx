@@ -4,7 +4,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { isAndroidShell } from './platform/android';
+import { initTheme } from './state/theme';
 import './styles.css';
+
+// Tema ilk çizimden önce uygulanır (açık temada koyu bir an görünmesin).
+initTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

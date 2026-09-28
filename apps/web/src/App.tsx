@@ -8,6 +8,7 @@ import { PrivacyPage } from './screens/PrivacyPage';
 import { Suspense, lazy } from 'react';
 import { TimelinePage } from './screens/TimelinePage';
 import { AboutPage } from './screens/AboutPage';
+import { CoveragePage } from './screens/CoveragePage';
 import { ResultDetail, ResultsPage } from './screens/ResultsPage';
 import { Banner } from './components/ui';
 import { SpinnerIcon } from './components/icons';
@@ -53,6 +54,8 @@ function Gate() {
             <PrivacyPage />
           ) : route.name === 'about' ? (
             <AboutPage />
+          ) : route.name === 'coverage' ? (
+            <CoveragePage />
           ) : route.name === 'results' ? (
             <ResultsPage />
           ) : route.name === 'result' ? (

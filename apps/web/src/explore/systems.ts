@@ -1,4 +1,4 @@
-import { STRUCTURES, type SystemId, systemById } from '@kh/catalog';
+import { STRUCTURES, type SystemId, structureById, systemById } from '@kh/catalog';
 
 /** Sistem seviyesi için kısa editoryal açıklamalar. */
 export const SYSTEM_TEXT: Partial<Record<SystemId, string>> = {
@@ -12,15 +12,22 @@ export const SYSTEM_TEXT: Partial<Record<SystemId, string>> = {
   immune: 'Dalak, timus ve lenf dokusu bağışıklık hücrelerini üretir, olgunlaştırır ve kanı süzer.',
   hematologic: 'Kan hücreleri kemik iliğinde üretilir; dalak yaşlanan hücreleri ayıklar.',
   integumentary: 'Deri vücudu korur, ısıyı düzenler ve D vitamini yapımını başlatır.',
-  reproductive: 'Üreme bezleri (testis, yumurtalık) cinsiyet hormonlarını üretir; hipofizden gelen FSH ve LH ile yönetilir. Modeldeki vücut erkek referans vücududur; kadın üreme organlarının modeli yoktur.',
+  reproductive: 'Üreme bezleri (testis, yumurtalık) cinsiyet hormonlarını üretir; hipofizden gelen FSH ve LH ile yönetilir. Üstteki Erkek/Kadın düğmesiyle iki referans vücut arasında geçebilirsin.',
 };
 
 /** Menüde gösterilen sistemler (sırasıyla). */
 export const MENU_SYSTEMS: SystemId[] = ['cardiovascular', 'respiratory', 'digestive', 'urinary', 'endocrine', 'reproductive', 'nervous', 'musculoskeletal', 'immune'];
 
-export function structuresOfSystem(system: SystemId): string[] {
+/** Bir sistemin 3D yapıları; body verilirse yalnızca o vücutta bulunanlar (ör. kadında prostat yok). */
+export function structuresOfSystem(system: SystemId, body?: 'male' | 'female'): string[] {
   if (system === 'hematologic') return ['bones', 'spleen'];
-  return STRUCTURES.filter((s) => s.asset && s.systems.includes(system) && s.id !== 'skin').map((s) => s.id);
+  return STRUCTURES.filter((s) => s.asset && s.systems.includes(system) && s.id !== 'skin' && inBody(s.id, body)).map((s) => s.id);
+}
+
+/** Yapı bu vücutta var mı? (Cinsiyete özgü yapılar yalnızca kendi vücudunda.) */
+export function inBody(structure: string, body?: 'male' | 'female'): boolean {
+  const sex = structureById.get(structure)?.sex;
+  return !body || !sex || sex === body;
 }
 
 export function systemColor(system: SystemId | undefined | null): string {

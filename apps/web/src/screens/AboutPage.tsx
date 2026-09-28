@@ -50,30 +50,33 @@ export function AboutPage() {
         </p>
       </Block>
 
-      <Block title="3D anatomi modeli">
+      <Block title="3D anatomi modelleri (erkek ve kadın)">
         <p className="text-sm leading-relaxed text-fg-muted">
-          HuBMAP İnsan Referans Atlası (HRA), 3D Referans Nesne Kütüphanesi — Visible Human erkek referans organları. Lisans: Creative Commons Atıf 4.0 (CC BY 4.0).
-          Kaynak: github.com/hubmapconsortium/ccf-3d-reference-object-library (commit f1a3a63).
+          Organlar, damarlar, beyin bölgeleri, göz katmanları, kalp odacıkları ve kapakları, böbrek iç yapısı, lenf düğümü, bademcikler, diz bağları; kadın
+          vücudunda ayrıca deri, omurga, leğen kemiği, rahim, yumurtalıklar, fallop tüpleri, vajina ve meme bezleri: HuBMAP İnsan Referans Atlası (HRA), 3D
+          Referans Nesne Kütüphanesi (Visible Human erkek ve kadın). Lisans: Creative Commons Atıf 4.0 (CC BY 4.0). Kaynak:
+          github.com/hubmapconsortium/ccf-3d-reference-object-library (commit f1a3a63).
         </p>
         <p className="mt-3 text-sm leading-relaxed text-fg-muted">
-          Organlar ve damarlar bu kaynaktandır.
+          Erkek derisi, iskelet (kadında omurga ve leğen kemiği hariç), kaslar, mide, yemek borusu, hipofiz, böbreküstü bezleri, diyafram, erkek üreme organları
+          ve bazı gövde damarları: BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan (CC BY-SA 2.1 JP).
+          Kaynak: lifesciencedb.jp/bp3d — kopya: github.com/Kevin-Mattheus-Moerman/BodyParts3D (commit f0eeb6e). Bu parçalardan üretilen model dosyaları aynı
+          lisansla dağıtılır.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-fg-muted">
-          Deri, tam iskelet, kaslar, mide, yemek borusu, hipofiz, hipotalamus, böbreküstü bezleri, erkek üreme organları ve bazı gövde damarları:
-          BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan (CC BY-SA 2.1 JP). Kaynak:
-          lifesciencedb.jp/bp3d — kopya: github.com/Kevin-Mattheus-Moerman/BodyParts3D (commit f0eeb6e). Bu parçalardan üretilen model dosyaları
-          aynı lisansla dağıtılır.
+          Yapılan değişiklikler: sahne düzleştirildi, parçalar yapıya ve anatomik bölüme göre birleştirildi, BodyParts3D parçaları HRA koordinatlarına benzerlik
+          dönüşümüyle taşındı; kadın vücudunda BodyParts3D kemik ve kasları erkek → kadın benzerlik dönüşümüyle (omur ve pelvis noktalarına göre, ortalama sapma
+          ≈ 1,3 cm) yerleştirildi. Uyum yaklaşıktır. Ağlar sadeleştirildi, nicemlendi ve sıkıştırıldı. Tiroid bezi ve kulak kaynaklarda olmadığından şematik
+          şekillerle; kol-bacak damarları ve periferik sinirler kemiklere göre şematik tüplerle gösterilir.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-fg-muted">
-          Yapılan değişiklikler: sahne düzleştirildi, parçalar yapıya ve bölgeye göre birleştirildi, BodyParts3D parçaları HRA koordinatlarına benzerlik
-          dönüşümüyle taşındı (iki farklı vücut olduğundan uyum yaklaşıktır), ağlar sadeleştirildi, nicemlendi ve sıkıştırıldı. Tiroid bezi iki
-          kaynakta da olmadığından şematik şekille, kol ve bacak damarları kemiklere göre şematik tüplerle gösterilir. Kadın üreme organlarının modeli
-          yoktur (her iki kaynak da erkek referans vücududur).
+          Doku, hücre ve süreç sahneleri (22 sahne: damar içi, kan hücreleri, alveol, nefron, lobül, adacık, folikül, kemik iliği, nöron ve sinaps, retina,
+          koklea, kalp kası, sarkomer, osteon, mide bezi, bağırsak villusu, deri, hücre ve enerji, hormon, lenf düğümü, yumurtalık, testis) bu uygulama için
+          prosedürel olarak üretilmiş temsili görsellerdir; ölçekler anlaşılırlık için değiştirilmiştir.
         </p>
-        <p className="mt-3 text-sm leading-relaxed text-fg-muted">
-          Doku ve hücre sahneleri (damar içi, kan hücreleri, alveol, nefron, lobül, adacık, folikül, kemik iliği) bu uygulama için prosedürel olarak üretilmiş temsili
-          görsellerdir; ölçekler anlaşılırlık için değiştirilmiştir.
-        </p>
+        <button type="button" className="btn-ghost mt-4" onClick={() => go({ name: 'coverage' })}>
+          Kapsam raporu: hangi yapı ne kadar ayrıntılı?
+        </button>
       </Block>
 
       <Block title="Açık kaynak bileşenler">

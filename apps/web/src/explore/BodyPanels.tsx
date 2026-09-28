@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { type Interpretation, PROCESSES, type ProcessId, type SystemId, TESTS, formatNumber, structureById, systemById, testByKey } from '@kh/catalog';
+import { type Interpretation, PROCESSES, type PartDef, type ProcessId, type SystemId, TESTS, formatNumber, partDef, partsOf, structureById, systemById, testByKey } from '@kh/catalog';
 import type { TestSeries } from '../lib/useReports';
 import type { StructureHighlight } from '../anatomy/highlight';
-import { ORGANS } from '../anatomy/organs';
-import { vesselLabel, isVein } from '../anatomy/names';
+import { CONNECTIONS, ORGANS, insidesOf } from '../anatomy/organs';
+import { isVein, partLabel, partLatin } from '../anatomy/names';
 import { highlightColor } from '../anatomy/palette';
 import { CriticalBanner, FindingBlock, PatternList, SeverityBar, SeverityChip } from '../components/interpretation';
-import { go } from '../state/router';
+import { type SimulationMode, go } from '../state/router';
 import { StatusPill } from '../components/results';
 import { INSIDE, type InsideId } from './inside/registry';
-import { SYSTEM_TEXT, structuresOfSystem, systemColor } from './systems';
+import { SYSTEM_TEXT, inBody, structuresOfSystem, systemColor } from './systems';
 import { Caps, EnterButton, Legend, Tabs } from './ui';
 
 export type SeriesMap = Map<string, TestSeries>;
@@ -201,9 +201,11 @@ export function BodyIntroPanel({
         </p>
       )}
       <p className="mt-8 text-[11px] leading-relaxed text-fg-faint">
-        Modeller: organlar ve damarların çoğu HuBMAP İnsan Referans Atlası (CC BY 4.0); deri, iskelet, kaslar, mide, yemek borusu, hipofiz,
-        böbreküstü bezleri ve erkek üreme organları BodyParts3D (DBCLS, CC BY-SA 2.1 JP). İki farklı erkek referans vücududur, uyum yaklaşıktır;
-        senin vücudunun taraması değildir. Tiroid bezi ile kol ve bacak damarları şematiktir; kadın üreme organlarının modeli yoktur.
+        Modeller: HuBMAP İnsan Referans Atlası (CC BY 4.0) ve BodyParts3D (DBCLS, CC BY-SA 2.1 JP); erkek ve kadın referans vücutları. Senin vücudunun
+        taraması değildir. Tiroid, kulak, kol-bacak damarları ve periferik sinirler şematiktir.{' '}
+        <button type="button" className="underline underline-offset-2 hover:text-fg-muted" onClick={() => go({ name: 'coverage' })}>
+          Kapsam raporu
+        </button>
       </p>
     </div>
   );
@@ -213,12 +215,14 @@ export function BodyIntroPanel({
 
 export function SystemPanel({
   system,
+  body,
   highlights,
   series,
   interp,
   onEnter,
 }: {
   system: SystemId;
+  body: 'male' | 'female';
   highlights: Map<string, StructureHighlight>;
   series: SeriesMap;
   interp: Interpretation;
@@ -226,7 +230,7 @@ export function SystemPanel({
 }) {
   const accent = systemColor(system);
   const summary = interp.systems.find((x) => x.system === system);
-  const structures = structuresOfSystem(system);
+  const structures = structuresOfSystem(system, body);
   const tests = sortTests(
     TESTS.filter((t) => t.systems.includes(system)).map((t) => t.key),
     series,
@@ -280,7 +284,7 @@ export function SystemPanel({
 
 /* ---------------------------------------------------------------- Organ */
 
-type OrganTab = 'mine' | 'anatomy' | 'labs' | 'processes';
+export type OrganTab = 'mine' | 'anatomy' | 'labs' | 'processes';
 
 export interface VesselPart {
   /** Grubun ilk parçası (seçim anahtarı). */
@@ -288,13 +292,39 @@ export interface VesselPart {
   /** Aynı ada sahip tüm parçalar (ör. alt ana toplardamarın iki bölümü). */
   ids: string[];
   label: string;
-  /** Kaynak (HRA) adı. */
+  /** Kaynak (HRA) adı ya da bölüm anahtarı. */
   raw: string;
   vein: boolean;
+  latin?: string;
+  /** Organ bölümü tanımı (damarlarda yok). */
+  def?: PartDef;
+}
+
+/** "Temelde nasıl çalışır" / "Sonucuma göre" düğme çifti (organ panelinde ve bulutta aynı dil). */
+export function HowItWorks({ accent, hasMine, onEnter }: { accent: string; hasMine: boolean; onEnter: (mode: SimulationMode) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <button type="button" onClick={() => onEnter('temel')} className="kh-holo-btn rounded-2xl border px-3 py-2.5 text-left text-fg transition" style={{ borderColor: `${accent}88` }}>
+        <span className="block text-sm">◎ Temelde nasıl çalışır</span>
+        <span className="mt-0.5 block text-[11px] text-fg-faint">süreç · tipik değerlerle</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => onEnter('benim')}
+        disabled={!hasMine}
+        className="kh-holo-btn rounded-2xl border border-ink-600 px-3 py-2.5 text-left text-fg transition disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <span className="block text-sm">◉ Sonucuma göre</span>
+        <span className="mt-0.5 block text-[11px] text-fg-faint">{hasMine ? 'senin değerlerinle' : 'ilişkili sonucun yok'}</span>
+      </button>
+    </div>
+  );
 }
 
 export function OrganPanel({
   structure,
+  body,
+  onSwitchBody,
   highlights,
   series,
   vessels,
@@ -303,21 +333,25 @@ export function OrganPanel({
   onEnter,
   onEnterScene,
   interp,
+  initialTab,
 }: {
   structure: string;
+  body: 'male' | 'female';
+  onSwitchBody: (b: 'male' | 'female') => void;
   highlights: Map<string, StructureHighlight>;
   series: SeriesMap;
   vessels: VesselPart[];
   selectedPart: string | null;
   onSelectPart: (id: string | null) => void;
-  onEnter: (scene: InsideId) => void;
+  onEnter: (scene: InsideId, mode?: SimulationMode) => void;
   onEnterScene: (scene: string, from: string) => void;
   interp: Interpretation;
+  initialTab?: OrganTab;
 }) {
   const mineFindings = interp.findings.filter((f) => f.structures.includes(structure));
   const minePatterns = interp.patterns.filter((p) => p.structures.includes(structure));
   // Seçim yapılmadıkça: sonucu varsa "Sonuçların", yoksa "Anatomi" (sonuçlar sonradan yüklenebilir).
-  const [picked, setTab] = useState<OrganTab | null>(null);
+  const [picked, setTab] = useState<OrganTab | null>(initialTab ?? null);
   const tab: OrganTab = picked ?? (mineFindings.length || minePatterns.length ? 'mine' : 'anatomy');
   const s = structureById.get(structure);
   const info = ORGANS[structure];
@@ -325,61 +359,84 @@ export function OrganPanel({
   const accent = systemColor(system);
   const h = highlights.get(structure);
   const tests = sortTests(relatedTests(structure), series);
-  const processes = [...new Set(tests.flatMap((k) => testByKey.get(k)?.processes ?? []))] as ProcessId[];
+  const processes = [...new Set([...(s?.processes ?? []), ...tests.flatMap((k) => testByKey.get(k)?.processes ?? [])])] as ProcessId[];
   const part = vessels.find((v) => v.id === selectedPart);
-  const inside = info?.inside;
-  const isVessel = s?.drill === 'vessel' || s?.asset === 'cardio';
-  const source = s?.asset === 'skeleton' || s?.asset === 'muscles' || s?.asset === 'body' ? 'BodyParts3D' : 'HRA';
+  const insides = insidesOf(structure);
+  // Kalp de 'cardio' dosyasında ama damar değil; bölümleri (odacıklar, kapaklar) damar gibi etiketlenmez.
+  const isVessel = s?.drill === 'vessel' || (s?.asset === 'cardio' && structure !== 'heart');
+  const connections = (CONNECTIONS[structure] ?? []).filter((c) => structureById.has(c));
+  const absent = !inBody(structure, body);
+  const hasMine = mineFindings.length > 0;
 
   if (!s) return <p className="text-sm text-fg-muted">Bilinmeyen yapı.</p>;
 
   return (
     <div>
       <Title
-        caps={`${part ? 'Seviye 4 · Yapı' : 'Seviye 3 · Organ'} · ${systemById.get(system!)?.nameTr ?? ''}`}
+        caps={`${part ? 'Seviye 4 · Bölüm' : 'Seviye 3 · Organ'} · ${systemById.get(system!)?.nameTr ?? ''}`}
         title={part ? part.label : s.nameTr}
         accent={accent}
         note={
           part
-            ? `${s.nameTr}${isVessel ? ` · ${part.vein ? 'toplardamar' : 'atardamar'}` : ''}`
-            : s.schematic
-              ? 'Bu bez modelde yok; konumu şematik bir şekille gösteriliyor.'
-              : s.approximate
-                ? 'ŞEMATİK: bu damarların gerçek modeli yok; yolları kemiklere göre yaklaşık çizildi.'
-                : !s.asset
-                  ? '3D MODELİ YOK: uygulamadaki vücut erkek referans modelidir; bu yapı modelde gösterilemiyor.'
-                  : undefined
+            ? [part.latin, `${s.nameTr}${isVessel && !part.def ? ` · ${part.vein ? 'toplardamar' : 'atardamar'}` : ''}`].filter(Boolean).join(' · ')
+            : [
+                s.latin,
+                s.schematic ? 'ŞEMATİK: açık model kaynaklarında yok; konumu basit şekillerle gösteriliyor.' : s.approximate ? 'ŞEMATİK: yolları kemiklere göre yaklaşık çizildi.' : '',
+              ]
+                .filter(Boolean)
+                .join(' · ')
         }
       />
 
+      {absent && (
+        <div className="mb-5 rounded-xl border border-ink-600 p-3 text-sm text-fg-muted">
+          Bu yapı {body === 'female' ? 'kadın' : 'erkek'} vücudunda yok.{' '}
+          <button type="button" className="text-accent underline-offset-4 hover:underline" onClick={() => onSwitchBody(s.sex === 'female' ? 'female' : 'male')}>
+            {s.sex === 'female' ? 'Kadın' : 'Erkek'} vücuduna geç
+          </button>
+        </div>
+      )}
+
       {h && (
-        <div className="mb-5 flex items-start gap-2.5 text-sm">
-          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: highlightColor(h.status, h.score) }} />
+        <div className="mb-4 flex items-start gap-2.5 text-sm">
+          <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: highlightColor(h.status, h.score), boxShadow: `0 0 8px ${highlightColor(h.status, h.score)}` }} />
           <p className="text-fg-muted">
-            {h.tests.map((t) => testByKey.get(t.key)?.nameTr).join(', ')} sonucun ({SCORE_WORD[Math.min(3, Math.round(h.score))]} sapma) bu yapıyla ilişkili
-            süreçlerle bağlantılı. Bu, yapıda bir sorun olduğunu göstermez.
+            <span className="text-fg">{h.tests.map((t) => `${testByKey.get(t.key)?.nameTr.split(' (')[0]} ${t.status === 'high' ? '▲' : t.status === 'low' ? '▼' : ''}`).join(', ')}</span> ·{' '}
+            {SCORE_WORD[Math.min(3, Math.round(h.score))]} sapma. İlişkili süreçleri gösterir; yapıda sorun olduğu anlamına gelmez.
           </p>
         </div>
       )}
 
-      {inside && (
-        <div className="mb-6">
-          <EnterButton accent={accent} label={`İçeri gir · ${INSIDE[inside].title}`} onClick={() => onEnter(inside)} />
+      {!part && insides[0] && (
+        <div className="mb-6 space-y-2">
+          <HowItWorks accent={accent} hasMine={hasMine} onEnter={(mode) => onEnter(insides[0]!, mode)} />
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {insides.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onEnter(id)}
+                className="flex items-center gap-1.5 rounded-full border border-ink-600 px-3 py-1.5 text-xs text-fg-muted transition hover:border-ink-500 hover:text-fg"
+              >
+                <span style={{ color: accent }}>↘</span> {INSIDE[id].title}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       {part ? (
         <div className="space-y-4 text-sm leading-relaxed text-fg-muted">
           <p>
-            {isVessel
-              ? part.vein
-                ? 'Toplardamarlar kanı dokulardan kalbe geri taşır; duvarları atardamarlardan incedir.'
-                : 'Atardamarlar kanı kalpten dokulara taşır; duvarları kalın ve esnektir.'
-              : `${part.label}: ${s.nameTr.toLocaleLowerCase('tr')} yapısının bu bölgedeki parçaları.`}
+            {part.def?.info ??
+              (isVessel
+                ? part.vein
+                  ? 'Toplardamarlar kanı dokulardan kalbe geri taşır; duvarları atardamarlardan incedir.'
+                  : 'Atardamarlar kanı kalpten dokulara taşır; duvarları kalın ve esnektir.'
+                : `${part.label}: ${s.nameTr.toLocaleLowerCase('tr')} yapısının bu bölümü.`)}
           </p>
-          <p className="text-xs text-fg-faint">
-            {isVessel ? `Kaynak adı (${source}): ${part.raw}` : `Kaynak: ${source} — bölgedeki parçalar tek grup olarak gösterilir.`}
-          </p>
+          {isVessel && !part.def && <p className="text-xs text-fg-faint">Kaynak adı: {part.raw}</p>}
+          {insides[0] && <EnterButton accent={accent} label={`İçeri gir · ${INSIDE[insides[0]].title}`} onClick={() => onEnter(insides[0]!)} />}
           <button type="button" className="text-xs text-accent underline-offset-4 hover:underline" onClick={() => onSelectPart(null)}>
             ← {s.nameTr}
           </button>
@@ -403,20 +460,10 @@ export function OrganPanel({
               <div className="space-y-4 text-sm leading-relaxed text-fg-muted">
                 <p>{info?.location ?? s.blurb}</p>
                 {info?.function && <p>{info.function}</p>}
-                {info?.anatomy && (
-                  <ul className="space-y-1">
-                    {info.anatomy.map((a) => (
-                      <li key={a} className="flex gap-2">
-                        <span style={{ color: accent }}>—</span>
-                        {a}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {vessels.length > 0 && (
+                {vessels.length > 0 ? (
                   <div>
                     <Caps className="text-fg-faint">
-                      {isVessel ? 'Modeldeki damarlar' : 'Modeldeki bölümler'} ({vessels.length})
+                      {isVessel ? 'Modeldeki damarlar' : 'Modeldeki bölümler'} ({vessels.length}) · seçmek için dokun
                     </Caps>
                     <ul className="mt-2 max-h-72 overflow-y-auto pr-1">
                       {vessels.map((v) => (
@@ -426,12 +473,41 @@ export function OrganPanel({
                             onClick={() => onSelectPart(v.id)}
                             className="flex w-full items-center gap-2.5 border-b border-ink-700/60 py-2 text-left text-[13px] text-fg transition hover:bg-white/[0.03]"
                           >
-                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: isVessel ? (v.vein ? '#4a6fd6' : '#d4454f') : accent }} />
-                            {v.label}
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: isVessel && !v.def ? (v.vein ? '#4a6fd6' : '#d4454f') : accent }} />
+                            <span className="min-w-0 flex-1 truncate">{v.label}</span>
+                            {v.latin && <span className="max-w-[45%] truncate font-mono text-[10.5px] italic text-fg-faint">{v.latin}</span>}
                           </button>
                         </li>
                       ))}
                     </ul>
+                  </div>
+                ) : (
+                  info?.anatomy && (
+                    <ul className="space-y-1">
+                      {info.anatomy.map((a) => (
+                        <li key={a} className="flex gap-2">
+                          <span style={{ color: accent }}>—</span>
+                          {a}
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                )}
+                {connections.length > 0 && (
+                  <div>
+                    <Caps className="text-fg-faint">Bağlantılı yapılar</Caps>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {connections.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => go({ name: 'body', structure: c })}
+                          className="rounded-full border border-ink-600 px-2.5 py-1 text-xs text-fg transition hover:border-ink-500 hover:bg-white/5"
+                        >
+                          {structureById.get(c)?.nameTr}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -544,10 +620,11 @@ export function explorePath(testKey: string): { structure: string; inside?: Insi
   const test = testByKey.get(testKey);
   if (!test) return null;
   // Hemogram testleri doğrudan kan hücreleri sahnesine (dalak üzerinden) bağlanır.
-  const withInside = test.group === 'hemogram' && test.structures.includes('spleen') ? 'spleen' : test.structures.find((sid) => ORGANS[sid]?.inside);
+  const specific = (sid: string) => insidesOf(sid)[0] !== 'hucre';
+  const withInside = test.group === 'hemogram' && test.structures.includes('spleen') ? 'spleen' : test.structures.find(specific);
   const structure = withInside ?? test.structures.find((sid) => structureById.get(sid)?.asset) ?? test.structures[0];
   if (!structure) return null;
-  return { structure, inside: ORGANS[structure]?.inside, simulation: test.simulation };
+  return { structure, inside: insidesOf(structure)[0], simulation: test.simulation };
 }
 
 export function TestPanel({ testKey, series, onEnter, interp }: { testKey: string; series: SeriesMap; onEnter: (scene: string, from: string) => void; interp: Interpretation }) {
@@ -653,14 +730,17 @@ function PathStep({ n, label, sub }: { n: number; label: string; sub: string }) 
   );
 }
 
+/** Bir yapının modeldeki bölümleri (organ bölümleri ya da tek tek damarlar); aynı adlılar tek grup. */
 export function vesselParts(parts: { id: string; structure: string; label: string | null }[], structure: string): VesselPart[] {
   const byLabel = new Map<string, VesselPart>();
+  const defs = partsOf(structure);
   for (const p of parts) {
     if (p.structure !== structure || !p.label) continue;
-    const label = vesselLabel(p.label);
+    const label = partLabel(structure, p.label) ?? p.label;
     const g = byLabel.get(label);
     if (g) g.ids.push(p.id);
-    else byLabel.set(label, { id: p.id, ids: [p.id], label, raw: p.label, vein: isVein(p.label) });
+    else byLabel.set(label, { id: p.id, ids: [p.id], label, raw: p.label, vein: isVein(p.label), latin: partLatin(structure, p.label), def: partDef(structure, p.label) });
   }
-  return [...byLabel.values()].sort((a, b) => a.label.localeCompare(b.label, 'tr'));
+  const order = (v: VesselPart) => (v.def ? defs.indexOf(v.def) : 999);
+  return [...byLabel.values()].sort((a, b) => order(a) - order(b) || a.label.localeCompare(b.label, 'tr'));
 }

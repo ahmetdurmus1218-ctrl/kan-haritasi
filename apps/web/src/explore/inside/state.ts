@@ -33,7 +33,11 @@ export const SPEEDS = [0.25, 0.5, 1, 2] as const;
 /** Bir aşamanın süresi (1× hızda, saniye). */
 export const STAGE_SECONDS = 11;
 
-export function useInside(scene: InsideId | null, startSimulation: boolean): [InsideState | null, InsideActions] {
+/**
+ * mode: 'temel' → süreç tipik değerlerle ("organ temelde nasıl çalışır"), 'benim' → sonuçlarıma göre;
+ * ikisinde de süreç anlatımı hemen başlar.
+ */
+export function useInside(scene: InsideId | null, startSimulation: boolean, mode?: 'temel' | 'benim'): [InsideState | null, InsideActions] {
   const [state, setState] = useState<InsideState | null>(null);
 
   useEffect(() => {
@@ -42,8 +46,9 @@ export function useInside(scene: InsideId | null, startSimulation: boolean): [In
       return;
     }
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setState({ scene, stage: startSimulation ? 1 : 0, playing: !reduced, speed: 1, auto: startSimulation, selected: null, view: 'mine', process: startSimulation });
-  }, [scene, startSimulation]);
+    const start = startSimulation || !!mode;
+    setState({ scene, stage: start ? 1 : 0, playing: !reduced, speed: 1, auto: start, selected: null, view: mode === 'temel' ? 'typical' : 'mine', process: start });
+  }, [scene, startSimulation, mode]);
 
   // Sahne değiştiği anda (efekt çalışmadan önceki çizimde) eski sahnenin aşama numarası yeni
   // sahnede geçersiz olabilir; bu yüzden geçerli durum çizim sırasında türetilir.

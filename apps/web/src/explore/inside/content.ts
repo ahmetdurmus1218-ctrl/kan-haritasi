@@ -1,4 +1,19 @@
 import type { InsideId } from './registry';
+import noron from './content/noron';
+import retina from './content/retina';
+import koklea from './content/koklea';
+import kalpkasi from './content/kalpkasi';
+import sarkomer from './content/sarkomer';
+import osteon from './content/osteon';
+import mide from './content/mide';
+import villus from './content/villus';
+import deri from './content/deri';
+import hucre from './content/hucre';
+import hormon from './content/hormon';
+import lenf from './content/lenf';
+import ovaryum from './content/ovaryum';
+import testis from './content/testis';
+
 
 /**
  * İçeri-gir sahnelerinin eğitim içeriği: aşamalar (süreç adımları) ve seçilebilir nesneler.
@@ -233,4 +248,5 @@ export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
       bone: { name: 'Kemik trabekülü', text: 'Süngerimsi kemiğin ince kemik çubukları.' },
     },
   },
+  noron, retina, koklea, kalpkasi, sarkomer, osteon, mide, villus, deri, hucre, hormon, lenf, ovaryum, testis,
 };

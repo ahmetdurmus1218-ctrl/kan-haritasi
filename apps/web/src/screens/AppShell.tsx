@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useVault } from '../state/VaultContext';
 import { type Route, hrefFor } from '../state/router';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { BodyIcon, ChartIcon, DropIcon, FolderIcon, ListIcon, LockIcon, ShieldIcon } from '../components/icons';
 
 type NavKey = 'documents' | 'results' | 'body' | 'timeline' | 'privacy';
@@ -23,6 +24,8 @@ function activeKey(route: Route): NavKey {
       return 'body';
     case 'about':
       return 'privacy';
+    case 'coverage':
+      return 'body';
     default:
       return route.name;
   }
@@ -67,9 +70,12 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
             Veriler bu cihazda, şifreli
           </div>
-          <button type="button" className="btn-ghost w-full" onClick={lock}>
-            <LockIcon size={16} /> Kilitle
-          </button>
+          <div className="flex gap-2">
+            <button type="button" className="btn-ghost flex-1" onClick={lock}>
+              <LockIcon size={16} /> Kilitle
+            </button>
+            <ThemeToggle className="btn-ghost px-3" />
+          </div>
         </div>
       </aside>
 
@@ -81,9 +87,12 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
           </span>
           <span className="font-semibold tracking-tight">Kan Haritası</span>
         </div>
-        <button type="button" className="icon-btn" onClick={lock} aria-label="Kilitle">
-          <LockIcon size={18} />
-        </button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <button type="button" className="icon-btn" onClick={lock} aria-label="Kilitle">
+            <LockIcon size={18} />
+          </button>
+        </div>
       </header>
 
       <main className={`min-h-0 flex-1 overflow-y-auto transition ${hidden ? 'privacy-veil' : ''}`}>{children}</main>

@@ -11,6 +11,8 @@ import { userMessage } from '../lib/messages';
 import { loadSex, saveSex } from '../lib/reports';
 import { buildExport } from '../lib/exportData';
 import { Banner, Dialog } from '../components/ui';
+import { ThemePicker } from '../components/ThemeToggle';
+import { useSetting } from '../state/settings';
 import { CheckIcon, DownloadIcon, FingerprintIcon, LockIcon, ShieldIcon, SpinnerIcon, TrashIcon, UploadIcon } from '../components/icons';
 
 function Section({ title, children, aside }: { title: string; children: ReactNode; aside?: ReactNode }) {
@@ -297,6 +299,17 @@ export function PrivacyPage() {
         </p>
       </Section>
 
+      <AppearanceSection />
+
+      <Section title="Telefon ve bilgisayar arasında">
+        <p className="text-sm leading-relaxed text-fg-muted">
+          Kan Haritası'nda hesap ve sunucu yok; bu yüzden verilerin kendiliğinden eşitlenmez. Bu bilinçli bir karar: sağlık verin hiçbir sunucuya,
+          bizimkine de, gitmez. Telefondaki verileri bilgisayara (ya da tersine) taşımak için bir cihazda <strong className="text-fg">şifreli yedek</strong> al,
+          dosyayı kendi yolunla (kablo, AirDrop, kendi bulut klasörün) öbür cihaza aktar ve orada <strong className="text-fg">yedekten geri yükle</strong>. Dosya
+          yedek parolan olmadan okunamaz.
+        </p>
+      </Section>
+
       <Section title="Yedek ve dışa aktarma">
         <ul className="space-y-2.5">
           <Fact>
@@ -332,7 +345,7 @@ export function PrivacyPage() {
       </Section>
 
       <Section title="Hakkında ve lisanslar">
-        <p className="text-sm text-fg-muted">Kullanılan açık kaynak bileşenler, 3D model kaynağı (HuBMAP, CC BY 4.0) ve tıbbi uyarılar.</p>
+        <p className="text-sm text-fg-muted">Kullanılan açık kaynak bileşenler, 3D model kaynakları (HuBMAP CC BY 4.0, BodyParts3D CC BY-SA 2.1 JP) ve tıbbi uyarılar.</p>
         <button type="button" className="btn-ghost mt-3" onClick={() => go({ name: 'about' })}>
           Hakkında
         </button>
@@ -539,5 +552,24 @@ function Stat({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-fg-faint">{label}</dt>
       <dd className="mt-0.5 font-medium tabular-nums">{value}</dd>
     </div>
+  );
+}
+
+function AppearanceSection() {
+  const [body, setBody] = useSetting('bodyModel');
+  return (
+    <Section title="Görünüm">
+      <p className="mb-2 text-sm text-fg-muted">Tema (3D sahnenin ışığı ve arka planı da uyar)</p>
+      <ThemePicker />
+      <label htmlFor="body-model" className="mb-1.5 mt-5 block text-sm text-fg-muted">
+        Keşfet ekranındaki vücut modeli
+      </label>
+      <select id="body-model" className="field max-w-xs" value={body} onChange={(e) => setBody(e.target.value as typeof body)}>
+        <option value="auto">Profile göre (belirtilmemişse erkek)</option>
+        <option value="female">Kadın</option>
+        <option value="male">Erkek</option>
+      </select>
+      <p className="mt-3 text-sm text-fg-muted">Bu seçimler yalnızca bu cihazda, tercih olarak saklanır; sağlık verisi içermez.</p>
+    </Section>
   );
 }

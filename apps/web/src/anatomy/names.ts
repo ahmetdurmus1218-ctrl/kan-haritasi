@@ -1,3 +1,5 @@
+import { partDef } from '@kh/catalog';
+
 /** Damar düğüm adlarının (HRA, İngilizce) Türkçe karşılıkları; bilinmeyenler İngilizce gösterilir. */
 const EXACT: Record<string, string> = {
   'ascending aorta': 'Çıkan aort',
@@ -152,3 +154,14 @@ export function vesselLabel(raw: string): string {
 }
 
 export const isVein = (raw: string) => /\bvein\b|vena|sinus/.test(raw);
+
+/** Bir 3D parçasının Türkçe adı: organ bölümü (parts.ts) ya da damar/sinir kaynak adı. */
+export function partLabel(structure: string, label: string | null): string | null {
+  if (!label) return null;
+  return partDef(structure, label)?.tr ?? vesselLabel(label);
+}
+
+/** Bölümün Latince adı (varsa). */
+export function partLatin(structure: string, label: string | null): string | undefined {
+  return partDef(structure, label)?.latin;
+}

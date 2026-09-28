@@ -65,6 +65,63 @@ const KNOBS: Record<InsideId, Knob[]> = {
     { param: 'plt', tests: ['platelet'], typical: 250, min: 0.1, max: 3, what: 'trombositler' },
     { param: 'iron', tests: ['ferritin', 'iron'], typical: 80, min: 0.05, max: 4, what: 'alyuvar öncüllerine ulaşan demir' },
   ],
+  noron: [
+    { param: 'na', tests: ['sodium'], typical: 140, min: 0.85, max: 1.15, what: 'hücre dışındaki sodyum iyonları' },
+    { param: 'k', tests: ['potassium'], typical: 4.3, min: 0.6, max: 1.6, what: 'hücre dışındaki potasyum iyonları' },
+    { param: 'ca', tests: ['calcium'], typical: 9.5, min: 0.6, max: 1.5, what: 'sinapsta salınan kesecik sayısı (kalsiyum)' },
+    { param: 'b12', tests: ['b12'], typical: 450, min: 0.3, max: 1.5, what: 'miyelin kılıfının kalınlığı (temsili; B12 uzun süre düşükse miyelin etkilenebilir)' },
+  ],
+  retina: [
+    { param: 'glucose', tests: ['glucose'], typical: 90, min: 0.5, max: 4.5, what: 'retina kılcallarındaki glukoz' },
+    { param: 'a1c', tests: ['hba1c'], typical: 5.2, min: 0.7, max: 2.8, what: 'glukozun yapıştığı (glikozillenmiş) alyuvarlar' },
+  ],
+  koklea: [],
+  kalpkasi: [
+    { param: 'k', tests: ['potassium'], typical: 4.3, min: 0.6, max: 1.6, what: 'hücreler arasındaki potasyum iyonları' },
+    { param: 'ca', tests: ['calcium'], typical: 9.5, min: 0.6, max: 1.5, what: 'her atımda kalsiyum kıvılcımları' },
+    { param: 'mg', tests: ['magnesium'], typical: 2.0, min: 0.5, max: 1.6, what: 'hücre içi magnezyum' },
+    { param: 'o2', tests: ['hemoglobin', 'rbc'], typical: 14, min: 0.4, max: 1.35, what: 'kılcallardaki alyuvarlar ve oksijen' },
+  ],
+  sarkomer: [
+    { param: 'ck', tests: ['ck'], typical: 'uln', min: 0, max: 12, what: 'kas liflerinden kana geçen CK' },
+    { param: 'ca', tests: ['calcium'], typical: 9.5, min: 0.6, max: 1.5, what: 'kalsiyum parçacıkları' },
+    { param: 'k', tests: ['potassium'], typical: 4.3, min: 0.6, max: 1.6, what: 'lifler arasındaki potasyum' },
+  ],
+  osteon: [
+    { param: 'vitd', tests: ['vitamin-d'], typical: 30, min: 0.2, max: 3, what: 'damarlardaki D vitamini' },
+    { param: 'ca', tests: ['calcium'], typical: 9.5, min: 0.6, max: 1.5, what: 'kalsiyum iyonları' },
+    { param: 'p', tests: ['phosphorus'], typical: 3.5, min: 0.5, max: 2, what: 'fosfat iyonları' },
+    { param: 'alp', tests: ['alp'], typical: 'uln', min: 0, max: 8, what: 'kemik yapan hücrelerin etkinliği (ALP)' },
+  ],
+  mide: [
+    { param: 'b12', tests: ['b12'], typical: 450, min: 0.2, max: 2, what: 'B12 parçacıkları' },
+    { param: 'iron', tests: ['ferritin', 'iron'], typical: 80, min: 0.05, max: 4, what: 'demir parçacıkları' },
+  ],
+  villus: [
+    { param: 'glucose', tests: ['glucose'], typical: 90, min: 0.5, max: 4.5, what: 'emilen glukoz' },
+    { param: 'iron', tests: ['ferritin', 'iron'], typical: 80, min: 0.05, max: 4, what: 'emilen demir' },
+    { param: 'b12', tests: ['b12'], typical: 450, min: 0.2, max: 2, what: 'emilen B12' },
+    { param: 'fat', tests: ['triglyceride'], typical: 100, min: 0.4, max: 8, what: 'yağ damlacıkları ve şilomikronlar' },
+  ],
+  deri: [{ param: 'vitd', tests: ['vitamin-d'], typical: 30, min: 0.2, max: 3, what: 'derinin ürettiği D vitamini' }],
+  hucre: [
+    { param: 'glucose', tests: ['glucose'], typical: 90, min: 0.5, max: 4.5, what: 'hücreye giren glukoz' },
+    { param: 'o2', tests: ['hemoglobin'], typical: 14, min: 0.4, max: 1.35, what: 'oksijen parçacıkları' },
+    { param: 'metab', tests: ['ft4', 'ft3'], typical: 1.3, min: 0.4, max: 2, what: 'ATP üretim hızı (tiroid hormonu metabolizmayı hızlandırır)' },
+    { param: 'insulin', tests: ['insulin'], typical: 8, min: 0.2, max: 5, what: 'zardaki glukoz taşıyıcıları (insülin)' },
+  ],
+  hormon: [{ param: 'hormone', tests: [], typical: 1, min: 0.2, max: 4, what: 'salınan hormon molekülleri' }],
+  lenf: [
+    { param: 'lymph', tests: ['lymphocyte-abs', 'lymphocyte-pct'], typical: 2.1, min: 0.1, max: 4, what: 'T ve B lenfositler' },
+    { param: 'wbc', tests: ['wbc'], typical: 7, min: 0.1, max: 4, what: 'damardaki akyuvarlar' },
+    { param: 'inflam', tests: ['crp', 'hs-crp'], typical: 'uln', min: 0, max: 8, what: 'antijen ve etkinleşme (CRP)' },
+  ],
+  ovaryum: [],
+  testis: [
+    { param: 'testo', tests: ['testosterone'], typical: 550, min: 0.1, max: 4, what: 'Leydig hücrelerinin testosteronu' },
+    { param: 'lh', tests: ['lh'], typical: 5, min: 0.1, max: 5, what: 'LH molekülleri' },
+    { param: 'fsh', tests: ['fsh'], typical: 5, min: 0.1, max: 5, what: 'FSH molekülleri' },
+  ],
   kan: [
     { param: 'rbc', tests: ['rbc', 'hemoglobin'], typical: 14, min: 0.4, max: 1.35, what: 'alyuvar sayısı' },
     { param: 'rbcSize', tests: ['mcv'], typical: 90, min: 0.72, max: 1.3, what: 'alyuvar büyüklüğü' },
@@ -86,6 +143,7 @@ const TYPICAL_OVERRIDE: Record<string, number> = {
   // Akyuvar yüzdeleri (mutlak sayı yoksa): tipik dağılım
   'neutrophil-pct': 60,
   'lymphocyte-pct': 30,
+  ft3: 3.2,
   'monocyte-pct': 6,
   'eosinophil-pct': 3,
   'basophil-pct': 1,
@@ -120,13 +178,26 @@ export function typicalParams(scene: InsideId): SceneParams {
   return out;
 }
 
-export function personalFor(scene: InsideId, interp: Interpretation, sceneTests: string[]): ScenePersonal {
+/** Hormon sahnesinde girilen bezin ana hormonu. */
+const HORMONE_OF: Record<string, { test: string; typical: number }> = {
+  pituitary: { test: 'tsh', typical: 2 },
+  hypothalamus: { test: 'tsh', typical: 2 },
+  adrenals: { test: 'cortisol', typical: 12 },
+  testes: { test: 'testosterone', typical: 550 },
+  ovaries: { test: 'estradiol', typical: 100 },
+  breasts: { test: 'prolactin', typical: 12 },
+};
+
+export function personalFor(scene: InsideId, interp: Interpretation, sceneTests: string[], origin?: string): ScenePersonal {
   const byKey = new Map(interp.findings.map((f) => [f.testKey, f]));
   const typical = typicalParams(scene);
   const params: SceneParams = { ...typical };
   const lines: PersonalLine[] = [];
   const used = new Set<string>();
-  for (const k of KNOBS[scene]) {
+  const hormone = scene === 'hormon' && origin ? HORMONE_OF[origin] : undefined;
+  for (const k0 of KNOBS[scene]) {
+    const k = k0.param === 'hormone' ? (hormone ? { ...k0, tests: [hormone.test], typical: hormone.typical } : null) : k0;
+    if (!k) continue;
     const f = k.tests.map((t) => byKey.get(t)).find((x) => x && x.canonical);
     if (!f) continue;
     used.add(f.testKey);

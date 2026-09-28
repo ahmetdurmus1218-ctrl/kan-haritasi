@@ -6,6 +6,14 @@ Sunucu yok, hesap yok. Raporlar ve sonuçlar yalnızca cihazda, şifreli durur. 
 
 > **Kan Haritası teşhis koymaz ve tıbbi cihaz değildir.** Tahlil sonucunu anlamana yardım eden eğitim amaçlı bir araçtır. 3D modeldeki vurgular, bir testin genel olarak hangi yapı ve süreçlerle ilişkili olduğunu gösterir. Vücudunda bir bulgunun yerini göstermez.
 
+## iPhone, iPad ve bilgisayarda (web)
+
+**https://ahmetdurmus1218-ctrl.github.io/kan-haritasi/** — Safari, Chrome, Edge ve Firefox'ta çalışır; her `main` gönderiminde güncellenir.
+
+- **iPhone/iPad:** Safari'de aç → Paylaş → **Ana Ekrana Ekle**. Uygulama gibi tam ekran açılır, ilk açılıştan sonra çevrimdışı da çalışır.
+- Web sürümünde de her şey cihazda kalır: sayfa yalnızca uygulama dosyalarını indirir, rapor ve sonuçlar tarayıcının şifreli kasasında durur.
+- Telefon ile bilgisayar arasında otomatik eşitleme **yoktur** (sunucu yok, bilinçli karar). Verileri taşımak için bir cihazda şifreli yedek al, öbüründe geri yükle.
+
 ## APK'yı indir (Android 11+)
 
 - **En kolayı:** GitHub'da **Releases → `apk-son`**. Her `main` gönderiminde yenilenir. Telefondan açıp `KanHaritasi-*.apk` dosyasını indirmen yeterli.
@@ -21,15 +29,15 @@ Kurulumda "bilinmeyen kaynak" izni istenir. APK, derleme sırasında `INTERNET` 
 | **Okuma** | PDF metin katmanı; taranmış sayfa, fotoğraf ve ekran görüntüsü (ör. e-Nabız) için cihazda OCR (Tesseract, Türkçe). Görüntüler iki farklı sayfa bölütlemesiyle okunur; iki okumanın uyuşmadığı değerler doğrulamaya düşer. 81 testlik LOINC kataloğu (hemogram ve akyuvar alt türleri, biyokimya, lipid, tiroid, cinsiyet hormonları, kortizol, prolaktin, vitamin-mineral, demir, pıhtılaşma), Türkçe ondalık, birim dönüşümü, farklı sütun düzenleri, rapordaki referans aralığı (etiketli, cinsiyete ya da döngü evresine göre verilen aralıklar dahil), düşük güvenli satırlar işaretli |
 | **Onay** | Okunan her değer onaydan geçer: düzeltme, tanınmayan satırı bir teste bağlama (kalıcı takma ad), elle ekleme, kaynağı belgede vurgulama |
 | **Sonuçlarım** | Yüksek/düşük/normal, aralık çubuğu, "bu test neyi ölçer", olası etkenler, doktora sorulabilecekler |
-| **Keşfet (3D)** | Sinematik açılış, sistem menüsü, katmanlar, üzerine gelince ad; tıklayınca kamera organa gider, diğerleri söner. Seviyeler: Vücut / Sistem / Organ / Yapı (tek tek damarlar, göz damarlarına kadar) / Doku / Hücre / Süreç. Sonuçların ilgili yapıları yüksek/düşük renginde nabız gibi atar |
-| **İçeri gir** | Damar içi ve 8 aşamalı LDL–ateroskleroz simülasyonu; kan hücreleri (alyuvar, beş akyuvar türü, trombosit); alveol ve gaz değişimi; nefron ve süzme; karaciğer lobülü; pankreas adacığı ve insülin; tiroid folikülü; kemik iliği. Sahnedeki sayı, boyut ve renkler kişinin son sonuçlarına göre çizilir; "tipik değerler" ile karşılaştırılabilir. Oynat/duraklat, hız, aşama çizelgesi, nesneye dokununca açıklama. Ekranda her zaman **"Eğitimsel biyolojik simülasyon"** etiketi |
+| **Keşfet (3D)** | Seçilebilir **erkek ve kadın** vücudu (48 yapı, her vücutta 300+ ayrı bölüm: kalp odacıkları ve kapakları, 22 beyin bölgesi, göz katmanları, böbrek iç yapısı, akciğer lobları, karaciğer segmentleri, diz bağları…; Türkçe ve Latince adlar). Sonuçla ilişkili organlar belirgin, diğerleri soluk; organa dokununca küçük dijital **bilgi bulutu** (Sonucum · Temelde nasıl çalışır · Sonucuma göre · İçeri gir). Arama (Türkçe/Latince, Ctrl+K), izole et, gizle, kesit görünümü, iç anatomi, klavye kısayolları, açık/koyu/sistem teması. Seviyeler: İnsan / Sistem / Organ / Bölüm / Doku / Hücre / Süreç |
+| **İçeri gir** | 22 sahne: damar içi ve 8 aşamalı LDL–ateroskleroz; kan hücreleri; alveol ve gaz değişimi; nefron ve süzme; karaciğer lobülü; pankreas adacığı; tiroid folikülü; kemik iliği; nöron ve sinaps (sinir sinyali); retina (görme); koklea (işitme); kalp kası (kasılma); sarkomer (kas kasılması); osteon (kemik yenilenmesi); mide bezi (sindirim, B12); bağırsak villusu (emilim); deri (D vitamini); hücre ve enerji (ATP); hormon salgısı; lenf düğümü (bağışıklık); yumurtalık; testis. Her sahne "Temelde nasıl çalışır" (tipik değerler) ya da "Sonucuma göre" (senin değerlerin) açılabilir. Sahnedeki sayı, boyut ve renkler kişinin son sonuçlarına göre çizilir; "tipik değerler" ile karşılaştırılabilir. Oynat/duraklat, hız, aşama çizelgesi, nesneye dokununca açıklama. Ekranda her zaman **"Eğitimsel biyolojik simülasyon"** etiketi |
 | **Vücutta göster** | Tahlilden keşif yolu: LDL → koroner arterler → damar içi → simülasyon; hemogram → kan hücreleri; ALT → karaciğer → lobül; kreatinin → böbrek → nefron; glukoz → pankreas → adacık; CK → iskelet kasları. Aralık dışı bulgular arasında ileri/geri gezinme. CRP, lökosit, ferritin gibi tek bir organa özgü olmayan testler bunu açıkça belirtir |
 | **Zaman** | Test başına eğilim grafiği (her ölçümün kendi raporundaki referans bandıyla), noktadan rapora ve vücuda gidiş, tablo görünümü, rapor geçmişi |
 | **Yedek** | `.khyedek` şifreli yedek (ayrı yedek parolası), başka cihaza geri yükleme, tekrarları atlama |
 | **Verilerimi indir** | Şifresiz ZIP: orijinaller + `sonuclar.json` + `sonuclar.csv` (açık uyarıyla) |
 | **Gizlilik** | Veri akışı, depolama, açma yöntemleri (parola, Android'de parmak izi/yüz/PIN), otomatik kilit, profil, tüm verileri sil |
 
-Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zekâ **BAĞLI DEĞİL**; tiroid bezi ve kol-bacak damarları **şematik**; kadın üreme organlarının **3D modeli yok**.
+Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zekâ **BAĞLI DEĞİL**; tiroid, kulak, kol-bacak damarları ve periferik sinirler **şematik**. Uygulamadaki **Kapsam raporu** (`#/kapsam`) her yapı için iki vücutta dış görünüm, bölüm sayısı, sahne ve süreç durumunu model dosyalarından okuyarak gösterir.
 
 ## Güvenlik modeli (kısa)
 
@@ -63,7 +71,7 @@ pnpm verify       # lint + tip denetimi + test + derleme + güvenlik kapıları
 
 Uçtan uca testler için önce `pnpm build`, sonra `apps/web` içinde `npx vite preview --port 4173` çalıştır. Ardından `python3 tests/e2e/flow.py` (Playwright gerekir).
 
-**Telefonda web sürümü:** WebCrypto yalnızca güvenli bağlamda çalışır. `adb reverse tcp:5173 tcp:5173` ile `http://localhost:5173` adresini kullan ya da `pages.yml` iş akışını elle çalıştırıp GitHub Pages'ten aç.
+**Telefonda web sürümü:** WebCrypto yalnızca güvenli bağlamda çalışır. `adb reverse tcp:5173 tcp:5173` ile `http://localhost:5173` adresini kullan ya da GitHub Pages sürümünü aç (her `main` gönderiminde `pages.yml` ile yayımlanır).
 
 **Android:** `apps/android` (Gradle 8.14, AGP 8.7, Kotlin 2.0, minSdk 30). Web çekirdeği derlenip APK'ya varlık olarak kopyalanır: `pnpm build && cd apps/android && ./gradlew assembleRelease`.
 
@@ -108,7 +116,8 @@ fixtures/     yalnızca sentetik raporlar
 
 ## Bilinen sınırlar
 
-- **Vücut modeli:** Erkek referans vücudu: organlar ve damarlar HRA'dan, deri, tam iskelet ve kaslar BodyParts3D'den (iki farklı vücut, benzerlik dönüşümüyle hizalandı; uyum yaklaşıktır). Senin taraman değildir. Tiroid bezi ile kol-bacak damarları şematiktir; kadın üreme organlarının modeli yoktur.
+- **Vücut modelleri:** Erkek ve kadın referans vücutları: organlar ve damarlar HRA'dan (VH Male / VH Female); erkek derisi, iskelet ve kaslar BodyParts3D'den. Kadın vücudunda BodyParts3D kemik ve kasları erkek → kadın benzerlik dönüşümüyle yerleştirildi (ortalama sapma ≈ 1,3 cm). Senin taraman değildir. Tiroid, kulak, kol-bacak damarları ve periferik sinirler şematiktir. Doku/hücre/süreç sahneleri prosedürel ve temsilidir; molekül düzeyi yalnızca temsili parçacıklarla anlatılır.
+- **Eşitleme:** Cihazlar arası otomatik eşitleme yok (sunucu ve hesap yok). Taşıma şifreli yedek dosyasıyla yapılır.
 - **Doku ve hücre sahneleri** temsilidir: prosedürel üretilmiştir, ölçekler anlaşılır olsun diye değiştirilmiştir.
 - **OCR** fotoğraf kalitesine bağlıdır. Türkçe modelde "%" işareti sık sık başka karakter okunur (uygulama testin adına bakarak düzeltir ve bunu işaretler); çok bozuk satırlar (ör. "0,7" yerine "0/7") okunamaz ve elle girilmelidir. Düşük güvenli ya da iki okumada farklı çıkan değerler işaretlenir; hiçbir değer onaysız kaydedilmez.
 - **Döngü evresine göre verilen hormon aralıkları** (östradiol, progesteron, FSH, LH) otomatik değerlendirilmez: hangi evrenin geçerli olduğunu yazılım bilemez; kullanıcıdan uygun aralığı girmesi istenir.
@@ -119,5 +128,5 @@ fixtures/     yalnızca sentetik raporlar
 
 ## Lisanslar
 
-- **3D anatomi modelleri:** HuBMAP Human Reference Atlas, 3D Reference Object Library, CC BY 4.0 (organlar, damarlar); BodyParts3D, © The Database Center for Life Science, CC BY-SA 2.1 JP (deri, iskelet, kaslar — bu üç model dosyası aynı lisansla dağıtılır). Ayrıntı ve yapılan değişiklikler `apps/web/public/models/ATTRIBUTION.txt` dosyasında ve uygulamadaki Hakkında ekranında.
+- **3D anatomi modelleri:** HuBMAP Human Reference Atlas, 3D Reference Object Library, CC BY 4.0 (organlar, damarlar); BodyParts3D, © The Database Center for Life Science, CC BY-SA 2.1 JP (erkek derisi, iskelet, kaslar ve bazı organlar — bu parçaları içeren model dosyaları aynı lisansla dağıtılır). Ayrıntı ve yapılan değişiklikler `apps/web/public/models/ATTRIBUTION.txt` dosyasında ve uygulamadaki Hakkında ekranında.
 - **Açık kaynak bileşenler:** React, three.js, React Three Fiber, drei, camera-controls ve hash-wasm MIT lisanslıdır. PDF.js, Tesseract.js ve Tesseract dil modelleri Apache-2.0 lisanslıdır. Tam liste uygulamadaki Hakkında ekranında.

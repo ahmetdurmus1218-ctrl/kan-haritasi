@@ -250,13 +250,134 @@ export function limbVessels(): Vessel[] {
   return out;
 }
 
+/**
+ * Periferik sinirler (ŞEMATİK). Kaynaklarda sinir modeli yok; ana sinirlerin yolu damarlarla aynı
+ * yöntemle, kemik işaret noktalarına göre yaklaşık çizilir. Ad: parts.ts "nerves" anahtarı.
+ */
+export function peripheralNerves(): Vessel[] {
+  const n = names();
+  const id = (name: string) => {
+    const x = n.get(name);
+    if (!x) throw new Error(`BodyParts3D parçası yok: ${name}`);
+    return x;
+  };
+  const out: Vessel[] = [];
+  const ANT: V = [0, 0, 1];
+  const UP: V = [0, 1, 0];
+  const vc = (name: string) => centroid(verts(id(name)));
+  const c1 = vc('atlas');
+  const c4 = vc('fourth cervical vertebra');
+  const c5 = vc('fifth cervical vertebra');
+  const t1 = vc('first thoracic vertebra');
+  const t4 = vc('fourth thoracic vertebra');
+  const t10 = vc('tenth thoracic vertebra');
+  const l4 = vc('fourth lumbar vertebra');
+  const sac = vc('sacrum');
+  for (const side of ['right', 'left'] as const) {
+    const sx = side === 'left' ? 1 : -1;
+    const MED: V = [-sx, 0, 0];
+    const LAT: V = [sx, 0, 0];
+    const o = (...parts: [V, number][]) => parts.reduce((s2, [v, k]) => add(s2, mul(v, k)), [0, 0, 0] as V);
+    const hum = longBone(verts(id(`${side} humerus`)));
+    const rad = longBone(verts(id(`${side} radius`)));
+    const uln = longBone(verts(id(`${side} ulna`)));
+    const fem = longBone(verts(id(`${side} femur`)));
+    const tib = longBone(verts(id(`${side} tibia`)));
+    const fib = longBone(verts(id(`${side} fibula`)));
+    const hip = centroid(verts(id(`${side} hip bone`)));
+    const footIds = [...n].filter(([k]) => new RegExp(`${side} (talus|calcaneus|navicular|cuboid|.*cuneiform|.*metatarsal)`).test(k)).map(([, v]) => v);
+    const foot = centroid(footIds.flatMap((f) => verts(f)));
+
+    // Kol: brakiyal pleksus → median, ulnar, radyal
+    const root = add(lerp(c5, t1, 0.5), o([LAT, 0.03], [ANT, 0.01]));
+    const axilla = add(hum.at(0.08), o([MED, 0.036], [ANT, -0.004], [UP, -0.006]));
+    out.push({ name: 'brachial', points: [add(c5, o([LAT, 0.02])), root, add(lerp(root, axilla, 0.5), o([UP, 0.01])), axilla], r: [0.0032, 0.003] });
+    const elbowFront = add(hum.bottom, o([ANT, 0.024], [UP, 0.02], [MED, 0.004]));
+    out.push({
+      name: 'median',
+      points: [axilla, add(hum.at(0.45), o([MED, 0.018], [ANT, 0.008])), add(hum.at(0.85), o([MED, 0.01], [ANT, 0.02])), elbowFront, add(lerp(rad.at(0.5), uln.at(0.5), 0.5), o([ANT, 0.012])), add(lerp(rad.bottom, uln.bottom, 0.45), o([ANT, 0.012], [UP, 0.01])), add(lerp(rad.bottom, uln.bottom, 0.45), o([ANT, 0.012], [UP, -0.05]))],
+      r: [0.0024, 0.0018],
+    });
+    const epicondyle = add(hum.bottom, o([MED, 0.03], [ANT, -0.014], [UP, 0.02]));
+    out.push({
+      name: 'ulnar',
+      points: [axilla, add(hum.at(0.45), o([MED, 0.024], [ANT, -0.004])), add(hum.at(0.85), o([MED, 0.028], [ANT, -0.012])), epicondyle, add(uln.at(0.3), o([ANT, 0.01], [MED, 0.004])), add(uln.bottom, o([ANT, 0.012], [UP, 0.012])), add(uln.bottom, o([ANT, 0.01], [UP, -0.04]))],
+      r: [0.0022, 0.0016],
+    });
+    out.push({
+      name: 'radial',
+      points: [axilla, add(hum.at(0.3), o([ANT, -0.022], [MED, 0.004])), add(hum.at(0.55), o([ANT, -0.02], [LAT, 0.012])), add(hum.bottom, o([LAT, 0.024], [ANT, 0.012], [UP, 0.03])), add(rad.at(0.35), o([LAT, 0.012], [ANT, 0.008])), add(rad.bottom, o([LAT, 0.008], [ANT, 0.002], [UP, 0.012]))],
+      r: [0.0022, 0.0016],
+    });
+    // Bacak: femoral, siyatik → tibial + ortak peroneal
+    const groin = add(fem.at(0.05), o([LAT, 0.004], [ANT, 0.045]));
+    out.push({
+      name: 'femoral',
+      points: [add(l4, o([LAT, 0.035], [ANT, 0.02])), add(lerp(l4, hip, 0.5), o([ANT, 0.045], [LAT, 0.01])), groin, add(fem.at(0.25), o([ANT, 0.038], [MED, 0.008])), add(fem.at(0.55), o([ANT, 0.03], [MED, 0.022]))],
+      r: [0.0028, 0.002],
+    });
+    const notch = add(hip, o([ANT, -0.05], [UP, -0.01], [MED, 0.02]));
+    const popliteal = add(fem.bottom, o([ANT, -0.036], [UP, 0.06]));
+    out.push({
+      name: 'sciatic',
+      points: [add(sac, o([LAT, 0.035], [ANT, 0.01])), notch, add(fem.at(0.12), o([ANT, -0.05], [MED, 0.01])), add(fem.at(0.45), o([ANT, -0.04])), add(fem.at(0.8), o([ANT, -0.036])), popliteal],
+      r: [0.0045, 0.0038],
+    });
+    out.push({
+      name: 'tibial',
+      points: [popliteal, add(tib.at(0.1), o([ANT, -0.036])), add(tib.at(0.5), o([ANT, -0.032], [MED, 0.004])), add(tib.bottom, o([MED, 0.02], [ANT, -0.016], [UP, 0.02])), add(foot, o([ANT, 0.02], [UP, -0.02], [MED, 0.008]))],
+      r: [0.003, 0.0022],
+    });
+    out.push({
+      name: 'peroneal',
+      points: [popliteal, add(fib.top, o([LAT, 0.014], [ANT, -0.01], [UP, 0.01])), add(fib.at(0.12), o([LAT, 0.006], [ANT, 0.014])), add(lerp(tib.at(0.5), fib.at(0.5), 0.6), o([ANT, 0.018])), add(tib.bottom, o([ANT, 0.026], [LAT, 0.014], [UP, 0.03])), add(foot, o([ANT, 0.05], [UP, 0.02]))],
+      r: [0.0024, 0.0017],
+    });
+    // Vagus: beyin sapından boyun boyunca göğse ve karna
+    out.push({
+      name: 'vagus',
+      points: [add(c1, o([ANT, 0.012], [LAT, 0.02], [UP, 0.02])), add(c4, o([ANT, 0.03], [LAT, 0.022])), add(t1, o([ANT, 0.04], [LAT, 0.02])), add(t4, o([ANT, 0.05], [LAT, 0.014])), add(t10, o([ANT, 0.045], [LAT, 0.008])), add(t10, o([ANT, 0.06], [LAT, 0.02], [UP, -0.04]))],
+      r: [0.0018, 0.0014],
+    });
+  }
+  return out;
+}
+
+/** Konumlara uygulanacak dönüşüm (ör. erkek → kadın vücudu). */
+export type VecMap = (v: V) => V;
+
+function tubeDocument(sceneName: string, items: Array<{ key: string; path: V[]; r: [number, number] }>, map?: VecMap): Document {
+  const doc = new Document();
+  const buffer = doc.createBuffer();
+  const scene = doc.createScene(sceneName);
+  for (const it of items) {
+    const path = catmull(map ? it.path.map(map) : it.path, 14);
+    const { pos, idx } = tube(path, it.r[0], it.r[1], 8);
+    const prim = doc
+      .createPrimitive()
+      .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(new Float32Array(pos)).setBuffer(buffer))
+      .setIndices(doc.createAccessor().setType('SCALAR').setArray(new Uint32Array(idx)).setBuffer(buffer));
+    scene.addChild(doc.createNode(it.key).setMesh(doc.createMesh(it.key).addPrimitive(prim)));
+  }
+  doc.getRoot().setDefaultScene(scene);
+  return doc;
+}
+
+export function nerveDocument(map?: VecMap): Document {
+  return tubeDocument(
+    'nerves',
+    peripheralNerves().map((v) => ({ key: `nerves|${v.name}`, path: v.points, r: v.r })),
+    map,
+  );
+}
+
 /** Şematik damarlar tek belgeye: her damar ayrı düğüm ("limb-vessels|right radial artery"). */
-export function limbVesselDocument(): Document {
+export function limbVesselDocument(map?: VecMap): Document {
   const doc = new Document();
   const buffer = doc.createBuffer();
   const scene = doc.createScene('limbs');
   for (const v of limbVessels()) {
-    const path = catmull(v.points, 14);
+    const path = catmull(map ? v.points.map(map) : v.points, 14);
     const { pos, idx } = tube(path, v.r[0], v.r[1], 8);
     const prim = doc
       .createPrimitive()
@@ -286,13 +407,14 @@ export const BP3D_TRUNK_VESSELS: [string, string][] = [
   ['left subclavian vein', 'veins'],
 ];
 
-export function trunkVesselDocument(): Document {
+export function trunkVesselDocument(map?: (p: Float32Array) => void): Document {
   const n = names();
   const doc = new Document();
   const buffer = doc.createBuffer();
   const scene = doc.createScene('trunk');
   for (const [name, structure] of BP3D_TRUNK_VESSELS) {
     const pos = readStl(n.get(name)!);
+    map?.(pos);
     const count = pos.length / 3;
     const index = new Uint32Array(count);
     for (let i = 0; i < count; i++) index[i] = i;

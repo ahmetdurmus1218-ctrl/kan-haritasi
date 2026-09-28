@@ -207,14 +207,26 @@ export function ContextSheet({
   onSize,
   label,
   onClose,
+  peek = false,
+  expandNonce = 0,
 }: {
   children: ReactNode;
   onSize: (cover: { right: number; bottom: number }) => void;
   label: string;
   onClose?: () => void;
+  /** Mobilde yalnızca başlık görünecek kadar küçük (bilgi bulutu açıkken). */
+  peek?: boolean;
+  /** Değiştikçe (0 dışında) panel genişletilir (ör. buluttaki "Ayrıntılar"). */
+  expandNonce?: number;
 }) {
   const ref = useRef<HTMLElement>(null);
   const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    if (expandNonce) setExpanded(true);
+  }, [expandNonce]);
+  useEffect(() => {
+    if (peek) setExpanded(false);
+  }, [peek]);
   const onSizeRef = useRef(onSize);
   onSizeRef.current = onSize;
 
@@ -240,7 +252,7 @@ export function ContextSheet({
       ref={ref}
       aria-label={label}
       className={`pointer-events-auto absolute inset-x-0 bottom-0 z-10 flex flex-col overflow-hidden rounded-t-3xl border-t border-ink-600/60 bg-ink-950/90 backdrop-blur-md transition-[max-height] duration-300 lg:inset-x-auto lg:bottom-0 lg:right-0 lg:top-0 lg:max-h-none lg:w-[420px] lg:rounded-none lg:border-l lg:border-t-0 lg:bg-gradient-to-l lg:from-ink-950 lg:via-ink-950/92 lg:to-ink-950/40 ${
-        expanded ? 'max-h-[80%]' : 'max-h-[38%]'
+        expanded ? 'max-h-[80%]' : peek ? 'max-h-[7.25rem]' : 'max-h-[38%]'
       }`}
     >
       <div className="flex items-center justify-center pt-2 lg:hidden">

@@ -27,6 +27,32 @@
   --color-low: #6aa8ff;
   --color-high: #f5b14c;
   --color-danger: #f0776b;
+
+  /* "Simülasyon / eğitimsel" uyarı dili */
+  --color-caution: #fcd34d;
+  --color-caution-fg: #fde8a8;
+}
+
+/* Açık tema: aynı ölçek adları, açık değerler. Bileşenler renkleri bu değişkenlerden aldığından ayrı sınıf gerekmez. */
+[data-theme="light"] {
+  --color-ink-950: #f4f7fb;
+  --color-ink-900: #edf1f7;
+  --color-ink-850: #ffffff;
+  --color-ink-800: #e7ecf3;
+  --color-ink-700: #dbe2ec;
+  --color-ink-600: #c7d1de;
+  --color-ink-500: #a7b4c6;
+  --color-fg: #0d1520;
+  --color-fg-muted: #45546a;
+  --color-fg-faint: #677589;
+  --color-accent: #0b8577;
+  --color-accent-strong: #09766a;
+  --color-accent-deep: #0f766e;
+  --color-low: #2d6ad0;
+  --color-high: #b16f12;
+  --color-danger: #c9443a;
+  --color-caution: #b7791f;
+  --color-caution-fg: #7a4d05;
 }
 
 @layer base {
@@ -113,6 +139,12 @@
     radial-gradient(1400px 900px at 50% 120%, #0b1422, transparent 60%),
     #03050a;
 }
+[data-theme="light"] .explore-bg {
+  background:
+    radial-gradient(900px 700px at 50% 38%, color-mix(in oklab, var(--kh-accent, #0b8577) 12%, transparent), transparent 70%),
+    radial-gradient(1400px 900px at 50% 120%, #d9e3ef, transparent 60%),
+    #f1f5f9;
+}
 
 @keyframes kh-fade-in {
   from {
@@ -127,6 +159,118 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .kh-fade-in {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------ Dijital bilgi bulutu */
+.kh-holo {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--kh-accent, var(--color-accent)) 55%, transparent);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 2px, color-mix(in oklab, var(--kh-accent, var(--color-accent)) 5%, transparent) 2px 3px),
+    linear-gradient(140deg, color-mix(in oklab, var(--kh-accent, var(--color-accent)) 16%, var(--color-ink-950)) 0%, color-mix(in oklab, var(--color-ink-950) 90%, transparent) 60%);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--kh-accent, var(--color-accent)) 12%, transparent) inset,
+    0 10px 40px -8px color-mix(in oklab, var(--kh-accent, var(--color-accent)) 35%, transparent);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  clip-path: polygon(0 12px, 12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  animation: kh-holo-in 0.42s cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+/* Tarama çizgisi: açılışta bir kez yukarıdan aşağı geçer */
+.kh-holo::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: -30%;
+  height: 30%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--kh-accent, var(--color-accent)) 22%, transparent), transparent);
+  animation: kh-holo-scan 0.9s ease-out 0.1s both;
+}
+/* Köşe işaretleri */
+.kh-holo::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--kh-accent, var(--color-accent)), var(--kh-accent, var(--color-accent))) top right / 10px 1px no-repeat,
+    linear-gradient(var(--kh-accent, var(--color-accent)), var(--kh-accent, var(--color-accent))) top right / 1px 10px no-repeat,
+    linear-gradient(var(--kh-accent, var(--color-accent)), var(--kh-accent, var(--color-accent))) bottom left / 10px 1px no-repeat,
+    linear-gradient(var(--kh-accent, var(--color-accent)), var(--kh-accent, var(--color-accent))) bottom left / 1px 10px no-repeat;
+  opacity: 0.8;
+}
+.kh-holo-btn {
+  background: color-mix(in oklab, var(--color-ink-900) 92%, transparent);
+}
+.kh-holo-btn:not(:disabled):hover {
+  background: color-mix(in oklab, var(--kh-accent, var(--color-accent)) 12%, transparent);
+}
+.kh-holo-dot {
+  width: 0;
+  height: 0;
+}
+.kh-holo-dot::before,
+.kh-holo-dot::after {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--kh-accent, var(--color-accent));
+  box-shadow: 0 0 12px var(--kh-accent, var(--color-accent));
+}
+.kh-holo-dot::after {
+  background: transparent;
+  border: 1px solid var(--kh-accent, var(--color-accent));
+  animation: kh-holo-ping 1.8s ease-out infinite;
+}
+@keyframes kh-holo-in {
+  0% {
+    opacity: 0.35;
+    transform: translateY(6px) scale(0.96);
+    filter: blur(3px) brightness(1.8);
+  }
+  35% {
+    opacity: 0.85;
+    filter: blur(0) brightness(1.4);
+  }
+  50% {
+    opacity: 0.4;
+  }
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes kh-holo-scan {
+  to {
+    top: 110%;
+  }
+}
+@keyframes kh-holo-ping {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kh-holo,
+  .kh-holo::after,
+  .kh-holo-dot::after {
     animation: none;
   }
 }

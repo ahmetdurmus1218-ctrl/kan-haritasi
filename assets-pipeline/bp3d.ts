@@ -94,25 +94,28 @@ function descendants(h: Hierarchy, root: string): Set<string> {
   return out;
 }
 
-const side = (name: string) => (/\bright\b/.test(name) ? 'Sağ' : /\bleft\b/.test(name) ? 'Sol' : null);
 
-/** Kemik → grup etiketi (Türkçe). null: iskelete alınmaz. */
+/** Kemik → bölüm anahtarı (packages/catalog parts.ts: "bones"). null: iskelete alınmaz. */
 function boneGroup(name: string): string | null {
-  const s = side(name);
-  const sided = (label: string) => (s ? `${s} ${label}` : label);
+  const s = /\bright\b/.test(name) ? 'r' : /\bleft\b/.test(name) ? 'l' : null;
+  const sided = (key: string) => `${key}-${s ?? 'l'}`;
   if (/eyeball|gingiva/.test(name)) return null;
-  if (/vertebra|atlas|\baxis\b|intervertebral|sacrum|coccyx/.test(name)) return 'Omurga';
-  if (/\brib\b|costal|sternum|manubrium|xiphoid/.test(name)) return 'Göğüs kafesi';
-  if (/hip bone|pubic symphysis/.test(name)) return 'Leğen kemiği (pelvis)';
-  if (/clavicle|scapula/.test(name)) return sided('omuz kuşağı (köprücük, kürek)');
-  if (/humerus/.test(name)) return sided('üst kol kemiği (humerus)');
-  if (/radius|ulna|of right forearm|of left forearm/.test(name)) return sided('önkol kemikleri');
-  if (/carpal|scaphoid|lunate|triquetr|pisiform|trapezi|trapezoid|capitate|hamate|finger|thumb|of hand|metacarp/.test(name)) return sided('el kemikleri');
-  if (/femur|patella/.test(name)) return sided('uyluk kemiği ve diz kapağı');
-  if (/tibia|fibula|of right leg|of left leg/.test(name)) return sided('bacak kemikleri');
-  if (/talus|calcaneus|navicular|cuboid|cuneiform|metatars|toe|of foot|plantar/.test(name)) return sided('ayak kemikleri');
-  return 'Kafatası ve yüz kemikleri';
+  if (/tooth|teeth/.test(name)) return 'teeth';
+  if (/vertebra|atlas|\baxis\b|intervertebral|sacrum|coccyx/.test(name)) return 'spine';
+  if (/\brib\b|costal|sternum|manubrium|xiphoid/.test(name)) return 'ribcage';
+  if (/hip bone|pubic symphysis/.test(name)) return 'pelvis';
+  if (/clavicle|scapula/.test(name)) return sided('shoulder');
+  if (/humerus/.test(name)) return sided('humerus');
+  if (/radius|ulna|of right forearm|of left forearm/.test(name)) return sided('forearm');
+  if (/carpal|scaphoid|lunate|triquetr|pisiform|trapezi|trapezoid|capitate|hamate|finger|thumb|of hand|metacarp/.test(name)) return sided('hand');
+  if (/femur|patella/.test(name)) return sided('femur');
+  if (/tibia|fibula|of right leg|of left leg/.test(name)) return sided('leg');
+  if (/talus|calcaneus|navicular|cuboid|cuneiform|metatars|toe|of foot|plantar/.test(name)) return sided('foot');
+  return 'skull';
 }
+
+/** Diyafram ayrı yapıdır (solunum); kas grubuna alınmaz. */
+const DIAPHRAGM = /^(right |left )?(crus of )?diaphragm$|of diaphragm$/;
 
 const HIP_MUSCLE = /glute|piriformis|gemell|obturator|quadratus femoris|tensor fasciae latae/;
 
@@ -131,24 +134,24 @@ export interface Bp3dGroup {
  * BodyParts3D'den alınan organlar (HRA'da olmayanlar). Uyum hedefleri: hipofiz/hipotalamus için HRA
  * beyninin tabanı (0, 0.786, 0.012), böbreküstü bezleri için HRA böbreklerinin üst kutbu.
  */
-export const BP3D_ORGANS: Record<'digestive' | 'endocrine' | 'reproductive', Bp3dGroup[]> = {
+export const BP3D_ORGANS: Record<'digestive' | 'endocrine' | 'reproductive' | 'respiratory', Bp3dGroup[]> = {
   digestive: [
     { key: 'stomach', ids: ['FMA7148'] },
     { key: 'esophagus', ids: ['FMA7131'] },
   ],
   endocrine: [
     { key: 'pituitary', ids: ['FMA13889'], offset: [0.003, -0.017, -0.018] },
-    { key: 'hypothalamus', ids: ['FMA62008nsn'], offset: [0.003, -0.017, -0.018] },
-    { key: 'adrenals|Sağ böbreküstü bezi', ids: ['FMA15629'], offset: [-0.019, 0.016, 0.014] },
-    { key: 'adrenals|Sol böbreküstü bezi', ids: ['FMA15630'], offset: [0.024, 0.017, 0.009] },
+    { key: 'adrenals|right', ids: ['FMA15629'], offset: [-0.019, 0.016, 0.014] },
+    { key: 'adrenals|left', ids: ['FMA15630'], offset: [0.024, 0.017, 0.009] },
   ],
   reproductive: [
-    { key: 'testes|Sağ testis ve epididim', ids: ['FMA7211', 'FMA18256'] },
-    { key: 'testes|Sol testis ve epididim', ids: ['FMA7212', 'FMA18257'] },
-    { key: 'male-genitals|Seminal veziküller', ids: ['FMA19387', 'FMA19388'] },
-    { key: 'male-genitals|Sperm kanalları (duktus deferens)', ids: ['FMA19235', 'FMA19236'] },
-    { key: 'male-genitals|Penis', ids: ['FMA18247', 'FMA19617nsn', 'FMA19618'] },
+    { key: 'testes|right', ids: ['FMA7211', 'FMA18256'] },
+    { key: 'testes|left', ids: ['FMA7212', 'FMA18257'] },
+    { key: 'male-genitals|seminal-vesicles', ids: ['FMA19387', 'FMA19388'] },
+    { key: 'male-genitals|vas-deferens', ids: ['FMA19235', 'FMA19236'] },
+    { key: 'male-genitals|penis', ids: ['FMA18247', 'FMA19617nsn', 'FMA19618'] },
   ],
+  respiratory: [{ key: 'diaphragm', ids: ['FMA13295'] }],
 };
 
 export interface Bp3dSet {
@@ -157,6 +160,20 @@ export interface Bp3dSet {
   muscles: Bp3dGroup[];
   /** Kullanılan tüm dosya kimlikleri (fetch betiği için). */
   all: string[];
+}
+
+export function centroidOf(arrays: Float32Array[]): [number, number, number] {
+  const c: [number, number, number] = [0, 0, 0];
+  let n = 0;
+  for (const a of arrays) {
+    for (let i = 0; i < a.length; i += 3) {
+      c[0] += a[i]!;
+      c[1] += a[i + 1]!;
+      c[2] += a[i + 2]!;
+      n++;
+    }
+  }
+  return [c[0] / n, c[1] / n, c[2] / n];
 }
 
 function centroidY(id: string): number {
@@ -199,37 +216,27 @@ export function planBp3d(): Bp3dSet {
   const muscles = new Map<string, string[]>();
   for (const id of muscular) {
     const n = name(id);
-    if (/tendon$/.test(n)) continue;
+    if (/tendon$/.test(n) || DIAPHRAGM.test(n) || id === 'FMA13295') continue;
     const region = regions.find(([, set]) => set.has(id))?.[0];
-    const s = side(n);
+    const s = /\bright\b/.test(n) ? 'r' : 'l';
     const sk = /\bright\b/.test(n) ? 'right' : 'left';
     let label: string;
     switch (region) {
       case 'upper':
-        label = `${s ?? 'Sol'} ${centroidY(id) > levels[sk].elbow ? 'omuz ve üst kol kasları' : 'önkol ve el kasları'}`;
+        label = `${centroidY(id) > levels[sk].elbow ? 'upper-arm' : 'forearm'}-${s}`;
         break;
       case 'lower':
-        label = HIP_MUSCLE.test(n)
-          ? `${s ?? 'Sol'} kalça kasları`
-          : `${s ?? 'Sol'} ${centroidY(id) > levels[sk].knee ? 'uyluk kasları' : 'bacak ve ayak kasları'}`;
+        label = HIP_MUSCLE.test(n) ? `hip-${s}` : `${centroidY(id) > levels[sk].knee ? 'thigh' : 'leg'}-${s}`;
         break;
       case 'head':
-        label = 'Baş ve yüz kasları';
-        break;
       case 'neck':
-        label = 'Boyun kasları';
-        break;
       case 'thorax':
-        label = 'Göğüs kasları';
-        break;
       case 'abdomen':
-        label = 'Karın kasları';
-        break;
       case 'back':
-        label = 'Sırt kasları';
+        label = region;
         break;
       default:
-        label = 'Diğer kaslar';
+        label = 'other';
     }
     add(muscles, `skeletal-muscle|${label}`, id);
   }
@@ -245,14 +252,24 @@ export function planBp3d(): Bp3dSet {
   };
 }
 
-/** Grupları tek belgeye (her grup bir düğüm) yazar; sadeleştirme çağıran tarafta yapılır. */
-export function bp3dDocument(groups: Bp3dGroup[], sceneName: string): Document {
+export type PointMap = (p: Float32Array) => void;
+
+/**
+ * Grupları tek belgeye (her grup bir düğüm) yazar; sadeleştirme çağıran tarafta yapılır.
+ * `map`: konumlara uygulanacak dönüşüm (ör. erkek → kadın vücudu); `place`: grup başına son konum
+ * düzeltmesi (bezleri komşu organa oturtmak için), `offset` yerine kullanılır.
+ */
+export function bp3dDocument(groups: Bp3dGroup[], sceneName: string, map?: PointMap, place?: (g: Bp3dGroup, centroid: [number, number, number]) => [number, number, number] | null): Document {
   const doc = new Document();
   const buffer = doc.createBuffer();
   const scene = doc.createScene(sceneName);
   for (const g of groups) {
     const arrays = g.ids.map(readStl);
-    if (g.offset) {
+    if (map) for (const a of arrays) map(a);
+    const placed = place?.(g, centroidOf(arrays));
+    if (placed) {
+      for (const a of arrays) for (let i = 0; i < a.length; i += 3) for (let k = 0; k < 3; k++) a[i + k]! += placed[k]!;
+    } else if (g.offset && !map) {
       for (const a of arrays) for (let i = 0; i < a.length; i += 3) for (let k = 0; k < 3; k++) a[i + k]! += g.offset[k]!;
     }
     const total = arrays.reduce((n, a) => n + a.length, 0);

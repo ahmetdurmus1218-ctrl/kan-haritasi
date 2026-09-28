@@ -14,7 +14,6 @@ export interface OrganInfo {
   anatomy?: string[];
   /** Kamera: [azimut°, yükseklik°]; azimut 0 = önden, +90 = kişinin sol yanı. */
   view: [number, number];
-  inside?: InsideId;
 }
 
 export const ORGANS: Record<string, OrganInfo> = {
@@ -24,7 +23,6 @@ export const ORGANS: Record<string, OrganInfo> = {
       'Dört odacıklı bir kas pompasıdır. Sağ taraf oksijeni azalmış kanı akciğerlere, sol taraf oksijenlenmiş kanı aort yoluyla tüm vücuda gönderir. Kapakçıklar kanın tek yönde akmasını sağlar.',
     anatomy: ['Sağ ve sol kulakçık', 'Sağ ve sol karıncık', 'Karıncıklar arası bölme', 'Triküspit, pulmoner, mitral ve aort kapakları', 'Miyokard (kalp kası)'],
     view: [20, 10],
-    inside: 'damar',
   },
   'coronary-arteries': {
     location: 'Kalbin yüzeyinde, aortun hemen çıkışından başlayarak kalbi saran damarlar.',
@@ -32,21 +30,18 @@ export const ORGANS: Record<string, OrganInfo> = {
       'Kalp kasının kendi oksijen ve besin ihtiyacını karşılar. Damar duvarında zamanla lipid birikmesi ve inflamasyon (ateroskleroz) bu damarlarda özellikle önem kazanır.',
     anatomy: ['Sol ana koroner arter', 'Sol ön inen arter (LAD)', 'Diyagonal dallar', 'Sağ koroner arter', 'Arka inen arter', 'Marjinal dallar'],
     view: [25, 12],
-    inside: 'damar',
   },
   aorta: {
     location: 'Kalbin sol karıncığından çıkar, göğüste kavis yapıp omurganın önünden karına iner.',
     function: 'Vücudun en büyük atardamarıdır; kalbin pompaladığı oksijenli kanı tüm organlara dağıtan ana yoldur.',
     anatomy: ['Çıkan aort', 'Aort kavsi', 'İnen göğüs aortu', 'Karın aortu'],
     view: [60, 6],
-    inside: 'damar',
   },
   'carotid-arteries': {
     location: 'Boynun iki yanında, nefes borusunun yanında yukarı doğru uzanır.',
     function: 'Beyne, yüze ve boyna kan taşır. Aort kavsinden ayrılan dallardır.',
     anatomy: ['Brakiyosefalik arter', 'Sol ortak karotis', 'Sol köprücükaltı arter'],
     view: [20, 5],
-    inside: 'damar',
   },
   'pulmonary-vessels': {
     location: 'Kalp ile akciğerler arasında.',
@@ -58,40 +53,34 @@ export const ORGANS: Record<string, OrganInfo> = {
     location: 'Vücudun her yerinde; büyükleri kalbe yakın ve karın arka duvarında.',
     function: 'Dokulardan gelen kanı kalbe geri taşır. Ana toplardamarlar (üst ve alt vena kava) sağ kulakçığa açılır.',
     view: [-20, 5],
-    inside: 'damar',
   },
   'renal-vessels': {
     location: 'Karın arka duvarında, aort ve alt vena kava ile böbrekler arasında.',
     function: 'Böbrekler her dakika kalbin pompaladığı kanın yaklaşık beşte birini alır; bu damarlar o kanı getirip götürür.',
     view: [0, 5],
-    inside: 'damar',
   },
   'abdominal-vessels': {
     location: 'Karın boşluğunda, sindirim organlarının çevresinde.',
     function: 'Mide, bağırsaklar, karaciğer, dalak ve pankreası besler. Bağırsaktan emilen besinler portal ven ile önce karaciğere taşınır.',
     anatomy: ['Çölyak gövde', 'Üst ve alt mezenter arter', 'Portal ven', 'Karaciğer atardamarları'],
     view: [0, 10],
-    inside: 'damar',
   },
   'eye-vessels': {
     location: 'Göz küresi ve göz çukurunda.',
     function: 'Retinayı ve gözü besleyen çok ince damarlardır. Kan şekeri ve kan basıncıyla ilişkili değişiklikler bu damarlarda göz muayenesiyle görülebilir.',
     view: [0, 5],
-    inside: 'damar',
   },
   lungs: {
     location: 'Göğüs boşluğunda, kalbin iki yanında.',
     function: 'Havadaki oksijen, alveol adı verilen milyonlarca küçük kesecikte kana geçer; karbondioksit kandan havaya atılır.',
     anatomy: ['Sağ akciğer: 3 lob', 'Sol akciğer: 2 lob', 'Bronkopulmoner segmentler', 'Alveoller'],
     view: [0, 5],
-    inside: 'alveol',
   },
   airways: {
     location: 'Boyundan göğse iner, göğüste iki ana bronşa ayrılır.',
     function: 'Havayı akciğerlere iletir, ısıtır ve nemlendirir. Kıkırdak halkalar yolun açık kalmasını sağlar.',
     anatomy: ['Nefes borusu (trakea)', 'Ana bronşlar', 'Lob ve segment bronşları'],
     view: [0, 5],
-    inside: 'alveol',
   },
   liver: {
     location: 'Karnın sağ üst bölümünde, diyaframın altında.',
@@ -99,7 +88,6 @@ export const ORGANS: Record<string, OrganInfo> = {
       'Albumin ve pıhtılaşma faktörlerini üretir, kolesterolü yapar ve işler, ilaç ve atıkları dönüştürür, safra üretir. Hücreleri zorlandığında ALT/AST gibi enzimler kana daha fazla geçer.',
     anatomy: ['Sağ ve sol lob', 'Kaudat ve kuadrat lob', 'Lobüller', 'Hepatositler'],
     view: [-35, 10],
-    inside: 'lobul',
   },
   gallbladder: {
     location: 'Karaciğerin alt yüzeyinde.',
@@ -112,7 +100,6 @@ export const ORGANS: Record<string, OrganInfo> = {
       'Sindirim enzimleri (amilaz, lipaz) üretir. Langerhans adacıklarındaki beta hücreleri insülin, alfa hücreleri glukagon salgılayarak kan şekerini düzenler.',
     anatomy: ['Baş, gövde ve kuyruk', 'Pankreas kanalı', 'Langerhans adacıkları'],
     view: [0, 15],
-    inside: 'adacik',
   },
   'small-intestine': {
     location: 'Karnın orta ve alt bölümünde, kıvrımlar halinde.',
@@ -132,7 +119,6 @@ export const ORGANS: Record<string, OrganInfo> = {
       'Her böbrekte yaklaşık bir milyon nefron kanı süzer. Kreatinin ve üre gibi atıklar idrarla atılır; sıvı, tuz ve asit–baz dengesi ayarlanır.',
     anatomy: ['Korteks (kabuk)', 'Medulla ve piramitler', 'Nefron', 'Glomerül'],
     view: [180, 10],
-    inside: 'nefron',
   },
   'urinary-tract': {
     location: 'Böbreklerden leğen kemiğine iner.',
@@ -160,7 +146,6 @@ export const ORGANS: Record<string, OrganInfo> = {
     function: 'Vücudu taşır, organları korur ve kasların tutunduğu kaldıraçları oluşturur. Yetişkinde kan hücrelerinin büyük kısmı omurga, pelvis, kaburgalar ve göğüs kemiğindeki kemik iliğinde yapılır. Kemik ayrıca kalsiyum ve fosfor deposudur; D vitamini, kalsiyum ve ALP kemik sağlığıyla ilişkilidir.',
     anatomy: ['Kafatası', 'Omurga (33 omur, diskler)', 'Göğüs kafesi (kaburgalar, göğüs kemiği)', 'Leğen kemiği', 'Kol, önkol ve el kemikleri', 'Uyluk, bacak ve ayak kemikleri', 'Kemik iliği'],
     view: [20, 8],
-    inside: 'ilik',
   },
   stomach: {
     location: 'Karnın sol üst bölümünde, diyaframın altında; karaciğerin sol lobunun ve dalağın komşusu.',
@@ -192,12 +177,12 @@ export const ORGANS: Record<string, OrganInfo> = {
     view: [30, 10],
   },
   ovaries: {
-    location: 'Kadında pelvis içinde, rahmin iki yanında (bu modelde yok).',
+    location: 'Pelvis içinde, rahmin iki yanında; kadın vücudunda gösterilir.',
     function: 'Yumurta hücrelerini olgunlaştırır; östrojen ve progesteron üretir. Hipofizden gelen FSH ve LH ile yönetilir.',
     view: [0, 10],
   },
   uterus: {
-    location: 'Kadında pelvis içinde, mesanenin arkasında (bu modelde yok).',
+    location: 'Pelvis içinde, mesanenin arkasında; kadın vücudunda gösterilir.',
     function: 'Gebeliğin geliştiği organ; iç tabakası her adet döngüsünde hormonlara göre kalınlaşıp dökülür.',
     view: [0, 10],
   },
@@ -206,7 +191,6 @@ export const ORGANS: Record<string, OrganInfo> = {
     function: 'Atardamarlar oksijenli kanı kaslara ve dokulara taşır; toplardamarlar kanı kalbe geri getirir. Bacak toplardamarlarındaki kapakçıklar kanın yerçekimine karşı yukarı akmasına yardım eder. Uzun süre hareketsizlik bacak toplardamarlarında pıhtı riskini artırabilir.',
     anatomy: ['Aksiller ve brakiyal arter', 'Radyal ve ulnar arter', 'Femoral ve popliteal arter', 'Ön ve arka tibial arter', 'Büyük ve küçük safen ven', 'Sefalik ve bazilik ven'],
     view: [20, 5],
-    inside: 'damar',
   },
   'skeletal-muscle': {
     location: 'Tüm vücut: baş, boyun, gövde, kollar ve bacaklar. Kemiklere kirişlerle tutunur.',
@@ -218,7 +202,6 @@ export const ORGANS: Record<string, OrganInfo> = {
     location: 'Karnın sol üst bölümünde, midenin arkasında.',
     function: 'Yaşlanmış alyuvarları kandan ayıklar, bağışıklık hücrelerini barındırır ve kanı süzer.',
     view: [120, 10],
-    inside: 'kan',
   },
   thymus: {
     location: 'Göğüs kemiğinin arkasında, kalbin üstünde.',
@@ -230,7 +213,6 @@ export const ORGANS: Record<string, OrganInfo> = {
     function: 'T4 ve T3 hormonlarını üretir; bu hormonlar vücudun metabolizma hızını ayarlar. Hipofizden gelen TSH ile yönetilir.',
     anatomy: ['Sağ ve sol lob', 'İstmus', 'Foliküller'],
     view: [0, 0],
-    inside: 'folikul',
   },
   pituitary: {
     location: 'Beynin tabanında, kafatasındaki küçük bir çukurda (sella tursika).',
@@ -252,6 +234,173 @@ export const ORGANS: Record<string, OrganInfo> = {
     function: 'Vücudu korur, ısıyı düzenler. Güneş ışığı alındığında D vitamini yapımının ilk adımı deride gerçekleşir.',
     view: [0, 0],
   },
+  pineal: {
+    location: 'Beynin ortasında, iki talamusun arkasında, üçüncü karıncığın tavanında.',
+    function: 'Karanlıkta melatonin salgılar; gün ışığı bilgisini alarak uyku-uyanıklık ritminin (sirkadiyen ritim) ayarlanmasına katkıda bulunur.',
+    view: [60, 20],
+  },
+  nerves: {
+    location: 'Omurilikten ve beyin sapından çıkarak kollara, bacaklara, gövdeye ve iç organlara uzanır.',
+    function: 'Hareket komutlarını kaslara taşır, dokunma, ağrı, ısı ve konum duyularını beyne iletir. Vagus siniri kalp, akciğer ve sindirim organlarını “dinlen-sindir” yönünde düzenler. B12 eksikliği ve uzun süreli yüksek kan şekeri sinirleri etkileyebilir.',
+    anatomy: ['Brakiyal pleksus: median, ulnar, radyal sinirler', 'Femoral sinir', 'Siyatik sinir: tibial ve ortak peroneal dallar', 'Vagus siniri'],
+    view: [20, 5],
+  },
+  ear: {
+    location: 'Kafatasının iki yanında, şakak kemiğinin içinde.',
+    function: 'Dış kulak sesi toplar, kulak zarı ve kemikçikler titreşimi yükseltir, iç kulaktaki koklea sesi sinir sinyaline çevirir. Yarım daire kanalları ve vestibül dengeyi sağlar.',
+    anatomy: ['Dış kulak yolu', 'Kulak zarı', 'Çekiç, örs, üzengi', 'Koklea', 'Yarım daire kanalları'],
+    view: [90, 5],
+  },
+  tonsils: {
+    location: 'Ağzın arkasında, boğaz girişinin iki yanında.',
+    function: 'Ağızdan ve burundan giren mikroplarla ilk karşılaşan lenf dokusudur; bağışıklık yanıtının başlamasına yardım eder.',
+    view: [0, 5],
+  },
+  'lymph-node': {
+    location: 'Vücutta boyun, koltuk altı, kasık, göğüs ve karın boşluğunda yüzlerce lenf düğümü bulunur; burada gösterilen örnek bir düğümdür.',
+    function: 'Lenf sıvısını süzer; içindeki antijenler T ve B lenfositlerine tanıtılır, antikor yapımı burada başlar. Enfeksiyonda şişip hassaslaşabilirler.',
+    anatomy: ['Kapsül', 'Lenf follikülleri (B hücreleri)', 'Parakorteks (T hücreleri)', 'Medulla', 'Getirici ve götürücü lenf damarları'],
+    view: [20, 10],
+  },
+  knee: {
+    location: 'Uyluk kemiği (femur), kaval kemiği (tibia) ve diz kapağı arasında.',
+    function: 'Vücudun en büyük eklemidir. Menisküsler yükü dağıtır, eklem kıkırdağı sürtünmeyi azaltır; çapraz ve yan bağlar dizi dengede tutar.',
+    anatomy: ['Menisküsler', 'Eklem kıkırdağı', 'Ön ve arka çapraz bağ', 'Yan bağlar', 'Diz kapağı bağı'],
+    view: [30, 5],
+  },
+  diaphragm: {
+    location: 'Göğüs boşluğunu karın boşluğundan ayıran kubbe; kaburgaların alt kenarına ve omurgaya tutunur.',
+    function: 'Ana solunum kasıdır: kasılınca düzleşir, göğüs boşluğu genişler ve akciğerlere hava dolar; gevşeyince hava dışarı çıkar.',
+    view: [0, 20],
+  },
+  'fallopian-tubes': {
+    location: 'Rahmin üst köşelerinden yumurtalıklara doğru uzanır.',
+    function: 'Saçaklı uçları yumurtlanan yumurtayı yakalar; içindeki kirpikli hücreler yumurtayı rahme taşır. Döllenme çoğunlukla ampulla bölümünde olur.',
+    anatomy: ['İnfundibulum ve fimbriyalar', 'Ampulla', 'İstmus'],
+    view: [0, 10],
+  },
+  vagina: {
+    location: 'Rahim ağzından dış genital bölgeye uzanır; mesane ile rektum arasında.',
+    function: 'Doğum kanalının bir parçasıdır; adet kanının dışarı çıkış yoludur.',
+    view: [30, 5],
+  },
+  breasts: {
+    location: 'Göğüs kaslarının önünde, göğüs duvarında.',
+    function: 'Süt bezleri, kanallar ve yağ dokusundan oluşur. Hipofizin prolaktin hormonu süt yapımını, oksitosin sütün salınmasını uyarır.',
+    anatomy: ['Süt bezi lobları', 'Süt kanalları', 'Meme başı ve areola', 'Asıcı bağlar', 'Yağ dokusu'],
+    view: [20, 5],
+  },
+};
+
+/**
+ * Her yapıdan girilebilen iç sahneler (doku → hücre → süreç). İlk sahne asıl dokudur; "hucre"
+ * (genel hücre ve enerji) sahnesi her yapıya eklenir.
+ */
+const INSIDES: Record<string, InsideId[]> = {
+  heart: ['kalpkasi', 'damar'],
+  'coronary-arteries': ['damar', 'kan'],
+  aorta: ['damar', 'kan'],
+  'carotid-arteries': ['damar', 'kan'],
+  'pulmonary-vessels': ['alveol', 'damar'],
+  veins: ['damar', 'kan'],
+  'renal-vessels': ['damar', 'nefron'],
+  'abdominal-vessels': ['damar', 'kan'],
+  'eye-vessels': ['damar', 'retina'],
+  'limb-vessels': ['damar', 'kan'],
+  lungs: ['alveol'],
+  airways: ['alveol'],
+  diaphragm: ['sarkomer'],
+  liver: ['lobul'],
+  gallbladder: ['lobul'],
+  pancreas: ['adacik'],
+  stomach: ['mide'],
+  esophagus: ['mide'],
+  'small-intestine': ['villus'],
+  'large-intestine': ['villus'],
+  kidneys: ['nefron'],
+  'urinary-tract': ['nefron'],
+  prostate: ['testis'],
+  brain: ['noron'],
+  hypothalamus: ['hormon', 'noron'],
+  pineal: ['hormon'],
+  'spinal-cord': ['noron'],
+  nerves: ['noron'],
+  eyes: ['retina'],
+  ear: ['koklea'],
+  bones: ['osteon', 'ilik'],
+  knee: ['osteon'],
+  'skeletal-muscle': ['sarkomer'],
+  spleen: ['kan', 'lenf'],
+  thymus: ['lenf'],
+  tonsils: ['lenf'],
+  'lymph-node': ['lenf'],
+  skin: ['deri'],
+  thyroid: ['folikul'],
+  pituitary: ['hormon'],
+  adrenals: ['hormon'],
+  testes: ['testis'],
+  'male-genitals': ['testis'],
+  ovaries: ['ovaryum', 'hormon'],
+  uterus: ['ovaryum'],
+  'fallopian-tubes': ['ovaryum'],
+  vagina: ['ovaryum'],
+  breasts: ['hormon', 'deri'],
+};
+
+export function insidesOf(structure: string): InsideId[] {
+  const list = INSIDES[structure] ?? [];
+  return list.includes('hucre') ? list : [...list, 'hucre'];
+}
+
+/** Bağlantılı yapılar (komşuluk ve işlev birliği); bilgi panelinde gezinmek için. */
+export const CONNECTIONS: Record<string, string[]> = {
+  heart: ['coronary-arteries', 'aorta', 'pulmonary-vessels', 'veins', 'lungs'],
+  'coronary-arteries': ['heart', 'aorta'],
+  aorta: ['heart', 'carotid-arteries', 'abdominal-vessels', 'renal-vessels'],
+  'carotid-arteries': ['aorta', 'brain', 'thyroid'],
+  'pulmonary-vessels': ['heart', 'lungs'],
+  veins: ['heart', 'liver', 'limb-vessels'],
+  'renal-vessels': ['kidneys', 'aorta'],
+  'abdominal-vessels': ['aorta', 'liver', 'small-intestine', 'large-intestine', 'spleen', 'pancreas'],
+  'eye-vessels': ['eyes', 'carotid-arteries'],
+  lungs: ['airways', 'pulmonary-vessels', 'heart', 'diaphragm'],
+  airways: ['lungs', 'thyroid', 'esophagus'],
+  diaphragm: ['lungs', 'liver', 'stomach', 'heart'],
+  liver: ['gallbladder', 'abdominal-vessels', 'stomach', 'pancreas', 'small-intestine'],
+  gallbladder: ['liver', 'small-intestine', 'pancreas'],
+  pancreas: ['small-intestine', 'stomach', 'spleen', 'gallbladder'],
+  stomach: ['esophagus', 'small-intestine', 'liver', 'spleen', 'pancreas'],
+  esophagus: ['stomach', 'airways', 'heart'],
+  'small-intestine': ['stomach', 'large-intestine', 'pancreas', 'gallbladder', 'abdominal-vessels'],
+  'large-intestine': ['small-intestine', 'abdominal-vessels'],
+  kidneys: ['urinary-tract', 'renal-vessels', 'adrenals'],
+  'urinary-tract': ['kidneys', 'prostate', 'uterus'],
+  prostate: ['urinary-tract', 'male-genitals', 'testes'],
+  brain: ['spinal-cord', 'hypothalamus', 'pituitary', 'pineal', 'eyes', 'ear', 'carotid-arteries'],
+  hypothalamus: ['pituitary', 'brain', 'thyroid', 'adrenals'],
+  pineal: ['brain', 'hypothalamus', 'eyes'],
+  'spinal-cord': ['brain', 'nerves', 'bones'],
+  nerves: ['spinal-cord', 'skeletal-muscle', 'skin'],
+  eyes: ['brain', 'eye-vessels'],
+  ear: ['brain', 'bones'],
+  bones: ['skeletal-muscle', 'knee', 'spinal-cord'],
+  knee: ['bones', 'skeletal-muscle'],
+  'skeletal-muscle': ['bones', 'nerves', 'knee'],
+  spleen: ['abdominal-vessels', 'stomach', 'lymph-node'],
+  thymus: ['heart', 'lymph-node'],
+  tonsils: ['lymph-node', 'airways'],
+  'lymph-node': ['spleen', 'thymus', 'tonsils'],
+  skin: ['nerves', 'skeletal-muscle', 'breasts'],
+  thyroid: ['airways', 'pituitary', 'carotid-arteries'],
+  pituitary: ['hypothalamus', 'thyroid', 'adrenals', 'testes', 'ovaries', 'breasts'],
+  adrenals: ['kidneys', 'pituitary'],
+  testes: ['male-genitals', 'prostate', 'pituitary'],
+  'male-genitals': ['testes', 'prostate'],
+  ovaries: ['fallopian-tubes', 'uterus', 'pituitary'],
+  uterus: ['ovaries', 'fallopian-tubes', 'vagina', 'urinary-tract'],
+  'fallopian-tubes': ['ovaries', 'uterus'],
+  vagina: ['uterus'],
+  breasts: ['pituitary', 'skin'],
 };
 
 export function organInfo(structure: string): OrganInfo | undefined {

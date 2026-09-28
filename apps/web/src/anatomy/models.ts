@@ -1,10 +1,13 @@
 import { Box3, type BufferGeometry, Matrix4, type Mesh, type Object3D, Vector3 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { type LoadableAsset, MODEL_ASSETS } from './assets.generated';
+import { type BodyModel, type LoadableAsset, MODEL_ASSETS } from './assets.generated';
+
+export type { BodyModel, LoadableAsset };
 
 /**
- * 3D anatomi modellerini yükler (yalnızca uygulamanın kendi dosyalarından: ./models/*.glb).
+ * 3D anatomi modellerini yükler (yalnızca uygulamanın kendi dosyalarından: ./models/m|f/*.glb).
+ * İki referans vücut vardır: erkek (m) ve kadın (f); ikisi de aynı yapı ve bölüm kimliklerini kullanır.
  * Model dosyaları sağlık verisi içermez; kasada değil, uygulama paketinde durur.
  * Geometriler bir kez çözülür ve oturum boyunca önbellekte kalır.
  */
@@ -12,6 +15,7 @@ import { type LoadableAsset, MODEL_ASSETS } from './assets.generated';
 export interface ModelPart {
   /** Dosya içinde benzersiz anahtar. */
   id: string;
+  body: BodyModel;
   asset: LoadableAsset;
   /** Katalogdaki yapı kimliği (ör. "coronary-arteries"). */
   structure: string;
@@ -36,37 +40,43 @@ function getLoader(): GLTFLoader {
   return loader;
 }
 
-const cache = new Map<LoadableAsset, Promise<ModelPart[]>>();
+const cache = new Map<string, Promise<ModelPart[]>>();
 
-export function modelUrl(asset: LoadableAsset): string {
-  return new URL(`./models/${MODEL_ASSETS[asset].file}`, document.baseURI).href;
+export function modelUrl(body: BodyModel, asset: LoadableAsset): string {
+  return new URL(`./models/${MODEL_ASSETS[body][asset].file}`, document.baseURI).href;
+}
+
+export function assetBytes(body: BodyModel, asset: LoadableAsset): number {
+  return MODEL_ASSETS[body][asset].bytes;
 }
 
 /** Bir model dosyasını yükler; `onBytes` indirilen bayt sayısını bildirir. */
-export function loadAsset(asset: LoadableAsset, onBytes?: (loaded: number) => void): Promise<ModelPart[]> {
-  const hit = cache.get(asset);
+export function loadAsset(body: BodyModel, asset: LoadableAsset, onBytes?: (loaded: number) => void): Promise<ModelPart[]> {
+  const key = `${body}:${asset}`;
+  const size = assetBytes(body, asset);
+  const hit = cache.get(key);
   if (hit) {
-    void hit.then(() => onBytes?.(MODEL_ASSETS[asset].bytes));
+    void hit.then(() => onBytes?.(size));
     return hit;
   }
   const promise = new Promise<ModelPart[]>((resolve, reject) => {
     getLoader().load(
-      modelUrl(asset),
+      modelUrl(body, asset),
       (gltf) => {
         try {
-          resolve(extractParts(asset, gltf.scene, gltf.parser.associations, gltf.parser.json as { nodes?: Array<{ name?: string }> }));
+          resolve(extractParts(body, asset, gltf.scene, gltf.parser.associations, gltf.parser.json as { nodes?: Array<{ name?: string }> }));
         } catch (e) {
           reject(e instanceof Error ? e : new Error('model okunamadı'));
         }
       },
-      (e) => onBytes?.(Math.min(e.loaded, MODEL_ASSETS[asset].bytes)),
+      (e) => onBytes?.(Math.min(e.loaded, size)),
       (e) => reject(e instanceof Error ? e : new Error('model yüklenemedi')),
     );
   });
-  cache.set(asset, promise);
+  cache.set(key, promise);
   promise.then(
-    () => onBytes?.(MODEL_ASSETS[asset].bytes),
-    () => cache.delete(asset),
+    () => onBytes?.(size),
+    () => cache.delete(key),
   );
   return promise;
 }
@@ -74,6 +84,7 @@ export function loadAsset(asset: LoadableAsset, onBytes?: (loaded: number) => vo
 type Associations = Map<Object3D | unknown, { nodes?: number; meshes?: number; primitives?: number } | undefined>;
 
 function extractParts(
+  body: BodyModel,
   asset: LoadableAsset,
   scene: Object3D,
   associations: Associations,
@@ -101,7 +112,7 @@ function extractParts(
     geometry.computeBoundingBox();
     const matrix = mesh.matrixWorld.clone();
     const box = (geometry.boundingBox ?? new Box3()).clone().applyMatrix4(matrix);
-    parts.push({ id: `${asset}:${n++}`, asset, structure, label, geometry, matrix, box });
+    parts.push({ id: `${body}:${asset}:${n++}`, body, asset, structure, label, geometry, matrix, box });
   });
   return parts;
 }

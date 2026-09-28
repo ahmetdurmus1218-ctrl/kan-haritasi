@@ -11,9 +11,9 @@ import { type InsideActions, type InsideState, SPEEDS, STAGE_SECONDS } from './s
 /** Her zaman görünen etiket: bu sahneler kişinin kendi dokusunu göstermez. */
 export function SimulationBadge() {
   return (
-    <div className="pointer-events-none flex items-center gap-2 rounded-full border border-amber-300/40 bg-ink-950/80 px-3 py-1.5 backdrop-blur" role="note">
-      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-300" aria-hidden="true" />
-      <Caps className="text-amber-200">Eğitimsel biyolojik simülasyon</Caps>
+    <div className="pointer-events-none flex items-center gap-2 rounded-full border border-caution/40 bg-ink-950/80 px-3 py-1.5 backdrop-blur" role="note">
+      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-caution" aria-hidden="true" />
+      <Caps className="text-caution-fg">Eğitimsel biyolojik simülasyon</Caps>
     </div>
   );
 }
@@ -42,6 +42,38 @@ export function InsidePanel({ state, actions, personal }: { state: InsideState; 
         <p className="mt-2 text-sm text-fg-muted">{scene.summary}</p>
       </header>
 
+      {/* İki ana soru: organ temelde nasıl çalışır / benim sonucuma göre nasıl çalışır */}
+      <div className="mb-6 grid grid-cols-2 gap-2" role="group" aria-label="Nasıl çalıştığını göster">
+        {(
+          [
+            ['typical', 'Temelde nasıl çalışır', 'tipik değerlerle'],
+            ['mine', 'Sonucuma göre', lines.length ? `${lines.length} sonucunla` : 'sonucun yok · tipik'],
+          ] as const
+        ).map(([v, label, sub]) => {
+          const on = state.process && state.view === v;
+          return (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={on}
+              onClick={() => {
+                actions.setView(v);
+                if (!state.process) actions.startProcess();
+              }}
+              className={`kh-holo-btn rounded-2xl border px-3 py-2.5 text-left transition ${on ? 'text-fg' : 'border-ink-600 text-fg-muted hover:text-fg'}`}
+              style={on ? { borderColor: accent, background: `${accent}2e`, boxShadow: `0 0 18px -6px ${accent}` } : undefined}
+            >
+              <span className="block text-sm">
+                {v === 'typical' ? '◎ ' : '◉ '}
+                {label}
+                {on && <span className="sr-only"> (açık)</span>}
+              </span>
+              <span className="mt-0.5 block text-[11px] text-fg-faint">{sub}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {obj && (
         <section className="mb-6 border-l-2 pl-4" style={{ borderColor: accent }} aria-live="polite">
           <div className="flex items-start justify-between gap-3">
@@ -60,26 +92,6 @@ export function InsidePanel({ state, actions, personal }: { state: InsideState; 
           <Caps className="text-fg-faint">
             <span id="senin-durumun">Senin durumun</span>
           </Caps>
-          {knobs.length > 0 && (
-            <div className="inline-flex rounded-full border border-ink-600 p-0.5 text-xs" role="group" aria-label="Sahnedeki değerler">
-                {(
-                  [
-                    ['mine', 'Senin değerlerin'],
-                    ['typical', 'Tipik değerler'],
-                  ] as const
-                ).map(([v, label]) => (
-                  <button
-                    key={v}
-                    type="button"
-                    aria-pressed={state.view === v}
-                    onClick={() => actions.setView(v)}
-                    className={`rounded-full px-3 py-1.5 transition ${state.view === v ? 'bg-white/10 text-fg' : 'text-fg-muted hover:text-fg'}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-            </div>
-          )}
         </div>
         {lines.length > 0 ? (
           <>
@@ -88,7 +100,7 @@ export function InsidePanel({ state, actions, personal }: { state: InsideState; 
                 ? 'Bu sahneyle ilişkili sonuçların aşağıda; sahne bu değerlere göre değişmiyor.'
                 : mine
                   ? 'Sahne şu an senin son sonuçlarına göre çiziliyor:'
-                  : 'Sahne şu an tipik (referans aralığının ortası) değerlerle çiziliyor. Farkı görmek için “Senin değerlerin”e geç.'}
+                  : 'Sahne şu an tipik (referans aralığının ortası) değerlerle çiziliyor. Farkı görmek için “Sonucuma göre”ye geç.'}
             </p>
             <ul className="mt-2 divide-y divide-ink-700/70">
               {lines.map((l) => (
@@ -261,7 +273,7 @@ export function InsidePanel({ state, actions, personal }: { state: InsideState; 
         <p className="mt-2 text-[11px] text-fg-faint">Sahnede bir nesneye dokunarak da seçebilirsin. Ölçekler anlaşılır olsun diye değiştirilmiştir.</p>
       </section>
 
-      <p className="rounded-xl border border-amber-300/25 bg-amber-300/[0.06] p-3 text-xs leading-relaxed text-amber-100/90">
+      <p className="rounded-xl border border-caution/25 bg-caution/[0.06] p-3 text-xs leading-relaxed text-caution-fg">
         {content.caution ?? 'Bu sahne EĞİTİMSEL ve temsilidir; senin vücudunun görüntüsü değildir.'} Sahnedeki yoğunluklar senin değerlerinden türetilen
         temsili oranlardır; gerçek hücre sayısı ya da doku görüntüsü değildir.
       </p>

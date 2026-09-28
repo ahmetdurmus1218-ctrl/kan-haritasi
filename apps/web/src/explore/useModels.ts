@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Box3 } from 'three';
-import { LOAD_ORDER, OPTIONAL_ASSETS, type ModelPart, loadAsset } from '../anatomy/models';
-import { MODEL_ASSETS } from '../anatomy/assets.generated';
-import type { LoadableAsset } from '../anatomy/assets.generated';
-import { SCHEMATIC_PARTS } from '../anatomy/schematic';
+import { type BodyModel, type LoadableAsset, LOAD_ORDER, OPTIONAL_ASSETS, type ModelPart, assetBytes, loadAsset } from '../anatomy/models';
+import { type SchematicPart, schematicParts } from '../anatomy/schematic';
 
 export interface ModelsState {
+  body: BodyModel;
   parts: ModelPart[];
+  /** Kaynaklarda modeli olmayan yapıların şematik çizimleri (tiroid, kulak). */
+  schematic: SchematicPart[];
   loaded: Set<LoadableAsset>;
   failed: LoadableAsset[];
   /** 0..1 */
@@ -15,16 +16,16 @@ export interface ModelsState {
 }
 
 /**
- * Anatomi modellerini sırayla ister (paralel indirilir, küçükten büyüğe sıralı), her dosya
- * geldikçe sahneye eklenir. Önbellek oturum boyunca kalır; ekran yeniden açılınca anında gelir.
+ * Seçili vücudun (erkek/kadın) anatomi modellerini ister (paralel indirilir), her dosya geldikçe
+ * sahneye eklenir. Önbellek oturum boyunca kalır; vücut değiştirip geri dönünce anında gelir.
  */
-export function useModels(withOptional = false): ModelsState {
-  const [state, setState] = useState<ModelsState>({ parts: [], loaded: new Set(), failed: [], progress: 0, done: false });
+export function useModels(body: BodyModel, withOptional = false): ModelsState {
+  const [state, setState] = useState<Omit<ModelsState, 'schematic'>>({ body, parts: [], loaded: new Set(), failed: [], progress: 0, done: false });
 
   useEffect(() => {
     let cancelled = false;
     const order: LoadableAsset[] = withOptional ? [...LOAD_ORDER, ...OPTIONAL_ASSETS] : LOAD_ORDER;
-    const total = order.reduce((n, a) => n + MODEL_ASSETS[a].bytes, 0);
+    const total = order.reduce((n, a) => n + assetBytes(body, a), 0);
     const bytes = new Map<LoadableAsset, number>();
     const results = new Map<LoadableAsset, ModelPart[]>();
     const failed: LoadableAsset[] = [];
@@ -36,6 +37,7 @@ export function useModels(withOptional = false): ModelsState {
       const parts = order.flatMap((a) => results.get(a) ?? []);
       const settled = results.size + failed.length;
       setState({
+        body,
         parts,
         loaded: new Set(results.keys()),
         failed: [...failed],
@@ -46,8 +48,10 @@ export function useModels(withOptional = false): ModelsState {
     const schedule = () => {
       if (!raf) raf = requestAnimationFrame(publish);
     };
+    // Vücut değişince eski parçalar hemen kalkar (yanlış vücut bir an bile görünmesin).
+    setState((s) => (s.body === body ? s : { body, parts: [], loaded: new Set(), failed: [], progress: 0, done: false }));
     for (const asset of order) {
-      loadAsset(asset, (n) => {
+      loadAsset(body, asset, (n) => {
         bytes.set(asset, n);
         schedule();
       }).then(
@@ -65,15 +69,17 @@ export function useModels(withOptional = false): ModelsState {
       cancelled = true;
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [withOptional]);
+  }, [body, withOptional]);
 
-  return state;
+  const current = state.body === body ? state : { body, parts: [], loaded: new Set<LoadableAsset>(), failed: [], progress: 0, done: false };
+  const schematic = useMemo(() => schematicParts(current.parts), [current.parts]);
+  return { ...current, schematic };
 }
 
 /** Yapı başına sınır kutuları (kamera çerçeveleme için). */
-export function structureBoxes(parts: ModelPart[]): Map<string, Box3> {
+export function structureBoxes(parts: Array<ModelPart | SchematicPart>): Map<string, Box3> {
   const map = new Map<string, Box3>();
-  for (const p of [...parts, ...SCHEMATIC_PARTS]) {
+  for (const p of parts) {
     const b = map.get(p.structure) ?? new Box3();
     b.union(p.box);
     map.set(p.structure, b);
