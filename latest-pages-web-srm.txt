@@ -1,30 +1,18 @@
 workflow: Pages (web sürümü)
-run: 36430929888
-sha: 1bc60af2de34867e57cbff80d6cae99cd36cff8b
-conclusion: failure
+run: 36434422747
+sha: b707b3844fe5ad3d8dc258309d9becb2c4927de1
+conclusion: success
 
-deploy: failure
+deploy: success
   - Set up job: success
   - Run actions/checkout@v4: success
   - Run pnpm/action-setup@v4: success
   - Run actions/setup-node@v4: success
   - Run pnpm install --frozen-lockfile: success
   - Run pnpm test && pnpm build && pnpm check:security: success
-  - Run actions/configure-pages@v5: failure
-  - Run actions/upload-pages-artifact@v3: skipped
-  - Run actions/deploy-pages@v4: skipped
-  - Post Run actions/setup-node@v4: skipped
+  - gh-pages dalına yaz: success
+  - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
-deploy	Run actions/configure-pages@v5	﻿2026-09-28T13:46:31.2244065Z ##[group]Run actions/configure-pages@v5
-deploy	Run actions/configure-pages@v5	2026-09-28T13:46:31.2244420Z with:
-deploy	Run actions/configure-pages@v5	2026-09-28T13:46:31.2244702Z   enablement: true
-deploy	Run actions/configure-pages@v5	2026-09-28T13:46:31.2246926Z   token: ***
-deploy	Run actions/configure-pages@v5	2026-09-28T13:46:31.2247176Z env:
-deploy	Run actions/configure-pages@v5	2026-09-28T13:46:31.2247482Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
-deploy	Run actions/configure-pages@v5	2026-09-28T13:46:31.2247847Z ##[endgroup]
-deploy	Run actions/configure-pages@v5	2026-09-28T13:46:31.5872936Z ##[warning]Get Pages site failed. Error: Not Found - https://docs.github.com/rest/pages/pages#get-a-apiname-pages-site
-deploy	Run actions/configure-pages@v5	2026-09-28T13:46:31.6947973Z ##[error]Create Pages site failed. Error: Resource not accessible by integration - https://docs.github.com/rest/pages/pages#create-a-apiname-pages-site
-deploy	Run actions/configure-pages@v5	2026-09-28T13:46:31.6956407Z ##[error]HttpError: Resource not accessible by integration - https://docs.github.com/rest/pages/pages#create-a-apiname-pages-site
