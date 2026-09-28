@@ -76,7 +76,7 @@ with sync_playwright() as p:
     page.locator("canvas[role=img]").wait_for(timeout=20000)
     page.get_by_text("Kesit 1 / 8").wait_for()
     check(canvas_brightness(page) > 10, "MR kesiti çizildi (boş değil)")
-    page.locator("[aria-label='DICOM görüntüleyici']").focus()
+    page.locator("[aria-label='Görüntüleyici']").focus()
     page.keyboard.press("ArrowDown")
     page.keyboard.press("ArrowDown")
     page.get_by_text("Kesit 3 / 8").wait_for()
@@ -125,12 +125,61 @@ with sync_playwright() as p:
         check(True, "rapordan çekim tarihi önerisi uygulandı")
     else:
         check(False, "rapordan çekim tarihi önerisi")
+    page.get_by_text("Aynı çekime ait belgeler").wait_for(timeout=10000)
+    check(page.get_by_text("AX T2", exact=False).count() >= 1, "rapor ile MR serisi aynı çekim olarak bağlandı")
     page.screenshot(path=SHOTS / "64-radyoloji-raporu.png", full_page=True)
+
+    # --- Tahlil olarak yüklenmiş röntgen filmi fotoğrafı: OCR'dan önce sorulur, görüntüleyicide incelenir
+    page.goto(URL + "#/belgeler")
+    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for()
+    # Telefon galerisi adı: dosya adından tür anlaşılmasın.
+    film = {"name": "IMG_2041.jpg", "mimeType": "image/jpeg", "buffer": (IMG / "rontgen-film-foto.jpg").read_bytes()}
+    page.set_input_files("input[type=file][multiple]", [film])
+    page.get_by_role("button", name="Aç ve oku").click()
+    page.get_by_text("Bu fotoğraf bir tahlil raporundan çok bir görüntüye").wait_for(timeout=20000)
+    check(page.get_by_text("Sonuçları onayla").count() == 0, "film fotoğrafında OCR kendiliğinden başlamadı")
+    page.get_by_role("button", name="Röntgen", exact=True).click()
+    page.locator("canvas[role=img]").wait_for(timeout=20000)
+    check(page.get_by_role("heading", name="Röntgen").count() == 1, "film fotoğrafı röntgen olarak işaretlendi")
+    before = canvas_brightness(page)
+    page.get_by_label("Pencere ön ayarı").select_option(label="Otomatik kontrast")
+    page.wait_for_timeout(300)
+    check(abs(canvas_brightness(page) - before) > 1, "fotoğrafta otomatik kontrast çalışıyor")
+    page.get_by_role("button", name="Negatif").click()
+    page.get_by_role("button", name="Sağa döndür").click()
+    page.wait_for_timeout(400)
+    check(page.get_by_text("Bu fotoğraf bir görüntüye (film) benziyor").count() == 1, "film fotoğrafında rapor okuma kendiliğinden başlamadı")
+    page.screenshot(path=SHOTS / "67-rontgen-film-foto.png")
+
+    # --- Kâğıt BT raporunun fotoğrafı: kendiliğinden okunur, BT kesitiyle bağlanır
+    page.goto(URL + "#/belgeler")
+    page.get_by_role("radio", name="Tomografi (BT)").click()
+    page.set_input_files("input[type=file][multiple]", [str(IMG / "toraks-bt-raporu-foto.png")])
+    page.get_by_role("button", name="Aç ve oku").click()
+    page.get_by_text("Raporda geçen terimler").wait_for(timeout=240000)
+    check(page.get_by_text("milimetrik nodül", exact=False).count() >= 1, "rapor fotoğrafı OCR ile okundu")
+    check(page.get_by_text("Nodül", exact=True).count() >= 1, "terim: nodül")
+    if page.get_by_role("button", name="Uygula").count():
+        page.get_by_role("button", name="Uygula").click()
+    page.get_by_text("Aynı çekime ait belgeler").wait_for(timeout=10000)
+    check(page.get_by_text("TORAKS BT (SENTETIK)", exact=False).count() >= 1, "rapor fotoğrafı BT kesitiyle bağlandı")
+    page.screenshot(path=SHOTS / "68-bt-rapor-foto.png", full_page=True)
+
+    # --- Sonuçlar ve Zaman: görüntüleme raporları tahlillerle aynı yerde
+    page.goto(URL + "#/sonuclar")
+    page.get_by_text("Görüntüleme raporların (5)").wait_for(timeout=10000)
+    check(page.get_by_text("Frontal beyaz cevherde nonspesifik", exact=False).count() >= 1, "Sonuçlar: MR raporunun sonucu")
+    check(page.get_by_text("milimetrik nodül", exact=False).count() >= 1, "Sonuçlar: BT raporunun sonucu")
+    page.screenshot(path=SHOTS / "69-sonuclar-goruntuleme.png", full_page=True)
+    page.goto(URL + "#/zaman")
+    page.get_by_text("Rapor geçmişi").wait_for()
+    check(page.get_by_text("15 Mar 2026 · MR · Beyin / kafa").count() >= 1, "Zaman: MR çalışması rapor geçmişinde")
+    page.screenshot(path=SHOTS / "70-zaman-goruntuleme.png", full_page=True)
 
     # --- Liste filtresi
     page.goto(URL + "#/belgeler")
-    page.get_by_role("radio", name="Görüntüleme · 3").click()
-    check(page.locator("section[aria-label=Belgeler] li").count() == 3, "görüntüleme filtresi: 3 belge (seri tek satır)")
+    page.get_by_role("radio", name="Görüntüleme · 5").click()
+    check(page.locator("section[aria-label=Belgeler] li").count() == 5, "görüntüleme filtresi: 5 belge (seri tek satır)")
 
     # --- Telefon görünümü: sekmeler "Bilgiler" / "Belge"
     page.set_viewport_size({"width": 390, "height": 844})

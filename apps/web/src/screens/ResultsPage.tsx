@@ -9,6 +9,8 @@ import { markVerified, needsVerification, verificationIssues } from '../lib/repo
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { CriticalBanner, FindingBlock, PatternList, SeverityBar, SeverityChip, SystemGrid } from '../components/interpretation';
 import { findingMap, useInterpretation, useSex } from '../lib/interpretation';
+import { useImagingStudies } from '../lib/imagingStudies';
+import { ImagingStudyList } from '../components/imaging';
 import { AlertIcon, BodyIcon, ChartIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileTextIcon, SpinnerIcon, UploadIcon } from '../components/icons';
 
 const ORDER: Record<ResultStatus, number> = { high: 0, low: 1, unknown: 2, normal: 3 };
@@ -34,6 +36,7 @@ export function ResultsPage() {
   const sex = useSex();
   const interp = useInterpretation(series, sex);
   const findings = useMemo(() => findingMap(interp), [interp]);
+  const studies = useImagingStudies();
 
   if (error) return <div className="p-6"><Banner tone="error">Sonuçlar yüklenemedi.</Banner></div>;
   if (!reports) {
@@ -62,9 +65,10 @@ export function ResultsPage() {
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
       <div className="mb-6">
         <p className="label-caps mb-1.5">Sonuçlarım</p>
-        <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">Tahlil sonuçların</h1>
+        <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">{studies?.length ? 'Tahlil ve görüntüleme sonuçların' : 'Tahlil sonuçların'}</h1>
         <p className="mt-1.5 text-sm text-fg-muted">
-          {series.length ? `${series.length} test · ${reports.length} rapor${lastDate ? ` · son rapor ${formatDate(lastDate)}` : ''}` : 'Henüz onaylanmış sonuç yok.'}
+          {series.length ? `${series.length} test · ${reports.length} rapor${lastDate ? ` · son rapor ${formatDate(lastDate)}` : ''}` : 'Henüz onaylanmış tahlil sonucu yok.'}
+          {studies?.length ? ` · ${studies.length} görüntüleme` : ''}
         </p>
         {series.length > 0 && (
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -91,10 +95,25 @@ export function ResultsPage() {
         )}
       </div>
 
+      {studies && studies.length > 0 && (
+        <section className="mb-8" aria-labelledby="goruntuleme-sonuclari">
+          <div className="mb-2 flex items-end justify-between gap-3">
+            <h2 id="goruntuleme-sonuclari" className="label-caps">
+              Görüntüleme raporların ({studies.length})
+            </h2>
+            <span className="text-[11px] text-fg-faint">MR · BT · röntgen · ultrason</span>
+          </div>
+          <ImagingStudyList studies={studies} />
+          <p className="mt-2 text-[11px] leading-relaxed text-fg-faint">
+            Raporun kendi "Sonuç" bölümü aynen gösterilir; Kan Haritası görüntüleri ve raporları yorumlamaz, derecelendirmez. Terimlerin genel anlamı belgenin içinde açıklanır.
+          </p>
+        </section>
+      )}
+
       {series.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
-          <p className="font-medium">Sonuç yok</p>
-          <p className="mt-1 text-sm text-fg-muted">Belgelerim ekranından bir rapor yükle; okunan değerleri onayladığında burada görünür.</p>
+          <p className="font-medium">{studies?.length ? 'Tahlil sonucu yok' : 'Sonuç yok'}</p>
+          <p className="mt-1 text-sm text-fg-muted">Belgelerim ekranından bir tahlil raporu yükle; okunan değerleri onayladığında burada görünür.</p>
           <button type="button" className="btn-primary mt-5" onClick={() => go({ name: 'documents' })}>
             <UploadIcon size={16} /> Rapor yükle
           </button>

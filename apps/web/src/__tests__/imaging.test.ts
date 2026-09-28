@@ -34,5 +34,8 @@ describe('görüntüleme yardımcıları', () => {
     expect(keys).toEqual(expect.arrayContaining(['protruzyon', 'foramen', 'stenoz', 'hiperintens']));
     // "bağırsak" bağ (ligament) değildir; "bulgu" bül değildir; "taşınır" taş değildir.
     expect(findTerms('Bağırsak ansları olağan. Bulgular taşınır.').map((t) => t.key)).toEqual(['dogal']);
+    // "kontrastsız çekim" kontrast tutulumu değildir.
+    expect(findTerms('Sekanslar kontrastsız alınmıştır.').map((t) => t.key)).toEqual([]);
+    expect(findTerms('Lezyonda belirgin kontrast tutulumu var.').map((t) => t.key)).toContain('kontrast');
   });
 });

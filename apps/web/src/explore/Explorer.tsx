@@ -11,6 +11,9 @@ import { useResolvedTheme } from '../state/theme';
 import { buildSeries, useReports } from '../lib/useReports';
 import { loadSex } from '../lib/reports';
 import { severityWeights, useInterpretation } from '../lib/interpretation';
+import { studiesForStructure, useImagingStudies } from '../lib/imagingStudies';
+import { CATEGORY_SHORT } from '../lib/imaging';
+import { formatDate } from '../lib/format';
 import { highlightsFrom } from '../anatomy/highlight';
 import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene';
 import { ORGANS, insidesOf } from '../anatomy/organs';
@@ -161,6 +164,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const series = useMemo(() => (reports ? buildSeries(reports) : []), [reports]);
   const seriesMap = useMemo(() => new Map(series.map((s) => [s.test.key, s])), [series]);
   const interp = useInterpretation(series, sex);
+  const studies = useImagingStudies();
   const weights = useMemo(() => severityWeights(interp), [interp]);
   const highlights = useMemo(() => highlightsFrom(series, focusTest, weights), [series, focusTest, weights]);
   const allParts = useMemo(() => [...models.parts, ...models.schematic], [models.parts, models.schematic]);
@@ -572,6 +576,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     const abnormal = findings.filter((f) => f.status === 'high' || f.status === 'low');
     const insides = insidesOf(cloud.structure);
     const scene = insides[0];
+    const imaging = studies ? studiesForStructure(cloud.structure, studies) : [];
     const openPanel = (tab: OrganTab) => {
       setCloud(null);
       setPanelTab((p) => ({ tab, n: (p?.n ?? 0) + 1 }));
@@ -609,6 +614,13 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       note: h ? undefined : s.blurb,
       actions: [
         { key: 'mine', label: 'Sonucum', sub: abnormal.length ? `${abnormal.length} aralık dışı` : findings.length ? `${findings.length} sonuç` : 'sonuç yok', primary: !!h, disabled: !findings.length, onClick: () => openPanel('mine') },
+        // Bu bölgenin görüntülemesi (MR, BT, röntgen…) varsa en yenisine tek dokunuşla gidilir.
+        ...imaging.slice(0, 1).map((st) => ({
+          key: 'goruntuleme',
+          label: imaging.length > 1 ? `Görüntülemem (${imaging.length})` : 'Görüntülemem',
+          sub: `${CATEGORY_SHORT[st.category]} · ${formatDate(st.date)}`,
+          onClick: () => go({ name: 'document', id: st.head.id }),
+        })),
         ...(scene
           ? [
               { key: 'temel', label: 'Temelde nasıl çalışır', sub: INSIDE[scene].process, primary: !h, onClick: () => enter(scene, cloud.structure, 'temel') },
@@ -620,7 +632,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       more: { label: 'Tüm ayrıntılar', onClick: () => openPanel('anatomy') },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cloud, vessels, highlights, interp]);
+  }, [cloud, vessels, highlights, interp, studies]);
 
   if (!webgl) {
     return (

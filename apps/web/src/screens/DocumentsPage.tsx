@@ -5,6 +5,7 @@ import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { type Route } from '../state/router';
 import { processUpload, type UploadPhase } from '../lib/upload';
 import { CATEGORY_LABEL, CATEGORY_SHORT, CATEGORY_UPLOAD_TITLE, isImaging, regionByKey } from '../lib/imaging';
+import { type DocGroup, groupDocuments } from '../lib/documents';
 import { formatBytes, formatDate, KIND_LABEL } from '../lib/format';
 import { userMessage } from '../lib/messages';
 import { deleteDocument } from '../lib/reports';
@@ -61,43 +62,6 @@ interface UploadJob {
 /** Bu sayıdan fazla dosya tek satırda, toplu ilerlemeyle gösterilir (ör. bir MR serisinin yüzlerce kesiti). */
 const BATCH_THRESHOLD = 6;
 const MAX_FOLDER_FILES = 3000;
-
-/** Aynı DICOM serisine ait dosyalar, kesit sırasıyla. */
-export function seriesOf(files: FileInfo[], seriesUid: string): FileInfo[] {
-  return files
-    .filter((f) => f.seriesUid === seriesUid)
-    .sort((a, b) => (a.sliceIndex ?? Number.POSITIVE_INFINITY) - (b.sliceIndex ?? Number.POSITIVE_INFINITY) || a.createdAt.localeCompare(b.createdAt));
-}
-
-export interface DocGroup {
-  key: string;
-  head: FileInfo;
-  files: FileInfo[];
-}
-
-/** Listede her DICOM serisi tek satırdır; diğer belgeler tek tek. */
-export function groupDocuments(files: FileInfo[]): DocGroup[] {
-  const groups: DocGroup[] = [];
-  const bySeries = new Map<string, DocGroup>();
-  for (const f of files) {
-    if (!f.seriesUid) {
-      groups.push({ key: f.id, head: f, files: [f] });
-      continue;
-    }
-    const g = bySeries.get(f.seriesUid);
-    if (g) g.files.push(f);
-    else {
-      const ng = { key: `seri-${f.seriesUid}`, head: f, files: [f] };
-      bySeries.set(f.seriesUid, ng);
-      groups.push(ng);
-    }
-  }
-  for (const g of bySeries.values()) {
-    g.files = seriesOf(g.files, g.head.seriesUid!);
-    g.head = g.files[0]!;
-  }
-  return groups;
-}
 
 /** Klasör seçiminde yalnızca DICOM imzalı dosyalar alınır (CD'deki görüntüleyici programları, DICOMDIR vb. atlanır). */
 async function pickDicomFiles(list: File[]): Promise<{ files: File[]; skipped: number }> {

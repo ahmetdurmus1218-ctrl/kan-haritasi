@@ -607,6 +607,99 @@ export function renderGray(data: Float32Array, win: Window, invert: boolean, out
   }
 }
 
+/**
+ * Renkli görüntüde (ultrason, fotoğrafı çekilmiş film) pencere her kanala aynı biçimde uygulanır:
+ * { center: 127.5, width: 255 } görüntüyü değiştirmez.
+ */
+export function renderRgba(data: Uint8ClampedArray, win: Window, invert: boolean, out: Uint8ClampedArray): void {
+  const width = Math.max(1, win.width);
+  const lower = win.center - width / 2;
+  const k = 255 / width;
+  const identity = Math.abs(lower) < 1e-6 && Math.abs(width - 255) < 1e-6;
+  for (let i = 0; i < data.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      let v = identity ? data[i + c]! : (data[i + c]! - lower) * k;
+      v = v < 0 ? 0 : v > 255 ? 255 : v;
+      out[i + c] = invert ? 255 - v : v;
+    }
+    out[i + 3] = 255;
+  }
+}
+
+/**
+ * Fotoğraf/ekran görüntüsü neredeyse gri mi (röntgen filmi, MR baskısı)? Örneklenen piksellerin
+ * %98'inde kanallar arası fark küçükse gri kabul edilir; o zaman gri tonlu yol (pencere/seviye) kullanılır.
+ */
+export function isNearlyGray(rgba: Uint8ClampedArray, tolerance = 14): boolean {
+  const n = rgba.length / 4;
+  const step = Math.max(1, Math.floor(n / 40000));
+  let colored = 0;
+  let seen = 0;
+  for (let p = 0; p < n; p += step) {
+    const i = p * 4;
+    const r = rgba[i]!;
+    const g = rgba[i + 1]!;
+    const b = rgba[i + 2]!;
+    if (Math.max(Math.abs(r - g), Math.abs(g - b), Math.abs(r - b)) > tolerance) colored++;
+    seen++;
+  }
+  return seen > 0 && colored / seen < 0.02;
+}
+
+/** RGBA → gri (parlaklık, 0–255) çerçeve. */
+export function rgbaToGray(rgba: Uint8ClampedArray, width: number, height: number): Extract<DecodedFrame, { kind: 'gray' }> {
+  const data = new Float32Array(width * height);
+  let min = 255;
+  let max = 0;
+  for (let p = 0; p < data.length; p++) {
+    const i = p * 4;
+    const v = 0.299 * rgba[i]! + 0.587 * rgba[i + 1]! + 0.114 * rgba[i + 2]!;
+    data[p] = v;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  return { kind: 'gray', width, height, data, min, max };
+}
+
+/**
+ * Görüntü bir kâğıt/ekran belgesi mi (rapor fotoğrafı), yoksa film/görüntü mü?
+ * Belgeler çoğunlukla açık zeminlidir; röntgen, MR ve BT görüntüleri ağırlıkla koyudur.
+ * Kaba bir ayrımdır; yalnızca "rapor metnini kendiliğinden oku" kararı için kullanılır.
+ */
+export function looksLikeDocumentImage(rgba: Uint8ClampedArray): boolean {
+  const n = rgba.length / 4;
+  const step = Math.max(1, Math.floor(n / 40000));
+  let bright = 0;
+  let dark = 0;
+  let seen = 0;
+  for (let p = 0; p < n; p += step) {
+    const i = p * 4;
+    const v = 0.299 * rgba[i]! + 0.587 * rgba[i + 1]! + 0.114 * rgba[i + 2]!;
+    if (v > 170) bright++;
+    else if (v < 60) dark++;
+    seen++;
+  }
+  return seen > 0 && bright / seen > 0.55 && dark / seen < 0.25;
+}
+
+/**
+ * Tahlil olarak yüklenen bir fotoğraf aslında film/görüntü mü (röntgen, MR baskısı)? Temkinli:
+ * yalnızca neredeyse gri ve büyük ölçüde koyu görüntüler için true döner; o zaman OCR'dan önce sorulur.
+ */
+export function looksLikeFilmImage(rgba: Uint8ClampedArray): boolean {
+  if (!isNearlyGray(rgba, 20)) return false;
+  const n = rgba.length / 4;
+  const step = Math.max(1, Math.floor(n / 40000));
+  let dark = 0;
+  let seen = 0;
+  for (let p = 0; p < n; p += step) {
+    const i = p * 4;
+    if (0.299 * rgba[i]! + 0.587 * rgba[i + 1]! + 0.114 * rgba[i + 2]! < 60) dark++;
+    seen++;
+  }
+  return seen > 0 && dark / seen > 0.4;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Belge türü ve bölge tahmini
 

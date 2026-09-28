@@ -12,6 +12,9 @@ import { formatDate } from '../lib/format';
 import { Banner } from '../components/ui';
 import { BodyIcon, CheckIcon, PencilIcon, RefreshIcon, ScanIcon, SpinnerIcon } from '../components/icons';
 import { ExtractingView, ocrMessage } from './ReportPanel';
+import { relatedStudies, useImagingStudies } from '../lib/imagingStudies';
+import { classifyPhoto } from '../lib/photo';
+import { ImagingStudyList } from '../components/imaging';
 
 const METHOD_TEXT: Record<ImagingNote['method'], string> = {
   text: 'PDF metninden okundu',
@@ -35,6 +38,22 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [suggested, setSuggested] = useState<{ region?: string; date?: string } | null>(null);
+  /** Fotoğraf bir rapor kâğıdı/ekranı mı (kendiliğinden okunur) yoksa film mi? */
+  const [photoKind, setPhotoKind] = useState<'document' | 'film' | 'unknown' | null>(null);
+  const studies = useImagingStudies();
+  const related = useMemo(() => {
+    const self = studies?.find((st) => st.files.some((f) => f.id === info.id));
+    return self && studies ? relatedStudies(self, studies) : [];
+  }, [studies, info.id]);
+
+  useEffect(() => {
+    if (info.kind !== 'jpeg' && info.kind !== 'png') return;
+    let cancelled = false;
+    void classifyPhoto(bytes, info.mimeType).then((k) => !cancelled && setPhotoKind(k));
+    return () => {
+      cancelled = true;
+    };
+  }, [info.kind, info.mimeType, bytes]);
 
   const dicom = useMemo<DicomInfo | null>(() => {
     if (info.kind !== 'dicom') return null;
@@ -88,6 +107,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
       }
       const n = await saveImagingNote(vault, info.id, got.text, got.method);
       setNote(n);
+      bump();
       const head = got.text.slice(0, 400);
       const region = info.region ? undefined : guessRegion(head);
       const date = info.studyDate ? undefined : got.date;
@@ -97,17 +117,20 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
       setError(e instanceof OcrError ? ocrMessage(e) : userMessage(e));
       setMode('idle');
     }
-  }, [vault, info, bytes]);
+  }, [vault, info, bytes, bump]);
 
-  // PDF metin katmanı hızlıdır: ilk açılışta kendiliğinden okunur. Fotoğrafta OCR uzun sürdüğü için düğmeyle.
+  // Rapor kendiliğinden okunur: PDF her zaman; fotoğraf ise kâğıt/ekran görüntüsüne benziyorsa.
+  // Film/MR baskısı fotoğrafında OCR çalışmaz (metin yoktur); düğmeyle istenebilir.
+  const autoRead = info.kind === 'pdf' || photoKind === 'document';
   useEffect(() => {
-    if (note === null && info.kind === 'pdf' && mode === 'idle' && !error) void read();
-  }, [note, info.kind, mode, error, read]);
+    if (note === null && autoRead && mode === 'idle' && !error) void read();
+  }, [note, autoRead, mode, error, read]);
 
   const saveManual = async () => {
     try {
       setNote(await saveImagingNote(vault, info.id, draft, 'manual'));
       setMode('idle');
+      bump();
     } catch (e) {
       setError(userMessage(e));
     }
@@ -318,7 +341,9 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             <div className="space-y-3 rounded-2xl border border-dashed border-ink-600 p-4 text-sm">
               <p className="text-fg-muted">
                 {canRead
-                  ? 'Bu belge radyoloji raporunun kendisiyse metnini cihazında okuyabilirsin. Okunan metin kasada şifreli saklanır.'
+                  ? photoKind === 'film'
+                    ? 'Bu fotoğraf bir görüntüye (film) benziyor; üzerinde okunacak rapor metni olmayabilir. Raporun kendisini ayrıca yükleyebilir ya da metnini buraya yazabilirsin.'
+                    : 'Bu belge radyoloji raporunun kendisiyse metnini cihazında okuyabilirsin. Okunan metin kasada şifreli saklanır.'
                   : 'Görüntü dosyasında rapor metni bulunmaz. Radyoloji raporunu ayrıca PDF ya da fotoğraf olarak yükleyebilir veya metnini buraya yazabilirsin.'}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -341,6 +366,14 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             </div>
           )}
         </section>
+
+        {related.length > 0 && (
+          <section className="space-y-2" aria-label="Aynı çekime ait belgeler">
+            <p className="label-caps">Aynı çekime ait belgeler</p>
+            <p className="text-xs leading-relaxed text-fg-faint">Aynı tür ve tarihli (ya da aynı bölge, birkaç gün arayla) görüntü ve raporlar. Tarih veya bölge yanlışsa yukarıdan düzelt.</p>
+            <ImagingStudyList studies={related} compact />
+          </section>
+        )}
 
         {/* Sözlük */}
         {terms.length > 0 && mode === 'idle' && (

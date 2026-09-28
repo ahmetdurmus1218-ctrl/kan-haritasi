@@ -9,13 +9,14 @@ import { ImageViewer } from '../viewers/ImageViewer';
 import { Banner } from '../components/ui';
 import { ChevronLeftIcon, FileTextIcon, ListIcon, SpinnerIcon } from '../components/icons';
 import { CATEGORY_LABEL, isImaging } from '../lib/imaging';
-import { downloadOriginal, seriesOf } from './DocumentsPage';
+import { downloadOriginal } from './DocumentsPage';
+import { seriesOf } from '../lib/documents';
 import { type Highlight, ReportPanel } from './ReportPanel';
 import { ImagingPanel } from './ImagingPanel';
 
 // PDF.js büyük olduğu için yalnızca bir PDF açıldığında yüklenir.
 const PdfViewer = lazy(() => import('../viewers/PdfViewer').then((m) => ({ default: m.PdfViewer })));
-const DicomViewer = lazy(() => import('../viewers/DicomViewer').then((m) => ({ default: m.DicomViewer })));
+const ImagingViewer = lazy(() => import('../viewers/ImagingViewer').then((m) => ({ default: m.ImagingViewer })));
 
 /**
  * Belge detayı: solda görüntüleyici, sağda çıkarılan sonuçlar (mobilde iki sekme).
@@ -149,7 +150,7 @@ export function DocumentDetail({ id, navigate }: { id: string; navigate: (r: Rou
 
           <div className="flex min-h-0 flex-1">
             <div className={`min-h-0 flex-1 ${tab === 'doc' ? 'block' : 'hidden'} lg:block`}>
-              {state.info.kind === 'dicom' ? (
+              {state.info.kind === 'dicom' || (imaging && state.info.kind !== 'pdf') ? (
                 <Suspense
                   fallback={
                     <div className="flex h-full items-center justify-center gap-2 text-sm text-fg-muted">
@@ -157,7 +158,7 @@ export function DocumentDetail({ id, navigate }: { id: string; navigate: (r: Rou
                     </div>
                   }
                 >
-                  <DicomViewer key={series.join(',')} ids={series} initialId={id} initialBytes={state.bytes} onDownload={download} />
+                  <ImagingViewer key={series.join(',')} ids={series} initial={state} onDownload={download} />
                 </Suspense>
               ) : state.info.kind === 'pdf' ? (
                 <Suspense
@@ -180,7 +181,7 @@ export function DocumentDetail({ id, navigate }: { id: string; navigate: (r: Rou
               {imaging ? (
                 <ImagingPanel info={state.info} bytes={state.bytes} seriesIds={series} onInfoChange={(info) => setState((s) => (s ? { ...s, info } : s))} />
               ) : (
-                <ReportPanel info={state.info} bytes={state.bytes} highlight={highlight} onHighlight={showSource} />
+                <ReportPanel info={state.info} bytes={state.bytes} highlight={highlight} onHighlight={showSource} onCategoryChange={(c) => void changeCategory(c)} />
               )}
             </aside>
           </div>

@@ -7,7 +7,12 @@ import {
   decodeFrame,
   modalityCategory,
   parseDicom,
+  isNearlyGray,
+  looksLikeDocumentImage,
+  looksLikeFilmImage,
   renderGray,
+  renderRgba,
+  rgbaToGray,
   validateUpload,
 } from '../index';
 import { type El, encapsulated, imageElements, rleFrame, u16Pixels, writeDicom } from './dicomWriter';
@@ -245,5 +250,38 @@ describe('DICOM yükleme doğrulaması', () => {
     const bytes = writeDicom([...imageElements({ rows: 1, cols: 1 }), encapsulated([Uint8Array.from([1, 2])])], { transferSyntax: '1.2.840.10008.1.2.4.90' });
     const v = validateUpload({ bytes, fileName: 'x.dcm' });
     expect(v.ok && v.warnings).toContain('DICOM_NOT_VIEWABLE');
+  });
+});
+
+describe('fotoğraf olarak yüklenen görüntüler', () => {
+  const px = (list: number[][]) => Uint8ClampedArray.from(list.flatMap(([r, g, b]) => [r!, g!, b!, 255]));
+
+  it('renkli pencere: kimlik ayarı görüntüyü değiştirmez, dar pencere kontrastı artırır', () => {
+    const src = px([[10, 128, 250]]);
+    const out = new Uint8ClampedArray(4);
+    renderRgba(src, { center: 127.5, width: 255 }, false, out);
+    expect([...out]).toEqual([10, 128, 250, 255]);
+    renderRgba(src, { center: 128, width: 64 }, false, out);
+    expect([out[0], out[2]]).toEqual([0, 255]);
+    renderRgba(src, { center: 127.5, width: 255 }, true, out);
+    expect([...out]).toEqual([245, 127, 5, 255]);
+  });
+
+  it('gri film fotoğrafı ile renkli fotoğraf ayrılır', () => {
+    expect(isNearlyGray(px([[20, 22, 21], [200, 199, 203], [90, 90, 90]]))).toBe(true);
+    expect(isNearlyGray(px([[200, 30, 30], [20, 22, 21]]))).toBe(false);
+    const g = rgbaToGray(px([[0, 0, 0], [255, 255, 255]]), 2, 1);
+    expect([g.min, Math.round(g.max)]).toEqual([0, 255]);
+  });
+
+  it('rapor fotoğrafı (açık zemin) ile film (koyu) ayrılır', () => {
+    const paper = px([...Array(90).fill([240, 238, 235]), ...Array(10).fill([30, 30, 30])]);
+    const film = px([...Array(70).fill([15, 15, 15]), ...Array(30).fill([180, 180, 180])]);
+    expect(looksLikeDocumentImage(paper)).toBe(true);
+    expect(looksLikeDocumentImage(film)).toBe(false);
+    expect(looksLikeFilmImage(film)).toBe(true);
+    expect(looksLikeFilmImage(paper)).toBe(false);
+    // Koyu ama renkli (ör. karanlık modda renkli ekran görüntüsü) film sayılmaz.
+    expect(looksLikeFilmImage(px([...Array(70).fill([10, 20, 60]), ...Array(30).fill([200, 60, 60])]))).toBe(false);
   });
 });

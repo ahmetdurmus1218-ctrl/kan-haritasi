@@ -6,6 +6,8 @@ radyoloji raporu (PDF). Gerçek kişi, gerçek kurum, gerçek görüntü veya ki
                                           (klasörden içe aktarmada atlanmalı)
  - imaging/toraks-bt.dcm                  tek BT kesiti (örtük VR, işaretli, Hounsfield eğim/kesişim)
  - imaging/beyin-mr-raporu.pdf            başlıklı radyoloji raporu (Klinik bilgi, Teknik, Bulgular, Sonuç)
+ - imaging/rontgen-film-foto.jpg          telefonla çekilmiş gibi röntgen filmi fotoğrafı (koyu, gri)
+ - imaging/toraks-bt-raporu-foto.png      kâğıt BT raporunun fotoğrafı (OCR ile okunur)
 
 Kullanım: python3 fixtures/make_imaging_fixtures.py
 """
@@ -18,6 +20,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 OUT = Path(__file__).parent / "imaging"
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
@@ -194,6 +197,54 @@ def main() -> None:
     c.setFont("DejaVu", 8)
     c.drawString(20 * mm, 15 * mm, "Bu belge test amaçlı üretilmiş sentetik bir örnektir; gerçek bir kişiye ait değildir.")
     c.save()
+    film_photo()
+    report_photo()
+
+
+def film_photo() -> None:
+    """Göğüs filmi benzeri: koyu zemin, açık kaburga yayları, omurga; hafif bulanık ve gürültülü."""
+    w, h = 900, 1100
+    im = Image.new("L", (w, h), 18)
+    d = ImageDraw.Draw(im)
+    d.ellipse((120, 160, 780, 1000), fill=45)  # göğüs kafesi gölgesi
+    d.rectangle((425, 80, 475, 1050), fill=170)  # omurga
+    for i in range(10):
+        y = 250 + i * 70
+        for side in (-1, 1):
+            x0, x1 = (160, 440) if side < 0 else (460, 740)
+            d.arc((x0, y - 60, x1, y + 80), 200 if side < 0 else 280, 340 if side < 0 else 60, fill=190, width=14)
+    d.ellipse((380, 560, 560, 820), fill=120)  # kalp gölgesi
+    im = im.filter(ImageFilter.GaussianBlur(3))
+    im = im.convert("RGB")
+    im.save(OUT / "rontgen-film-foto.jpg", quality=88)
+
+
+def report_photo() -> None:
+    """Kâğıt raporun fotoğrafı: açık zemin, koyu yazı."""
+    w, h = 1400, 1500
+    im = Image.new("RGB", (w, h), (238, 236, 230))
+    d = ImageDraw.Draw(im)
+    bold = ImageFont.truetype(FONT_BOLD, 38)
+    reg = ImageFont.truetype(FONT, 34)
+    y = 90
+    lines = [
+        (bold, "TORAKS BT RAPORU (SENTETİK)"),
+        (reg, "Tetkik tarihi: 01.12.2025"),
+        (reg, ""),
+        (bold, "KLİNİK BİLGİ:"),
+        (reg, "Öksürük."),
+        (bold, "BULGULAR:"),
+        (reg, "Sağ akciğer alt lobda milimetrik nodül izlendi."),
+        (reg, "Plevral efüzyon saptanmadı."),
+        (reg, "Mediastinal lenf nodları olağan boyutlardadır."),
+        (bold, "SONUÇ:"),
+        (reg, "Sağ alt lobda milimetrik nodül."),
+        (reg, "Klinik korelasyon önerilir."),
+    ]
+    for font, text in lines:
+        d.text((110, y), text, font=font, fill=(25, 25, 25))
+        y += 72
+    im.save(OUT / "toraks-bt-raporu-foto.png")
 
 
 if __name__ == "__main__":
