@@ -15,6 +15,7 @@ const file = (displayName: string): FileInfo => ({
   size: 1234,
   sha256: 'a'.repeat(64),
   createdAt: '2026-09-12T08:40:00.000Z',
+  category: 'lab',
 });
 
 describe('XSS', () => {

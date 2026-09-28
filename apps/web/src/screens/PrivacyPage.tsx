@@ -179,7 +179,7 @@ export function PrivacyPage() {
       <Section title="Veri akışı" aside={<span className="rounded-md bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">Dışarı gönderim yok</span>}>
         <ul className="space-y-2.5">
           <Fact>
-            Raporların {info?.platform === 'android' ? 'bu telefonda' : 'bu tarayıcıda'} işlenir (PDF okuma ve fotoğraf OCR dahil) ve hiçbir sunucuya gönderilmez.
+            Raporların {info?.platform === 'android' ? 'bu telefonda' : 'bu tarayıcıda'} işlenir (PDF okuma, fotoğraf OCR ve MR/BT/röntgen görüntülerinin (DICOM) açılması dahil) ve hiçbir sunucuya gönderilmez.
             Güvenlik politikası (CSP) uygulamanın kendi dosyaları dışındaki adreslere bağlantıyı engeller
             {info?.platform === 'android' ? '; Android uygulamasının internet izni de yoktur.' : '.'}
           </Fact>

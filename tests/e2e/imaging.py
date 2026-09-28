@@ -1,0 +1,153 @@
+"""Uçtan uca: görüntüleme belgeleri (MR, BT, röntgen).
+
+DICOM klasörü içe aktar (DICOMDIR ve metin dosyası atlanır) → seri tek satır → görüntüleyici
+(kesit kaydırma, pencere/seviye, BT ön ayarları) → kimlik bilgisi ekranda yok → radyoloji raporu PDF'i
+okunur, bölümlere ayrılır, terimler açıklanır → çekim tarihi önerisi → vücutta göster.
+
+Kullanım: pnpm build && pnpm preview (ayrı terminal), sonra
+  python3 tests/e2e/imaging.py [ekran-görüntüsü-klasörü]
+"""
+import os
+import sys
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
+ROOT = Path(__file__).resolve().parents[2]
+SHOTS = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "tests/e2e/.shots")
+SHOTS.mkdir(parents=True, exist_ok=True)
+IMG = ROOT / "fixtures/imaging"
+URL = os.environ.get("KH_URL", "http://localhost:4173/")
+PASS = "cok-gizli-parola-2026"
+problems: list[str] = []
+
+
+def check(cond, msg):
+    print(("PASS " if cond else "FAIL ") + msg)
+    if not cond:
+        problems.append(msg)
+
+
+def canvas_brightness(page):
+    return page.evaluate(
+        """() => {
+          const c = document.querySelector('canvas[role=img]');
+          if (!c) return -1;
+          const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+          let s = 0;
+          for (let i = 0; i < d.length; i += 4) s += d[i];
+          return s / (d.length / 4);
+        }"""
+    )
+
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(executable_path=os.environ.get("CHROME_PATH") or None)
+    ctx = browser.new_context(viewport={"width": 1366, "height": 900}, device_scale_factor=1)
+    ctx.set_default_timeout(60000)
+    page = ctx.new_page()
+    console, external = [], []
+    page.on("console", lambda m: console.append(f"{m.type}: {m.text}"))
+    page.on("pageerror", lambda e: console.append(f"pageerror: {e}"))
+    page.on("request", lambda r: external.append(r.url) if not r.url.startswith(("http://localhost:4173", "blob:", "data:")) else None)
+    page.add_init_script("window.__csp=[];document.addEventListener('securitypolicyviolation',e=>window.__csp.push(e.violatedDirective+' '+e.blockedURI))")
+
+    page.goto(URL)
+    page.get_by_text("Kasanı oluştur").wait_for()
+    page.fill("#pass", PASS)
+    page.fill("#confirm", PASS)
+    page.check("input[type=checkbox]")
+    page.get_by_role("button", name="Kasayı oluştur").click()
+    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for(timeout=20000)
+
+    # --- MR: DICOM klasörü
+    page.get_by_role("radio", name="MR", exact=True).click()
+    page.get_by_text("MR Görüntüsü veya Raporu Yükle").wait_for()
+    check(page.get_by_role("button", name="DICOM klasörü seç").count() == 1, "MR seçilince klasör düğmesi görünüyor")
+    page.screenshot(path=SHOTS / "60-goruntuleme-yukle.png")
+    page.set_input_files("input[aria-label='DICOM klasörü']", str(IMG / "beyin-mr"))
+    page.get_by_text("8 dosya şifrelendi ve kaydedildi").wait_for(timeout=60000)
+    check(page.get_by_text("DICOM olmayan 2 dosya").count() == 1, "DICOMDIR ve metin dosyası atlandı")
+    check(page.get_by_text("MR · Beyin / kafa olarak kaydedildi.").count() >= 1, "tür ve bölge başlıktan")
+    check(page.get_by_text("8 kesit").count() == 1, "seri listede tek satır, 8 kesit")
+    page.screenshot(path=SHOTS / "61-seri-listede.png")
+
+    page.get_by_role("button", name="Aç", exact=True).click()
+    page.locator("canvas[role=img]").wait_for(timeout=20000)
+    page.get_by_text("Kesit 1 / 8").wait_for()
+    check(canvas_brightness(page) > 10, "MR kesiti çizildi (boş değil)")
+    page.locator("[aria-label='DICOM görüntüleyici']").focus()
+    page.keyboard.press("ArrowDown")
+    page.keyboard.press("ArrowDown")
+    page.get_by_text("Kesit 3 / 8").wait_for()
+    check(page.get_by_text("WL 600 · WW 1200").count() == 1, "pencere dosyadaki değerden")
+    check(page.get_by_role("heading", name="MR · Beyin / kafa").count() == 1, "görüntüleme paneli başlığı")
+    check(page.get_by_text("AX T2").count() >= 1, "seri açıklaması")
+    check("SENTETIK^HASTA" not in page.content() and "SENTETIK HASTA" not in page.content(), "hasta adı ekranda yok")
+    # Pencere/seviye: sağ tıkla sürükle
+    box = page.locator("canvas[role=img]").bounding_box()
+    before = canvas_brightness(page)
+    page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+    page.mouse.down(button="right")
+    page.mouse.move(box["x"] + box["width"] / 2 + 120, box["y"] + box["height"] / 2 + 80, steps=5)
+    page.mouse.up(button="right")
+    page.wait_for_timeout(200)
+    check(abs(canvas_brightness(page) - before) > 1 and page.get_by_text("WL 600 · WW 1200").count() == 0, "sağ tıkla sürükleme kontrastı değiştiriyor")
+    page.screenshot(path=SHOTS / "62-mr-goruntuleyici.png")
+    page.get_by_role("button", name="Beyin / kafa bölgesini 3B vücutta göster").click()
+    page.wait_for_timeout(500)
+    check("#/vucut/yapi/brain" in page.url, "vücutta göster → beyin")
+
+    # --- BT: tek dosya, BT pencere ön ayarları
+    page.goto(URL + "#/belgeler")
+    page.get_by_role("radio", name="Tomografi (BT)").click()
+    page.set_input_files("input[type=file][multiple]", [str(IMG / "toraks-bt.dcm")])
+    page.get_by_role("button", name="Aç ve oku").click()
+    page.locator("canvas[role=img]").wait_for(timeout=20000)
+    page.get_by_label("Pencere ön ayarı").select_option(label="BT: Akciğer")
+    page.get_by_text("WL -600 · WW 1500 HU").wait_for()
+    check(page.get_by_role("heading", name="Tomografi (BT) · Göğüs / akciğer").count() == 1, "BT → göğüs / akciğer")
+    page.screenshot(path=SHOTS / "63-bt-akciger-penceresi.png")
+
+    # --- Radyoloji raporu PDF
+    page.goto(URL + "#/belgeler")
+    page.get_by_role("radio", name="MR", exact=True).click()
+    page.set_input_files("input[type=file][multiple]", [str(IMG / "beyin-mr-raporu.pdf")])
+    page.get_by_role("button", name="Aç ve oku").click()
+    page.get_by_text("Raporda geçen terimler").wait_for(timeout=60000)
+    check(page.get_by_text("Frontal beyaz cevherde nonspesifik milimetrik hiperintens odaklar.").count() == 1, "SONUÇ bölümü ayrıldı")
+    check(page.get_by_text("Hiperintens / hipointens").count() == 1, "terim: hiperintens")
+    check(page.get_by_text("Klinik korelasyon önerilir", exact=True).count() >= 1, "terim: klinik korelasyon")
+    check(page.get_by_text("Sonuçları onayla").count() == 0, "görüntüleme raporunda tahlil onayı açılmıyor")
+    if page.get_by_role("button", name="Uygula").count():
+        page.get_by_role("button", name="Uygula").click()
+        page.get_by_text("Çekim: 15 Mar 2026").wait_for()
+        check(True, "rapordan çekim tarihi önerisi uygulandı")
+    else:
+        check(False, "rapordan çekim tarihi önerisi")
+    page.screenshot(path=SHOTS / "64-radyoloji-raporu.png", full_page=True)
+
+    # --- Liste filtresi
+    page.goto(URL + "#/belgeler")
+    page.get_by_role("radio", name="Görüntüleme · 3").click()
+    check(page.locator("section[aria-label=Belgeler] li").count() == 3, "görüntüleme filtresi: 3 belge (seri tek satır)")
+
+    # --- Telefon görünümü: sekmeler "Bilgiler" / "Belge"
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.locator("section[aria-label=Belgeler] li button").first.click()
+    page.get_by_role("tab", name="Bilgiler").wait_for()
+    page.screenshot(path=SHOTS / "65-telefon-bilgiler.png")
+    page.get_by_role("tab", name="Belge").click()
+    page.wait_for_timeout(800)
+    page.screenshot(path=SHOTS / "66-telefon-belge.png")
+
+    csp = page.evaluate("window.__csp || []")
+    check(not external, f"dış istek yok ({len(external)})")
+    check(not [c for c in console if c.startswith("pageerror")], "sayfa hatası yok")
+    check(not csp, "CSP ihlali yok")
+    browser.close()
+
+if problems:
+    print("\n".join(console[-30:]))
+    sys.exit(f"{len(problems)} sorun: " + "; ".join(problems))
+print("imaging e2e: tamam")

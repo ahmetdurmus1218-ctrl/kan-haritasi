@@ -19,8 +19,11 @@ export function keysOf(meta: VaultMeta): WrappedMasterKey[] {
   return meta.wrapped ? [meta.wrapped] : [];
 }
 
-/** 'file': belge; 'report': onaylanmış sonuçlar; 'alias': kullanıcının eşlediği test adları; 'profile': tercihler. */
-export type RecordKind = 'file' | 'report' | 'alias' | 'profile';
+/**
+ * 'file': belge; 'report': onaylanmış sonuçlar; 'alias': kullanıcının eşlediği test adları; 'profile': tercihler;
+ * 'imaging': görüntüleme (MR, BT, röntgen…) raporundan okunan metin.
+ */
+export type RecordKind = 'file' | 'report' | 'alias' | 'profile' | 'imaging';
 
 /** Diskteki şifreli kayıt. Açık alanlar yalnızca rastgele kimlik ve kayıt türüdür. */
 export interface EncryptedRecord {
