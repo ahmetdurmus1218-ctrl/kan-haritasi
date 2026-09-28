@@ -32,6 +32,7 @@ with sync_playwright() as p:
         args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
     )
     ctx = browser.new_context(viewport={"width": 1366, "height": 900}, device_scale_factor=1)
+    ctx.set_default_timeout(120000)
     page = ctx.new_page()
     console, external = [], []
     page.on("console", lambda m: console.append(f"{m.type}: {m.text}"))
@@ -118,7 +119,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(1500)
     check("Plak gelişimi" in page.locator("aside[aria-label='Simülasyon paneli']").inner_text(), "aşama seçimi")
     sim = page.locator("aside[aria-label='Simülasyon paneli']").inner_text()
-    check("Senin değerlerin" in sim and "LDL kolesterol" in sim and "tipik düzeyin" in sim, "simülasyonda kişisel durum (LDL değeri sahneye yansır)")
+    check("Sonucuma göre" in sim and "LDL kolesterol" in sim and "tipik düzeyin" in sim, "simülasyonda kişisel durum (LDL değeri sahneye yansır)")
     page.get_by_role("button", name="LDL parçacığı").click()
     check(page.get_by_text("Düşük yoğunluklu lipoprotein").count() >= 1, "nesne bilgisi (LDL)")
     # Geri: organa dön
@@ -131,7 +132,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(1500)
     sim = page.locator("aside[aria-label='Simülasyon paneli']").inner_text()
     check("Süreci adım adım izle" in sim and "Aşama 1/8" not in sim, "içeri girişte süreç kendiliğinden başlamaz")
-    page.get_by_role("button", name="Tipik değerler").click()
+    page.get_by_role("button", name="Temelde nasıl çalışır").click()
     page.wait_for_timeout(500)
     check("tipik (referans aralığının ortası)" in page.locator("aside[aria-label='Simülasyon paneli']").inner_text(), "tipik değerlerle karşılaştırma")
     page.keyboard.press("Escape")

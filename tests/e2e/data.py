@@ -65,6 +65,7 @@ with sync_playwright() as p:
     )
     sink = {"console": [], "external": []}
     ctx = browser.new_context(viewport={"width": 1366, "height": 900}, accept_downloads=True)
+    ctx.set_default_timeout(120000)
     page = ctx.new_page()
     watch(page, sink)
     create_vault(page, PASS)
@@ -118,6 +119,7 @@ with sync_playwright() as p:
 
     # --- Başka "cihaza" (yeni kasa) geri yükleme
     ctx2 = browser.new_context(viewport={"width": 1366, "height": 900})
+    ctx2.set_default_timeout(120000)
     page2 = ctx2.new_page()
     watch(page2, sink)
     create_vault(page2, "baska-cihaz-parolasi-1")

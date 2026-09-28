@@ -775,7 +775,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 
       {/* Araç çubuğu ve kesit */}
       {shownKey === 'body' && !intro && (
-        <div className={`pointer-events-none absolute left-4 z-20 flex flex-col items-start gap-2 md:left-6 ${!structure && !focusTest ? 'top-[5.75rem] md:top-auto md:bottom-20' : 'top-[3.75rem] md:top-auto md:bottom-20'}`}>
+        <div className={`pointer-events-none absolute left-4 z-20 flex flex-col items-start gap-2 md:left-6 ${!structure && !focusTest ? 'top-[5.75rem]' : 'top-[6.25rem]'} md:top-auto md:bottom-20`}>
           <ToolBar
             canFocusTools={!!structure}
             hasInner={hasInner}

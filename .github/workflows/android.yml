@@ -76,7 +76,8 @@ jobs:
           # Android paketleme ".gz" uzantısını siler; web tarafı hiçbir dosyayı bu adla istememeli.
           if grep -E '\.gz$' apk-assets.txt; then echo "::error::APK'da .gz uzantılı varlık var"; exit 1; fi
           for f in index.html ocr/worker.min.js ocr/tesseract-core-simd-lstm.wasm.js ocr/tur.traineddata \
-                   models/body.glb models/skeleton.glb models/muscles.glb models/cardio.glb; do
+                   models/m/body.glb models/m/skeleton.glb models/m/muscles.glb models/m/cardio.glb \
+                   models/f/body.glb models/f/skeleton.glb models/f/reproductive.glb models/f/cardio.glb; do
             grep -qx "assets/web/$f" apk-assets.txt || { echo "::error::APK'da eksik: $f"; exit 1; }
           done
 
@@ -90,6 +91,7 @@ jobs:
           sha256sum out/*.apk | tee out/SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: KanHaritasi-APK-${{ steps.name.outputs.version }}
           path: out/

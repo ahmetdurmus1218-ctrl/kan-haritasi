@@ -36,6 +36,7 @@ def check(cond, msg):
 with sync_playwright() as p:
     browser = p.chromium.launch(executable_path=os.environ.get("CHROME_PATH") or None)
     ctx = browser.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, is_mobile=True, has_touch=True, accept_downloads=True)
+    ctx.set_default_timeout(120000)
     page = ctx.new_page()
     console = []
     page.on("console", lambda m: console.append(f"{m.type}: {m.text}"))

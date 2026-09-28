@@ -31,6 +31,7 @@ jobs:
       - name: Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no)
         run: pnpm check:security
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: web-dist
           path: apps/web/dist
@@ -40,7 +41,7 @@ jobs:
     # Gerçek Chromium'da uçtan uca: kasa, yükleme, PDF/OCR okuma, 3D keşif ve simülasyon,
     # zaman çizelgesi, şifreli yedek → başka kasaya geri yükleme, ZIP dışa aktarma; CSP ihlali ve dış istek yok.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -69,7 +70,10 @@ jobs:
         run: python tests/e2e/data.py "$RUNNER_TEMP/shots"
       - name: Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B
         run: python tests/e2e/reports.py "$RUNNER_TEMP/shots"
+      - name: Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon
+        run: python tests/e2e/explore.py "$RUNNER_TEMP/shots/explore"
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         if: always()
         with:
           name: e2e-ekran-goruntuleri

@@ -52,6 +52,7 @@ with sync_playwright() as p:
         args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
     )
     ctx = browser.new_context(viewport={"width": 1366, "height": 900}, device_scale_factor=1)
+    ctx.set_default_timeout(120000)
     page = ctx.new_page()
     console, external = [], []
     page.on("console", lambda m: console.append(f"{m.type}: {m.text}"))

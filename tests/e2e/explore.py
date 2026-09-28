@@ -197,7 +197,7 @@ with sync_playwright() as p:
     mp = m.new_page()
     mp.on("pageerror", lambda e: console.append(f"pageerror(mobil): {e}"))
     mp.goto(URL)
-    mp.fill("#pass", PASS)
+    mp.fill("#unlock", PASS)
     mp.get_by_role("button", name="Kilidi aç").click()
     mp.wait_for_timeout(1500)
     mp.goto(URL + "#/vucut/yapi/liver")
