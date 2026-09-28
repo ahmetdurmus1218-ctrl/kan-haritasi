@@ -1,8 +1,31 @@
 workflow: CI
-run: 36471658717
-sha: 2e41a39e26ad270beeaa5997daf007f1ab5dcd20
+run: 36473386414
+sha: 0e47ddbfca949fdc05cd6e98f6bb92e230229d8e
 conclusion: success
 
+web: success
+  - Set up job: success
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Lint (güvenlik kuralları dahil): success
+  - Tip denetimi: success
+  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
+  - Derleme: success
+  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
+  - Run actions/upload-artifact@v4: success
+  - Post Run actions/setup-node@v4: success
+  - Post Run pnpm/action-setup@v4: success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
+dependencies: success
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 e2e: success
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -21,29 +44,6 @@ e2e: success
   - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
   - Run actions/upload-artifact@v4: success
   - Post Run actions/setup-python@v5: success
-  - Post Run actions/setup-node@v4: success
-  - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-dependencies: success
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-web: success
-  - Set up job: success
-  - Run actions/checkout@v4: success
-  - Run pnpm/action-setup@v4: success
-  - Run actions/setup-node@v4: success
-  - Run pnpm install --frozen-lockfile: success
-  - Lint (güvenlik kuralları dahil): success
-  - Tip denetimi: success
-  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
-  - Derleme: success
-  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
-  - Run actions/upload-artifact@v4: success
   - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
