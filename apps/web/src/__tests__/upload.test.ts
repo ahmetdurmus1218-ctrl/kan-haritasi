@@ -91,6 +91,14 @@ describe('yükleme hattı', () => {
     const c = await processUpload(v, new File([pdfBytes('kan')], 'Kan Tahlili Mart.pdf'), deps());
     expect(c.file).toMatchObject({ category: 'lab' });
     expect(c.file!.region).toBeUndefined();
+    // Kullanıcı açıkça "Tahlil" seçtiyse dosya adı türü değiştirmez; otomatikte değiştirir.
+    const d = await processUpload(v, new File([pdfBytes('lab-mr')], 'MR ekli tahlil.pdf'), deps(), undefined, { category: 'lab' });
+    expect(d.file).toMatchObject({ category: 'lab' });
+    // Bölge yazmayan EKG kalbe, endoskopi mideye bağlanır.
+    const e = await processUpload(v, new File([pdfBytes('ekg')], 'EKG.pdf'), deps(), undefined, { category: 'auto' });
+    expect(e.file).toMatchObject({ category: 'ekg', region: 'kalp' });
+    const g = await processUpload(v, new File([pdfBytes('gs')], 'gastroskopi.pdf'), deps());
+    expect(g.file).toMatchObject({ category: 'endoscopy', region: 'mide' });
   });
 
   it('DICOMDIR anlaşılır mesajla reddedilir', async () => {

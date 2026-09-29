@@ -7,9 +7,10 @@ import { useEffect, useState } from 'react';
 import type { FileInfo } from '@kh/vault';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { type DocGroup, groupDocuments } from './documents';
-import { type GlossaryTerm, type ImagingCategory, type ReportSection, findTerms, isImaging, regionByKey, splitReport } from './imaging';
+import { CATEGORY_REGION, type GlossaryTerm, type ImagingCategory, type ReportSection, findTerms, isImaging, isReadableReport, regionByKey, splitReport } from './imaging';
 import { type ImagingNote, type StoredReview, listImagingNotes } from './imagingRecords';
 import { type MeasureResult, isAbnormal, measurementsOf } from './imagingMeasurements';
+import { type ImagingFinding, extractFindings } from './imagingFindings';
 import { loadSex } from './reports';
 import type { Sex } from '@kh/catalog';
 
@@ -31,6 +32,8 @@ export interface ImagingStudy extends DocGroup {
   abnormal: MeasureResult[];
   /** Kullanıcının sonuçlarına eklediği otomatik görüntü incelemesi (sağ-sol farkı). */
   review?: StoredReview;
+  /** Rapor cümlelerinden çıkarılan bulgular (konum ve olağan/dikkat ayrımıyla). */
+  findings: ImagingFinding[];
 }
 
 const CONCLUSION_MAX = 360;
@@ -52,8 +55,11 @@ export function buildStudies(files: FileInfo[], notes: ImagingNote[], sex: Sex =
     .filter((g) => isImaging(g.head.category))
     .map((g) => {
       const groupNotes = g.files.map((f) => byFile.get(f.id)).filter((n): n is ImagingNote => Boolean(n));
-      const note = groupNotes.find((n) => n.text.trim()) ?? groupNotes[0];
-      const sections = note ? splitReport(note.text) : [];
+      // Görüntüden okunmuş anlamsız metin (film fotoğrafında OCR) rapor sayılmaz.
+      const readable = (n: ImagingNote) => n.text.trim() !== '' && ((n.method !== 'ocr' && n.method !== 'mixed') || isReadableReport(n.text));
+      const note = groupNotes.find(readable) ?? groupNotes[0];
+      const text = note && readable(note) ? note.text : '';
+      const sections = text ? splitReport(text) : [];
       const measures = groupNotes.flatMap((n) => measurementsOf(n, g.head.region, sex));
       return {
         ...g,
@@ -64,10 +70,11 @@ export function buildStudies(files: FileInfo[], notes: ImagingNote[], sex: Sex =
         note,
         sections,
         conclusion: conclusionOf(sections),
-        terms: note ? findTerms(note.text) : [],
+        terms: text ? findTerms(text) : [],
         measures,
         abnormal: measures.filter(isAbnormal),
         review: groupNotes.find((n) => n.review?.confirmed)?.review,
+        findings: text ? extractFindings(text, g.head.region ?? CATEGORY_REGION[g.head.category]) : [],
       };
     })
     .sort((a, b) => b.date.localeCompare(a.date) || b.head.createdAt.localeCompare(a.head.createdAt));
@@ -106,7 +113,12 @@ export function reviewFlags(all: ImagingStudy[]): Array<{ structure: string; fil
 
 /** Bir 3B yapıyla ilgili çalışmalar (bölgenin yapısı eşleşenler). */
 export function studiesForStructure(structure: string, all: ImagingStudy[]): ImagingStudy[] {
-  return all.filter((s) => (s.region && regionByKey.get(s.region)?.structure === structure) || s.measures.some((m) => m.def.structure === structure));
+  return all.filter(
+    (s) =>
+      (s.region && regionByKey.get(s.region)?.structure === structure) ||
+      s.measures.some((m) => m.def.structure === structure) ||
+      s.findings.some((f) => f.structure === structure && f.status !== 'normal'),
+  );
 }
 
 export function useImagingStudies(): ImagingStudy[] | null {

@@ -18,11 +18,37 @@ export const CATEGORY_LABEL: Record<DocCategory, string> = {
   ct: 'Tomografi (BT)',
   xray: 'Röntgen',
   us: 'Ultrason',
-  other: 'Diğer görüntüleme',
+  mammo: 'Mamografi',
+  pet: 'PET / PET-BT',
+  angio: 'Anjiyografi',
+  dexa: 'Kemik yoğunluğu (DEXA)',
+  pathology: 'Patoloji / biyopsi',
+  endoscopy: 'Endoskopi / kolonoskopi',
+  ekg: 'EKG',
+  pft: 'Solunum fonksiyon testi',
+  other: 'Diğer tıbbi belge',
 };
 
 /** Belge listesindeki kısa rozet. */
-export const CATEGORY_SHORT: Record<DocCategory, string> = { lab: 'Tahlil', mr: 'MR', ct: 'BT', xray: 'Röntgen', us: 'USG', other: 'Görüntü' };
+export const CATEGORY_SHORT: Record<DocCategory, string> = {
+  lab: 'Tahlil',
+  mr: 'MR',
+  ct: 'BT',
+  xray: 'Röntgen',
+  us: 'USG',
+  mammo: 'Mamografi',
+  pet: 'PET',
+  angio: 'Anjiyo',
+  dexa: 'DEXA',
+  pathology: 'Patoloji',
+  endoscopy: 'Endoskopi',
+  ekg: 'EKG',
+  pft: 'SFT',
+  other: 'Belge',
+};
+
+/** Radyoloji yöntemleri (görüntü dosyası olabilir); diğerleri yalnızca rapordur. */
+export const RADIOLOGY: ReadonlySet<DocCategory> = new Set(['mr', 'ct', 'xray', 'us', 'mammo', 'pet', 'angio', 'dexa', 'other']);
 
 export const CATEGORY_UPLOAD_TITLE: Record<DocCategory, string> = {
   lab: 'Laboratuvar Raporunu Yükle',
@@ -30,7 +56,15 @@ export const CATEGORY_UPLOAD_TITLE: Record<DocCategory, string> = {
   ct: 'Tomografi (BT) Görüntüsü veya Raporu Yükle',
   xray: 'Röntgen Görüntüsü veya Raporu Yükle',
   us: 'Ultrason Görüntüsü veya Raporu Yükle',
-  other: 'Görüntüleme Belgesi Yükle',
+  mammo: 'Mamografi Görüntüsü veya Raporu Yükle',
+  pet: 'PET / PET-BT Görüntüsü veya Raporu Yükle',
+  angio: 'Anjiyografi Görüntüsü veya Raporu Yükle',
+  dexa: 'Kemik Yoğunluğu (DEXA) Raporu Yükle',
+  pathology: 'Patoloji / Biyopsi Raporu Yükle',
+  endoscopy: 'Endoskopi / Kolonoskopi Raporu Yükle',
+  ekg: 'EKG Raporu Yükle',
+  pft: 'Solunum Fonksiyon Testi Raporu Yükle',
+  other: 'Tıbbi Belge Yükle',
 };
 
 /** Yöntemin temelde nasıl çalıştığı: genel eğitim bilgisi. */
@@ -47,7 +81,7 @@ export const CATEGORY_ABOUT: Record<ImagingCategory, { name: string; how: string
   },
   xray: {
     name: 'Röntgen (direkt grafi)',
-    how: 'X ışını vücuttan geçer; kemik gibi yoğun dokular ışını daha çok tuttuğu için beyaz, hava içeren akciğer koyu görünür. Tek yönden çekilmiş iki boyutlu bir gölge görüntüsüdür. Mamografi de bir röntgen türüdür.',
+    how: 'X ışını vücuttan geçer; kemik gibi yoğun dokular ışını daha çok tuttuğu için beyaz, hava içeren akciğer koyu görünür. Tek yönden çekilmiş iki boyutlu bir gölge görüntüsüdür.',
     radiation: 'Düşük dozda iyonlaştırıcı radyasyon içerir.',
   },
   us: {
@@ -55,9 +89,49 @@ export const CATEGORY_ABOUT: Record<ImagingCategory, { name: string; how: string
     how: 'Probdan gönderilen yüksek frekanslı ses dalgalarının dokulardan yansıması ölçülür. Karın organları, tiroid, meme, gebelik ve damarlar (Doppler) için kullanılır. Görüntü, çekimi yapan kişinin probu tuttuğu açıya bağlıdır.',
     radiation: 'Radyasyon içermez.',
   },
+  mammo: {
+    name: 'Mamografi',
+    how: 'Meme dokusunun düşük dozlu röntgen görüntüsüdür; meme iki plaka arasında hafifçe sıkıştırılarak iki yönden çekilir. Kitle, mikrokalsifikasyon ve yapı bozukluğu aranır. Sonuç BI-RADS kategorisiyle (0–6) özetlenir.',
+    radiation: 'Düşük dozda iyonlaştırıcı radyasyon içerir.',
+  },
+  pet: {
+    name: 'PET / PET-BT',
+    how: 'Damardan verilen az miktarda radyoaktif işaretli madde (çoğunlukla glukoz benzeri FDG) hücrelerin metabolik etkinliğine göre birikir; PET bu birikimi, BT de anatomik konumu gösterir. Birikim SUV değeriyle ölçülür. Yüksek birikim iltihapta da görülebilir; tek başına tanı değildir.',
+    radiation: 'İyonlaştırıcı radyasyon içerir (radyoaktif madde + BT).',
+  },
+  angio: {
+    name: 'Anjiyografi',
+    how: 'Damarlar kontrast madde ile görünür hâle getirilerek röntgen (klasik veya BT anjiyo) ya da MR ile görüntülenir. Darlık, tıkanıklık ve genişleme (anevrizma) değerlendirilir.',
+    radiation: 'Röntgen ve BT anjiyografi iyonlaştırıcı radyasyon içerir; MR anjiyografi içermez.',
+  },
+  dexa: {
+    name: 'Kemik mineral yoğunluğu (DEXA)',
+    how: 'İki farklı enerjide düşük dozlu X ışınıyla bel omurları ve kalçada kemik mineral yoğunluğu ölçülür. Sonuç genç erişkin ortalamasına göre T-skoru ve yaşıtlara göre Z-skoru olarak verilir (T ≤ −2,5 osteoporoz, −1 ile −2,5 arası osteopeni).',
+    radiation: 'Çok düşük dozda iyonlaştırıcı radyasyon içerir.',
+  },
+  pathology: {
+    name: 'Patoloji / biyopsi',
+    how: 'Alınan doku ya da hücre örneği işlenip boyanır ve mikroskopla incelenir. Rapor genellikle makroskopi (gözle görünüm), mikroskopi (hücre düzeyi) ve tanı bölümlerinden oluşur. Patoloji raporu kesin tanıya en yakın belgedir; anlamını seni takip eden hekim açıklar.',
+    radiation: 'Radyasyon içermez.',
+  },
+  endoscopy: {
+    name: 'Endoskopi / kolonoskopi',
+    how: 'Ucunda kamera olan ince bir tüple yemek borusu, mide ve on iki parmak bağırsağı (gastroskopi) ya da kalın bağırsak (kolonoskopi) içeriden incelenir. Gerekirse biyopsi alınır; biyopsinin sonucu ayrı bir patoloji raporunda yazar.',
+    radiation: 'Radyasyon içermez.',
+  },
+  ekg: {
+    name: 'Elektrokardiyografi (EKG)',
+    how: 'Göğse ve kollara-bacaklara yapıştırılan elektrotlarla kalbin elektriksel etkinliği kaydedilir. Ritim, hız, iletim süreleri (PR, QRS, QT) ve ST-T değişiklikleri değerlendirilir.',
+    radiation: 'Radyasyon içermez.',
+  },
+  pft: {
+    name: 'Solunum fonksiyon testi (spirometri)',
+    how: 'Derin nefes alıp cihaza olabildiğince hızlı üflendiğinde akciğer hacimleri ve hava akımı ölçülür. FEV1 (ilk saniyede atılan hava), FVC (toplam) ve FEV1/FVC oranı daralma (obstrüksiyon) ya da genişleyememe (restriksiyon) hakkında bilgi verir.',
+    radiation: 'Radyasyon içermez.',
+  },
   other: {
-    name: 'Diğer görüntüleme',
-    how: 'Sintigrafi, PET, anjiyografi gibi yöntemler bu grupta yer alır. Her yöntem farklı bir fiziksel ilkeyle çalışır; raporundaki açıklama ve doktorun yorumu esastır.',
+    name: 'Diğer tıbbi belge',
+    how: 'Sintigrafi, epikriz, konsültasyon notu gibi belgeler bu grupta yer alır. Her yöntem farklı bir ilkeyle çalışır; belgedeki açıklama ve doktorun yorumu esastır.',
     radiation: 'Yönteme göre değişir.',
   },
 };
@@ -95,6 +169,9 @@ export const REGIONS: Region[] = [
   { key: 'pelvis', label: 'Pelvis (leğen)', structure: 'urinary-tract', words: ['pelvis', 'pelvik', 'pelvic', 'alt batin'] },
   { key: 'prostat', label: 'Prostat', structure: 'prostate', words: ['prostat', 'prostate', 'multiparametrik'] },
   { key: 'rahim', label: 'Rahim / yumurtalık', structure: 'uterus', words: ['uterus', 'rahim', 'over', 'ovary', 'jinekolojik', 'transvajinal'] },
+  { key: 'mide', label: 'Mide / onikiparmak bağırsağı', structure: 'stomach', words: ['mide', 'gastrik', 'gastroskopi', 'stomach', 'duodenum', 'bulbus', 'antrum', 'ozofagogastroduodenoskopi'] },
+  { key: 'yemek-borusu', label: 'Yemek borusu', structure: 'esophagus', words: ['ozofagus', 'yemek borusu', 'esophagus', 'oesophagus'] },
+  { key: 'kolon', label: 'Kalın bağırsak', structure: 'large-intestine', words: ['kolon', 'kolonoskopi', 'rektum', 'sigmoid', 'rektosigmoidoskopi', 'cekum', 'colon', 'colonoscopy'] },
   { key: 'omuz', label: 'Omuz', structure: 'bones', words: ['omuz', 'shoulder'] },
   { key: 'dirsek', label: 'Dirsek / kol', structure: 'bones', words: ['dirsek', 'elbow', 'humerus', 'onkol', 'forearm'] },
   { key: 'el', label: 'El / el bileği', structure: 'bones', words: ['el bilegi', 'bilek', 'wrist', 'hand', 'parmak', 'finger'] },
@@ -117,12 +194,73 @@ export function guessRegion(...texts: Array<string | undefined>): string | undef
   return undefined;
 }
 
+/** Önce özgül türler: "PET BT" BT'den, "mamografi" röntgenden, "BT anjiyo" BT'den önce gelir. */
 const CATEGORY_WORDS: Array<[ImagingCategory, string[]]> = [
+  ['pathology', ['patoloji', 'histopatoloji', 'histopatolojik', 'biyopsi', 'sitoloji', 'sitolojik', 'makroskopi', 'mikroskopi', 'frozen', 'immunohistokimya', 'pathology', 'biopsy']],
+  ['endoscopy', ['endoskopi', 'gastroskopi', 'kolonoskopi', 'ozofagogastroduodenoskopi', 'rektosigmoidoskopi', 'sigmoidoskopi', 'ercp', 'egd', 'endoscopy', 'colonoscopy']],
+  ['ekg', ['ekg', 'elektrokardiyografi', 'elektrokardiyogram', 'ecg', 'ritim holter', 'efor testi']],
+  ['pft', ['spirometri', 'solunum fonksiyon', 'sft', 'fev1', 'fvc', 'dlco', 'spirometry']],
+  ['dexa', ['dexa', 'dxa', 'densitometri', 'kemik mineral yogunlugu', 'kemik dansitometri', 'bmd']],
+  ['pet', ['pet', 'pet bt', 'pet ct', 'fdg', 'suvmax', 'suv max', 'sintigrafi']],
+  ['mammo', ['mamografi', 'mammografi', 'mammography', 'mamogram', 'tomosentez']],
+  ['angio', ['anjiyografi', 'anjiografi', 'anjiyo', 'anjio', 'angiography', 'koroner anjiyo', 'dsa']],
   ['mr', ['mr', 'mri', 'mrg', 'manyetik', 'rezonans', 'mrcp', 'mra', 'mrv']],
   ['ct', ['bt', 'ct', 'tomografi', 'tomography', 'bilgisayarli', 'hrct', 'yrbt', 'bta', 'cta']],
   ['us', ['usg', 'ultrason', 'ultrasonografi', 'ultrasound', 'doppler', 'eko', 'ekokardiyografi']],
-  ['xray', ['rontgen', 'grafi', 'grafisi', 'xray', 'x ray', 'direkt', 'mamografi', 'mammography', 'pa', 'dx', 'cr']],
+  ['xray', ['rontgen', 'grafi', 'grafisi', 'xray', 'x ray', 'direkt', 'pa', 'dx', 'cr']],
 ];
+
+/** Tür için varsayılan bölge (belgede bölge yazmıyorsa). */
+export const CATEGORY_REGION: Partial<Record<DocCategory, string>> = { ekg: 'kalp', pft: 'toraks', mammo: 'meme', dexa: 'kemik', angio: 'damar', endoscopy: 'mide' };
+
+/**
+ * Metinden belge türü tahmini (tahlil tablosu bulunamadığında). Her türün güçlü (yöntem adı, 2 puan) ve
+ * destekleyici (yönteme özgü terim, 1 puan) işaretleri vardır; en az 2 puan gerekir. Kısa ve belirsiz
+ * kısaltmalar ("PA", "direkt") burada kullanılmaz: tahlil raporlarında da geçerler.
+ */
+const TYPE_SIGNS: Array<[ImagingCategory, string[], string[]]> = [
+  ['pathology', ['patoloji raporu', 'histopatoloji', 'histopatolojik', 'biyopsi', 'sitoloji', 'sitolojik', 'makroskopi', 'mikroskopi', 'makroskopik', 'mikroskopik', 'immunohistokimya', 'immunohistokimyasal'], ['patolojik tani', 'doku ornegi', 'boyama', 'displazi', 'metaplazi', 'karsinom', 'grade']],
+  ['endoscopy', ['endoskopi', 'endoskopik', 'gastroskopi', 'kolonoskopi', 'ozofagogastroduodenoskopi', 'rektosigmoidoskopi', 'sigmoidoskopi', 'ercp'], ['ozofagus', 'bulbus', 'antrum', 'cekum', 'terminal ileum', 'mukoza', 'polip', 'z cizgisi', 'skop']],
+  ['ekg', ['ekg', 'elektrokardiyografi', 'elektrokardiyogram', 'ecg'], ['sinus ritmi', 'pr araligi', 'qrs', 'qt', 'qtc', 'st segment', 't dalgasi', 'kalp hizi']],
+  ['pft', ['spirometri', 'solunum fonksiyon testi', 'solunum fonksiyon testleri', 'solunum fonksiyon'], ['fev1', 'fvc', 'fev1 fvc', 'pef', 'dlco', 'mef', 'bronkodilator']],
+  ['dexa', ['dexa', 'dxa', 'kemik mineral yogunlugu', 'densitometri', 'dansitometri', 'kemik dansitometrisi'], ['t skoru', 't skor', 'z skoru', 'bmd', 'osteopeni', 'osteoporoz', 'femur boynu']],
+  ['pet', ['pet', 'pet bt', 'pet ct', 'fdg', 'suvmax', 'suv max'], ['metabolik aktivite', 'hipermetabolik', 'hipometabolik', 'tutulum']],
+  ['mammo', ['mamografi', 'mammografi', 'tomosentez'], ['bi rads', 'birads', 'meme parankimi', 'mikrokalsifikasyon', 'kranyokaudal', 'mlo']],
+  ['angio', ['anjiyografi', 'anjiografi', 'koroner anjiyografi'], ['stenoz', 'darlik', 'okluzyon', 'lad', 'lcx', 'rca', 'kollateral']],
+  ['mr', ['manyetik rezonans', 'mr', 'mrg', 'mri', 'mr goruntuleme'], ['flair', 't1a', 't2a', 'difuzyon', 'sekans', 'sekanslar', 'sekansta', 'sekanslarda', 'hiperintens', 'hipointens', 'stir', 'sinyal']],
+  ['ct', ['bilgisayarli tomografi', 'tomografi', 'bt', 'hrct', 'yrbt'], ['hounsfield', 'hiperdens', 'hipodens', 'dansite', 'dansitede', 'aksiyel kesit', 'kontrast madde']],
+  ['us', ['ultrasonografi', 'usg', 'ultrason', 'doppler', 'ekokardiyografi'], ['hiperekoik', 'hipoekoik', 'anekoik', 'ekojenite', 'ekojenitesi', 'parankim ekojenitesi']],
+  ['xray', ['rontgen', 'radyografi', 'grafi', 'grafisi', 'grafide'], ['kostofrenik', 'kardiyotorasik', 'opasite', 'hiler']],
+];
+
+export interface DocTypeGuess {
+  category: ImagingCategory;
+  /** Metinde bulunan işaretler (kullanıcıya "neden" olarak gösterilir). */
+  signs: string[];
+}
+
+/** Rapor metninden en olası belge türü; yeterli işaret yoksa undefined. */
+export function detectDocType(text: string | undefined): DocTypeGuess | undefined {
+  const hay = padded(text ?? '');
+  if (hay.trim().length < 8) return undefined;
+  let best: (DocTypeGuess & { score: number }) | undefined;
+  for (const [category, strong, weak] of TYPE_SIGNS) {
+    const s = strong.filter((w) => hay.includes(` ${w} `));
+    const w = weak.filter((x) => hay.includes(` ${x} `));
+    const score = s.length * 2 + w.length;
+    if (score >= 2 && s.length + w.length >= 1 && (!best || score > best.score)) best = { category, signs: [...s, ...w].slice(0, 4), score };
+  }
+  if (!best) return undefined;
+  // Gerekçe, metindeki özgün yazımıyla gösterilir ("özofagus", "Z çizgisi").
+  const tokens = (text ?? '').split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const norm = tokens.map((t) => normalizeText(t));
+  const original = (sign: string) => {
+    const n = sign.split(' ').length;
+    for (let i = 0; i + n <= tokens.length; i++) if (norm.slice(i, i + n).join(' ') === sign) return tokens.slice(i, i + n).join(' ').toLocaleLowerCase('tr');
+    return sign;
+  };
+  return { category: best.category, signs: best.signs.map(original) };
+}
 
 /** Dosya adı veya rapor metninden görüntüleme türü; bulunamazsa undefined. */
 export function guessCategory(text: string | undefined): ImagingCategory | undefined {
@@ -146,7 +284,8 @@ export interface ReportSection {
 }
 
 const HEADINGS: Array<[ReportSection['kind'], string, RegExp]> = [
-  ['klinik', 'Klinik bilgi', /^(klinik( bilgi(ler)?| oyku| tani)?|endikasyon|on tani|istem nedeni|clinical( information| history)?|indication)\b/],
+  // "Klinik korelasyon önerilir" bir öneri cümlesidir, "Klinik bilgi" başlığı değildir
+  ['klinik', 'Klinik bilgi', /^(klinik(?! korelasyon| ile| degerlendirme)( bilgi(ler)?| oyku| tani)?|endikasyon|on tani|istem nedeni|clinical( information| history)?|indication)\b/],
   ['teknik', 'Teknik', /^(teknik|inceleme teknigi|yontem|protokol|technique|protocol)\b/],
   ['karsilastirma', 'Karşılaştırma', /^(karsilastirma|onceki tetkik(ler)?|comparison)\b/],
   ['bulgular', 'Bulgular', /^(bulgu(lar)?|rapor|degerlendirme|findings)\b/],
@@ -242,6 +381,27 @@ export const GLOSSARY: GlossaryTerm[] = [
   { key: 'bi-rads', term: 'BI-RADS / TI-RADS / PI-RADS', roots: ['birads', 'bi rads', 'tirads', 'ti rads', 'pirads', 'pi rads', 'lirads'], meaning: 'Meme (BI-), tiroid (TI-), prostat (PI-) ve karaciğer (LI-) için standart değerlendirme ölçekleri. Kategori numarası, radyoloğun önerdiği takip ya da ek inceleme düzeyini anlatır; ne yapılacağına doktorun karar verir.' },
   { key: 'dogal', term: 'Olağan / doğal / normal sınırlarda', roots: ['olagan', 'dogal', 'normal sinirlarda', 'patoloji saptanmadi', 'patolojik bulgu saptanmadi'], meaning: 'Raporda o yapı için dikkat çeken bir değişiklik tarif edilmediğini anlatır.' },
   { key: 'klinik-korelasyon', term: 'Klinik korelasyon önerilir', roots: ['klinik korelasyon', 'klinik ile korelasyon', 'klinik degerlendirme', 'korelasyon'], meaning: 'Radyoloğun, görüntüdeki bulgunun hastanın şikâyetleri, muayenesi ve diğer tetkiklerle birlikte değerlendirilmesini istemesi. Rutin bir ifadedir.' },
+  // Mamografi, PET, DEXA
+  { key: 'birads', term: 'BI-RADS', roots: ['bi rads', 'birads'], meaning: 'Meme görüntülemesinde bulguların ortak bir dille sınıflandırıldığı sistem (0–6). Sayı, önerilen takip ya da ek inceleme adımını belirtmek için kullanılır; hangi adımın uygun olduğunu hekimin değerlendirir.' },
+  { key: 'suv', term: 'SUV / SUVmax', roots: ['suv', 'suvmax'], meaning: 'PET\'te bir alanın işaretli şekeri (FDG) ne kadar tuttuğunun ölçüsü. Yüksek tutulum iltihap, iyileşme ya da başka nedenlerle de olabilir; tek başına tanı değildir.' },
+  { key: 'metabolik', term: 'Hipermetabolik / hipometabolik', roots: ['hipermetabolik', 'hipometabolik', 'metabolik aktivite'], meaning: 'PET\'te bir alanın çevresine göre daha fazla (hiper) ya da daha az (hipo) işaretli madde tutması.' },
+  { key: 't-skoru', term: 'T skoru / Z skoru', roots: ['t skor', 'z skor'], meaning: 'Kemik yoğunluğu ölçümünde kişinin değerinin genç yetişkin ortalamasıyla (T) ya da kendi yaş grubuyla (Z) karşılaştırılması. Eşikler ve anlamı hekimle değerlendirilir.' },
+  { key: 'osteopeni', term: 'Osteopeni / osteoporoz', roots: ['osteopeni', 'osteoporoz'], meaning: 'Kemik yoğunluğunun beklenenden düşük olması (osteopeni) ya da kırık riskini artıracak ölçüde azalması (osteoporoz).' },
+  // Patoloji ve endoskopi
+  { key: 'displazi', term: 'Displazi', roots: ['displazi'], meaning: 'Hücrelerin normalden farklı görünüm ve dizilim göstermesi. Raporda derecesi (düşük/yüksek ya da hafif/orta/ağır) yazılır; anlamını ve takibi hekimin belirler.' },
+  { key: 'metaplazi', term: 'Metaplazi', roots: ['metaplazi'], meaning: 'Bir doku tipinin başka bir doku tipine dönüşmesi; çoğu zaman uzun süreli tahrişe verilen bir uyum yanıtıdır.' },
+  { key: 'hiperplazi', term: 'Hiperplazi', roots: ['hiperplazi'], meaning: 'Bir dokudaki hücre sayısının artması. Hormonlar ya da tahriş gibi pek çok nedeni olabilir.' },
+  { key: 'benign', term: 'Benign / malign', roots: ['benign', 'malign'], meaning: 'Benign: iyi huylu, çevreye yayılmayan. Malign: kötü huylu. Raporda hangisinin yazdığını ve ne anlama geldiğini hekiminle konuş.' },
+  { key: 'inflamasyon', term: 'İnflamasyon / -it eki', roots: ['inflamasyon', 'inflamatuar', 'gastrit', 'kolit', 'ozofajit', 'duodenit'], meaning: 'Dokuda iltihaplanma (yangı). "Gastrit" midenin, "kolit" kalın bağırsağın, "özofajit" yemek borusunun iltihabı demektir.' },
+  { key: 'polip', term: 'Polip', roots: ['polip'], meaning: 'Bağırsak ya da mide iç yüzeyinden kabarık doku çıkıntısı. Çoğu iyi huyludur; türü genellikle alınan parçanın patoloji incelemesiyle belirlenir.' },
+  { key: 'mukoza', term: 'Mukoza', roots: ['mukoza', 'mukozal'], meaning: 'Sindirim ve solunum yollarının iç yüzeyini örten, nemli doku tabakası.' },
+  // EKG ve solunum testi
+  { key: 'sinus-ritmi', term: 'Sinüs ritmi', roots: ['sinus ritm', 'normal sinus'], meaning: 'Kalbin kendi doğal ritim merkezinden (sinüs düğümü) yönetilen ritmi. EKG\'de beklenen temel ritimdir.' },
+  { key: 'qt', term: 'PR, QRS, QT/QTc', roots: ['qrs', 'qt', 'qtc', 'pr araligi', 'pr suresi'], meaning: 'EKG\'deki elektriksel sürelerin adları: PR kulakçıktan karıncığa iletim, QRS karıncıkların uyarılması, QT uyarılma ile toparlanmanın toplam süresi (QTc kalp hızına göre düzeltilmiş hali).' },
+  { key: 'st', term: 'ST segmenti / T dalgası', roots: ['st segment', 'st depresyon', 'st elevasyon', 't dalga'], meaning: 'EKG\'de karıncıkların toparlanma evresini gösteren bölümler. Bu bölümlerdeki değişikliklerin anlamı belirtiler ve diğer tetkiklerle birlikte değerlendirilir.' },
+  { key: 'blok', term: 'Dal bloğu / blok', roots: ['dal blogu', 'blok'], meaning: 'Kalpteki elektrik uyarısının iletim yollarından birinde gecikme ya da iletilmeme. Sağlıklı kişilerde de görülebilen türleri vardır.' },
+  { key: 'fev1', term: 'FEV1 / FVC', roots: ['fev1', 'fvc'], meaning: 'Solunum testinde FVC: derin nefesten sonra zorlu olarak verilebilen toplam hava; FEV1: bunun ilk saniyede verilen kısmı. FEV1/FVC oranı hava yolu daralmasını değerlendirmede kullanılır.' },
+  { key: 'dlco', term: 'DLCO', roots: ['dlco'], meaning: 'Akciğerlerin havadaki gazı kana geçirme yeteneğinin ölçüsü (difüzyon kapasitesi).' },
 ];
 
 /** Metinde geçen sözlük terimleri (her terim bir kez). */
@@ -271,3 +431,37 @@ export const CT_PRESETS: Array<{ key: string; label: string; center: number; wid
   { key: 'beyin', label: 'Beyin', center: 40, width: 80 },
   { key: 'karaciger', label: 'Karaciğer', center: 60, width: 160 },
 ];
+
+/** Rapor metinlerinde sık geçen sözcükler (okunan metnin gerçek bir rapor olup olmadığını anlamak için). */
+const REPORT_WORDS = new Set(
+  (
+    'bulgu bulgular sonuc sonuç rapor inceleme tetkik teknik klinik yorum görüş gorus kanaat normal olağan olagan doğal dogal ' +
+    'izlenmedi izlenmektedir izlendi izlenmiştir saptanmadı saptanmadi saptandı saptandi mevcut yoktur ' +
+    'beyin serebral serebellum ventrikül ventrikul sulkus sisterna kalvarium orbita sinüs sinus ' +
+    'sekans sekanslar kesit kesitler aksiyel koronal sagital kontrast kontrastsız kontrastsiz flair difüzyon difuzyon ' +
+    'sinyal intensite hiperintens hipointens odak odakları cevher cevherde lezyon patolojik patoloji boyut boyutu ölçüm olcum sağ sag sol bilateral ' +
+    'hasta tarih doktor radyoloji uzman dr ve ile olarak bir bu ile de da için icin göre gore ' +
+    'karaciğer karaciger dalak böbrek bobrek akciğer akciger kalp diz omurga disk lomber servikal torakal'
+  ).split(' '),
+);
+
+const VOWEL = /[aeıioöuüâîû]/;
+
+/**
+ * OCR ile okunan metin gerçekten okunabilir bir rapor mu? Film ya da MR fotoğrafında OCR genellikle
+ * "ERAS Gn" gibi anlamsız harf öbekleri üretir; bunlar rapor diye kaydedilmez. Ölçüt: yeterince sözcük,
+ * sözcüklerin çoğu okunabilir biçimde (ünlü içeren, uzun ünsüz öbeği olmayan) ve bilinen rapor
+ * sözcüklerinden birkaçı ya da uzun, düzgün bir metin.
+ */
+export function isReadableReport(text: string): boolean {
+  const words = text
+    .toLocaleLowerCase('tr')
+    .split(/[^a-zçğıöşüâîû0-9]+/i)
+    .filter((w) => w.length >= 2 && /[a-zçğıöşü]/.test(w));
+  const long = words.filter((w) => w.length >= 3);
+  if (long.length < 4) return false;
+  const plausible = long.filter((w) => VOWEL.test(w) && !/[^aeıioöuüâîû0-9]{5,}/.test(w) && !/(.)\1\1/.test(w)).length / long.length;
+  const known = words.filter((w) => REPORT_WORDS.has(w)).length;
+  if (known >= 2 && plausible >= 0.6) return true;
+  return long.length >= 8 && plausible >= 0.8 && known >= 1;
+}

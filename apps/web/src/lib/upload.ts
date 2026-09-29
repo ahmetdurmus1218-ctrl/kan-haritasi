@@ -1,7 +1,7 @@
 import { type AcceptedUpload, DEFAULT_LIMITS, isDicom, modalityCategory, sanitizeFileName, validateUpload } from '@kh/ingest';
 import { type Bytes, type DocCategory, type FileInfo, MAX_DISPLAY_NAME, type NewFileInput, type Vault, sha256Hex } from '@kh/vault';
 import { UPLOAD_REJECT_MESSAGES, UPLOAD_WARNING_MESSAGES, userMessage } from './messages';
-import { CATEGORY_LABEL, guessCategory, guessRegion, isImaging, regionByKey } from './imaging';
+import { CATEGORY_LABEL, CATEGORY_REGION, guessCategory, guessRegion, isImaging, regionByKey } from './imaging';
 import { logEvent } from '../log';
 
 export type UploadPhase = 'checking' | 'encrypting' | 'done' | 'duplicate' | 'error';
@@ -24,31 +24,35 @@ export interface UploadDeps {
 }
 
 export interface UploadOptions {
-  /** Kullanıcının seçtiği belge türü. DICOM dosyasında dosyanın kendi modalitesi önceliklidir. */
-  category?: DocCategory;
+  /**
+   * Kullanıcının seçtiği belge türü; 'auto' (varsayılan) ise tür DICOM başlığından ya da dosya adından
+   * tahmin edilir, bulunamazsa tahlil sayılır ve okunduktan sonra metinden önerilir. DICOM dosyasında
+   * dosyanın kendi modalitesi önceliklidir.
+   */
+  category?: DocCategory | 'auto';
 }
 
 const UID = /^[0-9.]{1,64}$/;
 
 /** Belge türü, bölge, tarih ve seri bilgisi: DICOM başlığından ya da dosya adından. */
-export function classify(v: AcceptedUpload, originalName: string, selected: DocCategory = 'lab'): Pick<NewFileInput, 'category' | 'region' | 'studyDate' | 'seriesUid' | 'sliceIndex' | 'displayName'> {
+export function classify(v: AcceptedUpload, originalName: string, selected: DocCategory | 'auto' = 'auto'): Pick<NewFileInput, 'category' | 'region' | 'studyDate' | 'seriesUid' | 'sliceIndex' | 'displayName'> {
   if (v.kind === 'dicom' && v.dicom) {
     const d = v.dicom;
-    const category = modalityCategory(d.modality) ?? (selected === 'lab' ? 'other' : selected);
+    const category = modalityCategory(d.modality) ?? (selected === 'lab' || selected === 'auto' ? (guessCategory(originalName) ?? 'other') : selected);
     const described = [d.studyDescription, d.seriesDescription].filter(Boolean).join(' · ');
     const displayName = described ? sanitizeFileName(described).slice(0, MAX_DISPLAY_NAME).trim() || v.displayName : v.displayName;
     const index = d.instanceNumber ?? d.sliceLocation;
     return {
       category,
-      region: guessRegion(d.bodyPart, d.studyDescription, d.seriesDescription, originalName),
+      region: guessRegion(d.bodyPart, d.studyDescription, d.seriesDescription, originalName) ?? CATEGORY_REGION[category],
       studyDate: d.studyDate,
       seriesUid: d.seriesUid && UID.test(d.seriesUid) ? d.seriesUid : undefined,
       sliceIndex: index !== undefined && Number.isFinite(index) ? index : undefined,
       displayName,
     };
   }
-  const category = selected !== 'lab' ? selected : (guessCategory(originalName) ?? 'lab');
-  return { category, region: isImaging(category) ? guessRegion(originalName) : undefined, displayName: v.displayName };
+  const category = selected !== 'auto' ? selected : (guessCategory(originalName) ?? 'lab');
+  return { category, region: isImaging(category) ? (guessRegion(originalName) ?? CATEGORY_REGION[category]) : undefined, displayName: v.displayName };
 }
 
 /** 20 MB'tan büyük dosya yalnızca DICOM ise (60 MB'a kadar) okunur; önce imzaya bakılır. */

@@ -703,7 +703,7 @@ export function looksLikeFilmImage(rgba: Uint8ClampedArray): boolean {
 // ---------------------------------------------------------------------------------------------
 // Belge türü ve bölge tahmini
 
-export type ImagingModality = 'mr' | 'ct' | 'xray' | 'us' | 'other';
+export type ImagingModality = 'mr' | 'ct' | 'xray' | 'us' | 'mammo' | 'pet' | 'angio' | 'dexa' | 'other';
 
 /** DICOM modalite kodundan belge türü. */
 export function modalityCategory(modality: string | undefined): ImagingModality | undefined {
@@ -712,12 +712,18 @@ export function modalityCategory(modality: string | undefined): ImagingModality 
       return 'mr';
     case 'CT':
       return 'ct';
+    case 'MG':
+      return 'mammo';
+    case 'PT':
+      return 'pet';
+    case 'XA':
+      return 'angio';
+    case 'BMD':
+      return 'dexa';
     case 'CR':
     case 'DX':
     case 'DR':
     case 'RF':
-    case 'XA':
-    case 'MG':
     case 'PX':
     case 'IO':
       return 'xray';

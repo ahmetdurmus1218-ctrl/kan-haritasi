@@ -42,12 +42,12 @@ def create_vault(page, password):
     page.fill("#confirm", password)
     page.check("input[type=checkbox]")
     page.get_by_role("button", name="Kasayı oluştur").click()
-    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for(timeout=30000)
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for(timeout=30000)
 
 
 def upload_and_confirm(page, path, count, date=None):
     page.goto(URL + "#/belgeler")
-    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for()
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
     page.set_input_files("input[type=file][multiple]", [str(path)])
     page.get_by_role("button", name="Aç ve oku").wait_for(timeout=20000)
     page.get_by_role("button", name="Aç ve oku").click()

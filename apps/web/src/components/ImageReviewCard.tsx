@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ImageReview } from '@kh/ingest';
+import { type ImageReview, borderValue, rotateImage } from '@kh/ingest';
 import type { Bytes, FileInfo } from '@kh/vault';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { type GrayImage, describeRegion, loadGray, runReview, toStored } from '../lib/imageReview';
@@ -9,7 +9,52 @@ import { CheckIcon, SpinnerIcon } from './icons';
 
 const BOX = ['#f472b6', '#fbbf24', '#38bdf8', '#a78bfa'];
 
-function draw(canvas: HTMLCanvasElement, img: GrayImage, r: ImageReview, heat: boolean) {
+const VERDICT_TONE = {
+  calm: 'border-accent/30 bg-accent/5 text-fg',
+  mild: 'border-caution/40 bg-caution/[0.07] text-caution-fg',
+  strong: 'border-high/40 bg-high/[0.08] text-high',
+  none: 'border-ink-600 bg-ink-850/60 text-fg-muted',
+} as const;
+
+/**
+ * Tek satırlık ön değerlendirme: incelemenin ne bulduğunu sade dille söyler. "Normal" ya da
+ * "hastalık var" demez; yalnızca sağ-sol farkının olup olmadığını ve ne yapılması gerektiğini söyler.
+ */
+function verdictOf(
+  review: ImageReview,
+  regions: Array<{ panel: number; areaPct: number; strength: number }>,
+): { tone: keyof typeof VERDICT_TONE; title: string; text: string } {
+  if (review.compared === 0)
+    return {
+      tone: 'none',
+      title: 'Bu görüntüde karşılaştırılabilir kesit bulunamadı',
+      text: 'Sağ-sol karşılaştırması yalnızca önden/üstten (eksenel, koronal) kesitlerde yapılabilir. Görüntüyü düz ve kesitleri tam görünecek şekilde yeniden çekmeyi dene.',
+    };
+  if (!regions.length)
+    return {
+      tone: 'calm',
+      title: `Belirgin sağ-sol farkı görülmedi (${review.compared} kesit)`,
+      text: 'Karşılaştırılan kesitlerde iki taraf birbirine benziyor. Bu, görüntünün normal olduğunu kanıtlamaz: iki tarafı eşit etkileyen ve küçük değişiklikler bu yöntemle görülmez. Kesin değerlendirme radyoloji raporundadır.',
+    };
+  const strong = regions.filter((g) => g.strength >= 3 || g.areaPct >= 3);
+  const panels = [...new Set((strong.length ? strong : regions).map((g) => g.panel))];
+  const where = panels.length === 1 ? `Kesit ${panels[0]}` : `${panels.length} kesit (${panels.join(', ')})`;
+  return strong.length
+    ? {
+        tone: 'strong',
+        title: `${where}: belirgin sağ-sol farkı var`,
+        text: 'Bir tarafta karşı tarafta olmayan belirgin bir parlaklık farkı işaretlendi. Bu bir tanı değildir (normal yapılar da farklı görünebilir), ama görüntüyü ve bu işareti hekimine göstermen iyi olur.',
+      }
+    : {
+        tone: 'mild',
+        title: `${where}: hafif sağ-sol farkı var`,
+        text: 'Küçük ya da zayıf bir fark işaretlendi. Sağlıklı kişilerde de sık görülür (baş eğikliği, kesit düzeyi, sinüsler). Önemini ancak hekim değerlendirebilir.',
+      };
+}
+
+function draw(canvas: HTMLCanvasElement, source: GrayImage, r: ImageReview, heat: boolean) {
+  // Eğik fotoğraf incelemede düzeltildi: kutular düzeltilmiş görüntüye göre, görüntü de aynı açıyla çizilir.
+  const img = r.angle ? { ...source, data: rotateImage(source.data, source.width, source.height, r.angle, borderValue(source.data, source.width, source.height)) } : source;
   canvas.width = img.width;
   canvas.height = img.height;
   const ctx = canvas.getContext('2d');
@@ -128,6 +173,7 @@ export function ImageReviewCard({
   const review = typeof state === 'object' && state ? state.review : null;
   const regions = review ? review.panels.flatMap((p, i) => p.regions.map((g, j) => ({ ...g, panel: i + 1, n: j }))) : [];
   const confirmed = stored?.confirmed && stored.sourceId === info.id;
+  const verdict = review ? verdictOf(review, regions) : null;
 
   const save = async (next: StoredReview | null) => {
     setBusy(true);
@@ -161,6 +207,13 @@ export function ImageReviewCard({
       ) : (
         review && (
           <>
+            {verdict && (
+              <div className={`rounded-xl border p-3 ${VERDICT_TONE[verdict.tone]}`} role="status">
+                <p className="text-[11px] font-medium uppercase tracking-wider opacity-80">Ön değerlendirme · otomatik, kesin değil</p>
+                <p className="mt-1 text-base font-semibold leading-snug">{verdict.title}</p>
+                <p className="mt-1 text-xs leading-relaxed opacity-90">{verdict.text}</p>
+              </div>
+            )}
             <figure className="overflow-hidden rounded-xl border border-ink-600/60 bg-black" aria-label={`İnceleme görüntüsü: ${review.panels.length} kesit, ${regions.length} dikkat bölgesi`}>
               <canvas ref={canvas} className="block h-auto w-full" aria-hidden="true" />
             </figure>

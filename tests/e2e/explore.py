@@ -65,7 +65,7 @@ with sync_playwright() as p:
     page.fill("#confirm", PASS)
     page.check("input[type=checkbox]")
     page.get_by_role("button", name="Kasayı oluştur").click()
-    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for(timeout=20000)
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for(timeout=20000)
     page.set_input_files("input[type=file][multiple]", [str(PDF)])
     page.get_by_role("button", name="Aç ve oku").click()
     page.get_by_text("Sonuçları onayla").wait_for(timeout=30000)

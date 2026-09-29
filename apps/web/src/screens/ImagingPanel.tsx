@@ -5,7 +5,7 @@ import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { go } from '../state/router';
 import type { ExtractProgress } from '../lib/extract';
 import { OcrError, cancelOcr } from '../lib/ocr';
-import { CATEGORY_ABOUT, CATEGORY_LABEL, IMAGING_QUESTIONS, REGIONS, findTerms, guessRegion, isImaging, regionByKey, splitReport } from '../lib/imaging';
+import { CATEGORY_ABOUT, CATEGORY_LABEL, CATEGORY_REGION, RADIOLOGY, IMAGING_QUESTIONS, REGIONS, findTerms, guessRegion, isImaging, isReadableReport, regionByKey, splitReport } from '../lib/imaging';
 import { type ImagingNote, MAX_NOTE_CHARS, noteForFile, removeManualMeasurement, saveImagingNote } from '../lib/imagingRecords';
 import { isAbnormal, measurementsOf } from '../lib/imagingMeasurements';
 import { loadSex } from '../lib/reports';
@@ -20,6 +20,8 @@ import { relatedStudies, useImagingStudies } from '../lib/imagingStudies';
 import { classifyPhoto } from '../lib/photo';
 import { ImagingStudyList } from '../components/imaging';
 import { ImageReviewCard } from '../components/ImageReviewCard';
+import { FindingList } from '../components/findings';
+import { extractFindings } from '../lib/imagingFindings';
 
 const METHOD_TEXT: Record<ImagingNote['method'], string> = {
   text: 'PDF metninden okundu',
@@ -119,11 +121,19 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
         setMode('idle');
         return;
       }
+      // Film/MR fotoğrafında OCR anlamsız harf öbekleri üretir ("ERAS Gn"): rapor diye kaydedilmez.
+      if (got.method !== 'text' && !isReadableReport(got.text)) {
+        setError(
+          'Bu görüntüde okunabilir bir rapor metni yok: okunan yazı anlamsız harflerden oluşuyordu ve kaydedilmedi. Görüntünün kendisi aşağıdaki otomatik incelemede değerlendirilir; raporun varsa ayrıca yükleyebilir ya da metnini elle yazabilirsin.',
+        );
+        setMode('idle');
+        return;
+      }
       const n = await saveImagingNote(vault, noteFileId, got.text, got.method);
       setNote(n);
       bump();
       const head = got.text.slice(0, 400);
-      const region = info.region ? undefined : guessRegion(head);
+      const region = info.region ? undefined : (guessRegion(head) ?? CATEGORY_REGION[info.category]);
       const date = info.studyDate ? undefined : got.date;
       setSuggested(region || date ? { region, date, from: 'report' } : null);
       setMode('idle');
@@ -137,6 +147,8 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   // Film/MR baskısı fotoğrafında OCR çalışmaz (metin yoktur); düğmeyle istenebilir.
   const autoRead = info.kind === 'pdf' || photoKind === 'document';
   const hasText = Boolean(note && note.text.trim());
+  // Önceki sürümlerde görüntüden okunup kaydedilmiş anlamsız metin rapor gibi gösterilmez.
+  const garbled = Boolean(note && hasText && (note.method === 'ocr' || note.method === 'mixed') && !isReadableReport(note.text));
   useEffect(() => {
     if (note === undefined || hasText || !autoRead || mode !== 'idle' || error || autoTried.current) return;
     autoTried.current = true;
@@ -184,8 +196,9 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   const category = info.category;
   const about = isImaging(category) ? CATEGORY_ABOUT[category] : null;
   const region = info.region ? regionByKey.get(info.region) : undefined;
-  const sections = useMemo(() => (note && hasText ? splitReport(note.text) : []), [note, hasText]);
-  const terms = useMemo(() => (note && hasText ? findTerms(note.text) : []), [note, hasText]);
+  const sections = useMemo(() => (note && hasText && !garbled ? splitReport(note.text) : []), [note, hasText, garbled]);
+  const terms = useMemo(() => (note && hasText && !garbled ? findTerms(note.text) : []), [note, hasText, garbled]);
+  const findings = useMemo(() => (note && hasText && !garbled ? extractFindings(note.text, info.region ?? CATEGORY_REGION[info.category]) : []), [note, hasText, garbled, info.region, info.category]);
   const measures = useMemo(() => measurementsOf(note ?? undefined, info.region, sex), [note, info.region, sex]);
   const abnormal = measures.filter(isAbnormal);
   const spacing = Boolean(dicom?.pixelSpacing);
@@ -199,7 +212,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             <ScanIcon size={20} />
           </span>
           <div className="min-w-0">
-            <p className="label-caps">Görüntüleme</p>
+            <p className="label-caps">{RADIOLOGY.has(category) ? 'Görüntüleme' : 'Tıbbi rapor'}</p>
             <h2 className="text-lg font-semibold tracking-tight">
               {CATEGORY_LABEL[category]}
               {region ? ` · ${region.label}` : ''}
@@ -260,6 +273,23 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
               if (!info.region) setSuggested((s) => s ?? { region: 'beyin', from: 'shape' });
             }}
           />
+        )}
+
+        {/* Bulgular: rapordaki her cümle, konumu ve olağan/dikkat ayrımıyla; tıklayınca 3B'de ilgili yer */}
+        {findings.length > 0 && (
+          <section className="space-y-2" aria-label="Rapordaki bulgular">
+            <div className="flex items-end justify-between gap-2">
+              <p className="label-caps">Rapordaki bulgular ({findings.length})</p>
+              <span className="text-xs text-fg-muted">
+                {findings.filter((f) => f.status === 'abnormal').length} dikkat · {findings.filter((f) => f.status === 'uncertain').length} belirsiz
+              </span>
+            </div>
+            <FindingList findings={findings} />
+            <p className="text-[11px] leading-relaxed text-fg-faint">
+              Bulgular raporda yazan cümlelerden çıkarılır: yer adı ve "izlenmedi / olağan" gibi ifadeler sözcüklere göre okunur, hatalı eşleşebilir. Görüntü
+              yorumlanmaz; önem ve anlam hekim tarafından değerlendirilir.
+            </p>
+          </section>
         )}
 
         {/* Ölçümler: tahlil sonuçları gibi genel referansa göre */}
@@ -483,6 +513,27 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           ) : note === undefined ? (
             <div className="flex items-center gap-2 text-sm text-fg-muted">
               <SpinnerIcon size={14} /> Yükleniyor…
+            </div>
+          ) : garbled && note ? (
+            <div className="space-y-2 rounded-2xl border border-caution/30 bg-caution/[0.06] p-4 text-sm">
+              <p className="text-caution-fg">
+                Daha önce bu görüntüden okunan yazı anlamlı bir rapor değil (“{note.text.trim().slice(0, 40)}”). Film/MR fotoğrafında okunacak rapor metni yoktur; görüntü
+                yukarıdaki otomatik incelemede değerlendirilir.
+              </p>
+              <button
+                type="button"
+                className="btn-ghost px-3 py-1.5 text-xs"
+                onClick={() =>
+                  void saveImagingNote(vault, noteFileId, '', 'manual')
+                    .then((n) => {
+                      setNote(n);
+                      bump();
+                    })
+                    .catch((e) => setError(userMessage(e)))
+                }
+              >
+                Bu anlamsız metni sil
+              </button>
             </div>
           ) : hasText && note ? (
             <div className="space-y-3">

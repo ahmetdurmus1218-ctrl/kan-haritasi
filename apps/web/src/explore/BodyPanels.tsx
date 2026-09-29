@@ -7,6 +7,7 @@ import { formatDate } from '../lib/format';
 import { MeasureChip } from '../components/measures';
 import { type StructureHighlight, highlightName } from '../anatomy/highlight';
 import { CONNECTIONS, FIT_LABEL, ORGANS, insideLinks, insidesOf } from '../anatomy/organs';
+import { FINDING_TONE, openFinding } from '../components/findings';
 import { isVein, partLabel, partLatin } from '../anatomy/names';
 import { highlightColor } from '../anatomy/palette';
 import { CriticalBanner, FindingBlock, PatternList, SeverityBar, SeverityChip } from '../components/interpretation';
@@ -311,14 +312,10 @@ function ImagingBlock({ studies, accent, structure }: { studies: ImagingStudy[];
       <Caps className="text-fg-faint">Görüntülemelerin ({studies.length})</Caps>
       {studies.slice(0, 4).map((st) => {
         const conclusion = st.conclusion ?? st.linked?.conclusion;
+        const own = st.findings.filter((f) => f.structure === structure && f.status !== 'normal');
         return (
-          <button
-            key={st.key}
-            type="button"
-            onClick={() => go({ name: 'document', id: st.head.id })}
-            className="kh-holo-btn block w-full rounded-xl border px-3 py-2.5 text-left transition"
-            style={{ borderColor: `${accent}66` }}
-          >
+          <div key={st.key} className="rounded-xl border" style={{ borderColor: `${accent}66` }}>
+            <button type="button" onClick={() => go({ name: 'document', id: st.head.id })} className="kh-holo-btn block w-full rounded-xl px-3 py-2.5 text-left transition">
             <span className="block text-sm text-fg">
               {CATEGORY_LABEL[st.category]} · {formatDate(st.date)}
               {st.files.length > 1 ? ` · ${st.files.length} kesit` : ''}
@@ -340,11 +337,26 @@ function ImagingBlock({ studies, accent, structure }: { studies: ImagingStudy[];
                   ))}
               </span>
             )}
-          </button>
+            </button>
+            {own.length > 0 && (
+              <ul className="space-y-1 border-t border-ink-700/60 px-3 py-2" aria-label="Bu yapıyla ilgili rapor bulguları">
+                {own.slice(0, 4).map((f, i) => (
+                  <li key={i}>
+                    <button type="button" onClick={() => openFinding(f)} className="flex w-full items-center gap-1.5 text-left text-[12px] text-fg hover:underline">
+                      <span className={`shrink-0 rounded-full border px-1.5 text-[10px] ${FINDING_TONE[f.status].cls}`}>{FINDING_TONE[f.status].label}</span>
+                      <span className="truncate">{f.label}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         );
       })}
       {studies.length > 4 && <p className="text-[11px] text-fg-faint">+{studies.length - 4} görüntüleme daha · Sonuçlar ekranında</p>}
-      <p className="text-[11px] leading-relaxed text-fg-faint">Model, görüntülenen bölgenin genel yerini gösterir; rapordaki bir bulgunun yerini göstermez.</p>
+      <p className="text-[11px] leading-relaxed text-fg-faint">
+        Model normal anatomiyi gösterir. Rapor bulgusuna dokununca ilgili bölüm açılır; bulgunun kendisi modelde çizilmez.
+      </p>
     </section>
   );
 }
@@ -459,10 +471,12 @@ export function OrganPanel({
           <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: highlightColor(h.status, h.score), boxShadow: `0 0 8px ${highlightColor(h.status, h.score)}` }} />
           <p className="text-fg-muted">
             <span className="text-fg">{h.tests.map((t) => `${highlightName(t)} ${t.status === 'high' ? '▲' : t.status === 'low' ? '▼' : ''}`).join(', ')}</span> ·{' '}
-            {SCORE_WORD[Math.min(3, Math.round(h.score))]} sapma.{' '}
+            {h.tests.some((t) => !t.key.startsWith('img-find:') && !t.key.startsWith('img-review:')) ? `${SCORE_WORD[Math.min(3, Math.round(h.score))]} sapma. ` : ''}
             {h.tests.some((t) => t.key.startsWith('img:'))
               ? 'Görüntüleme ölçümü genel referans dışında; tek başına tanı değildir, önemini hekim değerlendirir.'
-              : h.tests.some((t) => t.key.startsWith('img-review:'))
+              : h.tests.some((t) => t.key.startsWith('img-find:'))
+                ? 'Görüntüleme raporunda bu yapıyla ilgili bir bulgu yazıyor; ayrıntısı aşağıda. Önemini hekim değerlendirir.'
+                : h.tests.some((t) => t.key.startsWith('img-review:'))
                 ? 'Görüntünün otomatik incelemesinde sağ-sol farkı işaretlendi; tanı değildir, görüntüyü hekim değerlendirir.'
               : 'İlişkili süreçleri gösterir; yapıda sorun olduğu anlamına gelmez.'}
           </p>

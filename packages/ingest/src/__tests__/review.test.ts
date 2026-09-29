@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reviewImage, splitPanels } from '../review';
+import { isGrayAfterCast, reviewImage, rotateImage, splitPanels } from '../review';
 
 /** Yapay eksenel "baş" kesiti: parlak cilt halkası, dokulu simetrik beyin, orta hatta koyu ventrikül. */
 function head(w: number, h: number, opts: { lesion?: { x: number; y: number; r: number; v: number }; tilt?: number; profile?: boolean } = {}): Float32Array {
@@ -77,6 +77,38 @@ describe('görüntü incelemesi (sağ-sol karşılaştırması)', () => {
     const r = reviewImage(img, W, H);
     expect(r.panels.map((p) => p.kind)).toEqual(['symmetric', 'asymmetric-shape']);
     expect(r.compared).toBe(1);
+  });
+
+  it('telefonla eğik çekilmiş, gri çerçeveli kolajda da kesitleri ayırır', () => {
+    const w = 160;
+    const h = 190;
+    const gap = 3;
+    const parts = [head(w, h), head(w, h, { lesion: { x: 50, y: 70, r: 12, v: 245 } }), head(w, h)];
+    const { img, W, H } = collage(parts, w, h, gap);
+    // Kesitler arası ince açık çizgi, çevrede gri çerçeve, sonra 5° eğiklik
+    for (const k of [1, 2]) for (let y = 0; y < H; y++) for (let x = 0; x < gap; x++) img[y * W + k * (w + gap) - gap + x] = 140;
+    const FW = W + 120;
+    const FH = H + 120;
+    const framed = new Float32Array(FW * FH).fill(70);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) framed[(y + 60) * FW + x + 60] = img[y * W + x]!;
+    const tilted = rotateImage(framed, FW, FH, 5, 70);
+    const r = reviewImage(tilted, FW, FH);
+    expect(Math.abs(r.angle)).toBeGreaterThanOrEqual(3);
+    expect(r.panels.filter((p) => p.kind === 'symmetric')).toHaveLength(3);
+    expect(r.flagged).toBe(1);
+  });
+
+  it('renk kayması olan gri fotoğraf gri sayılır, renkli fotoğraf sayılmaz', () => {
+    const n = 64 * 64;
+    const tinted = new Uint8ClampedArray(n * 4);
+    const colorful = new Uint8ClampedArray(n * 4);
+    for (let p = 0; p < n; p++) {
+      const v = (p * 37) % 256;
+      tinted.set([Math.round(v * 0.9), v, Math.min(255, v + 14), 255], p * 4);
+      colorful.set([(p * 7) % 256, (p * 13) % 256, (p * 29) % 256, 255], p * 4);
+    }
+    expect(isGrayAfterCast(tinted)).toBe(true);
+    expect(isGrayAfterCast(colorful)).toBe(false);
   });
 
   it('boş görüntüde kesit bulmaz', () => {

@@ -62,6 +62,12 @@ export interface ImageReview {
   compared: number;
   flagged: number;
   headLike: boolean;
+  /**
+   * Fotoğraf eğikse düzeltme açısı (derece, saat yönünün tersi pozitif). Kutular ve orta hatlar
+   * görüntü merkezinin etrafında bu açıyla döndürülmüş görüntüye göredir; çizen taraf görüntüyü
+   * aynı açıyla döndürür.
+   */
+  angle: number;
 }
 
 export const REVIEW_LIMITS = {
@@ -314,7 +320,34 @@ function trim(img: Float32Array, W: number, b: Box): Box | null {
 }
 
 /** Kolajı kesitlere ayırır (en fazla 3 düzey sütun/satır bölmesi). */
-export function splitPanels(img: Float32Array, W: number, H: number): Box[] {
+/**
+ * Fotoğrafta kolajın (ya da tek kesitin) çevresinde düz bir çerçeve/masa/ekran kenarı varsa onu
+ * dışarıda bırakan kutu: kenar tonundan belirgin farklı piksellerin yoğun olduğu satır ve sütunlar.
+ */
+export function contentBox(img: Float32Array, W: number, H: number): Box {
+  const bg = borderValue(img, W, H);
+  const col = new Float32Array(W);
+  const row = new Float32Array(H);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      if (Math.abs(img[y * W + x]! - bg) > 0.15) {
+        col[x] = col[x]! + 1 / H;
+        row[y] = row[y]! + 1 / W;
+      }
+  const span = (a: Float32Array, n: number): [number, number] => {
+    let lo = 0;
+    let hi = n - 1;
+    while (lo < n && a[lo]! < 0.05) lo++;
+    while (hi > lo && a[hi]! < 0.05) hi--;
+    return [lo, hi];
+  };
+  const [x0, x1] = span(col, W);
+  const [y0, y1] = span(row, H);
+  if (x1 - x0 < W * 0.2 || y1 - y0 < H * 0.2) return { x: 0, y: 0, w: W, h: H };
+  return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
+
+export function splitPanels(img: Float32Array, W: number, H: number, root: Box = { x: 0, y: 0, w: W, h: H }): Box[] {
   const out: Box[] = [];
   const minSide = Math.min(W, H) * 0.12;
   const visit = (b: Box, vertical: boolean, depth: number) => {
@@ -334,7 +367,7 @@ export function splitPanels(img: Float32Array, W: number, H: number): Box[] {
     const t = trim(img, W, b);
     if (t && t.w >= minSide && t.h >= minSide) out.push(t);
   };
-  visit({ x: 0, y: 0, w: W, h: H }, true, 0);
+  visit(root, true, 0);
   return out;
 }
 
@@ -579,14 +612,90 @@ export function reviewPanel(img: Float32Array, W: number, box: Box): PanelReview
 }
 
 /** Gri tonlu görüntünün tamamını inceler (değerler herhangi bir aralıkta olabilir). */
+/** Görüntüyü merkezi etrafında döndürür (çift doğrusal örnekleme); dışarıda kalan köşeler `fill` ile dolar. */
+export function rotateImage(img: Float32Array, W: number, H: number, deg: number, fill: number): Float32Array {
+  const out = new Float32Array(W * H);
+  const a = (deg * Math.PI) / 180;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  const cx = (W - 1) / 2;
+  const cy = (H - 1) / 2;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      // Hedef pikselin kaynaktaki yeri (ters dönme)
+      const sx = c * (x - cx) - s * (y - cy) + cx;
+      const sy = s * (x - cx) + c * (y - cy) + cy;
+      const x0 = Math.floor(sx);
+      const y0 = Math.floor(sy);
+      if (x0 < 0 || y0 < 0 || x0 >= W - 1 || y0 >= H - 1) {
+        out[y * W + x] = fill;
+        continue;
+      }
+      const fx = sx - x0;
+      const fy = sy - y0;
+      const i = y0 * W + x0;
+      out[y * W + x] = img[i]! * (1 - fx) * (1 - fy) + img[i + 1]! * fx * (1 - fy) + img[i + W]! * (1 - fx) * fy + img[i + W + 1]! * fx * fy;
+    }
+  return out;
+}
+
+/** Kenar pikselleri ortancası (çerçeve / arka plan tonu). */
+export function borderValue(img: Float32Array, W: number, H: number): number {
+  const v: number[] = [];
+  for (let x = 0; x < W; x += 2) v.push(img[x]!, img[(H - 1) * W + x]!);
+  for (let y = 0; y < H; y += 2) v.push(img[y * W]!, img[y * W + W - 1]!);
+  return percentile(v, 0.5);
+}
+
+/**
+ * Eğik çekilmiş fotoğrafın açısı: kolajdaki kesit sınırları ve çerçeve kenarları hizalandığında
+ * satır/sütun ortalamalarının ardışık farkları en büyük olur. Belirgin bir kazanç yoksa 0.
+ */
+export function estimateSkew(img: Float32Array, W: number, H: number): number {
+  const k = Math.min(1, 240 / Math.max(W, H));
+  const w = Math.max(8, Math.round(W * k));
+  const h = Math.max(8, Math.round(H * k));
+  const small = resample(img, W, 0, 0, W, H, w, h);
+  const fill = borderValue(small, w, h);
+  const score = (deg: number) => {
+    const r = deg === 0 ? small : rotateImage(small, w, h, deg, fill);
+    const col = new Float32Array(w);
+    const row = new Float32Array(h);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        col[x] = col[x]! + r[y * w + x]! / h;
+        row[y] = row[y]! + r[y * w + x]! / w;
+      }
+    let sc = 0;
+    for (let x = 1; x < w; x++) sc += (col[x]! - col[x - 1]!) ** 2;
+    for (let y = 1; y < h; y++) sc += (row[y]! - row[y - 1]!) ** 2;
+    return sc;
+  };
+  const base = score(0);
+  let best = { deg: 0, sc: base };
+  for (let d = -12; d <= 12; d += 1) {
+    if (d === 0) continue;
+    const sc = score(d);
+    if (sc > best.sc) best = { deg: d, sc };
+  }
+  for (let d = best.deg - 0.75; d <= best.deg + 0.75; d += 0.25) {
+    const sc = score(d);
+    if (sc > best.sc) best = { deg: d, sc };
+  }
+  return Math.abs(best.deg) >= 1 && best.sc > base * 1.15 ? best.deg : 0;
+}
+
 export function reviewImage(gray: Float32Array, width: number, height: number): ImageReview {
   // Çok büyük görüntüler önce küçültülür (panel bulma için 700 piksel yeterli).
   const k = Math.min(1, 700 / Math.max(width, height));
   const W = Math.max(1, Math.round(width * k));
   const H = Math.max(1, Math.round(height * k));
   const norm = normalize(gray);
-  const img = k < 1 ? resample(norm, width, 0, 0, width, height, W, H) : norm;
-  const panels = splitPanels(img, W, H)
+  const flat = k < 1 ? resample(norm, width, 0, 0, width, height, W, H) : norm;
+  // Eğik fotoğraf: kesit sınırları dik olsun diye önce düzelt
+  const angle = estimateSkew(flat, W, H);
+  const img = angle ? rotateImage(flat, W, H, angle, borderValue(flat, W, H)) : flat;
+  const panels = splitPanels(img, W, H, contentBox(img, W, H))
     .slice(0, 16)
     .map((b) => reviewPanel(img, W, b))
     .map((p) => {
@@ -607,5 +716,57 @@ export function reviewImage(gray: Float32Array, width: number, height: number): 
   const flagged = panels.reduce((n, p) => n + p.regions.length, 0);
   const valid = panels.filter((p) => p.kind !== 'too-small');
   const headLike = valid.length > 0 && valid.filter((p) => p.headLike).length >= Math.ceil(valid.length / 2);
-  return { width, height, panels, compared, flagged, headLike };
+  return { width, height, panels, compared, flagged, headLike, angle };
+}
+
+/**
+ * Renk kayması düzeltilmiş gri testi: telefonla çekilen ekran/negatoskop fotoğraflarında bütün
+ * görüntü hafif mavi ya da sarı olabilir. Ortalama renk kayması çıkarıldıktan sonra piksellerin
+ * büyük çoğunluğu griyse true.
+ */
+export function isGrayAfterCast(rgba: Uint8ClampedArray, tolerance = 18): boolean {
+  const n = rgba.length / 4;
+  const step = Math.max(1, Math.floor(n / 40000));
+  let rg = 0;
+  let bg = 0;
+  let seen = 0;
+  for (let p = 0; p < n; p += step) {
+    const i = p * 4;
+    rg += rgba[i]! - rgba[i + 1]!;
+    bg += rgba[i + 2]! - rgba[i + 1]!;
+    seen++;
+  }
+  if (!seen) return false;
+  rg /= seen;
+  bg /= seen;
+  let colored = 0;
+  for (let p = 0; p < n; p += step) {
+    const i = p * 4;
+    const a = rgba[i]! - rgba[i + 1]! - rg;
+    const b = rgba[i + 2]! - rgba[i + 1]! - bg;
+    if (Math.max(Math.abs(a), Math.abs(b), Math.abs(a - b)) > tolerance) colored++;
+  }
+  return colored / seen < 0.06;
+}
+
+/**
+ * Fotoğraf bir kesitsel görüntü (MR/BT kesiti, kolajı) mı? Renk kayması düzeltilmiş gri olmalı ve
+ * en az bir kesit simetrik (eksenel/koronal) baş ya da gövde kesiti gibi görünmeli. Rapor kâğıdı
+ * fotoğrafında yazı simetrik bir kesit oluşturmadığı için false döner.
+ */
+export function looksLikeSliceImage(rgba: Uint8ClampedArray, width: number, height: number): boolean {
+  if (!isGrayAfterCast(rgba)) return false;
+  const gray = new Float32Array(width * height);
+  let dark = 0;
+  let bright = 0;
+  for (let p = 0; p < gray.length; p++) {
+    const v = 0.299 * rgba[p * 4]! + 0.587 * rgba[p * 4 + 1]! + 0.114 * rgba[p * 4 + 2]!;
+    gray[p] = v;
+    if (v < 60) dark++;
+    else if (v > 170) bright++;
+  }
+  // MR/BT kesitlerinin çevresi koyudur; beyaz kâğıt sayfası (tahlil raporu) kesit sayılmaz.
+  if (dark / gray.length < 0.15 || bright / gray.length > 0.5) return false;
+  const r = reviewImage(gray, width, height);
+  return r.compared > 0;
 }

@@ -15,6 +15,16 @@ export interface ExtractProgress {
 }
 
 const MIN_TEXT_CHARS = 40;
+
+/** Okunan satırların düz metni: tahlil tablosu çıkmazsa belge türünü tahmin etmek için. */
+export type ExtractedDraft = ReportDraft & { plainText: string };
+
+function plainTextOf(items: TextItem[], pageSizes: Map<number, { w: number; h: number }>): string {
+  return buildLines(items, pageSizes)
+    .map((l) => l.text.trim())
+    .filter(Boolean)
+    .join('\n');
+}
 const OCR_TARGET_WIDTH = 2200;
 
 /**
@@ -27,7 +37,7 @@ export async function extractDraft(
   info: FileInfo,
   bytes: Uint8Array<ArrayBuffer>,
   options: { sex: Sex; userAliases?: Record<string, string>; onProgress?: (p: ExtractProgress) => void },
-): Promise<ReportDraft> {
+): Promise<ExtractedDraft> {
   const items: TextItem[] = [];
   /** Taranmış sayfaların ikinci (farklı bölütlemeli) OCR okuması; metin katmanı iki listede de aynı. */
   const altItems: TextItem[] = [];
@@ -96,6 +106,7 @@ export async function extractDraft(
     // Aynı görüntü iki bölütleme kipinde okunur; uyuşmayan değerler doğrulamaya düşer.
     const [block, auto] = await ocrImage(order[0]!, ['block', 'auto']);
     let best = mergeOcrDrafts(parse(block!), parse(auto!));
+    const plainText = plainTextOf(block!, pageSizes);
     if (best.rows.length < 4) {
       // Çok az sonuç: diğer ön işleme kipiyle (ör. ekran görüntüsü) bir kez daha dene.
       const [second] = await ocrImage(order[1]!, ['block']);
@@ -103,7 +114,7 @@ export async function extractDraft(
       if (draftScore(alt) > draftScore(best)) best = alt;
     }
     options.onProgress?.({ phase: 'parse', page: 1, pages: 1 });
-    return best;
+    return { ...best, plainText };
   }
 
   options.onProgress?.({ phase: 'parse', page: pageCount, pages: pageCount });
@@ -115,7 +126,7 @@ export async function extractDraft(
     userAliases: options.userAliases,
   };
   const draft = parseReport(items, opts);
-  return usedOcr ? mergeOcrDrafts(draft, parseReport(altItems, opts)) : draft;
+  return { ...(usedOcr ? mergeOcrDrafts(draft, parseReport(altItems, opts)) : draft), plainText: plainTextOf(items, pageSizes) };
 }
 
 /**
