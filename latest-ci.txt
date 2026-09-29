@@ -1,7 +1,7 @@
 workflow: CI
-run: 36584638171
-sha: 7b6dfb7685b275578004322b58f9e4ac2aa4b52c
-conclusion: failure
+run: 36611065698
+sha: db3716da42ff3c4ab7b4444587bce50c7f716491
+conclusion: success
 
 web: success
   - Set up job: success
@@ -19,7 +19,7 @@ web: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-e2e: failure
+e2e: success
   - Set up job: success
   - Run actions/checkout@v4: success
   - Run pnpm/action-setup@v4: success
@@ -30,14 +30,14 @@ e2e: failure
   - Playwright (Chromium): success
   - Önizleme sunucusu: success
   - Belgeler ve kasa (smoke): success
-  - Okuma → sonuçlar → vücutta göster → simülasyon: failure
-  - Zaman çizelgesi, şifreli yedek, dışa aktarma: skipped
-  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: skipped
-  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: skipped
-  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: skipped
+  - Okuma → sonuçlar → vücutta göster → simülasyon: success
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
+  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
+  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
+  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
   - Run actions/upload-artifact@v4: success
-  - Post Run actions/setup-python@v5: skipped
-  - Post Run actions/setup-node@v4: skipped
+  - Post Run actions/setup-python@v5: success
+  - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
@@ -49,50 +49,3 @@ dependencies: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	﻿2026-09-29T14:43:14.2032182Z ##[group]Run python tests/e2e/flow.py "$RUNNER_TEMP/shots"
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2032698Z ^[[36;1mpython tests/e2e/flow.py "$RUNNER_TEMP/shots"^[[0m
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2091977Z shell: /usr/bin/bash -e {0}
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2092200Z env:
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2092421Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2092745Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.14/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2093120Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib/pkgconfig
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2093459Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2093767Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2094068Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2094376Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:43:14.2094637Z ##[endgroup]
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6275025Z PASS PDF'ten 14 sonuç okundu
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6275894Z PASS kaydedilen raporda 5 aralık dışı sonuç (ALT, T.kolesterol, LDL, TG yüksek; ferritin düşük)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6276481Z PASS fotoğraftan OCR ile 9 sonuç okundu
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6276783Z PASS Sonuçlarım listesinde LDL
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6277068Z PASS kişisel genel değerlendirme
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6277356Z PASS karaciğer paterni (ALT yüksek)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6277588Z PASS lipid paterni
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6277819Z PASS öğren paneli
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6278028Z PASS kişisel yorum
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6278526Z PASS sapma derecesi (LDL 178 / 130)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6278888Z PASS LDL için vücut rotası
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6279300Z PASS LDL → koroner arterler bağlantısı
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6279828Z Traceback (most recent call last):
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6280342Z   File "/home/runner/work/kan-haritasi/kan-haritasi/tests/e2e/flow.py", line 109, in <module>
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6280955Z     page.get_by_text("Eğitimsel biyolojik simülasyon").first.wait_for(timeout=20000)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6281626Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/sync_api/_generated.py", line 18005, in wait_for
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6298134Z     self._sync(self._impl_obj.wait_for(timeout=timeout, state=state))
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6299260Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6300026Z     return task.result()
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6300596Z            ^^^^^^^^^^^^^
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6301374Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/_impl/_locator.py", line 692, in wait_for
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6318973Z     await self._frame.wait_for_selector(
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6319853Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/_impl/_frame.py", line 369, in wait_for_selector
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6320330Z     await self._channel.send(
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6320834Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 69, in send
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6321335Z     return await self._connection.wrap_api_call(
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6321607Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6322154Z   File "/opt/hostedtoolcache/Python/3.12.14/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 559, in wrap_api_call
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6323066Z     raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6323576Z playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 20000ms exceeded.
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6323906Z Call log:
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6324336Z   - waiting for get_by_text("Eğitimsel biyolojik simülasyon").first to be visible
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6325154Z     24 × locator resolved to hidden <span class="font-mono text-[10.5px] tracking-[0.18em] uppercase text-caution-fg">Eğitimsel biyolojik simülasyon</span>
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6325573Z 
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-09-29T14:44:13.6523511Z ##[error]Process completed with exit code 1.
