@@ -45,8 +45,10 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [suggested, setSuggested] = useState<{ region?: string; date?: string } | null>(null);
+  const [suggested, setSuggested] = useState<{ region?: string; date?: string; from: 'report' | 'image' } | null>(null);
   const [pickRegion, setPickRegion] = useState(false);
+  /** Film/ekran fotoğrafının üstündeki yazılar (ör. "MR BEYIN", tarih) yalnızca bölge önerisi için okunur. */
+  const [overlay, setOverlay] = useState<'idle' | 'reading' | 'done'>('idle');
   /** Fotoğraf bir rapor kâğıdı/ekranı mı (kendiliğinden okunur) yoksa film mi? */
   const [photoKind, setPhotoKind] = useState<'document' | 'film' | 'unknown' | null>(null);
   const studies = useImagingStudies();
@@ -122,7 +124,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
       const head = got.text.slice(0, 400);
       const region = info.region ? undefined : guessRegion(head);
       const date = info.studyDate ? undefined : got.date;
-      setSuggested(region || date ? { region, date } : null);
+      setSuggested(region || date ? { region, date, from: 'report' } : null);
       setMode('idle');
     } catch (e) {
       setError(e instanceof OcrError ? ocrMessage(e) : userMessage(e));
@@ -139,6 +141,34 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
     autoTried.current = true;
     void read();
   }, [note, hasText, autoRead, mode, error, read]);
+
+  // Film fotoğrafında bölge seçilmemişse: görüntünün köşelerindeki yazılardan (görüntüleyici etiketleri,
+  // ör. "MR BEYIN", "DIZ AP", çekim tarihi) bölge ve tarih önerilir. Metin kaydedilmez, rapor sayılmaz;
+  // görüntünün kendisi yorumlanmaz.
+  const overlayFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isImaging(info.category) || photoKind !== 'film' || info.region || mode !== 'idle' || note === undefined || hasText) return;
+    if (overlayFor.current === info.id) return; // her belge için bir kez
+    overlayFor.current = info.id;
+    const id = info.id;
+    setOverlay('reading');
+    void (async () => {
+      try {
+        const { extractReportText } = await import('../lib/extract');
+        const got = await extractReportText(info, bytes as Uint8Array<ArrayBuffer>);
+        if (overlayFor.current !== id) return;
+        const region = guessRegion(got.text.slice(0, 600));
+        const date = info.studyDate ? undefined : got.date;
+        if (region || date) setSuggested({ region, date, from: 'image' });
+      } catch {
+        // Okunamazsa kullanıcı bölgeyi listeden seçer.
+      } finally {
+        if (overlayFor.current === id) setOverlay('done');
+      }
+    })();
+    // info nesnesi her kayıtta yenilenir; yalnızca kimlik ve ilgili alanlar izlenir
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [info.id, info.category, info.region, photoKind, note, hasText, mode]);
 
   const saveManual = async () => {
     try {
@@ -281,7 +311,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             </label>
             <label className="block text-xs text-fg-muted">
               Bölge
-              <select className="field mt-1 py-2 text-sm" value={info.region ?? ''} onChange={(e) => void updateMeta({ region: e.target.value || null })}>
+              <select id="imaging-region" className="field mt-1 py-2 text-sm" value={info.region ?? ''} onChange={(e) => void updateMeta({ region: e.target.value || null })}>
                 <option value="">Belirtilmemiş</option>
                 {REGIONS.map((r) => (
                   <option key={r.key} value={r.key}>
@@ -304,7 +334,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           {seriesIds.length > 1 && <p className="text-xs text-fg-faint">Değişiklikler serideki {seriesIds.length} kesitin hepsine uygulanır.</p>}
           {suggested && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-accent/25 bg-accent/5 px-3 py-2 text-xs">
-              <span className="text-fg-muted">Rapordan önerilen:</span>
+              <span className="text-fg-muted">{suggested.from === 'image' ? 'Görüntüdeki yazılardan önerilen:' : 'Rapordan önerilen:'}</span>
               {suggested.region && <span>{regionByKey.get(suggested.region)?.label}</span>}
               {suggested.date && <span>{formatDate(suggested.date)}</span>}
               <button
@@ -317,6 +347,35 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
               >
                 Uygula
               </button>
+              {suggested.region && regionByKey.get(suggested.region)?.structure && (
+                <button
+                  type="button"
+                  className="btn-ghost px-2.5 py-1 text-xs"
+                  onClick={async () => {
+                    const r = regionByKey.get(suggested.region!)!;
+                    await updateMeta({ region: r.key, ...(suggested.date ? { studyDate: suggested.date } : {}) });
+                    setSuggested(null);
+                    go({ name: 'body', structure: r.structure });
+                  }}
+                >
+                  <BodyIcon size={14} /> Uygula ve vücutta göster
+                </button>
+              )}
+            </div>
+          )}
+          {isImaging(category) && !region?.structure && !suggested?.region && (
+            <div className="flex items-center gap-2 rounded-xl border border-dashed border-ink-600 px-3 py-2 text-xs text-fg-muted">
+              <BodyIcon size={15} />
+              <span className="flex-1">
+                {overlay === 'reading' ? 'Görüntüdeki yazılardan bölge aranıyor…' : 'Vücutta göstermek için bölgeyi seç.'}
+              </span>
+              {overlay === 'reading' ? (
+                <SpinnerIcon size={14} />
+              ) : (
+                <button type="button" className="text-accent underline-offset-4 hover:underline" onClick={() => document.getElementById('imaging-region')?.focus()}>
+                  Bölge seç
+                </button>
+              )}
             </div>
           )}
         </section>
@@ -435,7 +494,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
               </p>
               <div className="flex flex-wrap gap-2">
                 {canRead && (
-                  <button type="button" className="btn-primary" onClick={() => void read()}>
+                  <button type="button" className="btn-primary" disabled={overlay === 'reading'} onClick={() => void read()}>
                     <ScanIcon size={16} /> Rapor metnini oku
                   </button>
                 )}
