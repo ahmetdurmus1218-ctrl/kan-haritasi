@@ -1,6 +1,6 @@
 import { PROCESSES, STRUCTURES, TESTS, partsOf, systemById } from '@kh/catalog';
 import { MODEL_COVERAGE } from '../anatomy/coverage.generated';
-import { insidesOf } from '../anatomy/organs';
+import { FIT_LABEL, insideLinks } from '../anatomy/organs';
 import { INSIDE } from '../explore/inside/registry';
 import { INSIDE_CONTENT } from '../explore/inside/content';
 import { go } from '../state/router';
@@ -30,11 +30,19 @@ export function CoveragePage() {
     const partsM = MODEL_COVERAGE.male[s.id]?.length ?? 0;
     const partsF = MODEL_COVERAGE.female[s.id]?.length ?? 0;
     const named = partsOf(s.id).length;
-    const scenes = insidesOf(s.id).filter((x) => x !== 'hucre');
+    const links = insideLinks(s.id).filter((x) => x.id !== 'hucre');
+    const scenes = links.map((l) => l.id);
     const stages = scenes.reduce((n, x) => n + INSIDE_CONTENT[x].stages.length - 1, 0);
+    const own = links.find((l) => l.fit !== 'related');
+    // Kendi dokusu: süreç simülasyonu (en iyi), doku atlası (şematik katmanlar), yalnızca ilişkili doku (kısıtlı).
+    const depth: Cell = !own
+      ? { text: 'Kısıtlı · yalnızca ilişkili doku', tone: 'none' }
+      : INSIDE[own.id].kind === 'simulation'
+        ? { text: own.fit === 'exact' ? 'Simülasyon' : 'Simülasyon (ortak doku)', tone: 'ok' }
+        : { text: own.fit === 'exact' ? 'Doku atlası (şematik)' : 'Doku atlası (ortak)', tone: 'partial' };
     const procs = [...new Set([...(s.processes ?? []), ...TESTS.filter((t) => t.structures.includes(s.id)).flatMap((t) => t.processes)])];
     const tests = TESTS.filter((t) => t.structures.includes(s.id)).length;
-    return { s, m, f, partsM, partsF, named, scenes, stages, procs, tests };
+    return { s, m, f, partsM, partsF, named, links, scenes, stages, procs, tests, depth };
   });
   const bySystem = new Map<string, typeof rows>();
   for (const r of rows) {
@@ -44,7 +52,9 @@ export function CoveragePage() {
   const total = {
     both: rows.filter((r) => r.m.tone === 'ok' && r.f.tone === 'ok').length,
     schematic: rows.filter((r) => r.m.tone === 'partial' || r.f.tone === 'partial').length,
-    withScene: rows.filter((r) => r.scenes.length > 0).length,
+    withScene: rows.filter((r) => r.depth.tone === 'ok').length,
+    atlas: rows.filter((r) => r.depth.tone === 'partial').length,
+    limited: rows.filter((r) => r.depth.tone === 'none').length,
     parts: rows.reduce((n, r) => n + Math.max(r.partsM, r.partsF), 0),
   };
 
@@ -58,13 +68,15 @@ export function CoveragePage() {
         <strong className="text-fg">temsilidir</strong>: gerçek mikroskopi ya da senin dokunun görüntüsü değildir.
       </p>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {(
           [
             [total.both, 'yapı iki vücutta da 3D'],
             [total.schematic, 'yapı şematik ya da yaklaşık'],
             [total.parts, 'ayrı bölüm (en çok olan vücutta)'],
-            [total.withScene, 'yapının kendi iç sahnesi var'],
+            [total.withScene, 'yapıda süreç simülasyonu'],
+            [total.atlas, 'yapıda şematik doku atlası'],
+            [total.limited, 'yapı yalnızca ilişkili dokuyla'],
           ] as const
         ).map(([n, label]) => (
           <div key={label} className="surface p-4">
@@ -81,13 +93,14 @@ export function CoveragePage() {
             {systemById.get(sys as never)?.nameTr}
           </h2>
           <div className="overflow-x-auto rounded-2xl border border-ink-600/60">
-            <table className="w-full min-w-[760px] text-left text-sm">
+            <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-ink-850 text-[11px] uppercase tracking-wider text-fg-faint">
                 <tr>
                   <th className="px-3 py-2 font-medium">Yapı</th>
                   <th className="px-3 py-2 font-medium">Erkek</th>
                   <th className="px-3 py-2 font-medium">Kadın</th>
                   <th className="px-3 py-2 font-medium">İç bölümler (E / K)</th>
+                  <th className="px-3 py-2 font-medium">İç keşif derinliği</th>
                   <th className="px-3 py-2 font-medium">Doku · hücre sahnesi</th>
                   <th className="px-3 py-2 font-medium">Süreç</th>
                   <th className="px-3 py-2 font-medium">Tahlil</th>
@@ -107,8 +120,17 @@ export function CoveragePage() {
                     <td className="px-3 py-2.5 tabular-nums text-fg-muted">
                       {r.s.schematic ? `${r.named} (şematik)` : r.partsM || r.partsF ? `${r.s.sex === 'female' ? '—' : r.partsM} / ${r.s.sex === 'male' ? '—' : r.partsF}` : 'tek parça'}
                     </td>
+                    <td className={`px-3 py-2.5 ${TONE[r.depth.tone]}`}>{r.depth.text}</td>
                     <td className="px-3 py-2.5 text-fg-muted">
-                      {r.scenes.length ? r.scenes.map((x) => INSIDE[x].title).join(', ') : <span className="text-fg-faint">yalnızca genel hücre</span>}
+                      {r.links.length ? (
+                        r.links.map((l) => (
+                          <span key={l.id} className="block">
+                            {INSIDE[l.id].title} <span className="text-[11px] text-fg-faint">· {FIT_LABEL[l.fit]}</span>
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-fg-faint">yalnızca genel hücre</span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-fg-muted">
                       {r.stages ? `${r.stages} adım` : '—'}
@@ -129,6 +151,12 @@ export function CoveragePage() {
           periferik sinirler kemiklere göre yaklaşık yollarla gösterilir. Kadın vücudunda deri, omurga, pelvis ve organlar kadın referans modelinden gelir; iskeletin geri
           kalanı, kaslar, mide, yemek borusu, diyafram, damarlar ve sinirler erkek modelinden benzerlik dönüşümüyle (ortalama sapma ≈ 1,3 cm) uyarlanmıştır. Molekül düzeyi yalnızca sahnelerdeki temsili parçacıklarla
           (ör. LDL, hormon, iyon) anlatılır.
+        </p>
+        <p>
+          <strong className="text-fg-muted">İç keşif derinliği:</strong> "Simülasyon" sahnelerinde süreçler canlandırılır ve bazıları tahlil değerlerine göre değişir.
+          "Doku atlası" sahnelerinde katman sırası ve hücre tipleri ders kitabı düzeyinde şematiktir; süreçler basit animasyon ve metinle anlatılır, sonuçlarına göre
+          değişmez. "İlişkili doku", yapının kendi dokusu değil işlevce bağlantılı bir dokudur. Diyafram, mide, yemek borusu, epifiz, hipofiz, timus, bademcik ve
+          deri 3B modelde tek parçadır (iç bölümleri ayrı seçilemez); paratiroid bezleri modellenmedi.
         </p>
         <p>
           Model kaynakları: HuBMAP İnsan Referans Atlası 3D Nesne Kütüphanesi (CC BY 4.0) ve BodyParts3D (DBCLS, CC BY-SA 2.1 JP). Ayrıntılı atıf ve lisanslar

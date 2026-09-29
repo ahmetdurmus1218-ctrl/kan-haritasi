@@ -6,7 +6,7 @@ import { CATEGORY_LABEL } from '../lib/imaging';
 import { formatDate } from '../lib/format';
 import { MeasureChip } from '../components/measures';
 import { type StructureHighlight, highlightName } from '../anatomy/highlight';
-import { CONNECTIONS, ORGANS, insidesOf } from '../anatomy/organs';
+import { CONNECTIONS, FIT_LABEL, ORGANS, insideLinks, insidesOf } from '../anatomy/organs';
 import { isVein, partLabel, partLatin } from '../anatomy/names';
 import { highlightColor } from '../anatomy/palette';
 import { CriticalBanner, FindingBlock, PatternList, SeverityBar, SeverityChip } from '../components/interpretation';
@@ -326,6 +326,11 @@ function ImagingBlock({ studies, accent, structure }: { studies: ImagingStudy[];
             <span className="mt-0.5 line-clamp-2 block text-xs leading-snug text-fg-muted">
               {conclusion ? `Sonuç: ${conclusion}` : 'Rapor metni yok · görüntüyü açmak için dokun'}
             </span>
+            {st.review && st.review.regions.length > 0 && (
+              <span className="mt-1 block text-[11px] text-caution-fg">
+                Otomatik inceleme · {st.review.regions.length} dikkat bölgesi (sağ-sol farkı) · tanı değildir
+              </span>
+            )}
             {st.measures.some((m) => m.def.structure === structure) && (
               <span className="mt-1.5 flex flex-wrap gap-1">
                 {st.measures
@@ -345,7 +350,9 @@ function ImagingBlock({ studies, accent, structure }: { studies: ImagingStudy[];
 }
 
 /** "Temelde nasıl çalışır" / "Sonucuma göre" düğme çifti (organ panelinde ve bulutta aynı dil). */
-export function HowItWorks({ accent, hasMine, onEnter }: { accent: string; hasMine: boolean; onEnter: (mode: SimulationMode) => void }) {
+export function HowItWorks({ accent, hasMine, onEnter, imaging }: { accent: string; hasMine: boolean; onEnter: (mode: SimulationMode) => void; imaging?: ImagingStudy }) {
+  // Tahlil sonucu yok ama bu bölgenin görüntülemesi varsa "Sonucuma göre" o görüntülemeyi açar.
+  const viaImaging = !hasMine && !!imaging;
   return (
     <div className="grid grid-cols-2 gap-2">
       <button type="button" onClick={() => onEnter('temel')} className="kh-holo-btn rounded-2xl border px-3 py-2.5 text-left text-fg transition" style={{ borderColor: `${accent}88` }}>
@@ -354,12 +361,14 @@ export function HowItWorks({ accent, hasMine, onEnter }: { accent: string; hasMi
       </button>
       <button
         type="button"
-        onClick={() => onEnter('benim')}
-        disabled={!hasMine}
+        onClick={() => (viaImaging ? go({ name: 'document', id: imaging!.head.id }) : onEnter('benim'))}
+        disabled={!hasMine && !viaImaging}
         className="kh-holo-btn rounded-2xl border border-ink-600 px-3 py-2.5 text-left text-fg transition disabled:cursor-not-allowed disabled:opacity-40"
       >
         <span className="block text-sm">◉ Sonucuma göre</span>
-        <span className="mt-0.5 block text-[11px] text-fg-faint">{hasMine ? 'senin değerlerinle' : 'ilişkili sonucun yok'}</span>
+        <span className="mt-0.5 block text-[11px] text-fg-faint">
+          {hasMine ? 'senin değerlerinle' : viaImaging ? `${CATEGORY_LABEL[imaging!.category]} · görüntünle` : 'ilişkili sonucun yok'}
+        </span>
       </button>
     </div>
   );
@@ -408,7 +417,8 @@ export function OrganPanel({
   const tests = sortTests(relatedTests(structure), series);
   const processes = [...new Set([...(s?.processes ?? []), ...tests.flatMap((k) => testByKey.get(k)?.processes ?? [])])] as ProcessId[];
   const part = vessels.find((v) => v.id === selectedPart);
-  const insides = insidesOf(structure);
+  const links = insideLinks(structure);
+  const insides = links.map((l) => l.id);
   // Kalp de 'cardio' dosyasında ama damar değil; bölümleri (odacıklar, kapaklar) damar gibi etiketlenmez.
   const isVessel = s?.drill === 'vessel' || (s?.asset === 'cardio' && structure !== 'heart');
   const connections = (CONNECTIONS[structure] ?? []).filter((c) => structureById.has(c));
@@ -452,6 +462,8 @@ export function OrganPanel({
             {SCORE_WORD[Math.min(3, Math.round(h.score))]} sapma.{' '}
             {h.tests.some((t) => t.key.startsWith('img:'))
               ? 'Görüntüleme ölçümü genel referans dışında; tek başına tanı değildir, önemini hekim değerlendirir.'
+              : h.tests.some((t) => t.key.startsWith('img-review:'))
+                ? 'Görüntünün otomatik incelemesinde sağ-sol farkı işaretlendi; tanı değildir, görüntüyü hekim değerlendirir.'
               : 'İlişkili süreçleri gösterir; yapıda sorun olduğu anlamına gelmez.'}
           </p>
         </div>
@@ -461,19 +473,34 @@ export function OrganPanel({
 
       {!part && insides[0] && (
         <div className="mb-6 space-y-2">
-          <HowItWorks accent={accent} hasMine={hasMine} onEnter={(mode) => onEnter(insides[0]!, mode)} />
+          <HowItWorks accent={accent} hasMine={hasMine} imaging={imaging.find((st) => st.review) ?? imaging[0]} onEnter={(mode) => onEnter(insides[0]!, mode)} />
           <div className="flex flex-wrap gap-1.5 pt-1">
-            {insides.map((id) => (
+            {links.map(({ id, fit }) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => onEnter(id)}
                 className="flex items-center gap-1.5 rounded-full border border-ink-600 px-3 py-1.5 text-xs text-fg-muted transition hover:border-ink-500 hover:text-fg"
+                title={`${INSIDE[id].kind === 'atlas' ? 'Doku atlası (şematik katmanlar)' : 'Süreç simülasyonu'} · ${FIT_LABEL[fit]}`}
               >
                 <span style={{ color: accent }}>↘</span> {INSIDE[id].title}
+                {(fit === 'related' || INSIDE[id].kind === 'atlas') && (
+                  <span className="text-[10px] text-fg-faint">
+                    · {[INSIDE[id].kind === 'atlas' ? 'atlas' : '', fit === 'related' ? FIT_LABEL.related : ''].filter(Boolean).join(' · ')}
+                  </span>
+                )}
               </button>
             ))}
           </div>
+          <p className="text-[11px] leading-relaxed text-fg-faint">
+            {links[0]?.fit === 'related'
+              ? `Bu yapının kendi dokusu henüz modellenmedi; ${INSIDE[links[0].id].title.toLocaleLowerCase('tr')} ilişkili bir dokudur.`
+              : links.some((l) => INSIDE[l.id].kind === 'atlas')
+                ? 'Atlas: katman ve hücre tipleri şematiktir, süreçler basit animasyon ve metinle anlatılır. Simülasyon: süreçler sonuçlarına göre canlandırılır.'
+                : links[0]?.fit === 'shared'
+                  ? 'Bu doku tipi birkaç yapıda ortaktır; sahne onu genel olarak gösterir.'
+                  : 'Süreçler sonuçlarına göre canlandırılır; temsili bir simülasyondur.'}
+          </p>
         </div>
       )}
 
@@ -676,7 +703,9 @@ export function explorePath(testKey: string): { structure: string; inside?: Insi
   const withInside = test.group === 'hemogram' && test.structures.includes('spleen') ? 'spleen' : test.structures.find(specific);
   const structure = withInside ?? test.structures.find((sid) => structureById.get(sid)?.asset) ?? test.structures[0];
   if (!structure) return null;
-  return { structure, inside: insidesOf(structure)[0], simulation: test.simulation };
+  // Hemogramda asıl sahne kan hücreleridir (dalak dokusu değil).
+  const inside: InsideId | undefined = withInside === 'spleen' && test.group === 'hemogram' ? 'kan' : insidesOf(structure)[0];
+  return { structure, inside, simulation: test.simulation };
 }
 
 export function TestPanel({ testKey, series, onEnter, interp }: { testKey: string; series: SeriesMap; onEnter: (scene: string, from: string) => void; interp: Interpretation }) {

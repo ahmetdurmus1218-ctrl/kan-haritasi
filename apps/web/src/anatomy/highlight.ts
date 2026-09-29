@@ -47,6 +47,23 @@ export function withImagingHighlights(
 }
 
 /**
+ * Kullanıcının sonuçlarına eklediği otomatik görüntü incelemeleri: dikkat bölgesi olan kesitin
+ * bölgesi (ör. beyin) hafif derecede vurgulanır. Yön (yüksek/düşük) yoktur; "karışık" gösterilir.
+ */
+export function withReviewHighlights(base: Map<string, StructureHighlight>, flags: Array<{ structure: string; fileId: string; count: number }>): Map<string, StructureHighlight> {
+  if (!flags.length) return base;
+  const map = new Map([...base].map(([k, v]) => [k, { ...v, tests: [...v.tests] }]));
+  for (const f of flags) {
+    const h: StructureHighlight = map.get(f.structure) ?? { status: 'mixed', score: 0, tests: [] };
+    h.score = Math.max(h.score, 1);
+    const key = `img-review:${f.fileId}`;
+    if (!h.tests.some((t) => t.key === key)) h.tests.push({ key, status: 'unknown', score: 1, name: `Görüntü incelemesi (${f.count} dikkat bölgesi)` });
+    map.set(f.structure, h);
+  }
+  return map;
+}
+
+/**
  * Son sonuçlardan yapı vurgularını çıkarır: aralık dışındaki her test, katalogdaki ilişkili
  * yapılarını işaretler. Bir yapıda hem yüksek hem düşük sonuç varsa "mixed".
  * `onlyTest` verilirse yalnızca o testin yapıları (Vücutta göster).

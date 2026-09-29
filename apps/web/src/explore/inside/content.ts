@@ -13,6 +13,7 @@ import hormon from './content/hormon';
 import lenf from './content/lenf';
 import ovaryum from './content/ovaryum';
 import testis from './content/testis';
+import { TISSUES, type TissueId, type TissueProfile } from './tissues';
 
 
 /**
@@ -42,7 +43,30 @@ export interface SceneContent {
   tests: string[];
 }
 
+/**
+ * Doku atlası profilinden sahne içeriği: ilk aşama katman turu, sonrakiler süreç adımları;
+ * seçilebilir nesneler katmanlardır (lümenden dışa doğru sıralı).
+ */
+export function atlasContent(t: TissueProfile): SceneContent {
+  const layers = t.layers.filter((l) => l.kind !== 'lumen').length;
+  return {
+    tests: [...t.tests],
+    caution: t.caution,
+    stages: [
+      {
+        title: 'Doku katmanları',
+        text: `${t.summary} Kesitte ${layers} katman var; bir katmana dokunarak ya da listeden seçerek içeri doğru ilerleyebilirsin.`,
+      },
+      ...t.process_stages.map((s) => ({ title: s.title, text: s.text })),
+    ],
+    objects: Object.fromEntries(t.layers.map((l) => [l.key, { name: l.name, text: l.text, size: l.size }])),
+  };
+}
+
+const ATLAS = Object.fromEntries(Object.values(TISSUES).map((t) => [t.id, atlasContent(t)])) as Record<TissueId, SceneContent>;
+
 export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
+  ...ATLAS,
   damar: {
     tests: ['ldl', 'cholesterol-total', 'hdl', 'non-hdl', 'triglyceride', 'hs-crp', 'homocysteine'],
     caution:

@@ -11,10 +11,10 @@ import { useResolvedTheme } from '../state/theme';
 import { buildSeries, useReports } from '../lib/useReports';
 import { loadSex } from '../lib/reports';
 import { severityWeights, useInterpretation } from '../lib/interpretation';
-import { studiesForStructure, useImagingStudies } from '../lib/imagingStudies';
+import { reviewFlags, studiesForStructure, useImagingStudies } from '../lib/imagingStudies';
 import { CATEGORY_SHORT } from '../lib/imaging';
 import { formatDate } from '../lib/format';
-import { highlightName, highlightsFrom, withImagingHighlights } from '../anatomy/highlight';
+import { highlightName, highlightsFrom, withImagingHighlights, withReviewHighlights } from '../anatomy/highlight';
 import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene';
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { partLabel, partLatin } from '../anatomy/names';
@@ -33,12 +33,16 @@ import { CLIP_OFF, type ClipState, ClipPanel, HelpOverlay, ToolBar } from './Too
 import { Breadcrumb, Caps, ContextSheet, type Crumb, DEFAULT_LAYERS, type Layers, LayersMenu, LoadingLine, Tooltip, type ViewName, ViewControls } from './ui';
 import { INSIDE, type InsideId, resolveInside } from './inside/registry';
 import { INSIDE_CONTENT } from './inside/content';
+import { TISSUE_IDS, type TissueId } from './inside/tissues';
 import { useInside } from './inside/state';
 import { InsidePanel, SimulationBadge } from './inside/InsidePanel';
 import { personalFor } from './inside/personal';
 import { type InsideSceneProps, SceneThemeContext } from './inside/kit';
 
 type ExploreRoute = Extract<Route, { name: 'body' }> | Extract<Route, { name: 'simulation' }>;
+
+// Doku atlası sahnelerinin hepsi tek bir veri güdümlü bileşenle çizilir.
+const TissueScene = lazy(() => import('./inside/scenes/TissueScene'));
 
 const SCENES: Partial<Record<InsideId, LazyExoticComponent<ComponentType<InsideSceneProps>>>> = {
   damar: lazy(() => import('./inside/scenes/VesselScene')),
@@ -63,9 +67,19 @@ const SCENES: Partial<Record<InsideId, LazyExoticComponent<ComponentType<InsideS
   lenf: lazy(() => import('./inside/scenes/LymphScene')),
   ovaryum: lazy(() => import('./inside/scenes/OvaryScene')),
   testis: lazy(() => import('./inside/scenes/TestisScene')),
+  ...(Object.fromEntries(TISSUE_IDS.map((id) => [id, TissueScene])) as Record<TissueId, typeof TissueScene>),
 };
 
 const SCORE_WORD = ['', 'hafif', 'orta', 'belirgin'];
+
+/** Tembel yüklenen sahne hazırlanırken arayüze haber verir (tuval dışında yükleniyor yazısı için). */
+function ScenePending({ onChange }: { onChange: (v: boolean) => void }) {
+  useEffect(() => {
+    onChange(true);
+    return () => onChange(false);
+  }, [onChange]);
+  return null;
+}
 
 /** Açılış yalnızca oturumda bir kez oynar. */
 let introPlayed = false;
@@ -115,6 +129,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   /** Sonuçla ilişkili organlar belirgin, diğerleri soluk (yalnızca sonuç varken). */
   const [resultFocus, setResultFocus] = useState(true);
   // Bilgi bulutu ve panel
+  const [scenePending, setScenePending] = useState(false);
   const [cloud, setCloud] = useState<{ structure: string; partId: string | null; point: [number, number, number] } | null>(null);
   const cloudRefs = useCloudRefs();
   const [sheetExpand, setSheetExpand] = useState(0);
@@ -169,7 +184,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   // Tahlil vurgularına referans dışı görüntüleme ölçümleri de eklenir (bir tahlile odaklanılmadıkça).
   const highlights = useMemo(() => {
     const base = highlightsFrom(series, focusTest, weights);
-    return focusTest || !studies ? base : withImagingHighlights(base, studies.flatMap((st) => st.abnormal));
+    return focusTest || !studies ? base : withReviewHighlights(withImagingHighlights(base, studies.flatMap((st) => st.abnormal)), reviewFlags(studies));
   }, [series, focusTest, weights, studies]);
   const allParts = useMemo(() => [...models.parts, ...models.schematic], [models.parts, models.schematic]);
   const boxes = useMemo(() => structureBoxes(allParts), [allParts]);
@@ -713,8 +728,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                   muted={muted}
                 />
                 {shown !== 'body' && SceneComp && insideState && (
-                  <Suspense fallback={null}>
-                    <SceneComp state={insideState} onSelect={insideActions.select} reducedMotion={reducedMotion} params={sceneParams} origin={fromStructure} theme={theme} />
+                  <Suspense fallback={<ScenePending onChange={setScenePending} />}>
+                    <SceneComp key={shownInside} state={insideState} onSelect={insideActions.select} reducedMotion={reducedMotion} params={sceneParams} origin={fromStructure} theme={theme} />
                   </Suspense>
                 )}
               </>
@@ -731,8 +746,17 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 
       {/* Üst çubuk: gezinme yolu + vücut seçimi + katmanlar */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start gap-2 px-4 pt-4 md:gap-3 md:px-6 md:pt-5">
+        {/* Masaüstünde sağ panelin üstüne taşmasın: uzun yol görünür tuval alanında sarılır. */}
         <div className="min-w-0 flex-1">
-          <Breadcrumb items={crumbs} accent={accent} />
+          <div className="md:max-w-[34rem]">
+            <Breadcrumb items={crumbs} accent={accent} />
+            {/* Telefonda etiket gezinme yolunun altında akar (uzun yol sarınca üst üste binmesin). */}
+            {shownInside && (
+              <div className="mt-2 md:hidden">
+                <SimulationBadge scene={shownInside} />
+              </div>
+            )}
+          </div>
         </div>
         {shownKey === 'body' && (
           <>
@@ -778,16 +802,11 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         )}
         {shownInside && (
           <div className="hidden md:block">
-            <SimulationBadge />
+            <SimulationBadge scene={shownInside} />
           </div>
         )}
       </div>
 
-      {shownInside && (
-        <div className="pointer-events-none absolute left-4 top-[4.25rem] z-20 md:hidden">
-          <SimulationBadge />
-        </div>
-      )}
 
       {/* Araç çubuğu ve kesit */}
       {shownKey === 'body' && !intro && (
@@ -897,7 +916,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       {shownInside && insideState && (
         <ContextSheet onSize={onCover} label="Simülasyon paneli" onClose={goUp}>
           {ready ? (
-            personal && <InsidePanel state={insideState} actions={insideActions} personal={personal} />
+            personal && <InsidePanel state={insideState} actions={insideActions} personal={personal} origin={fromStructure} />
           ) : (
             <p className="text-sm text-fg-muted">Bu sahne henüz hazır değil (HAZIR DEĞİL).</p>
           )}
@@ -908,6 +927,14 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 
       <Tooltip ref={tooltipRef} />
 
+      {scenePending && shownInside && (
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-20 flex justify-center md:right-[26rem]" role="status" aria-live="polite">
+          <div className="flex items-center gap-2 rounded-full border border-ink-600/70 bg-ink-950/80 px-4 py-2 backdrop-blur">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" aria-hidden="true" />
+            <Caps className="text-fg-muted">{INSIDE[shownInside].title} hazırlanıyor…</Caps>
+          </div>
+        </div>
+      )}
       {!models.done && shownKey === 'body' && <LoadingLine progress={models.progress} label={`${body === 'female' ? 'Kadın' : 'Erkek'} anatomi modelleri yükleniyor`} />}
       {models.failed.length > 0 && (
         <div className="absolute bottom-4 left-4 z-30 max-w-sm">

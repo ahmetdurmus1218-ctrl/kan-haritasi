@@ -4,22 +4,29 @@ import { PatternList, SeverityChip } from '../../components/interpretation';
 import { Caps } from '../ui';
 import { systemColor } from '../systems';
 import { INSIDE_CONTENT } from './content';
-import { INSIDE } from './registry';
+import { INSIDE, type InsideId } from './registry';
+import { FIT_LABEL, insideFit, insideLinks } from '../../anatomy/organs';
+import { structureById } from '@kh/catalog';
 import type { ScenePersonal } from './personal';
 import { type InsideActions, type InsideState, SPEEDS, STAGE_SECONDS } from './state';
 
 /** Her zaman görünen etiket: bu sahneler kişinin kendi dokusunu göstermez. */
-export function SimulationBadge() {
+export function SimulationBadge({ scene }: { scene?: InsideId }) {
+  const atlas = scene && INSIDE[scene].kind === 'atlas';
   return (
     <div className="pointer-events-none flex items-center gap-2 rounded-full border border-caution/40 bg-ink-950/80 px-3 py-1.5 backdrop-blur" role="note">
       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-caution" aria-hidden="true" />
-      <Caps className="text-caution-fg">Eğitimsel biyolojik simülasyon</Caps>
+      <Caps className="text-caution-fg">{atlas ? 'Doku atlası · şematik' : 'Eğitimsel biyolojik simülasyon'}</Caps>
     </div>
   );
 }
 
-export function InsidePanel({ state, actions, personal }: { state: InsideState; actions: InsideActions; personal: ScenePersonal }) {
+export function InsidePanel({ state, actions, personal, origin }: { state: InsideState; actions: InsideActions; personal: ScenePersonal; origin?: string }) {
   const scene = INSIDE[state.scene];
+  const atlas = scene.kind === 'atlas';
+  const fit = insideFit(origin, state.scene);
+  const originName = origin ? structureById.get(origin)?.nameTr : undefined;
+  const own = origin ? insideLinks(origin).find((l) => l.fit === 'exact' && l.id !== state.scene) : undefined;
   const content = INSIDE_CONTENT[state.scene];
   const accent = systemColor(scene.system);
   const stage = content.stages[state.stage]!;
@@ -40,6 +47,30 @@ export function InsidePanel({ state, actions, personal }: { state: InsideState; 
         </Caps>
         <h2 className="mt-2 text-[32px] font-light leading-[1.02] tracking-[-0.02em] lg:text-[44px]">{scene.title}</h2>
         <p className="mt-2 text-sm text-fg-muted">{scene.summary}</p>
+        <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
+          <span className="rounded-full border border-ink-600 px-2 py-0.5 text-fg-muted">
+            {atlas ? 'Doku atlası · katmanlar şematik, süreçler basit animasyon + metin' : 'Simülasyon · süreçler canlandırılır'}
+          </span>
+          {fit && originName && (
+            <span className={`rounded-full border px-2 py-0.5 ${fit === 'related' ? 'border-caution/40 text-caution-fg' : 'border-ink-600 text-fg-muted'}`}>
+              {originName}: {FIT_LABEL[fit]}
+            </span>
+          )}
+        </div>
+        {fit === 'related' && originName && (
+          <p className="mt-2 rounded-xl border border-caution/25 bg-caution/[0.06] p-2.5 text-xs leading-relaxed text-caution-fg">
+            Bu sahne {originName.toLocaleLowerCase('tr')} dokusunun kendisi değil; işlevce bağlantılı bir dokudur.
+            {own && (
+              <>
+                {' '}
+                Kendi dokusu için:{' '}
+                <button type="button" className="underline underline-offset-2" onClick={() => go({ name: 'simulation', id: own.id, from: origin })}>
+                  {INSIDE[own.id].title}
+                </button>
+              </>
+            )}
+          </p>
+        )}
       </header>
 
       {/* İki ana soru: organ temelde nasıl çalışır / benim sonucuma göre nasıl çalışır */}
@@ -255,8 +286,8 @@ export function InsidePanel({ state, actions, personal }: { state: InsideState; 
       </section>
 
       <section className="mb-6">
-        <Caps className="text-fg-faint">Sahnedekiler</Caps>
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <Caps className="text-fg-faint">{atlas ? 'Katmanlar · içten dışa' : 'Sahnedekiler'}</Caps>
+        <div className={atlas ? 'mt-2 flex flex-col items-start gap-1' : 'mt-2 flex flex-wrap gap-1.5'}>
           {Object.entries(content.objects).map(([key, o]) => (
             <button
               key={key}
@@ -266,6 +297,7 @@ export function InsidePanel({ state, actions, personal }: { state: InsideState; 
               className={`rounded-full border px-2.5 py-1 text-xs transition ${state.selected === key ? 'text-fg' : 'border-ink-600 text-fg-muted hover:text-fg'}`}
               style={state.selected === key ? { borderColor: accent } : undefined}
             >
+              {atlas && <span className="mr-1.5 tabular-nums text-fg-faint">{Object.keys(content.objects).indexOf(key) + 1}.</span>}
               {o.name}
             </button>
           ))}
@@ -274,8 +306,10 @@ export function InsidePanel({ state, actions, personal }: { state: InsideState; 
       </section>
 
       <p className="rounded-xl border border-caution/25 bg-caution/[0.06] p-3 text-xs leading-relaxed text-caution-fg">
-        {content.caution ?? 'Bu sahne EĞİTİMSEL ve temsilidir; senin vücudunun görüntüsü değildir.'} Sahnedeki yoğunluklar senin değerlerinden türetilen
-        temsili oranlardır; gerçek hücre sayısı ya da doku görüntüsü değildir.
+        {content.caution ?? 'Bu sahne EĞİTİMSEL ve temsilidir; senin vücudunun görüntüsü değildir.'}{' '}
+        {knobs.length > 0
+          ? 'Sahnedeki yoğunluklar senin değerlerinden türetilen temsili oranlardır; gerçek hücre sayısı ya da doku görüntüsü değildir.'
+          : 'Bu sahne sonuçlarına göre değişmez; ilişkili sonuçların yalnızca listelenir.'}
       </p>
     </div>
   );

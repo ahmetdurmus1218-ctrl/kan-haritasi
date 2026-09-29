@@ -1,5 +1,6 @@
 import { type Finding, type Interpretation, type Pattern, formatNumber, testByKey } from '@kh/catalog';
 import type { InsideId } from './registry';
+import { TISSUE_IDS, type TissueId } from './tissues';
 
 /**
  * İçeri-gir sahnelerini kişinin değerlerine bağlar. Her sahne birkaç "düğme" (param) okur:
@@ -23,6 +24,8 @@ interface Knob {
 }
 
 const KNOBS: Record<InsideId, Knob[]> = {
+  // Doku atlası sahneleri kişinin değerleriyle değişmez; ilişkili sonuçlar yalnızca listelenir.
+  ...(Object.fromEntries(TISSUE_IDS.map((id) => [id, []])) as unknown as Record<TissueId, Knob[]>),
   damar: [
     { param: 'ldl', tests: ['ldl'], typical: 100, min: 0.3, max: 2.6, what: 'LDL parçacıklarının yoğunluğu' },
     { param: 'hdl', tests: ['hdl'], typical: 55, min: 0.35, max: 2, what: 'HDL parçacıklarının yoğunluğu' },

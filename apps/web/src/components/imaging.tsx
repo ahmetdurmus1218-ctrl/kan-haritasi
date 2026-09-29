@@ -55,6 +55,11 @@ export function ImagingStudyCard({ study, compact = false }: { study: ImagingStu
               {study.measures.length > (compact ? 3 : 6) && <span className="px-1 text-[11px] text-fg-faint">+{study.measures.length - (compact ? 3 : 6)}</span>}
             </span>
           )}
+          {study.review && study.review.regions.length > 0 && (
+            <span className="mt-1.5 inline-block rounded-full border border-caution/40 px-2 py-0.5 text-[11px] text-caution-fg">
+              Otomatik inceleme · {study.review.regions.length} dikkat bölgesi · tanı değildir
+            </span>
+          )}
           {!compact && study.terms.length > 0 && (
             <span className="mt-1.5 flex flex-wrap gap-1">
               {study.terms.slice(0, 5).map((t) => (
