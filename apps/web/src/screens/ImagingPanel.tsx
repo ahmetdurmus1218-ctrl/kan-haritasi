@@ -6,7 +6,11 @@ import { go } from '../state/router';
 import type { ExtractProgress } from '../lib/extract';
 import { OcrError, cancelOcr } from '../lib/ocr';
 import { CATEGORY_ABOUT, CATEGORY_LABEL, IMAGING_QUESTIONS, REGIONS, findTerms, guessRegion, isImaging, regionByKey, splitReport } from '../lib/imaging';
-import { type ImagingNote, MAX_NOTE_CHARS, noteForFile, saveImagingNote } from '../lib/imagingRecords';
+import { type ImagingNote, MAX_NOTE_CHARS, noteForFile, removeManualMeasurement, saveImagingNote } from '../lib/imagingRecords';
+import { isAbnormal, measurementsOf } from '../lib/imagingMeasurements';
+import { loadSex } from '../lib/reports';
+import { MeasureList } from '../components/measures';
+import type { Sex } from '@kh/catalog';
 import { userMessage } from '../lib/messages';
 import { formatDate } from '../lib/format';
 import { Banner } from '../components/ui';
@@ -30,14 +34,19 @@ const METHOD_TEXT: Record<ImagingNote['method'], string> = {
  */
 export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: FileInfo; bytes: Bytes; seriesIds: string[]; onInfoChange: (f: FileInfo) => void }) {
   const vault = useUnlockedVault();
-  const { bump } = useVault();
+  const { bump, revision } = useVault();
+  // DICOM serisinde not ve ölçümler serinin ilk kesitine bağlanır (hangi kesit açılırsa açılsın aynı).
+  const noteFileId = seriesIds.length > 1 ? seriesIds[0]! : info.id;
   const [note, setNote] = useState<ImagingNote | null | undefined>(undefined);
+  const [sex, setSex] = useState<Sex>('unspecified');
+  const autoTried = useRef(false);
   const [mode, setMode] = useState<'idle' | 'reading' | 'editing'>('idle');
   const [progress, setProgress] = useState<ExtractProgress | null>(null);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [suggested, setSuggested] = useState<{ region?: string; date?: string; from: 'report' | 'image' } | null>(null);
+  const [pickRegion, setPickRegion] = useState(false);
   /** Film/ekran fotoğrafının üstündeki yazılar (ör. "MR BEYIN", tarih) yalnızca bölge önerisi için okunur. */
   const [overlay, setOverlay] = useState<'idle' | 'reading' | 'done'>('idle');
   /** Fotoğraf bir rapor kâğıdı/ekranı mı (kendiliğinden okunur) yoksa film mi? */
@@ -68,14 +77,16 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
 
   useEffect(() => {
     let cancelled = false;
-    noteForFile(vault, info.id).then(
+    noteForFile(vault, noteFileId).then(
       (n) => !cancelled && setNote(n ?? null),
       () => !cancelled && setNote(null),
     );
+    void loadSex(vault).then((x) => !cancelled && setSex(x));
     return () => {
       cancelled = true;
     };
-  }, [vault, info.id]);
+    // revision: görüntüleyicide ölçüm kaydedilince yenilenir
+  }, [vault, noteFileId, revision]);
 
   /** Seri içindeki tüm kesitlere uygulanır: tür, bölge ve tarih serinin ortak bilgisidir. */
   const updateMeta = async (patch: { category?: DocCategory; region?: string | null; studyDate?: string | null }) => {
@@ -107,7 +118,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
         setMode('idle');
         return;
       }
-      const n = await saveImagingNote(vault, info.id, got.text, got.method);
+      const n = await saveImagingNote(vault, noteFileId, got.text, got.method);
       setNote(n);
       bump();
       const head = got.text.slice(0, 400);
@@ -119,21 +130,24 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
       setError(e instanceof OcrError ? ocrMessage(e) : userMessage(e));
       setMode('idle');
     }
-  }, [vault, info, bytes, bump]);
+  }, [vault, info, bytes, bump, noteFileId]);
 
   // Rapor kendiliğinden okunur: PDF her zaman; fotoğraf ise kâğıt/ekran görüntüsüne benziyorsa.
   // Film/MR baskısı fotoğrafında OCR çalışmaz (metin yoktur); düğmeyle istenebilir.
   const autoRead = info.kind === 'pdf' || photoKind === 'document';
+  const hasText = Boolean(note && note.text.trim());
   useEffect(() => {
-    if (note === null && autoRead && mode === 'idle' && !error) void read();
-  }, [note, autoRead, mode, error, read]);
+    if (note === undefined || hasText || !autoRead || mode !== 'idle' || error || autoTried.current) return;
+    autoTried.current = true;
+    void read();
+  }, [note, hasText, autoRead, mode, error, read]);
 
   // Film fotoğrafında bölge seçilmemişse: görüntünün köşelerindeki yazılardan (görüntüleyici etiketleri,
   // ör. "MR BEYIN", "DIZ AP", çekim tarihi) bölge ve tarih önerilir. Metin kaydedilmez, rapor sayılmaz;
   // görüntünün kendisi yorumlanmaz.
   const overlayFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!isImaging(info.category) || photoKind !== 'film' || info.region || mode !== 'idle' || note === undefined || note) return;
+    if (!isImaging(info.category) || photoKind !== 'film' || info.region || mode !== 'idle' || note === undefined || hasText) return;
     if (overlayFor.current === info.id) return; // her belge için bir kez
     overlayFor.current = info.id;
     const id = info.id;
@@ -154,11 +168,11 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
     })();
     // info nesnesi her kayıtta yenilenir; yalnızca kimlik ve ilgili alanlar izlenir
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [info.id, info.category, info.region, photoKind, note, mode]);
+  }, [info.id, info.category, info.region, photoKind, note, hasText, mode]);
 
   const saveManual = async () => {
     try {
-      setNote(await saveImagingNote(vault, info.id, draft, 'manual'));
+      setNote(await saveImagingNote(vault, noteFileId, draft, 'manual'));
       setMode('idle');
       bump();
     } catch (e) {
@@ -169,8 +183,11 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   const category = info.category;
   const about = isImaging(category) ? CATEGORY_ABOUT[category] : null;
   const region = info.region ? regionByKey.get(info.region) : undefined;
-  const sections = useMemo(() => (note ? splitReport(note.text) : []), [note]);
-  const terms = useMemo(() => (note ? findTerms(note.text) : []), [note]);
+  const sections = useMemo(() => (note && hasText ? splitReport(note.text) : []), [note, hasText]);
+  const terms = useMemo(() => (note && hasText ? findTerms(note.text) : []), [note, hasText]);
+  const measures = useMemo(() => measurementsOf(note ?? undefined, info.region, sex), [note, info.region, sex]);
+  const abnormal = measures.filter(isAbnormal);
+  const spacing = Boolean(dicom?.pixelSpacing);
   const canRead = info.kind === 'pdf' || info.kind === 'jpeg' || info.kind === 'png';
 
   return (
@@ -190,10 +207,86 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           </div>
         </div>
 
+        {/* Vücutta göster: bölge biliniyorsa doğrudan; bilinmiyorsa önce bölge sorulur. */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            className="btn-primary w-full justify-center"
+            onClick={() => (region?.structure ? go({ name: 'body', structure: region.structure }) : setPickRegion((v) => !v))}
+          >
+            <BodyIcon size={16} /> {region?.structure ? `Vücutta göster · ${region.label}` : 'Vücutta göster'}
+          </button>
+          {!region?.structure && pickRegion && (
+            <label className="block rounded-xl border border-accent/30 bg-accent/5 p-3 text-xs text-fg-muted">
+              Görüntülenen bölgeyi seç; seçince 3B vücutta açılır ve belgeye kaydedilir.
+              <select
+                className="field mt-2 py-2 text-sm"
+                defaultValue=""
+                aria-label="Vücutta gösterilecek bölge"
+                onChange={(e) => {
+                  const r = regionByKey.get(e.target.value);
+                  if (!r) return;
+                  void updateMeta({ region: r.key }).then(() => r.structure && go({ name: 'body', structure: r.structure }));
+                }}
+              >
+                <option value="" disabled>
+                  Bölge seç…
+                </option>
+                {REGIONS.map((r) => (
+                  <option key={r.key} value={r.key}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <p className="text-[11px] leading-relaxed text-fg-faint">3B model, görüntülenen bölgenin vücuttaki genel yerini gösterir; görüntüdeki bir bulgunun yerini göstermez.</p>
+        </div>
+
         <Banner tone="info">
-          Kan Haritası görüntüyü ve raporu <strong>yorumlamaz</strong>, bulgu çıkarmaz. Görüntüyü cihazında şifreli saklar ve gösterir; rapordaki terimlerin genel anlamını açıklar.
-          Değerlendirme, raporu yazan ve seni takip eden hekime aittir.
+          Kan Haritası görüntüye bakıp <strong>teşhis koymaz</strong>. Rapordaki ve senin görüntü üzerinde yaptığın ölçümleri, tahlillerdeki gibi genel referans
+          aralıklarıyla karşılaştırır; terimleri açıklar. Değerlendirme, raporu yazan ve seni takip eden hekime aittir.
         </Banner>
+
+        {/* Ölçümler: tahlil sonuçları gibi genel referansa göre */}
+        <section className="space-y-2" aria-label="Ölçümler">
+          <div className="flex items-end justify-between gap-2">
+            <p className="label-caps">Ölçümler{measures.length ? ` (${measures.length})` : ''}</p>
+            {measures.length > 0 && (
+              <span className={`text-xs ${abnormal.length ? 'text-high' : 'text-accent'}`}>
+                {abnormal.length ? `${abnormal.length} tanesi genel referans dışında` : 'Hepsi genel referans içinde'}
+              </span>
+            )}
+          </div>
+          {measures.length > 0 ? (
+            <>
+              <MeasureList
+                measures={measures}
+                onRemove={(m) =>
+                  m.manualId &&
+                  void removeManualMeasurement(vault, noteFileId, m.manualId)
+                    .then(() => bump())
+                    .catch((e) => setError(userMessage(e)))
+                }
+              />
+              <p className="text-[11px] leading-relaxed text-fg-faint">
+                Değerler genel yetişkin referanslarıyla karşılaştırılır; yaşa, cinsiyete, vücut ölçüsüne ve ölçüm tekniğine göre değişir. Referans dışı bir ölçüm tanı değildir;
+                referans içinde olması da sorun olmadığını göstermez. Görüntünün kendisini ve raporu hekimin değerlendirir.
+              </p>
+            </>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-ink-600 p-4 text-sm text-fg-muted">
+              {hasText ? 'Raporda referans değeri olan bir ölçüm bulunamadı (ör. dalak 13 cm, EF %55, T skoru −2,1). ' : 'Rapor metni okununca içindeki ölçümler (ör. dalak boyu, aort çapı, EF, T-skoru) burada tahlil sonuçları gibi değerlendirilir. '}
+              {info.kind === 'dicom'
+                ? spacing
+                  ? 'Görüntü üzerinde kendin ölçmek için görüntüleyicideki cetvel ya da yoğunluk aracını kullanabilirsin.'
+                  : ''
+                : info.kind !== 'pdf'
+                  ? 'Fotoğrafta milimetre ölçeği olmadığı için yalnızca oranlar (ör. kalp/göğüs oranı) cetvelle ölçülebilir.'
+                  : ''}
+            </p>
+          )}
+        </section>
 
         {/* Belge bilgileri */}
         <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Belge bilgileri">
@@ -270,11 +363,6 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
               )}
             </div>
           )}
-          {region?.structure && (
-            <button type="button" className="btn-ghost w-full justify-center" onClick={() => go({ name: 'body', structure: region.structure })}>
-              <BodyIcon size={16} /> {region.label} bölgesini 3B vücutta göster
-            </button>
-          )}
           {isImaging(category) && !region?.structure && !suggested?.region && (
             <div className="flex items-center gap-2 rounded-xl border border-dashed border-ink-600 px-3 py-2 text-xs text-fg-muted">
               <BodyIcon size={15} />
@@ -290,7 +378,6 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
               )}
             </div>
           )}
-          {region?.structure && <p className="text-[11px] leading-relaxed text-fg-faint">3B model, görüntülenen bölgenin vücuttaki genel yerini gösterir; görüntüdeki bir bulgunun yerini göstermez.</p>}
         </section>
 
         {error && <Banner tone="error">{error}</Banner>}
@@ -331,7 +418,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
         <section className="space-y-3" aria-label="Rapor metni">
           <div className="flex items-center justify-between gap-2">
             <p className="label-caps">Rapor metni</p>
-            {note && mode === 'idle' && (
+            {hasText && note && mode === 'idle' && (
               <div className="flex gap-1">
                 {canRead && (
                   <button type="button" className="icon-btn h-8 w-8" onClick={() => void read()} aria-label="Yeniden oku" title="Yeniden oku">
@@ -381,7 +468,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             <div className="flex items-center gap-2 text-sm text-fg-muted">
               <SpinnerIcon size={14} /> Yükleniyor…
             </div>
-          ) : note ? (
+          ) : hasText && note ? (
             <div className="space-y-3">
               {sections.map((s, i) => (
                 <div

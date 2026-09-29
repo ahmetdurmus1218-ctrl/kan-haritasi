@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { type Bytes, DOC_CATEGORIES, type DocCategory, type FileInfo } from '@kh/vault';
-import { useUnlockedVault } from '../state/VaultContext';
+import { useUnlockedVault, useVault } from '../state/VaultContext';
 import type { Route } from '../state/router';
 import { userMessage } from '../lib/messages';
 import { formatBytes, formatDateTime, KIND_LABEL } from '../lib/format';
@@ -11,6 +11,7 @@ import { ChevronLeftIcon, FileTextIcon, ListIcon, SpinnerIcon } from '../compone
 import { CATEGORY_LABEL, isImaging } from '../lib/imaging';
 import { downloadOriginal } from './DocumentsPage';
 import { seriesOf } from '../lib/documents';
+import { addManualMeasurement } from '../lib/imagingRecords';
 import { type Highlight, ReportPanel } from './ReportPanel';
 import { ImagingPanel } from './ImagingPanel';
 
@@ -24,6 +25,7 @@ const ImagingViewer = lazy(() => import('../viewers/ImagingViewer').then((m) => 
  */
 export function DocumentDetail({ id, navigate }: { id: string; navigate: (r: Route) => void }) {
   const vault = useUnlockedVault();
+  const { bump } = useVault();
   const [state, setState] = useState<{ info: FileInfo; bytes: Bytes } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -158,7 +160,17 @@ export function DocumentDetail({ id, navigate }: { id: string; navigate: (r: Rou
                     </div>
                   }
                 >
-                  <ImagingViewer key={series.join(',')} ids={series} initial={state} onDownload={download} />
+                  <ImagingViewer
+                    key={series.join(',')}
+                    ids={series}
+                    initial={state}
+                    onDownload={download}
+                    onSaveMeasurement={async (p) => {
+                      // Seride ölçümler serinin ilk kesitine bağlanır (panel de oradan okur).
+                      await addManualMeasurement(vault, series.length > 1 ? series[0]! : id, p);
+                      bump();
+                    }}
+                  />
                 </Suspense>
               ) : state.info.kind === 'pdf' ? (
                 <Suspense

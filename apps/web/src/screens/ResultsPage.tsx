@@ -101,7 +101,13 @@ export function ResultsPage() {
             <h2 id="goruntuleme-sonuclari" className="label-caps">
               Görüntüleme raporların ({studies.length})
             </h2>
-            <span className="text-[11px] text-fg-faint">MR · BT · röntgen · ultrason</span>
+            <span className={`text-[11px] ${studies.some((x) => x.abnormal.length) ? 'text-high' : 'text-fg-faint'}`}>
+              {(() => {
+                const all = studies.flatMap((x) => x.measures);
+                const out = all.filter((m) => m.status === 'high' || m.status === 'low').length;
+                return all.length ? `${all.length} ölçüm · ${out} tanesi genel referans dışında` : 'MR · BT · röntgen · ultrason';
+              })()}
+            </span>
           </div>
           <ImagingStudyList studies={studies} />
           <p className="mt-2 text-[11px] leading-relaxed text-fg-faint">

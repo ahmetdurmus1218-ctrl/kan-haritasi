@@ -272,3 +272,15 @@ export const ContrastIcon = (p: IconProps) => (
     <path d="M12 3.5v17a8.5 8.5 0 0 0 0-17Z" fill="currentColor" />
   </Icon>
 );
+export const RulerIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="m3.5 16.5 13-13 4 4-13 13-4-4Z" />
+    <path d="m7.5 12.5 2 2M10.5 9.5l2 2M13.5 6.5l2 2" />
+  </Icon>
+);
+export const CircleDotIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8" strokeDasharray="3 2.5" />
+    <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+  </Icon>
+);

@@ -5,7 +5,45 @@ export interface StructureHighlight {
   status: 'high' | 'low' | 'mixed';
   /** En ağır ilişkili sapmanın derecesi: 1 hafif, 2 orta, 3 belirgin. */
   score: number;
-  tests: Array<{ key: string; status: ResultStatus; score: number }>;
+  /** `name`: tahlil dışı kaynaklar (ör. görüntüleme ölçümü "Dalak") için gösterilecek ad. */
+  tests: Array<{ key: string; status: ResultStatus; score: number; name?: string }>;
+}
+
+/** Vurgu kaynağının kısa adı (tahlil ya da görüntüleme ölçümü). */
+export function highlightName(t: { key: string; name?: string }): string {
+  return t.name ?? testByKey.get(t.key)?.nameTr.split(' (')[0] ?? t.key;
+}
+
+/** Görüntüleme ölçümünün referanstan sapma derecesi: 1 hafif, 2 orta, 3 belirgin. */
+export function measureScore(value: number, min?: number, max?: number): number {
+  const bound = max !== undefined && value > max ? max : min !== undefined && value < min ? min : undefined;
+  if (bound === undefined) return 1;
+  const rel = Math.abs(value - bound) / Math.max(Math.abs(bound), 1e-6);
+  return rel >= 0.3 ? 3 : rel >= 0.1 ? 2 : 1;
+}
+
+/**
+ * Referans dışındaki görüntüleme ölçümlerini (ör. dalak 145 mm ▲) tahlil vurgularına ekler:
+ * ilgili yapı 3B modelde tahlil sonuçları gibi renklenir.
+ */
+export function withImagingHighlights(
+  base: Map<string, StructureHighlight>,
+  measures: Array<{ def: { key: string; short: string; structure: string }; value: number; status: ResultStatus; range: { min?: number; max?: number } }>,
+): Map<string, StructureHighlight> {
+  if (!measures.length) return base;
+  const map = new Map([...base].map(([k, v]) => [k, { ...v, tests: [...v.tests] }]));
+  for (const m of measures) {
+    if (m.status !== 'high' && m.status !== 'low') continue;
+    const score = measureScore(m.value, m.range.min, m.range.max);
+    const sid = m.def.structure;
+    const h: StructureHighlight = map.get(sid) ?? { status: m.status, score: 0, tests: [] };
+    if ((m.status === 'high' && h.status === 'low') || (m.status === 'low' && h.status === 'high')) h.status = 'mixed';
+    h.score = Math.max(h.score, score);
+    if (!h.tests.some((t) => t.key === `img:${m.def.key}`)) h.tests.push({ key: `img:${m.def.key}`, status: m.status, score, name: m.def.short });
+    h.tests.sort((a, b) => b.score - a.score);
+    map.set(sid, h);
+  }
+  return map;
 }
 
 /**

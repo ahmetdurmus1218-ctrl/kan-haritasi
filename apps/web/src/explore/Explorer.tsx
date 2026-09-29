@@ -14,7 +14,7 @@ import { severityWeights, useInterpretation } from '../lib/interpretation';
 import { studiesForStructure, useImagingStudies } from '../lib/imagingStudies';
 import { CATEGORY_SHORT } from '../lib/imaging';
 import { formatDate } from '../lib/format';
-import { highlightsFrom } from '../anatomy/highlight';
+import { highlightName, highlightsFrom, withImagingHighlights } from '../anatomy/highlight';
 import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene';
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { partLabel, partLatin } from '../anatomy/names';
@@ -166,7 +166,11 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const interp = useInterpretation(series, sex);
   const studies = useImagingStudies();
   const weights = useMemo(() => severityWeights(interp), [interp]);
-  const highlights = useMemo(() => highlightsFrom(series, focusTest, weights), [series, focusTest, weights]);
+  // Tahlil vurgularına referans dışı görüntüleme ölçümleri de eklenir (bir tahlile odaklanılmadıkça).
+  const highlights = useMemo(() => {
+    const base = highlightsFrom(series, focusTest, weights);
+    return focusTest || !studies ? base : withImagingHighlights(base, studies.flatMap((st) => st.abnormal));
+  }, [series, focusTest, weights, studies]);
   const allParts = useMemo(() => [...models.parts, ...models.schematic], [models.parts, models.schematic]);
   const boxes = useMemo(() => structureBoxes(allParts), [allParts]);
   const vessels = useMemo(() => (structure ? vesselParts(allParts, structure) : []), [allParts, structure]);
@@ -383,7 +387,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       // Odaktaki organda bölüm adı, diğerlerinde organ adı
       const name = p.label && p.structure === structure ? (partLabel(p.structure, p.label) ?? p.label) : (s?.nameTr ?? p.structure);
       const h = highlights.get(p.structure);
-      el.textContent = h ? `${name} · ${h.tests.map((t) => testByKey.get(t.key)?.nameTr.split(' (')[0]).join(', ')} ${h.status === 'high' ? '▲' : h.status === 'low' ? '▼' : ''}` : name;
+      el.textContent = h ? `${name} · ${h.tests.map((t) => highlightName(t)).join(', ')} ${h.status === 'high' ? '▲' : h.status === 'low' ? '▼' : ''}` : name;
       const r = root.getBoundingClientRect();
       const x = Math.min(p.x - r.left + 14, r.width - 200);
       const y = Math.max(8, p.y - r.top + 16);
@@ -587,7 +591,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
           color: highlightColor(h.status, h.score),
           text: `${h.tests
             .slice(0, 3)
-            .map((t) => `${testByKey.get(t.key)?.nameTr.split(' (')[0] ?? t.key} ${t.status === 'high' ? '▲' : t.status === 'low' ? '▼' : ''}`)
+            .map((t) => `${highlightName(t)} ${t.status === 'high' ? '▲' : t.status === 'low' ? '▼' : ''}`)
             .join(', ')} · ${SCORE_WORD[Math.min(3, Math.round(h.score))]} sapma`,
         }
       : findings.length

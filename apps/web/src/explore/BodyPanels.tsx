@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { type Interpretation, PROCESSES, type PartDef, type ProcessId, type SystemId, TESTS, formatNumber, partDef, partsOf, structureById, systemById, testByKey } from '@kh/catalog';
 import type { TestSeries } from '../lib/useReports';
 import type { ImagingStudy } from '../lib/imagingStudies';
-import { ImagingStudyList } from '../components/imaging';
-import type { StructureHighlight } from '../anatomy/highlight';
+import { CATEGORY_LABEL } from '../lib/imaging';
+import { formatDate } from '../lib/format';
+import { MeasureChip } from '../components/measures';
+import { type StructureHighlight, highlightName } from '../anatomy/highlight';
 import { CONNECTIONS, ORGANS, insidesOf } from '../anatomy/organs';
 import { isVein, partLabel, partLatin } from '../anatomy/names';
 import { highlightColor } from '../anatomy/palette';
@@ -167,7 +169,7 @@ export function BodyIntroPanel({
                     <span className="flex-1 text-sm">{s.nameTr}</span>
                     <span className="truncate text-xs text-fg-faint">
                       {h.tests
-                        .map((t) => `${testByKey.get(t.key)?.nameTr.split(' (')[0] ?? t.key} ${t.status === 'high' ? '▲' : t.status === 'low' ? '▼' : ''}`)
+                        .map((t) => `${highlightName(t)} ${t.status === 'high' ? '▲' : t.status === 'low' ? '▼' : ''}`)
                         .slice(0, 2)
                         .join(' · ')}
                     </span>
@@ -302,6 +304,46 @@ export interface VesselPart {
   def?: PartDef;
 }
 
+/** Organ panelinde: bu bölgenin görüntülemeleri ve raporlarının sonucu; dokununca belge açılır. */
+function ImagingBlock({ studies, accent, structure }: { studies: ImagingStudy[]; accent: string; structure: string }) {
+  return (
+    <section className="mb-6 space-y-2" aria-label="Görüntülemelerin">
+      <Caps className="text-fg-faint">Görüntülemelerin ({studies.length})</Caps>
+      {studies.slice(0, 4).map((st) => {
+        const conclusion = st.conclusion ?? st.linked?.conclusion;
+        return (
+          <button
+            key={st.key}
+            type="button"
+            onClick={() => go({ name: 'document', id: st.head.id })}
+            className="kh-holo-btn block w-full rounded-xl border px-3 py-2.5 text-left transition"
+            style={{ borderColor: `${accent}66` }}
+          >
+            <span className="block text-sm text-fg">
+              {CATEGORY_LABEL[st.category]} · {formatDate(st.date)}
+              {st.files.length > 1 ? ` · ${st.files.length} kesit` : ''}
+            </span>
+            <span className="mt-0.5 line-clamp-2 block text-xs leading-snug text-fg-muted">
+              {conclusion ? `Sonuç: ${conclusion}` : 'Rapor metni yok · görüntüyü açmak için dokun'}
+            </span>
+            {st.measures.some((m) => m.def.structure === structure) && (
+              <span className="mt-1.5 flex flex-wrap gap-1">
+                {st.measures
+                  .filter((m) => m.def.structure === structure)
+                  .map((m, i) => (
+                    <MeasureChip key={`${m.def.key}-${m.site ?? ''}-${i}`} m={m} />
+                  ))}
+              </span>
+            )}
+          </button>
+        );
+      })}
+      {studies.length > 4 && <p className="text-[11px] text-fg-faint">+{studies.length - 4} görüntüleme daha · Sonuçlar ekranında</p>}
+      <p className="text-[11px] leading-relaxed text-fg-faint">Model, görüntülenen bölgenin genel yerini gösterir; rapordaki bir bulgunun yerini göstermez.</p>
+    </section>
+  );
+}
+
 /** "Temelde nasıl çalışır" / "Sonucuma göre" düğme çifti (organ panelinde ve bulutta aynı dil). */
 export function HowItWorks({ accent, hasMine, onEnter }: { accent: string; hasMine: boolean; onEnter: (mode: SimulationMode) => void }) {
   return (
@@ -338,8 +380,6 @@ export function OrganPanel({
   initialTab,
   imaging = [],
 }: {
-  /** Bu bölgeye ait görüntüleme belgeleri (MR, BT, röntgen, ultrason). */
-  imaging?: ImagingStudy[];
   structure: string;
   body: 'male' | 'female';
   onSwitchBody: (b: 'male' | 'female') => void;
@@ -352,6 +392,8 @@ export function OrganPanel({
   onEnterScene: (scene: string, from: string) => void;
   interp: Interpretation;
   initialTab?: OrganTab;
+  /** Bu yapının bölgesine ait görüntüleme çalışmaları (MR, BT, röntgen…). */
+  imaging?: ImagingStudy[];
 }) {
   const mineFindings = interp.findings.filter((f) => f.structures.includes(structure));
   const minePatterns = interp.patterns.filter((p) => p.structures.includes(structure));
@@ -406,21 +448,16 @@ export function OrganPanel({
         <div className="mb-4 flex items-start gap-2.5 text-sm">
           <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full" style={{ background: highlightColor(h.status, h.score), boxShadow: `0 0 8px ${highlightColor(h.status, h.score)}` }} />
           <p className="text-fg-muted">
-            <span className="text-fg">{h.tests.map((t) => `${testByKey.get(t.key)?.nameTr.split(' (')[0]} ${t.status === 'high' ? '▲' : t.status === 'low' ? '▼' : ''}`).join(', ')}</span> ·{' '}
-            {SCORE_WORD[Math.min(3, Math.round(h.score))]} sapma. İlişkili süreçleri gösterir; yapıda sorun olduğu anlamına gelmez.
+            <span className="text-fg">{h.tests.map((t) => `${highlightName(t)} ${t.status === 'high' ? '▲' : t.status === 'low' ? '▼' : ''}`).join(', ')}</span> ·{' '}
+            {SCORE_WORD[Math.min(3, Math.round(h.score))]} sapma.{' '}
+            {h.tests.some((t) => t.key.startsWith('img:'))
+              ? 'Görüntüleme ölçümü genel referans dışında; tek başına tanı değildir, önemini hekim değerlendirir.'
+              : 'İlişkili süreçleri gösterir; yapıda sorun olduğu anlamına gelmez.'}
           </p>
         </div>
       )}
 
-      {!part && imaging.length > 0 && (
-        <section className="mb-5">
-          <Caps className="text-fg-faint">Görüntülemelerin ({imaging.length})</Caps>
-          <div className="mt-2">
-            <ImagingStudyList studies={imaging} compact />
-          </div>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-fg-faint">Belge bu bölgeyle ilişkilendirildi; görüntü ve rapor uygulama tarafından yorumlanmaz.</p>
-        </section>
-      )}
+      {!part && imaging.length > 0 && <ImagingBlock studies={imaging} accent={accent} structure={structure} />}
 
       {!part && insides[0] && (
         <div className="mb-6 space-y-2">

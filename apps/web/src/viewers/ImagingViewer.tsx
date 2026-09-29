@@ -15,7 +15,8 @@ import {
 import type { FileInfo } from '@kh/vault';
 import { useUnlockedVault } from '../state/VaultContext';
 import { CT_PRESETS } from '../lib/imaging';
-import { ContrastIcon, DownloadIcon, MaximizeIcon, RotateCcwIcon, RotateCwIcon, SpinnerIcon, ZoomInIcon, ZoomOutIcon } from '../components/icons';
+import { CircleDotIcon, ContrastIcon, DownloadIcon, MaximizeIcon, RotateCcwIcon, RotateCwIcon, RulerIcon, SpinnerIcon, ZoomInIcon, ZoomOutIcon } from '../components/icons';
+import { type Mark, type MeasureContext, MarksOverlay, type SavePayload, SaveMeasurePanel } from './MeasureTools';
 import { Banner, ToolbarGroup } from '../components/ui';
 import { clampZoom, useElementWidth, useFullscreen, usePinchZoom } from './hooks';
 
@@ -33,6 +34,8 @@ interface ViewMeta {
   frames: number;
   /** Fotoğraf/ekran görüntüsü (DICOM değil). */
   photo: boolean;
+  /** mm: [satır aralığı, sütun aralığı]; fotoğrafta yok. */
+  pixelSpacing?: [number, number];
 }
 
 type Loaded = { kind: 'dicom'; info: DicomInfo; meta: ViewMeta; bytes: Uint8Array } | { kind: 'photo'; meta: ViewMeta; frame: Gray | Rgba };
@@ -93,6 +96,7 @@ const dicomMeta = (info: DicomInfo): ViewMeta => ({
   inverted: info.photometric === 'MONOCHROME1',
   frames: info.frames,
   photo: false,
+  pixelSpacing: info.pixelSpacing,
 });
 
 /**
@@ -108,12 +112,15 @@ export function ImagingViewer({
   ids,
   initial,
   onDownload,
+  onSaveMeasurement,
 }: {
   /** Seri içindeki dosyalar, kesit sırasıyla. */
   ids: string[];
   /** Açılan belge (zaten çözülmüş). */
   initial: { info: FileInfo; bytes: Uint8Array };
   onDownload: () => void;
+  /** Elle yapılan ölçümü (ör. dalak uzunluğu) belgeye kaydeder. */
+  onSaveMeasurement?: (p: SavePayload) => Promise<void>;
 }) {
   const initialId = initial.info.id;
   const vault = useUnlockedVault();
@@ -131,7 +138,9 @@ export function ImagingViewer({
   const [preset, setPreset] = useState<string>('dosya');
   const [invert, setInvert] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [wlMode, setWlMode] = useState(false);
+  const [tool, setTool] = useState<'wl' | 'ruler' | 'roi' | null>(null);
+  const wlMode = tool === 'wl';
+  const [marks, setMarks] = useState<Mark[]>([]);
   const [zoom, setZoom] = useState(1);
   const [box, setBox] = useState({ w: 0, h: 0 });
 
@@ -287,6 +296,12 @@ export function ImagingViewer({
     [current],
   );
 
+  const measureCtx: MeasureContext = {
+    spacing: current?.meta.pixelSpacing,
+    gray: current?.frame.kind === 'gray' ? current.frame : undefined,
+    isCt,
+  };
+
   if (unsupported) {
     return (
       <div className="space-y-3 p-6">
@@ -334,7 +349,7 @@ export function ImagingViewer({
               type="button"
               className={`icon-btn ${wlMode ? 'bg-accent/15 text-accent' : ''}`}
               aria-pressed={wlMode}
-              onClick={() => setWlMode((m) => !m)}
+              onClick={() => setTool((t) => (t === 'wl' ? null : 'wl'))}
               title="Kontrast (pencere/seviye): açıkken görüntü üzerinde sürükle. Sağ tıkla sürüklemek her zaman çalışır."
               aria-label="Kontrast ayarı"
             >
@@ -360,6 +375,32 @@ export function ImagingViewer({
             <RotateCwIcon />
           </button>
         </ToolbarGroup>
+        {current && onSaveMeasurement && (
+          <ToolbarGroup>
+            <button
+              type="button"
+              className={`icon-btn ${tool === 'ruler' ? 'bg-accent/15 text-accent' : ''}`}
+              aria-pressed={tool === 'ruler'}
+              onClick={() => setTool((t) => (t === 'ruler' ? null : 'ruler'))}
+              aria-label="Cetvel"
+              title={current.meta.pixelSpacing ? 'Cetvel: iki nokta arası uzunluk (mm)' : 'Cetvel: ölçek yok, oran için iki çizgi çek'}
+            >
+              <RulerIcon />
+            </button>
+            {current.frame.kind === 'gray' && !current.meta.photo && (
+              <button
+                type="button"
+                className={`icon-btn ${tool === 'roi' ? 'bg-accent/15 text-accent' : ''}`}
+                aria-pressed={tool === 'roi'}
+                onClick={() => setTool((t) => (t === 'roi' ? null : 'roi'))}
+                aria-label="Yoğunluk ölçümü"
+                title={isCt ? 'Yoğunluk: daire içindeki ortalama Hounsfield değeri' : 'Daire içindeki ortalama sinyal'}
+              >
+                <CircleDotIcon />
+              </button>
+            )}
+          </ToolbarGroup>
+        )}
         <div className="flex-1" />
         <ToolbarGroup>
           <button type="button" className="icon-btn" onClick={toggleFullscreen} aria-label="Tam ekran">
@@ -373,7 +414,7 @@ export function ImagingViewer({
 
       <div
         ref={areaRef}
-        className={`relative min-h-0 flex-1 overflow-auto ${wlMode ? 'touch-none cursor-crosshair' : 'touch-pan-x touch-pan-y'}`}
+        className={`relative min-h-0 flex-1 overflow-auto ${tool ? 'touch-none cursor-crosshair' : 'touch-pan-x touch-pan-y'}`}
         onContextMenu={(e) => e.preventDefault()}
       >
         {(loading && !current) || error ? (
@@ -400,6 +441,16 @@ export function ImagingViewer({
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
             />
+            <MarksOverlay
+              marks={marks}
+              natural={natural}
+              scale={scale}
+              rotation={rotation}
+              ctx={measureCtx}
+              tool={tool === 'ruler' || tool === 'roi' ? tool : null}
+              slice={pos}
+              onAdd={(m) => setMarks((list) => [...list, m])}
+            />
           </div>
         )}
         {current && (
@@ -418,6 +469,16 @@ export function ImagingViewer({
           </>
         )}
       </div>
+
+      {onSaveMeasurement && (
+        <SaveMeasurePanel
+          marks={marks}
+          ctx={measureCtx}
+          onSave={onSaveMeasurement}
+          onClear={() => setMarks([])}
+          sliceLabel={(sl) => (count > 1 ? `Kesit ${sl + 1}` : 'Görüntü')}
+        />
+      )}
 
       {count > 1 && (
         <div className="flex items-center gap-3 border-t border-ink-700 bg-ink-900/80 px-3 py-2">
