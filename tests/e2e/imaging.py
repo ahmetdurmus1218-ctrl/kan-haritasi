@@ -8,6 +8,7 @@ Kullanım: pnpm build && pnpm preview (ayrı terminal), sonra
   python3 tests/e2e/imaging.py [ekran-görüntüsü-klasörü]
 """
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -287,8 +288,18 @@ with sync_playwright() as p:
     card.get_by_text("kesit bulundu", exact=False).wait_for(timeout=30000)
     text = card.inner_text()
     check("3 kesit bulundu · 2 tanesinde" in text, "kolaj 3 kesite ayrıldı, 2'si karşılaştırıldı (sagital hariç)")
-    check(text.count("Kesit ") == 1 and "Kesit 2 · görüntünün sol üst kısmı · karşı tarafa göre daha parlak" in text, "tek taraflı odak doğru kesitte ve yarıda")
+    check(
+        "Kesit 2 · görüntünün sol üst kısmı · karşı tarafa göre daha parlak" in text and "Kesit 1 ·" not in text and "Kesit 3 ·" not in text,
+        "tek taraflı odak doğru kesitte ve yarıda",
+    )
     check("Tanı değildir" in text, "inceleme tanı olmadığını söylüyor")
+    check("Kesit 2: belirgin sağ-sol farkı var" in text, "ön değerlendirme satırı farkı ve kesiti söylüyor")
+    # Yazısız görüntüde OCR anlamsız harf üretir: rapor diye kaydedilmemeli
+    if page.get_by_role("button", name="Rapor metnini oku").count():
+        page.get_by_role("button", name="Rapor metnini oku").click()
+        # Anlamsız harf okunursa ya da hiç yazı bulunmazsa: ikisinde de rapor kaydedilmez
+        page.get_by_text(re.compile("okunabilir bir rapor metni yok|okunabilir metin bulunamadı")).first.wait_for(timeout=120000)
+        check(page.get_by_text("Görüntüden okundu (OCR)", exact=False).count() == 0, "anlamsız OCR metni rapor diye kaydedilmedi")
     card.screenshot(path=SHOTS / "73-mr-otomatik-inceleme.png")
     card.get_by_role("button", name="Sonuçlarıma ekle", exact=False).click()
     card.get_by_text("Sonuçlarına eklendi", exact=False).wait_for()

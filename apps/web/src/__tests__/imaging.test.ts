@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findTerms, guessCategory, guessRegion, splitReport } from '../lib/imaging';
+import { findTerms, guessCategory, guessRegion, isReadableReport, splitReport } from '../lib/imaging';
 
 describe('görüntüleme yardımcıları', () => {
   it('dosya adından tür tahmini', () => {
@@ -37,5 +37,20 @@ describe('görüntüleme yardımcıları', () => {
     // "kontrastsız çekim" kontrast tutulumu değildir.
     expect(findTerms('Sekanslar kontrastsız alınmıştır.').map((t) => t.key)).toEqual([]);
     expect(findTerms('Lezyonda belirgin kontrast tutulumu var.').map((t) => t.key)).toContain('kontrast');
+  });
+});
+
+describe('OCR metni gerçekten rapor mu', () => {
+  it('film/MR fotoğrafından çıkan anlamsız harf öbekleri rapor sayılmaz', () => {
+    for (const t of ['ERAS Gn', 'ee a wr ,| Ra EE Sl', 'Tl 4 xz qwrtpl mnbv', '| ~~ ee — ; SEEN eee Ra pan aa', 'L R 12/24 SE 4', ''])
+      expect(isReadableReport(t), t).toBe(false);
+  });
+  it('gerçek rapor metni okunabilir sayılır', () => {
+    for (const t of [
+      'BEYİN MR\nBULGULAR: Ventriküller normal genişliktedir. Sulkuslar olağandır.\nSONUÇ: Normal beyin MR.',
+      'LOMBER MR RAPORU Teknik: sagital ve aksiyel T1 T2 sekanslar. Bulgular: L4-5 disk protrüzyonu izlendi.',
+      'Tüm batın ultrasonografi: Karaciğer boyutu normal, dalak 13 cm. Sonuç: Hafif splenomegali.',
+    ])
+      expect(isReadableReport(t), t).toBe(true);
   });
 });

@@ -271,3 +271,37 @@ export const CT_PRESETS: Array<{ key: string; label: string; center: number; wid
   { key: 'beyin', label: 'Beyin', center: 40, width: 80 },
   { key: 'karaciger', label: 'Karaciğer', center: 60, width: 160 },
 ];
+
+/** Rapor metinlerinde sık geçen sözcükler (okunan metnin gerçek bir rapor olup olmadığını anlamak için). */
+const REPORT_WORDS = new Set(
+  (
+    'bulgu bulgular sonuc sonuç rapor inceleme tetkik teknik klinik yorum görüş gorus kanaat normal olağan olagan doğal dogal ' +
+    'izlenmedi izlenmektedir izlendi izlenmiştir saptanmadı saptanmadi saptandı saptandi mevcut yoktur ' +
+    'beyin serebral serebellum ventrikül ventrikul sulkus sisterna kalvarium orbita sinüs sinus ' +
+    'sekans sekanslar kesit kesitler aksiyel koronal sagital kontrast kontrastsız kontrastsiz flair difüzyon difuzyon ' +
+    'sinyal intensite hiperintens hipointens odak odakları cevher cevherde lezyon patolojik patoloji boyut boyutu ölçüm olcum sağ sag sol bilateral ' +
+    'hasta tarih doktor radyoloji uzman dr ve ile olarak bir bu ile de da için icin göre gore ' +
+    'karaciğer karaciger dalak böbrek bobrek akciğer akciger kalp diz omurga disk lomber servikal torakal'
+  ).split(' '),
+);
+
+const VOWEL = /[aeıioöuüâîû]/;
+
+/**
+ * OCR ile okunan metin gerçekten okunabilir bir rapor mu? Film ya da MR fotoğrafında OCR genellikle
+ * "ERAS Gn" gibi anlamsız harf öbekleri üretir; bunlar rapor diye kaydedilmez. Ölçüt: yeterince sözcük,
+ * sözcüklerin çoğu okunabilir biçimde (ünlü içeren, uzun ünsüz öbeği olmayan) ve bilinen rapor
+ * sözcüklerinden birkaçı ya da uzun, düzgün bir metin.
+ */
+export function isReadableReport(text: string): boolean {
+  const words = text
+    .toLocaleLowerCase('tr')
+    .split(/[^a-zçğıöşüâîû0-9]+/i)
+    .filter((w) => w.length >= 2 && /[a-zçğıöşü]/.test(w));
+  const long = words.filter((w) => w.length >= 3);
+  if (long.length < 4) return false;
+  const plausible = long.filter((w) => VOWEL.test(w) && !/[^aeıioöuüâîû0-9]{5,}/.test(w) && !/(.)\1\1/.test(w)).length / long.length;
+  const known = words.filter((w) => REPORT_WORDS.has(w)).length;
+  if (known >= 2 && plausible >= 0.6) return true;
+  return long.length >= 8 && plausible >= 0.8 && known >= 1;
+}
