@@ -190,10 +190,62 @@ with sync_playwright() as p:
     check(page.get_by_text("15 Mar 2026 · MR · Beyin / kafa").count() >= 1, "Zaman: MR çalışması rapor geçmişinde")
     page.screenshot(path=SHOTS / "70-zaman-goruntuleme.png", full_page=True)
 
+    # --- Ölçümler tahlil gibi: rapordaki sayılar genel referansa göre
+    page.goto(URL + "#/belgeler")
+    page.get_by_role("radio", name="Ultrason", exact=True).click()
+    page.set_input_files("input[type=file][multiple]", [str(IMG / "batin-usg-raporu.pdf")])
+    page.get_by_role("button", name="Aç ve oku").click()
+    page.get_by_text("Raporda geçen terimler").wait_for(timeout=60000)
+    olc = page.locator("section[aria-label='Ölçümler']")
+    check(olc.get_by_text("2 tanesi genel referans dışında").count() == 1, "batın raporu: 2 ölçüm referans dışında")
+    check(olc.get_by_text("Dalak uzunluğu").count() == 1 and olc.get_by_text("145 mm").count() >= 1, "dalak 14,5 cm → 145 mm")
+    check(olc.get_by_text("Olası nedenler (kesin değil)").count() >= 1, "referans dışı ölçümde olası nedenler")
+    check(olc.get_by_text("Böbrek uzunluğu").count() == 2, "sağ ve sol böbrek ayrı")
+    page.screenshot(path=SHOTS / "71-olcumler-rapordan.png", full_page=True)
+
+    # --- Elle ölçüm: MR'da cetvelle Evans indeksi (iki çizgi → oran)
+    page.goto(URL + "#/belgeler")
+    page.get_by_role("radio", name="Görüntüleme", exact=False).first.click()
+    page.get_by_text("8 kesit").click()
+    page.locator("canvas[role=img]").wait_for(timeout=20000)
+    page.get_by_role("button", name="Cetvel").click()
+    box = page.locator("canvas[role=img]").bounding_box()
+
+    def draw(x1, y1, x2, y2):
+        page.mouse.move(box["x"] + box["width"] * x1, box["y"] + box["height"] * y1)
+        page.mouse.down()
+        page.mouse.move(box["x"] + box["width"] * x2, box["y"] + box["height"] * y2, steps=6)
+        page.mouse.up()
+
+    draw(0.38, 0.45, 0.62, 0.45)
+    draw(0.12, 0.5, 0.88, 0.5)
+    page.get_by_label("Ölçüm türü").select_option(label="Evans indeksi")
+    page.get_by_role("button", name="Kaydet", exact=True).click()
+    page.get_by_text("Kaydedildi — ", exact=False).wait_for()
+    page.locator("section[aria-label='Ölçümler']").get_by_text("Evans indeksi").wait_for(timeout=10000)
+    check(page.locator("section[aria-label='Ölçümler']").get_by_text("senin ölçümün", exact=False).count() >= 1, "elle ölçüm kaydedildi ve değerlendirildi")
+    page.screenshot(path=SHOTS / "72-cetvel-evans.png")
+
+    # --- BT'de yoğunluk (HU) ölçümü
+    page.goto(URL + "#/belgeler")
+    page.get_by_text("TORAKS BT (SENTETIK)").first.click()
+    page.locator("canvas[role=img]").wait_for(timeout=20000)
+    page.get_by_role("button", name="Yoğunluk ölçümü").click()
+    box = page.locator("canvas[role=img]").bounding_box()
+    draw(0.5, 0.3, 0.5, 0.36)
+    check(page.get_by_text("ort. 40 HU", exact=False).count() >= 1, "BT: daire içi ortalama 40 HU")
+    page.screenshot(path=SHOTS / "73-bt-hu.png")
+
+    # --- 3B: referans dışı görüntüleme ölçümü organı tahlil gibi renklendirir
+    page.goto(URL + "#/vucut/yapi/spleen")
+    page.get_by_text("Görüntülemelerin (", exact=False).wait_for(timeout=120000)
+    check(page.get_by_text("Dalak ▲", exact=False).count() >= 1, "3B: dalak referans dışı ölçümle vurgulandı")
+    page.screenshot(path=SHOTS / "74-vucut-dalak.png")
+
     # --- Liste filtresi
     page.goto(URL + "#/belgeler")
-    page.get_by_role("radio", name="Görüntüleme · 5").click()
-    check(page.locator("section[aria-label=Belgeler] li").count() == 5, "görüntüleme filtresi: 5 belge (seri tek satır)")
+    page.get_by_role("radio", name="Görüntüleme · 6").click()
+    check(page.locator("section[aria-label=Belgeler] li").count() == 6, "görüntüleme filtresi: 6 belge (seri tek satır)")
 
     # --- Telefon görünümü: sekmeler "Bilgiler" / "Belge"
     page.set_viewport_size({"width": 390, "height": 844})

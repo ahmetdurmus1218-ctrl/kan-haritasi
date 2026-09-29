@@ -1,8 +1,9 @@
 import type { Vault } from '@kh/vault';
 import { STATUS_LABEL, testByKey } from '@kh/catalog';
-import { listReports } from './reports';
+import { listReports, loadSex } from './reports';
 import { listImagingNotes } from './imagingRecords';
 import { CATEGORY_LABEL, isImaging, regionByKey } from './imaging';
+import { measurementsOf } from './imagingMeasurements';
 import { makeZip, safeEntryName, type ZipEntry } from './zip';
 
 /**
@@ -50,6 +51,7 @@ export async function buildExport(vault: Vault, onProgress?: (done: number, tota
   );
 
   const notes = await listImagingNotes(vault);
+  const sex = await loadSex(vault);
   const goruntulemeler = files
     .filter((f) => isImaging(f.category))
     .map((f) => ({
@@ -59,7 +61,20 @@ export async function buildExport(vault: Vault, onProgress?: (done: number, tota
       cekimTarihi: f.studyDate ?? null,
       seri: f.seriesUid ?? null,
       kesit: f.sliceIndex ?? null,
-      raporMetni: notes.find((n) => n.fileId === f.id)?.text ?? null,
+      raporMetni: notes.find((n) => n.fileId === f.id)?.text || null,
+      olcumler: measurementsOf(
+        notes.find((n) => n.fileId === f.id),
+        f.region,
+        sex,
+      ).map((m) => ({
+        olcum: m.def.nameTr,
+        taraf: m.site ?? null,
+        deger: m.value,
+        birim: m.def.unit,
+        genelReferans: m.range.text ?? null,
+        durum: STATUS_LABEL[m.status],
+        kaynak: m.source === 'report' ? 'rapor' : 'elle ölçüm',
+      })),
     }));
 
   const json = {

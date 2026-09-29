@@ -8,6 +8,7 @@ radyoloji raporu (PDF). Gerçek kişi, gerçek kurum, gerçek görüntü veya ki
  - imaging/beyin-mr-raporu.pdf            başlıklı radyoloji raporu (Klinik bilgi, Teknik, Bulgular, Sonuç)
  - imaging/rontgen-film-foto.jpg          telefonla çekilmiş gibi röntgen filmi fotoğrafı (koyu, gri)
  - imaging/toraks-bt-raporu-foto.png      kâğıt BT raporunun fotoğrafı (OCR ile okunur)
+ - imaging/batin-usg-raporu.pdf           ölçümlü batın ultrason raporu (dalak, karaciğer, böbrek, koledok…)
 
 Kullanım: python3 fixtures/make_imaging_fixtures.py
 """
@@ -199,6 +200,7 @@ def main() -> None:
     c.save()
     film_photo()
     report_photo()
+    abdomen_report()
 
 
 def film_photo() -> None:
@@ -245,6 +247,41 @@ def report_photo() -> None:
         d.text((110, y), text, font=font, fill=(25, 25, 25))
         y += 72
     im.save(OUT / "toraks-bt-raporu-foto.png")
+
+
+def abdomen_report() -> None:
+    """Ölçümleri tahlil gibi değerlendirilecek batın ultrason raporu (değerler uydurmadır)."""
+    c = canvas.Canvas(str(OUT / "batin-usg-raporu.pdf"), pagesize=A4)
+    c.setTitle("Sentetik batın ultrason raporu")
+    y = 280 * mm
+    c.setFont("DejaVu-Bold", 13)
+    c.drawString(20 * mm, y, "TÜM BATIN ULTRASONOGRAFİ RAPORU (SENTETİK)")
+    y -= 8 * mm
+    c.setFont("DejaVu", 10)
+    c.drawString(20 * mm, y, "Tetkik tarihi: 02.09.2026")
+    blocks = [
+        ("BULGULAR:", [
+            "Karaciğer boyutu 172 mm olup parankim ekojenitesi artmıştır (grade 1 hepatosteatoz).",
+            "Safra kesesi duvar kalınlığı 2 mm, lümeni doğaldır. Koledok çapı 4 mm.",
+            "Dalak boyutu 14,5 cm ile artmıştır.",
+            "Sağ böbrek 108x45 mm, sol böbrek 104x44 mm; parankim kalınlığı sağda 16 mm, solda 17 mm.",
+            "Abdominal aorta çapı 2,1 cm. Mesane doğaldır.",
+        ]),
+        ("SONUÇ:", ["Hepatomegali ve grade 1 hepatosteatoz. Splenomegali."]),
+    ]
+    y -= 12 * mm
+    for head, lines in blocks:
+        c.setFont("DejaVu-Bold", 10.5)
+        c.drawString(20 * mm, y, head)
+        y -= 6 * mm
+        c.setFont("DejaVu", 10)
+        for line in lines:
+            c.drawString(24 * mm, y, line)
+            y -= 5.5 * mm
+        y -= 4 * mm
+    c.setFont("DejaVu", 8)
+    c.drawString(20 * mm, 15 * mm, "Bu belge test amaçlı üretilmiş sentetik bir örnektir; gerçek bir kişiye ait değildir.")
+    c.save()
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type DicomInfo, parseDicom } from '@kh/ingest';
 import { type Bytes, DOC_CATEGORIES, type DocCategory, type FileInfo } from '@kh/vault';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
@@ -6,7 +6,11 @@ import { go } from '../state/router';
 import type { ExtractProgress } from '../lib/extract';
 import { OcrError, cancelOcr } from '../lib/ocr';
 import { CATEGORY_ABOUT, CATEGORY_LABEL, IMAGING_QUESTIONS, REGIONS, findTerms, guessRegion, isImaging, regionByKey, splitReport } from '../lib/imaging';
-import { type ImagingNote, MAX_NOTE_CHARS, noteForFile, saveImagingNote } from '../lib/imagingRecords';
+import { type ImagingNote, MAX_NOTE_CHARS, noteForFile, removeManualMeasurement, saveImagingNote } from '../lib/imagingRecords';
+import { isAbnormal, measurementsOf } from '../lib/imagingMeasurements';
+import { loadSex } from '../lib/reports';
+import { MeasureList } from '../components/measures';
+import type { Sex } from '@kh/catalog';
 import { userMessage } from '../lib/messages';
 import { formatDate } from '../lib/format';
 import { Banner } from '../components/ui';
@@ -30,8 +34,12 @@ const METHOD_TEXT: Record<ImagingNote['method'], string> = {
  */
 export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: FileInfo; bytes: Bytes; seriesIds: string[]; onInfoChange: (f: FileInfo) => void }) {
   const vault = useUnlockedVault();
-  const { bump } = useVault();
+  const { bump, revision } = useVault();
+  // DICOM serisinde not ve ölçümler serinin ilk kesitine bağlanır (hangi kesit açılırsa açılsın aynı).
+  const noteFileId = seriesIds.length > 1 ? seriesIds[0]! : info.id;
   const [note, setNote] = useState<ImagingNote | null | undefined>(undefined);
+  const [sex, setSex] = useState<Sex>('unspecified');
+  const autoTried = useRef(false);
   const [mode, setMode] = useState<'idle' | 'reading' | 'editing'>('idle');
   const [progress, setProgress] = useState<ExtractProgress | null>(null);
   const [draft, setDraft] = useState('');
@@ -67,14 +75,16 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
 
   useEffect(() => {
     let cancelled = false;
-    noteForFile(vault, info.id).then(
+    noteForFile(vault, noteFileId).then(
       (n) => !cancelled && setNote(n ?? null),
       () => !cancelled && setNote(null),
     );
+    void loadSex(vault).then((x) => !cancelled && setSex(x));
     return () => {
       cancelled = true;
     };
-  }, [vault, info.id]);
+    // revision: görüntüleyicide ölçüm kaydedilince yenilenir
+  }, [vault, noteFileId, revision]);
 
   /** Seri içindeki tüm kesitlere uygulanır: tür, bölge ve tarih serinin ortak bilgisidir. */
   const updateMeta = async (patch: { category?: DocCategory; region?: string | null; studyDate?: string | null }) => {
@@ -106,7 +116,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
         setMode('idle');
         return;
       }
-      const n = await saveImagingNote(vault, info.id, got.text, got.method);
+      const n = await saveImagingNote(vault, noteFileId, got.text, got.method);
       setNote(n);
       bump();
       const head = got.text.slice(0, 400);
@@ -118,18 +128,21 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
       setError(e instanceof OcrError ? ocrMessage(e) : userMessage(e));
       setMode('idle');
     }
-  }, [vault, info, bytes, bump]);
+  }, [vault, info, bytes, bump, noteFileId]);
 
   // Rapor kendiliğinden okunur: PDF her zaman; fotoğraf ise kâğıt/ekran görüntüsüne benziyorsa.
   // Film/MR baskısı fotoğrafında OCR çalışmaz (metin yoktur); düğmeyle istenebilir.
   const autoRead = info.kind === 'pdf' || photoKind === 'document';
+  const hasText = Boolean(note && note.text.trim());
   useEffect(() => {
-    if (note === null && autoRead && mode === 'idle' && !error) void read();
-  }, [note, autoRead, mode, error, read]);
+    if (note === undefined || hasText || !autoRead || mode !== 'idle' || error || autoTried.current) return;
+    autoTried.current = true;
+    void read();
+  }, [note, hasText, autoRead, mode, error, read]);
 
   const saveManual = async () => {
     try {
-      setNote(await saveImagingNote(vault, info.id, draft, 'manual'));
+      setNote(await saveImagingNote(vault, noteFileId, draft, 'manual'));
       setMode('idle');
       bump();
     } catch (e) {
@@ -140,8 +153,11 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   const category = info.category;
   const about = isImaging(category) ? CATEGORY_ABOUT[category] : null;
   const region = info.region ? regionByKey.get(info.region) : undefined;
-  const sections = useMemo(() => (note ? splitReport(note.text) : []), [note]);
-  const terms = useMemo(() => (note ? findTerms(note.text) : []), [note]);
+  const sections = useMemo(() => (note && hasText ? splitReport(note.text) : []), [note, hasText]);
+  const terms = useMemo(() => (note && hasText ? findTerms(note.text) : []), [note, hasText]);
+  const measures = useMemo(() => measurementsOf(note ?? undefined, info.region, sex), [note, info.region, sex]);
+  const abnormal = measures.filter(isAbnormal);
+  const spacing = Boolean(dicom?.pixelSpacing);
   const canRead = info.kind === 'pdf' || info.kind === 'jpeg' || info.kind === 'png';
 
   return (
@@ -198,9 +214,49 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
         </div>
 
         <Banner tone="info">
-          Kan Haritası görüntüyü ve raporu <strong>yorumlamaz</strong>, bulgu çıkarmaz. Görüntüyü cihazında şifreli saklar ve gösterir; rapordaki terimlerin genel anlamını açıklar.
-          Değerlendirme, raporu yazan ve seni takip eden hekime aittir.
+          Kan Haritası görüntüye bakıp <strong>teşhis koymaz</strong>. Rapordaki ve senin görüntü üzerinde yaptığın ölçümleri, tahlillerdeki gibi genel referans
+          aralıklarıyla karşılaştırır; terimleri açıklar. Değerlendirme, raporu yazan ve seni takip eden hekime aittir.
         </Banner>
+
+        {/* Ölçümler: tahlil sonuçları gibi genel referansa göre */}
+        <section className="space-y-2" aria-label="Ölçümler">
+          <div className="flex items-end justify-between gap-2">
+            <p className="label-caps">Ölçümler{measures.length ? ` (${measures.length})` : ''}</p>
+            {measures.length > 0 && (
+              <span className={`text-xs ${abnormal.length ? 'text-high' : 'text-accent'}`}>
+                {abnormal.length ? `${abnormal.length} tanesi genel referans dışında` : 'Hepsi genel referans içinde'}
+              </span>
+            )}
+          </div>
+          {measures.length > 0 ? (
+            <>
+              <MeasureList
+                measures={measures}
+                onRemove={(m) =>
+                  m.manualId &&
+                  void removeManualMeasurement(vault, noteFileId, m.manualId)
+                    .then(() => bump())
+                    .catch((e) => setError(userMessage(e)))
+                }
+              />
+              <p className="text-[11px] leading-relaxed text-fg-faint">
+                Değerler genel yetişkin referanslarıyla karşılaştırılır; yaşa, cinsiyete, vücut ölçüsüne ve ölçüm tekniğine göre değişir. Referans dışı bir ölçüm tanı değildir;
+                referans içinde olması da sorun olmadığını göstermez. Görüntünün kendisini ve raporu hekimin değerlendirir.
+              </p>
+            </>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-ink-600 p-4 text-sm text-fg-muted">
+              {hasText ? 'Raporda referans değeri olan bir ölçüm bulunamadı (ör. dalak 13 cm, EF %55, T skoru −2,1). ' : 'Rapor metni okununca içindeki ölçümler (ör. dalak boyu, aort çapı, EF, T-skoru) burada tahlil sonuçları gibi değerlendirilir. '}
+              {info.kind === 'dicom'
+                ? spacing
+                  ? 'Görüntü üzerinde kendin ölçmek için görüntüleyicideki cetvel ya da yoğunluk aracını kullanabilirsin.'
+                  : ''
+                : info.kind !== 'pdf'
+                  ? 'Fotoğrafta milimetre ölçeği olmadığı için yalnızca oranlar (ör. kalp/göğüs oranı) cetvelle ölçülebilir.'
+                  : ''}
+            </p>
+          )}
+        </section>
 
         {/* Belge bilgileri */}
         <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Belge bilgileri">
@@ -303,7 +359,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
         <section className="space-y-3" aria-label="Rapor metni">
           <div className="flex items-center justify-between gap-2">
             <p className="label-caps">Rapor metni</p>
-            {note && mode === 'idle' && (
+            {hasText && note && mode === 'idle' && (
               <div className="flex gap-1">
                 {canRead && (
                   <button type="button" className="icon-btn h-8 w-8" onClick={() => void read()} aria-label="Yeniden oku" title="Yeniden oku">
@@ -353,7 +409,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             <div className="flex items-center gap-2 text-sm text-fg-muted">
               <SpinnerIcon size={14} /> Yükleniyor…
             </div>
-          ) : note ? (
+          ) : hasText && note ? (
             <div className="space-y-3">
               {sections.map((s, i) => (
                 <div

@@ -9,6 +9,9 @@ import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { type DocGroup, groupDocuments } from './documents';
 import { type GlossaryTerm, type ImagingCategory, type ReportSection, findTerms, isImaging, regionByKey, splitReport } from './imaging';
 import { type ImagingNote, listImagingNotes } from './imagingRecords';
+import { type MeasureResult, isAbnormal, measurementsOf } from './imagingMeasurements';
+import { loadSex } from './reports';
+import type { Sex } from '@kh/catalog';
 
 export interface ImagingStudy extends DocGroup {
   category: ImagingCategory;
@@ -23,6 +26,9 @@ export interface ImagingStudy extends DocGroup {
   terms: GlossaryTerm[];
   /** Kendi raporu yoksa: aynı çekime ait başka bir belgenin (ör. rapor PDF'i) sonucu ve o belge. */
   linked?: { conclusion: string; fileId: string; name: string };
+  /** Rapordan okunan ve elle yapılan ölçümler, genel referansa göre değerlendirilmiş. */
+  measures: MeasureResult[];
+  abnormal: MeasureResult[];
 }
 
 const CONCLUSION_MAX = 360;
@@ -34,7 +40,7 @@ function conclusionOf(sections: ReportSection[]): string | undefined {
   return t.length > CONCLUSION_MAX ? `${t.slice(0, CONCLUSION_MAX).trimEnd()}…` : t;
 }
 
-export function buildStudies(files: FileInfo[], notes: ImagingNote[]): ImagingStudy[] {
+export function buildStudies(files: FileInfo[], notes: ImagingNote[], sex: Sex = 'unspecified'): ImagingStudy[] {
   const byFile = new Map<string, ImagingNote>();
   for (const n of notes) {
     const prev = byFile.get(n.fileId);
@@ -43,8 +49,10 @@ export function buildStudies(files: FileInfo[], notes: ImagingNote[]): ImagingSt
   const studies: ImagingStudy[] = groupDocuments(files)
     .filter((g) => isImaging(g.head.category))
     .map((g) => {
-      const note = g.files.map((f) => byFile.get(f.id)).find(Boolean);
+      const groupNotes = g.files.map((f) => byFile.get(f.id)).filter((n): n is ImagingNote => Boolean(n));
+      const note = groupNotes.find((n) => n.text.trim()) ?? groupNotes[0];
       const sections = note ? splitReport(note.text) : [];
+      const measures = groupNotes.flatMap((n) => measurementsOf(n, g.head.region, sex));
       return {
         ...g,
         category: g.head.category as ImagingCategory,
@@ -55,6 +63,8 @@ export function buildStudies(files: FileInfo[], notes: ImagingNote[]): ImagingSt
         sections,
         conclusion: conclusionOf(sections),
         terms: note ? findTerms(note.text) : [],
+        measures,
+        abnormal: measures.filter(isAbnormal),
       };
     })
     .sort((a, b) => b.date.localeCompare(a.date) || b.head.createdAt.localeCompare(a.head.createdAt));
@@ -85,7 +95,7 @@ export function relatedStudies(study: Pick<ImagingStudy, 'key' | 'category' | 'r
 
 /** Bir 3B yapıyla ilgili çalışmalar (bölgenin yapısı eşleşenler). */
 export function studiesForStructure(structure: string, all: ImagingStudy[]): ImagingStudy[] {
-  return all.filter((s) => s.region && regionByKey.get(s.region)?.structure === structure);
+  return all.filter((s) => (s.region && regionByKey.get(s.region)?.structure === structure) || s.measures.some((m) => m.def.structure === structure));
 }
 
 export function useImagingStudies(): ImagingStudy[] | null {
@@ -94,8 +104,8 @@ export function useImagingStudies(): ImagingStudy[] | null {
   const [studies, setStudies] = useState<ImagingStudy[] | null>(null);
   useEffect(() => {
     let cancelled = false;
-    Promise.all([vault.listFiles(), listImagingNotes(vault)]).then(
-      ([{ files }, notes]) => !cancelled && setStudies(buildStudies(files, notes)),
+    Promise.all([vault.listFiles(), listImagingNotes(vault), loadSex(vault)]).then(
+      ([{ files }, notes, sex]) => !cancelled && setStudies(buildStudies(files, notes, sex)),
       () => !cancelled && setStudies([]),
     );
     return () => {

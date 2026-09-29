@@ -3,6 +3,7 @@ import { CATEGORY_LABEL, CATEGORY_SHORT, regionByKey } from '../lib/imaging';
 import type { ImagingStudy } from '../lib/imagingStudies';
 import { formatDate, KIND_LABEL } from '../lib/format';
 import { BodyIcon, ChevronRightIcon, ScanIcon } from './icons';
+import { MeasureChip } from './measures';
 
 /** Görüntüleme çalışması kartı: tür, bölge, tarih, raporun sonucu ve raporda geçen terimler. */
 export function ImagingStudyCard({ study, compact = false }: { study: ImagingStudy; compact?: boolean }) {
@@ -45,6 +46,14 @@ export function ImagingStudyCard({ study, compact = false }: { study: ImagingStu
             </span>
           ) : (
             <span className="mt-1 block text-[12px] text-fg-faint">Rapor metni yok — belgeyi açıp okuyabilir ya da yazabilirsin.</span>
+          )}
+          {study.measures.length > 0 && (
+            <span className="mt-1.5 flex flex-wrap gap-1" aria-label="Ölçümler">
+              {study.measures.slice(0, compact ? 3 : 6).map((m, i) => (
+                <MeasureChip key={`${m.def.key}-${m.site ?? ''}-${i}`} m={m} />
+              ))}
+              {study.measures.length > (compact ? 3 : 6) && <span className="px-1 text-[11px] text-fg-faint">+{study.measures.length - (compact ? 3 : 6)}</span>}
+            </span>
           )}
           {!compact && study.terms.length > 0 && (
             <span className="mt-1.5 flex flex-wrap gap-1">
