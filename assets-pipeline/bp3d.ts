@@ -110,7 +110,13 @@ function boneGroup(name: string): string | null {
   if (/carpal|scaphoid|lunate|triquetr|pisiform|trapezi|trapezoid|capitate|hamate|finger|thumb|of hand|metacarp/.test(name)) return sided('hand');
   if (/femur|patella/.test(name)) return sided('femur');
   if (/tibia|fibula|of right leg|of left leg/.test(name)) return sided('leg');
-  if (/talus|calcaneus|navicular|cuboid|cuneiform|metatars|toe|of foot|plantar/.test(name)) return sided('foot');
+  if (/talus|calcaneus|navicular|cuboid|cuneiform|metatars|toe|of foot|plantar|sesamoid bone of (right|left) foot/.test(name)) return sided('foot');
+  if (/sesamoid/.test(name)) return sided('hand');
+  // Kafatası yalnızca kafa kemikleridir. Önceden eşleşmeyen her kemik (ör. ayak sesamoidleri) buraya
+  // düşüyordu; kafatası kutusu ayağa kadar uzuyor, şematik kulak kafanın dışına yerleşiyordu.
+  if (!/frontal|parietal|occipital|temporal bone|sphenoid|ethmoid|maxilla|mandible|nasal|lacrimal|palatine|vomer|zygomatic|concha|hyoid|skull|cran|ossicle|malleus|incus|stapes/.test(name)) {
+    throw new Error(`BodyParts3D kemiği sınıflandırılamadı: ${name}`);
+  }
   return 'skull';
 }
 
@@ -252,7 +258,7 @@ export function planBp3d(): Bp3dSet {
   };
 }
 
-export type PointMap = (p: Float32Array) => void;
+export type PointMap = (p: Float32Array, group?: string) => void;
 
 /**
  * Grupları tek belgeye (her grup bir düğüm) yazar; sadeleştirme çağıran tarafta yapılır.
@@ -265,7 +271,7 @@ export function bp3dDocument(groups: Bp3dGroup[], sceneName: string, map?: Point
   const scene = doc.createScene(sceneName);
   for (const g of groups) {
     const arrays = g.ids.map(readStl);
-    if (map) for (const a of arrays) map(a);
+    if (map) for (const a of arrays) map(a, g.key);
     const placed = place?.(g, centroidOf(arrays));
     if (placed) {
       for (const a of arrays) for (let i = 0; i < a.length; i += 3) for (let k = 0; k < 3; k++) a[i + k]! += placed[k]!;

@@ -6,7 +6,9 @@
   "description": "HRA (CC BY 4.0) ve BodyParts3D (CC BY-SA 2.1 JP) anatomi modellerini uygulama için sadeleştirir ve sıkıştırır.",
   "scripts": {
     "fetch": "sh fetch-hra.sh && sh fetch-bp3d.sh",
-    "build": "tsx build-anatomy.ts"
+    "build": "tsx build-anatomy.ts",
+    "check-fit": "tsx check-fit.ts",
+    "coverage": "tsx coverage.ts"
   },
   "devDependencies": {
     "@gltf-transform/core": "4.5.0",

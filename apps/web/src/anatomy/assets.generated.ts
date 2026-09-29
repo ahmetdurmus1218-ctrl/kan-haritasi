@@ -20,8 +20,8 @@ export const MODEL_ASSETS = {
     },
     "skeleton": {
       "file": "m/skeleton.glb",
-      "bytes": 3631744,
-      "triangles": 138990,
+      "bytes": 3671080,
+      "triangles": 138986,
       "bounds": {
         "min": [
           -0.3285,
@@ -30,7 +30,7 @@ export const MODEL_ASSETS = {
         ],
         "max": [
           0.3638,
-          0.9135,
+          0.9136,
           0.1181
         ]
       }
@@ -122,13 +122,13 @@ export const MODEL_ASSETS = {
     },
     "nervous": {
       "file": "m/nervous.glb",
-      "bytes": 2892036,
-      "triangles": 101984,
+      "bytes": 2890280,
+      "triangles": 102032,
       "bounds": {
         "min": [
           -0.2815,
-          -0.8345,
-          -0.1235
+          -0.8337,
+          -0.124
         ],
         "max": [
           0.3034,
@@ -156,16 +156,16 @@ export const MODEL_ASSETS = {
     },
     "cardio": {
       "file": "m/cardio.glb",
-      "bytes": 4900476,
-      "triangles": 182035,
+      "bytes": 4903492,
+      "triangles": 182115,
       "bounds": {
         "min": [
-          -0.2858,
-          -0.8323,
-          -0.1471
+          -0.286,
+          -0.8298,
+          -0.1476
         ],
         "max": [
-          0.3097,
+          0.3124,
           0.8288,
           0.0969
         ]
@@ -209,18 +209,18 @@ export const MODEL_ASSETS = {
     },
     "skeleton": {
       "file": "f/skeleton.glb",
-      "bytes": 4065100,
-      "triangles": 155378,
+      "bytes": 4110116,
+      "triangles": 155370,
       "bounds": {
         "min": [
-          -0.3317,
-          -0.8092,
-          -0.215
+          -0.4657,
+          -0.7922,
+          -0.1825
         ],
         "max": [
-          0.3266,
+          0.4601,
           0.8652,
-          0.0444
+          0.0628
         ]
       }
     },
@@ -311,16 +311,16 @@ export const MODEL_ASSETS = {
     },
     "nervous": {
       "file": "f/nervous.glb",
-      "bytes": 2884972,
-      "triangles": 101116,
+      "bytes": 2882828,
+      "triangles": 100908,
       "bounds": {
         "min": [
-          -0.2822,
-          -0.7901,
-          -0.1854
+          -0.4059,
+          -0.7692,
+          -0.154
         ],
         "max": [
-          0.274,
+          0.3889,
           0.857,
           0.0345
         ]
@@ -345,16 +345,16 @@ export const MODEL_ASSETS = {
     },
     "cardio": {
       "file": "f/cardio.glb",
-      "bytes": 4890684,
-      "triangles": 180830,
+      "bytes": 4889164,
+      "triangles": 180574,
       "bounds": {
         "min": [
-          -0.2865,
-          -0.788,
-          -0.205
+          -0.4176,
+          -0.7675,
+          -0.1573
         ],
         "max": [
-          0.2778,
+          0.4018,
           0.7834,
           0.0336
         ]
@@ -362,18 +362,18 @@ export const MODEL_ASSETS = {
     },
     "muscles": {
       "file": "f/muscles.glb",
-      "bytes": 4044024,
-      "triangles": 149750,
+      "bytes": 4052944,
+      "triangles": 149698,
       "bounds": {
         "min": [
-          -0.3276,
-          -0.8088,
-          -0.2163
+          -0.4618,
+          -0.7911,
+          -0.1973
         ],
         "max": [
-          0.3215,
-          0.8674,
-          0.0568
+          0.4533,
+          0.8673,
+          0.0565
         ]
       }
     }

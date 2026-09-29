@@ -149,7 +149,10 @@ export function CoveragePage() {
         <p>
           <strong className="text-fg-muted">Eksikler, açıkça:</strong> tiroid ve kulak açık kaynaklarda modellenmediği için şematik çizilir; kol-bacak damarları ve
           periferik sinirler kemiklere göre yaklaşık yollarla gösterilir. Kadın vücudunda deri, omurga, pelvis ve organlar kadın referans modelinden gelir; iskeletin geri
-          kalanı, kaslar, mide, yemek borusu, diyafram, damarlar ve sinirler erkek modelinden benzerlik dönüşümüyle (ortalama sapma ≈ 1,3 cm) uyarlanmıştır. Molekül düzeyi yalnızca sahnelerdeki temsili parçacıklarla
+          kalanı, kaslar, mide, yemek borusu, diyafram, damarlar ve sinirler erkek modelinden benzerlik dönüşümüyle (ortalama sapma ≈ 1,3 cm) uyarlanmıştır; kollar
+          ve bacaklar ayrıca eklem eklem döndürülerek kadın derisine oturtulmuştur. İki farklı insandan geldikleri için birebir örtüşmez: kadında parmak kemikleri
+          (parmak duruşu farklı) deriden 1–2 cm taşabilir, diğer parçalarda taşma genellikle 1 cm'nin altındadır. Erkek vücudunda bağırsakların
+          (HRA) bir kısmı BodyParts3D derisinden 1–2 cm taşar. Diz kıkırdağı ve bağları iki vücutta da kemiklere oturtulmuştur. Molekül düzeyi yalnızca sahnelerdeki temsili parçacıklarla
           (ör. LDL, hormon, iyon) anlatılır.
         </p>
         <p>

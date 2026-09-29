@@ -20,6 +20,9 @@
 Değişiklikler: sahne düzleştirildi, parçalar yapıya ve anatomik bölüme göre birleştirildi, BodyParts3D
 parçaları HRA koordinat sistemine benzerlik dönüşümüyle taşındı (farklı vücutlar; uyum yaklaşıktır). Kadın
 vücudunda BodyParts3D kemik ve kasları ile şematik damar ve sinirler erkek → kadın benzerlik dönüşümüyle
-(omur ve pelvis noktalarına göre) taşındı; hipofiz ve böbreküstü bezleri komşu HRA organlarına göre
-yerleştirildi. Ağlar sadeleştirildi (meshoptimizer), nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı.
+(omur ve pelvis noktalarına göre) taşındı; kollar ve bacaklar ayrıca her eklemin (omuz, dirsek, bilek,
+kalça, diz, ayak bileği) etrafında döndürülerek kadın derisine oturtuldu (kemikler katı, kas/damar/sinir
+eklemlerde yumuşak geçişli). HRA diz parçaları (kıkırdak, menisküs, bağlar) her iki vücutta kendi
+femur/tibia uçları üzerinden uygulamanın kemiklerine oturtuldu. Hipofiz ve böbreküstü bezleri komşu HRA
+organlarına göre yerleştirildi. Ağlar sadeleştirildi (meshoptimizer), nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı.
 Tiroid bezi ve kulak kaynaklarda olmadığından uygulamada şematik olarak çizilir.
