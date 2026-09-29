@@ -1,8 +1,15 @@
 workflow: CI
-run: 36611065698
-sha: db3716da42ff3c4ab7b4444587bce50c7f716491
+run: 36615631909
+sha: d1363a917541a499c65a330b3f267c77d152d7ad
 conclusion: success
 
+dependencies: success
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 web: success
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -39,13 +46,6 @@ e2e: success
   - Post Run actions/setup-python@v5: success
   - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-dependencies: success
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
