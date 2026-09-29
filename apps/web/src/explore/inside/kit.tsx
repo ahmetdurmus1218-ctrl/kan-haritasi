@@ -6,6 +6,8 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { InsideState } from './state';
 import type { SceneParams } from './personal';
 
+export { rng } from './rng';
+
 /**
  * İçeri-gir sahneleri için ortak araçlar. Bu sahnelerdeki her şey prosedürel ve temsilidir
  * (gerçek mikroskopi verisi değildir); arayüz bunu sürekli etiketler.
@@ -153,18 +155,6 @@ export function bumpySphere(detail = 2, amount = 0.08, seed = 1): BufferGeometry
   }
   g.computeVertexNormals();
   return g;
-}
-
-/** Deterministik rastgele (sahneler her açılışta aynı görünsün). */
-export function rng(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s + 0x6d2b79f5) >>> 0;
-    let t = s;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 /** Işık: kamerayı izleyen yumuşak nokta ışığı (endoskop hissi). */

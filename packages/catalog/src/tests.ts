@@ -521,7 +521,7 @@ export const TESTS: readonly LabTestDef[] = [
     aliases: ['Prolaktin', 'PRL'],
     unit: 'ng/mL', conversions: { 'ng/ml': [1], 'miu/l': [1 / 21.2] },
     ranges: [{ sex: 'female', min: 4.8, max: 23.3 }, { sex: 'male', min: 4.0, max: 15.2 }],
-    plausible: [0.1, 5000], decimals: 1, processes: ['pituitary-hormones'], structures: ['pituitary'], systems: ['endocrine'],
+    plausible: [0.1, 5000], decimals: 1, processes: ['pituitary-hormones'], structures: ['pituitary', 'breasts'], systems: ['endocrine'],
   },
   {
     key: 'testosterone', loinc: '2986-8', nameTr: 'Testosteron (total)', group: 'hormone',
@@ -536,7 +536,7 @@ export const TESTS: readonly LabTestDef[] = [
     unit: 'pg/mL', conversions: { 'pg/ml': [1], 'pmol/l': [1 / 3.671] },
     // Kadında adet döngüsüne göre çok değişir; raporda aralık yoksa geniş aralık kullanılır.
     ranges: [{ sex: 'male', min: 11, max: 44 }, { sex: 'female', min: 12.5, max: 498 }],
-    plausible: [1, 50000], decimals: 0, processes: ['sex-hormones'], structures: ['ovaries', 'testes', 'adrenals'], systems: ['endocrine', 'reproductive'],
+    plausible: [1, 50000], decimals: 0, processes: ['sex-hormones'], structures: ['ovaries', 'uterus', 'breasts', 'testes', 'adrenals'], systems: ['endocrine', 'reproductive'],
   },
   {
     key: 'progesterone', loinc: '2839-9', nameTr: 'Progesteron', group: 'hormone',

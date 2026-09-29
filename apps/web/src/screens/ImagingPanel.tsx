@@ -19,6 +19,7 @@ import { ExtractingView, ocrMessage } from './ReportPanel';
 import { relatedStudies, useImagingStudies } from '../lib/imagingStudies';
 import { classifyPhoto } from '../lib/photo';
 import { ImagingStudyList } from '../components/imaging';
+import { ImageReviewCard } from '../components/ImageReviewCard';
 
 const METHOD_TEXT: Record<ImagingNote['method'], string> = {
   text: 'PDF metninden okundu',
@@ -45,7 +46,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [suggested, setSuggested] = useState<{ region?: string; date?: string; from: 'report' | 'image' } | null>(null);
+  const [suggested, setSuggested] = useState<{ region?: string; date?: string; from: 'report' | 'image' | 'shape' } | null>(null);
   const [pickRegion, setPickRegion] = useState(false);
   /** Film/ekran fotoğrafının üstündeki yazılar (ör. "MR BEYIN", tarih) yalnızca bölge önerisi için okunur. */
   const [overlay, setOverlay] = useState<'idle' | 'reading' | 'done'>('idle');
@@ -245,8 +246,21 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
 
         <Banner tone="info">
           Kan Haritası görüntüye bakıp <strong>teşhis koymaz</strong>. Rapordaki ve senin görüntü üzerinde yaptığın ölçümleri, tahlillerdeki gibi genel referans
-          aralıklarıyla karşılaştırır; terimleri açıklar. Değerlendirme, raporu yazan ve seni takip eden hekime aittir.
+          aralıklarıyla karşılaştırır; terimleri açıklar; görüntünün kendisinde yalnızca basit bir sağ-sol karşılaştırması yapar. Değerlendirme, raporu yazan ve seni
+          takip eden hekime aittir.
         </Banner>
+
+        {isImaging(category) && (info.kind === 'dicom' || ((info.kind === 'jpeg' || info.kind === 'png') && photoKind !== null && photoKind !== 'document')) && (
+          <ImageReviewCard
+            info={info}
+            bytes={bytes}
+            noteFileId={noteFileId}
+            stored={note?.review}
+            onHeadLike={() => {
+              if (!info.region) setSuggested((s) => s ?? { region: 'beyin', from: 'shape' });
+            }}
+          />
+        )}
 
         {/* Ölçümler: tahlil sonuçları gibi genel referansa göre */}
         <section className="space-y-2" aria-label="Ölçümler">
@@ -334,7 +348,9 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           {seriesIds.length > 1 && <p className="text-xs text-fg-faint">Değişiklikler serideki {seriesIds.length} kesitin hepsine uygulanır.</p>}
           {suggested && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-accent/25 bg-accent/5 px-3 py-2 text-xs">
-              <span className="text-fg-muted">{suggested.from === 'image' ? 'Görüntüdeki yazılardan önerilen:' : 'Rapordan önerilen:'}</span>
+              <span className="text-fg-muted">
+                {suggested.from === 'image' ? 'Görüntüdeki yazılardan önerilen:' : suggested.from === 'shape' ? 'Kesitlerin şeklinden önerilen (kesin değil):' : 'Rapordan önerilen:'}
+              </span>
               {suggested.region && <span>{regionByKey.get(suggested.region)?.label}</span>}
               {suggested.date && <span>{formatDate(suggested.date)}</span>}
               <button

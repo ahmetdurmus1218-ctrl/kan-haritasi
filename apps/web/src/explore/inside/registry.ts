@@ -1,10 +1,11 @@
 import type { SystemId } from '@kh/catalog';
+import { TISSUES, type TissueId } from './tissues';
 
 /**
  * "İçeri gir" sahneleri. Hepsi eğitimsel ve temsilidir: kişinin kendi dokusunun görüntüsü değildir.
  * `ready: false` olan sahneler arayüzde açıkça "HAZIR DEĞİL" olarak gösterilir.
  */
-export type InsideId =
+export type SimulationId =
   | 'damar'
   | 'alveol'
   | 'nefron'
@@ -28,6 +29,9 @@ export type InsideId =
   | 'ovaryum'
   | 'testis';
 
+/** Özel simülasyon sahneleri + veriyle tanımlı doku atlası sahneleri. */
+export type InsideId = SimulationId | TissueId;
+
 export interface InsideScene {
   id: InsideId;
   title: string;
@@ -40,9 +44,15 @@ export interface InsideScene {
   ready: boolean;
   /** Her yapıdan girilebilen genel sahne (ör. hücre): vurgu rengi girilen yapıdan alınır. */
   generic?: boolean;
+  /**
+   * 'simulation': kendi sahnesi olan, süreçleri canlandırılan simülasyon.
+   * 'atlas': veriyle tanımlı şematik doku katmanları (TissueScene); süreçler yalnızca basit
+   * animasyon + metinle anlatılır. Arayüz bunu "Doku atlası · şematik" diye etiketler.
+   */
+  kind: 'simulation' | 'atlas';
 }
 
-export const INSIDE: Record<InsideId, InsideScene> = {
+const SIMULATIONS: Record<SimulationId, Omit<InsideScene, 'kind'>> = {
   damar: {
     id: 'damar',
     title: 'Damar içi',
@@ -264,6 +274,13 @@ export const INSIDE: Record<InsideId, InsideScene> = {
     summary: 'Kök hücrelerden alyuvar, akyuvar ve trombositlerin olgunlaşıp kana geçişi.',
     ready: true,
   },
+};
+
+export const INSIDE: Record<InsideId, InsideScene> = {
+  ...(Object.fromEntries(Object.entries(SIMULATIONS).map(([k, v]) => [k, { ...v, kind: 'simulation' }])) as Record<SimulationId, InsideScene>),
+  ...(Object.fromEntries(
+    Object.values(TISSUES).map((t) => [t.id, { id: t.id, title: t.title, tissue: t.tissue, cell: t.cell, process: t.process, system: t.system, summary: t.summary, ready: true, kind: 'atlas' }]),
+  ) as Record<TissueId, InsideScene>),
 };
 
 /** Eski bağlantılar: test kataloğundaki simülasyon kimlikleri. */

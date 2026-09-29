@@ -8,7 +8,7 @@ import type { FileInfo } from '@kh/vault';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { type DocGroup, groupDocuments } from './documents';
 import { type GlossaryTerm, type ImagingCategory, type ReportSection, findTerms, isImaging, regionByKey, splitReport } from './imaging';
-import { type ImagingNote, listImagingNotes } from './imagingRecords';
+import { type ImagingNote, type StoredReview, listImagingNotes } from './imagingRecords';
 import { type MeasureResult, isAbnormal, measurementsOf } from './imagingMeasurements';
 import { loadSex } from './reports';
 import type { Sex } from '@kh/catalog';
@@ -29,6 +29,8 @@ export interface ImagingStudy extends DocGroup {
   /** Rapordan okunan ve elle yapılan ölçümler, genel referansa göre değerlendirilmiş. */
   measures: MeasureResult[];
   abnormal: MeasureResult[];
+  /** Kullanıcının sonuçlarına eklediği otomatik görüntü incelemesi (sağ-sol farkı). */
+  review?: StoredReview;
 }
 
 const CONCLUSION_MAX = 360;
@@ -65,6 +67,7 @@ export function buildStudies(files: FileInfo[], notes: ImagingNote[], sex: Sex =
         terms: note ? findTerms(note.text) : [],
         measures,
         abnormal: measures.filter(isAbnormal),
+        review: groupNotes.find((n) => n.review?.confirmed)?.review,
       };
     })
     .sort((a, b) => b.date.localeCompare(a.date) || b.head.createdAt.localeCompare(a.head.createdAt));
@@ -91,6 +94,14 @@ export function relatedStudies(study: Pick<ImagingStudy, 'key' | 'category' | 'r
       o.category === study.category &&
       (o.date === study.date || (study.region !== undefined && o.region === study.region && days(o.date, study.date) <= 7)),
   );
+}
+
+/** Sonuçlara eklenmiş, dikkat bölgesi içeren incelemeler ve ilgili 3B yapıları. */
+export function reviewFlags(all: ImagingStudy[]): Array<{ structure: string; fileId: string; count: number }> {
+  return all.flatMap((st) => {
+    const structure = st.region ? regionByKey.get(st.region)?.structure : undefined;
+    return st.review?.confirmed && st.review.regions.length && structure ? [{ structure, fileId: st.head.id, count: st.review.regions.length }] : [];
+  });
 }
 
 /** Bir 3B yapıyla ilgili çalışmalar (bölgenin yapısı eşleşenler). */

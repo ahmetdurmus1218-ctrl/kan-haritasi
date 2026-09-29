@@ -201,6 +201,7 @@ def main() -> None:
     film_photo()
     report_photo()
     abdomen_report()
+    mr_collage()
 
 
 def film_photo() -> None:
@@ -282,6 +283,39 @@ def abdomen_report() -> None:
     c.setFont("DejaVu", 8)
     c.drawString(20 * mm, 15 * mm, "Bu belge test amaçlı üretilmiş sentetik bir örnektir; gerçek bir kişiye ait değildir.")
     c.save()
+
+
+def mr_collage() -> None:
+    """Yazısız MR kolajı (sentetik): solda simetrik eksenel kesit, ortada sol yarıda parlak odak,
+    sağda yandan (sagital) benzeri simetrik olmayan kesit. Görüntü incelemesi e2e testi için."""
+    w, h, gap = 300, 360, 14
+    im = Image.new("L", (w * 3 + gap * 2, h), 0)
+
+    def head(ox: int, lesion: bool = False, profile: bool = False) -> None:
+        d = ImageDraw.Draw(im)
+        cx, cy = ox + w // 2, h // 2
+        if profile:
+            d.ellipse((cx - 110, cy - 150, cx + 110, cy + 120), fill=200)
+            d.rectangle((cx - 140, cy + 20, cx - 20, cy + 170), fill=170)  # yüz/boyun
+            d.ellipse((cx - 96, cy - 136, cx + 96, cy + 106), fill=110)
+            return
+        d.ellipse((cx - 110, cy - 150, cx + 110, cy + 150), fill=210)  # cilt/kafatası
+        d.ellipse((cx - 98, cy - 138, cx + 98, cy + 138), fill=40)
+        d.ellipse((cx - 92, cy - 132, cx + 92, cy + 132), fill=120)  # beyin
+        for k in range(-3, 4):  # simetrik girus benzeri doku
+            for side in (-1, 1):
+                x = cx + side * (40 + abs(k) * 6)
+                d.ellipse((x - 14, cy + k * 34 - 10, x + 14, cy + k * 34 + 10), fill=135)
+        d.ellipse((cx - 30, cy - 50, cx - 6, cy + 30), fill=225)  # ventriküller
+        d.ellipse((cx + 6, cy - 50, cx + 30, cy + 30), fill=225)
+        if lesion:
+            d.ellipse((cx - 78, cy - 70, cx - 42, cy - 34), fill=240)  # tek taraflı parlak odak
+
+    head(0)
+    head(w + gap, lesion=True)
+    head(2 * (w + gap), profile=True)
+    im = im.filter(ImageFilter.GaussianBlur(1.2)).convert("RGB")
+    im.save(OUT / "mr-kolaj-foto.jpg", quality=90)
 
 
 if __name__ == "__main__":

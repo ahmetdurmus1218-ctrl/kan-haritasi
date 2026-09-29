@@ -275,6 +275,35 @@ with sync_playwright() as p:
     check("Görüntülemelerin" in (page.text_content("main") or ""), "beyin panelinde görüntüleme belgeleri listeleniyor")
     page.screenshot(path=SHOTS / "72-beyin-goruntulemeler.png")
 
+    # --- Yazısız MR kolajı: kesitler ayrılır, sağ-sol karşılaştırması yapılır, dikkat bölgesi
+    # sonuçlara eklenince 3B beyin işaretlenir ve "Sonucuma göre" görüntüyü açar
+    page.goto(URL + "#/belgeler")
+    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for()
+    page.get_by_role("radio", name="MR", exact=True).click()
+    kolaj = {"name": "IMG_3002.jpg", "mimeType": "image/jpeg", "buffer": (IMG / "mr-kolaj-foto.jpg").read_bytes()}
+    page.set_input_files("input[type=file][multiple]", [kolaj])
+    page.get_by_role("button", name="Aç ve oku").click()
+    card = page.get_by_role("region", name="Otomatik görüntü incelemesi")
+    card.get_by_text("kesit bulundu", exact=False).wait_for(timeout=30000)
+    text = card.inner_text()
+    check("3 kesit bulundu · 2 tanesinde" in text, "kolaj 3 kesite ayrıldı, 2'si karşılaştırıldı (sagital hariç)")
+    check(text.count("Kesit ") == 1 and "Kesit 2 · görüntünün sol üst kısmı · karşı tarafa göre daha parlak" in text, "tek taraflı odak doğru kesitte ve yarıda")
+    check("Tanı değildir" in text, "inceleme tanı olmadığını söylüyor")
+    card.screenshot(path=SHOTS / "73-mr-otomatik-inceleme.png")
+    card.get_by_role("button", name="Sonuçlarıma ekle", exact=False).click()
+    card.get_by_text("Sonuçlarına eklendi", exact=False).wait_for()
+    page.get_by_text("Kesitlerin şeklinden önerilen (kesin değil):").wait_for()
+    page.get_by_role("button", name="Uygula ve vücutta göster").click()
+    page.wait_for_url("**#/vucut/yapi/brain", timeout=30000)
+    page.get_by_text("Görüntü incelemesi (1 dikkat bölgesi)", exact=False).first.wait_for(timeout=120000)
+    mine = page.get_by_role("button", name="Sonucuma göre", exact=False).first
+    check(mine.is_enabled() and "görüntünle" in mine.inner_text(), "beyin: Sonucuma göre görüntülemeye bağlı")
+    page.screenshot(path=SHOTS / "74-beyin-inceleme-vurgusu.png")
+    mine.click()
+    page.wait_for_url("**#/belge/**", timeout=20000)
+    page.get_by_text("Sonuçlarına eklendi", exact=False).wait_for(timeout=30000)
+    check(page.get_by_role("region", name="Otomatik görüntü incelemesi").count() == 1, "Sonucuma göre → incelemesi kaydedilen görüntü açıldı")
+
     csp = page.evaluate("window.__csp || []")
     check(not external, f"dış istek yok ({len(external)})")
     check(not [c for c in console if c.startswith("pageerror")], "sayfa hatası yok")

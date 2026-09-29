@@ -26,6 +26,9 @@ import { MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import { type ModelAsset, cleanNodeName, partFor, structureById, structureForNode } from '@kh/catalog';
 import { BP3D_COMMIT, BP3D_ORGANS, BP3D_REPO, type Bp3dGroup, bp3dDocument, centroidOf, planBp3d, readStl } from './bp3d';
 import { limbVesselDocument, nerveDocument, trunkVesselDocument } from './limbs';
+import { type LimbFit, boneArray, femaleLimbs, kneeFit } from './anatomy-fit';
+import { type Rigid, Volume, apply as applyRigid, keepInside } from './fit';
+import { trianglesOf } from './anatomy-fit';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SRC = process.env.HRA_DIR ?? join(here, '.cache/hra');
@@ -46,7 +49,13 @@ interface SourceSpec {
   keepNodes?: boolean;
   /** Düğüme özel yönlendirme (temizlenmiş ad): başka yapıya ata; null: atla; undefined: varsayılan. */
   route?: (clean: string) => string | null | undefined;
+  /** Diz dosyası: o taraftaki diz uyum dönüşümü uygulanır (HRA diz → uygulama kemikleri). */
+  knee?: 'l' | 'r';
 }
+
+/** Vücut başına diz uyum dönüşümleri (main içinde hesaplanır). */
+const KNEE_T: Partial<Record<BodySex, Record<'l' | 'r', Rigid>>> = {};
+let currentSex: BodySex = 'male';
 
 const brainRoute = (n: string) => (/hypothalamus|of hth|mammillary region/.test(n) ? 'hypothalamus' : /pineal/.test(n) ? 'pineal' : 'brain');
 const biliaryRoute = (n: string) => (/pancreatic duct|ampulla/.test(n) ? 'pancreas' : 'gallbladder');
@@ -88,10 +97,10 @@ const SOURCES: Record<BodySex, SourceSpec[]> = {
     { file: 'VH_Male/v1.4/3d-vh-m-palatine-tonsil-l.glb', asset: 'immune', structure: 'tonsils', tris: 800 },
     { file: 'VH_Male/v1.4/3d-vh-m-palatine-tonsil-r.glb', asset: 'immune', structure: 'tonsils', tris: 800 },
     { file: 'VH_Male/v1.2/NIH_M_Lymph_Node.glb', asset: 'immune', structure: 'lymph-node', tris: 9000 },
-    { file: 'VH_Male/v1.2/VH_M_Knee_L.glb', asset: 'skeleton', route: kneeRoute, tris: 5000 },
-    { file: 'VH_Male/v1.2/VH_M_Knee_R.glb', asset: 'skeleton', route: kneeRoute, tris: 5000 },
-    { file: 'VH_Male/v1.2/VH_M_Ligaments_Knee_L.glb', asset: 'skeleton', structure: 'knee', tris: 2500 },
-    { file: 'VH_Male/v1.2/VH_M_Ligaments_Knee_R.glb', asset: 'skeleton', structure: 'knee', tris: 2500 },
+    { file: 'VH_Male/v1.2/VH_M_Knee_L.glb', asset: 'skeleton', route: kneeRoute, tris: 5000, knee: 'l' },
+    { file: 'VH_Male/v1.2/VH_M_Knee_R.glb', asset: 'skeleton', route: kneeRoute, tris: 5000, knee: 'r' },
+    { file: 'VH_Male/v1.2/VH_M_Ligaments_Knee_L.glb', asset: 'skeleton', structure: 'knee', tris: 2500, knee: 'l' },
+    { file: 'VH_Male/v1.2/VH_M_Ligaments_Knee_R.glb', asset: 'skeleton', structure: 'knee', tris: 2500, knee: 'r' },
   ],
   female: [
     { file: 'VH_Female/v1.3/VH_F_skin.glb', asset: 'body', structure: 'skin', tris: 40000 },
@@ -126,10 +135,10 @@ const SOURCES: Record<BodySex, SourceSpec[]> = {
     { file: 'VH_Female/v1.4/3d-vh-f-palatine-tonsil-l.glb', asset: 'immune', structure: 'tonsils', tris: 800 },
     { file: 'VH_Female/v1.4/3d-vh-f-palatine-tonsil-r.glb', asset: 'immune', structure: 'tonsils', tris: 800 },
     { file: 'VH_Female/v1.2/NIH_F_Lymph_Node.glb', asset: 'immune', structure: 'lymph-node', tris: 9000 },
-    { file: 'VH_Female/v1.2/VH_F_Knee_L.glb', asset: 'skeleton', route: kneeRoute, tris: 5000 },
-    { file: 'VH_Female/v1.2/VH_F_Knee_R.glb', asset: 'skeleton', route: kneeRoute, tris: 5000 },
-    { file: 'VH_Female/v1.2/VH_F_Ligaments_Knee_L.glb', asset: 'skeleton', structure: 'knee', tris: 2500 },
-    { file: 'VH_Female/v1.2/VH_F_Ligaments_Knee_R.glb', asset: 'skeleton', structure: 'knee', tris: 2500 },
+    { file: 'VH_Female/v1.2/VH_F_Knee_L.glb', asset: 'skeleton', route: kneeRoute, tris: 5000, knee: 'l' },
+    { file: 'VH_Female/v1.2/VH_F_Knee_R.glb', asset: 'skeleton', route: kneeRoute, tris: 5000, knee: 'r' },
+    { file: 'VH_Female/v1.2/VH_F_Ligaments_Knee_L.glb', asset: 'skeleton', structure: 'knee', tris: 2500, knee: 'l' },
+    { file: 'VH_Female/v1.2/VH_F_Ligaments_Knee_R.glb', asset: 'skeleton', structure: 'knee', tris: 2500, knee: 'r' },
     { file: 'VH_Female/v1.2/VH_F_Uterus.glb', asset: 'reproductive', route: uterusRoute, tris: 6000 },
     { file: 'VH_Female/v1.2/VH_F_Ligaments_Uterus_Ovaries.glb', asset: 'reproductive', structure: 'uterus', tris: 5000 },
     { file: 'VH_Female/v1.2/VH_F_Ovary_L.glb', asset: 'reproductive', structure: 'ovaries', tris: 1500 },
@@ -172,6 +181,22 @@ async function loadSource(spec: SourceSpec): Promise<Document> {
   await doc.transform(flatten());
   for (const node of root.listNodes()) {
     if (node.getMesh()) clearNodeTransform(node);
+  }
+  // Diz: HRA diz parçaları bu vücudun kemiklerine oturtulur
+  const kneeT = spec.knee ? KNEE_T[currentSex]?.[spec.knee] : undefined;
+  if (kneeT) {
+    const done = new Set<unknown>();
+    for (const mesh of root.listMeshes())
+      for (const prim of mesh.listPrimitives()) {
+        const acc = prim.getAttribute('POSITION');
+        if (!acc || done.has(acc)) continue;
+        done.add(acc);
+        const e: number[] = [0, 0, 0];
+        for (let i = 0; i < acc.getCount(); i++) {
+          acc.getElement(i, e);
+          acc.setElement(i, applyRigid(kneeT, [e[0]!, e[1]!, e[2]!]));
+        }
+      }
   }
 
   // 2) Gereksiz öznitelikler ve malzemeler
@@ -266,6 +291,46 @@ const m2fArray = (a: Float32Array) => {
   }
 };
 
+/** Kadın vücudu için eklemli kol/bacak uyumu (main içinde hesaplanır). */
+let LIMBS: LimbFit | null = null;
+
+/** Erkek → kadın: benzerlik dönüşümü + kol/bacak uyumu (yumuşak doku, damar, sinir noktaları). */
+const femalePoint = (p: V3): V3 => {
+  const q = m2fPoint(p);
+  return LIMBS ? LIMBS.point(q) : q;
+};
+const femaleArray = (a: Float32Array) => {
+  m2fArray(a);
+  if (!LIMBS) return;
+  // Üçgen çorbasında her köşe ~6 kez tekrarlanır: 0,05 mm'ye nicemlenmiş konuma göre önbellek.
+  const cache = new Map<number, V3>();
+  const Q = 20000;
+  const K = 2 * Q + 1;
+  for (let i = 0; i < a.length; i += 3) {
+    const key = (Math.round(a[i]! * Q) + Q) * K * K + (Math.round(a[i + 1]! * Q) + Q) * K + (Math.round(a[i + 2]! * Q) + Q);
+    let q = cache.get(key);
+    if (!q) {
+      q = LIMBS.point([a[i]!, a[i + 1]!, a[i + 2]!]);
+      cache.set(key, q);
+    }
+    a[i] = q[0];
+    a[i + 1] = q[1];
+    a[i + 2] = q[2];
+  }
+};
+/** Kemikler: benzerlik dönüşümü + ait olduğu kol/bacak parçasının katı dönüşümü (kemik bükülmez). */
+const femaleBones = (a: Float32Array, group?: string) => {
+  m2fArray(a);
+  if (!LIMBS || !group) return;
+  const T = LIMBS.bone(group);
+  for (let i = 0; i < a.length; i += 3) {
+    const q = applyRigid(T, [a[i]!, a[i + 1]!, a[i + 2]!]);
+    a[i] = q[0];
+    a[i + 1] = q[1];
+    a[i + 2] = q[2];
+  }
+};
+
 /** HRA dosyasındaki seçili düğümlerin ağırlık merkezi ya da üst kutbu (dünya koordinatı). */
 async function hraAnchor(file: string, filter: (clean: string) => boolean, mode: 'centroid' | 'top'): Promise<V3> {
   const doc = await io.read(join(SRC, file));
@@ -319,18 +384,31 @@ async function femaleGlandTargets(): Promise<Record<string, V3>> {
   };
 }
 
+/** Vücut derisi hacmi (şematik damar/sinir yollarını derinin içinde tutmak için). */
+let SKIN: Volume | null = null;
+async function skinVolume(sex: BodySex): Promise<Volume> {
+  // Erkek derisi BodyParts3D'den (tek parça), kadın derisi HRA VH_F'den gelir.
+  const tris = sex === 'female' ? await trianglesOf(join(SRC, 'VH_Female/v1.3/VH_F_skin.glb')) : readStl(planBp3d().skin[0]!.ids[0]!);
+  return new Volume(tris, 0.005);
+}
+/** Şematik yol noktası: (kadında erkek → kadın eşlemesi, sonra) derinin içinde tut. */
+const schematicPoint = (sex: BodySex) => (p: V3): V3 => {
+  const q = sex === 'female' ? femalePoint(p) : p;
+  return SKIN ? keepInside(SKIN, q, 0.006) : q;
+};
+
 /** Kalp-damar dosyasına eklenenler: BodyParts3D gövde damarları ve şematik kol/bacak damarları. */
 async function loadExtraVessels(sex: BodySex): Promise<Document[]> {
-  const trunk = trunkVesselDocument(sex === 'female' ? m2fArray : undefined);
+  const trunk = trunkVesselDocument(sex === 'female' ? femaleArray : undefined);
   await simplifyTo(trunk, 16000, 'BodyParts3D gövde damarları', 13);
-  const limbs = limbVesselDocument(sex === 'female' ? m2fPoint : undefined);
+  const limbs = limbVesselDocument(schematicPoint(sex));
   await limbs.transform(weld({}), normals({ overwrite: true }));
   console.log(`  ${'şematik kol/bacak damarları'.padEnd(34)} ${String(triCount(limbs)).padStart(7)} üçgen, ${limbs.getRoot().listNodes().length} parça`);
   return [trunk, limbs];
 }
 
 async function loadNerves(sex: BodySex): Promise<Document> {
-  const doc = nerveDocument(sex === 'female' ? m2fPoint : undefined);
+  const doc = nerveDocument(schematicPoint(sex));
   await doc.transform(weld({}), normals({ overwrite: true }));
   console.log(`  ${'şematik periferik sinirler'.padEnd(34)} ${String(triCount(doc)).padStart(7)} üçgen, ${doc.getRoot().listNodes().length} parça`);
   return doc;
@@ -345,7 +423,7 @@ async function loadBp3d(asset: keyof typeof BP3D_BUDGET, sex: BodySex): Promise<
   let groups = asset === 'body' ? plan.skin : asset === 'skeleton' ? plan.skeleton : plan.muscles;
   // Kadında omurga ve leğen kemiği HRA VH_F'den gelir (kadın pelvisi); geri kalanı dönüştürülür.
   if (sex === 'female' && asset === 'skeleton') groups = groups.filter((g) => g.key !== 'bones|spine' && g.key !== 'bones|pelvis');
-  const doc = bp3dDocument(groups, asset, sex === 'female' ? m2fArray : undefined);
+  const doc = bp3dDocument(groups, asset, sex === 'female' ? (asset === 'skeleton' ? femaleBones : femaleArray) : undefined);
   await simplifyTo(doc, BP3D_BUDGET[asset] * (sex === 'female' && asset === 'skeleton' ? 0.9 : 1), `BodyParts3D ${asset}`, groups.length);
   return doc;
 }
@@ -377,7 +455,18 @@ async function main() {
     if (only && only !== sex) continue;
     const dir = join(OUT, sex === 'male' ? 'm' : 'f');
     mkdirSync(dir, { recursive: true });
+    currentSex = sex;
     const glands = sex === 'female' ? await femaleGlandTargets() : null;
+    LIMBS = sex === 'female' ? await femaleLimbs(SRC, m2fArray, console.log) : null;
+    SKIN = await skinVolume(sex);
+    // Diz: HRA diz parçalarını bu vücudun (dönüştürülmüş) femur ve bacak kemiklerine oturt
+    const boneMap = sex === 'female' ? femaleBones : undefined;
+    console.log(`\n[${sex} · diz uyumu]`);
+    const tag = sex === 'male' ? 'VH_Male/v1.2/VH_M' : 'VH_Female/v1.2/VH_F';
+    KNEE_T[sex] = {
+      l: await kneeFit(join(SRC, `${tag}_Knee_L.glb`), boneArray('bones|femur-l', boneMap), boneArray('bones|leg-l', boneMap), console.log),
+      r: await kneeFit(join(SRC, `${tag}_Knee_R.glb`), boneArray('bones|femur-r', boneMap), boneArray('bones|leg-r', boneMap), console.log),
+    };
     const assets: Record<string, unknown> = {};
     (manifest.bodies as Record<string, unknown>)[sex] = assets;
     for (const asset of ASSETS) {
@@ -471,8 +560,11 @@ async function main() {
 Değişiklikler: sahne düzleştirildi, parçalar yapıya ve anatomik bölüme göre birleştirildi, BodyParts3D
 parçaları HRA koordinat sistemine benzerlik dönüşümüyle taşındı (farklı vücutlar; uyum yaklaşıktır). Kadın
 vücudunda BodyParts3D kemik ve kasları ile şematik damar ve sinirler erkek → kadın benzerlik dönüşümüyle
-(omur ve pelvis noktalarına göre) taşındı; hipofiz ve böbreküstü bezleri komşu HRA organlarına göre
-yerleştirildi. Ağlar sadeleştirildi (meshoptimizer), nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı.
+(omur ve pelvis noktalarına göre) taşındı; kollar ve bacaklar ayrıca her eklemin (omuz, dirsek, bilek,
+kalça, diz, ayak bileği) etrafında döndürülerek kadın derisine oturtuldu (kemikler katı, kas/damar/sinir
+eklemlerde yumuşak geçişli). HRA diz parçaları (kıkırdak, menisküs, bağlar) her iki vücutta kendi
+femur/tibia uçları üzerinden uygulamanın kemiklerine oturtuldu. Hipofiz ve böbreküstü bezleri komşu HRA
+organlarına göre yerleştirildi. Ağlar sadeleştirildi (meshoptimizer), nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı.
 Tiroid bezi ve kulak kaynaklarda olmadığından uygulamada şematik olarak çizilir.
 `,
   );

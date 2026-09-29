@@ -293,63 +293,97 @@ export const ORGANS: Record<string, OrganInfo> = {
 };
 
 /**
- * Her yapıdan girilebilen iç sahneler (doku → hücre → süreç). İlk sahne asıl dokudur; "hucre"
- * (genel hücre ve enerji) sahnesi her yapıya eklenir.
+ * Bir yapıdan girilebilen iç sahnenin o yapıya uygunluğu:
+ * - exact: yapının kendi dokusu (ör. mide → mide duvarı).
+ * - shared: aynı doku tipini birkaç yapı paylaşır; sahne o doku tipini genel olarak gösterir
+ *   (ör. nöron sahnesi beyin, omurilik ve sinirler için ortaktır).
+ * - related: yapının kendi dokusu DEĞİL, işlevce bağlantılı komşu doku (ör. safra kesesi →
+ *   safrayı üreten karaciğer lobülü). Arayüz bunu "ilişkili doku" diye ayrıca etiketler.
  */
-const INSIDES: Record<string, InsideId[]> = {
-  heart: ['kalpkasi', 'damar'],
-  'coronary-arteries': ['damar', 'kan'],
-  aorta: ['damar', 'kan'],
-  'carotid-arteries': ['damar', 'kan'],
-  'pulmonary-vessels': ['alveol', 'damar'],
-  veins: ['damar', 'kan'],
-  'renal-vessels': ['damar', 'nefron'],
-  'abdominal-vessels': ['damar', 'kan'],
-  'eye-vessels': ['damar', 'retina'],
-  'limb-vessels': ['damar', 'kan'],
-  lungs: ['alveol'],
-  airways: ['alveol'],
-  diaphragm: ['sarkomer'],
-  liver: ['lobul'],
-  gallbladder: ['lobul'],
-  pancreas: ['adacik'],
-  stomach: ['mide'],
-  esophagus: ['mide'],
-  'small-intestine': ['villus'],
-  'large-intestine': ['villus'],
-  kidneys: ['nefron'],
-  'urinary-tract': ['nefron'],
-  prostate: ['testis'],
-  brain: ['noron'],
-  hypothalamus: ['hormon', 'noron'],
-  pineal: ['hormon'],
-  'spinal-cord': ['noron'],
-  nerves: ['noron'],
-  eyes: ['retina'],
-  ear: ['koklea'],
-  bones: ['osteon', 'ilik'],
-  knee: ['osteon'],
-  'skeletal-muscle': ['sarkomer'],
-  spleen: ['kan', 'lenf'],
-  thymus: ['lenf'],
-  tonsils: ['lenf'],
-  'lymph-node': ['lenf'],
-  skin: ['deri'],
-  thyroid: ['folikul'],
-  pituitary: ['hormon'],
-  adrenals: ['hormon'],
-  testes: ['testis'],
-  'male-genitals': ['testis'],
-  ovaries: ['ovaryum', 'hormon'],
-  uterus: ['ovaryum'],
-  'fallopian-tubes': ['ovaryum'],
-  vagina: ['ovaryum'],
-  breasts: ['hormon', 'deri'],
+export type InsideFit = 'exact' | 'shared' | 'related';
+
+export interface InsideLink {
+  id: InsideId;
+  fit: InsideFit;
+}
+
+export const FIT_LABEL: Record<InsideFit, string> = {
+  exact: 'kendi dokusu',
+  shared: 'ortak doku tipi',
+  related: 'ilişkili doku',
 };
 
+type L = [InsideId, InsideFit];
+
+/**
+ * Her yapıdan girilebilen iç sahneler (doku → hücre → süreç). İlk sahne asıl dokudur; "hucre"
+ * (genel hücre ve enerji) sahnesi her yapıya "ortak" olarak eklenir. Yeni bir doku profili
+ * (inside/tissues.ts) eklendiğinde buraya bağlanır.
+ */
+const INSIDES: Record<string, L[]> = {
+  heart: [['kalpkasi', 'exact'], ['damar', 'related']],
+  'coronary-arteries': [['damar', 'exact'], ['kan', 'shared']],
+  aorta: [['damar', 'exact'], ['kan', 'shared']],
+  'carotid-arteries': [['damar', 'exact'], ['kan', 'shared']],
+  'pulmonary-vessels': [['damar', 'shared'], ['alveol', 'related'], ['kan', 'shared']],
+  veins: [['ven-duvari', 'exact'], ['kan', 'shared']],
+  'renal-vessels': [['damar', 'shared'], ['nefron', 'related']],
+  'abdominal-vessels': [['damar', 'exact'], ['kan', 'shared']],
+  'eye-vessels': [['damar', 'shared'], ['retina', 'related']],
+  'limb-vessels': [['damar', 'shared'], ['ven-duvari', 'shared'], ['kan', 'shared']],
+  lungs: [['alveol', 'exact'], ['solunum-yolu', 'related']],
+  airways: [['solunum-yolu', 'exact'], ['alveol', 'related']],
+  diaphragm: [['sarkomer', 'shared']],
+  liver: [['lobul', 'exact']],
+  gallbladder: [['safra-kesesi', 'exact'], ['lobul', 'related']],
+  pancreas: [['adacik', 'exact'], ['pankreas-asinus', 'exact']],
+  stomach: [['mide', 'exact']],
+  esophagus: [['yemek-borusu', 'exact'], ['mide', 'related']],
+  'small-intestine': [['villus', 'exact']],
+  'large-intestine': [['kalin-bagirsak', 'exact'], ['villus', 'related']],
+  kidneys: [['nefron', 'exact']],
+  'urinary-tract': [['mesane', 'exact'], ['nefron', 'related']],
+  prostate: [['prostat', 'exact']],
+  brain: [['noron', 'shared']],
+  hypothalamus: [['hormon', 'shared'], ['noron', 'shared']],
+  pineal: [['epifiz', 'exact'], ['hormon', 'shared']],
+  'spinal-cord': [['noron', 'shared']],
+  nerves: [['noron', 'shared']],
+  eyes: [['retina', 'exact']],
+  ear: [['koklea', 'exact']],
+  bones: [['osteon', 'exact'], ['ilik', 'exact']],
+  knee: [['eklem-kikirdagi', 'exact'], ['osteon', 'related']],
+  'skeletal-muscle': [['sarkomer', 'exact']],
+  spleen: [['dalak', 'exact'], ['kan', 'shared'], ['lenf', 'shared']],
+  thymus: [['timus', 'exact'], ['lenf', 'shared']],
+  tonsils: [['bademcik', 'exact'], ['lenf', 'shared']],
+  'lymph-node': [['lenf', 'exact']],
+  skin: [['deri', 'exact']],
+  thyroid: [['folikul', 'exact']],
+  pituitary: [['hipofiz', 'exact'], ['hormon', 'shared']],
+  adrenals: [['bobrek-ustu', 'exact'], ['hormon', 'shared']],
+  testes: [['testis', 'exact']],
+  'male-genitals': [['erkek-uretim-yolu', 'exact'], ['testis', 'related']],
+  ovaries: [['ovaryum', 'exact'], ['hormon', 'shared']],
+  uterus: [['rahim', 'exact'], ['ovaryum', 'related']],
+  'fallopian-tubes': [['tuba', 'exact'], ['ovaryum', 'related']],
+  vagina: [['vajina', 'exact']],
+  breasts: [['meme', 'exact'], ['hormon', 'related']],
+};
+
+export function insideLinks(structure: string): InsideLink[] {
+  const list: InsideLink[] = (INSIDES[structure] ?? []).map(([id, fit]) => ({ id, fit }));
+  return list.some((l) => l.id === 'hucre') ? list : [...list, { id: 'hucre', fit: 'shared' }];
+}
+
 export function insidesOf(structure: string): InsideId[] {
-  const list = INSIDES[structure] ?? [];
-  return list.includes('hucre') ? list : [...list, 'hucre'];
+  return insideLinks(structure).map((l) => l.id);
+}
+
+/** Yapı ile sahne arasındaki uygunluk (yoksa null). */
+export function insideFit(structure: string | undefined, scene: InsideId): InsideFit | null {
+  if (!structure) return null;
+  return insideLinks(structure).find((l) => l.id === scene)?.fit ?? null;
 }
 
 /** Bağlantılı yapılar (komşuluk ve işlev birliği); bilgi panelinde gezinmek için. */
