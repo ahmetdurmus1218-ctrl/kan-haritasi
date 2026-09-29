@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
-import { ACCEPT_ATTRIBUTE, isDicom, sanitizeFileName, splitExtension } from '@kh/ingest';
+import { ACCEPT_ATTRIBUTE, DEFAULT_LIMITS, type ZipItem, isDicom, isZip, openZip, sanitizeFileName, splitExtension } from '@kh/ingest';
 import { DOC_CATEGORIES, type DocCategory, type FileInfo, MAX_DISPLAY_NAME, type Vault } from '@kh/vault';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { type Route } from '../state/router';
@@ -55,9 +55,13 @@ interface QueueItem {
 
 interface UploadJob {
   item: QueueItem;
-  files: File[];
-  category: DocCategory;
+  /** ZIP girdileri sırası gelince açılır; arşivin tamamı belleğe alınmaz. */
+  files: Array<File | ZipItem>;
+  category: UploadCategory;
 }
+
+/** Yüklemede seçilen tür: 'auto' dosyadan (DICOM başlığı, dosya adı) tahmin edilir. */
+type UploadCategory = DocCategory | 'auto';
 
 /** Bu sayıdan fazla dosya tek satırda, toplu ilerlemeyle gösterilir (ör. bir MR serisinin yüzlerce kesiti). */
 const BATCH_THRESHOLD = 6;
@@ -73,6 +77,16 @@ async function pickDicomFiles(list: File[]): Promise<{ files: File[]; skipped: n
     else skipped++;
   }
   return { files, skipped };
+}
+
+const looksLikeZip = async (f: File) =>
+  /\.zip$/i.test(f.name) || /zip/.test(f.type) ? true : f.size >= 4 && isZip(new Uint8Array(await f.slice(0, 4).arrayBuffer()));
+
+/** ZIP girdisini açar; DICOM değilse (görüntüleyici programı, DICOMDIR…) null. */
+async function zipEntryFile(e: ZipItem): Promise<File | null> {
+  if (e.size < 132 || e.name.toUpperCase() === 'DICOMDIR') return null;
+  const bytes = await e.open();
+  return isDicom(bytes) ? new File([bytes], e.name) : null;
 }
 
 export async function downloadOriginal(vault: Vault, id: string): Promise<boolean> {
@@ -115,14 +129,33 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
   const pending = useRef<UploadJob[]>([]);
 
   const enqueue = useCallback(
-    async (list: File[], category: DocCategory, folder = false) => {
+    async (list: File[], category: UploadCategory, folder = false) => {
       if (!list.length) return;
+      const key = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      // ZIP arşivleri (ör. hastanenin verdiği görüntü arşivi): her biri ayrı toplu iş olur.
+      const zips: File[] = [];
+      const plain: File[] = [];
+      for (const f of list) (!folder && (await looksLikeZip(f)) ? zips : plain).push(f);
+      for (const z of zips) {
+        const item: QueueItem = { key: key(), name: `ZIP · ${sanitizeFileName(z.name)}`, phase: 'checking', notes: [] };
+        try {
+          const { entries, skipped } = await openZip(z, { maxEntries: MAX_FOLDER_FILES, maxEntryBytes: DEFAULT_LIMITS.maxDicomBytes });
+          item.batch = { total: entries.length, done: 0, added: 0, duplicates: 0, failed: 0, skipped };
+          if (!entries.length) Object.assign(item, { phase: 'error', message: 'ZIP arşivinde açılabilecek dosya bulunamadı.' });
+          setQueue((q) => [item, ...q]);
+          if (entries.length) pending.current.push({ item, files: entries, category });
+        } catch {
+          setQueue((q) => [{ ...item, phase: 'error', message: 'ZIP arşivi açılamadı: bozuk, eksik ya da desteklenmeyen bir arşiv.' }, ...q]);
+        }
+      }
+      list = plain;
       let chosen = list;
       let skipped = 0;
       if (folder) ({ files: chosen, skipped } = await pickDicomFiles(list));
-      const key = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      let jobs: UploadJob[];
-      if (chosen.length > BATCH_THRESHOLD || folder) {
+      let jobs: UploadJob[] = [];
+      if (!list.length) {
+        // yalnızca ZIP seçildi
+      } else if (chosen.length > BATCH_THRESHOLD || folder) {
         const item: QueueItem = {
           key: key(),
           name: folder ? `Klasör · ${chosen.length} DICOM dosyası` : `${chosen.length} dosya`,
@@ -156,7 +189,7 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
           }
           const deps = listed ? { ...uploadDeps, findExisting: async (sha: string) => known.get(sha) } : uploadDeps;
           if (!item.batch) {
-            const outcome = await processUpload(vault, job.files[0]!, deps, (phase) => update({ phase }), { category: job.category });
+            const outcome = await processUpload(vault, job.files[0] as File, deps, (phase) => update({ phase }), { category: job.category });
             update({ phase: outcome.phase, message: outcome.message, notes: outcome.notes, file: outcome.file });
             if (outcome.phase === 'done') {
               known.set(outcome.file!.sha256, outcome.file!);
@@ -168,7 +201,23 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
           let first: FileInfo | undefined;
           const errors = new Set<string>();
           const notes = new Set<string>();
-          for (const file of job.files) {
+          for (const source of job.files) {
+            let file: File | null;
+            try {
+              file = source instanceof File ? source : await zipEntryFile(source);
+            } catch {
+              b.done++;
+              b.failed++;
+              errors.add('ZIP içindeki dosya açılamadı.');
+              update({ batch: { ...b } });
+              continue;
+            }
+            if (!file) {
+              b.done++;
+              b.skipped++;
+              update({ batch: { ...b } });
+              continue;
+            }
             const outcome = await processUpload(vault, file, deps, undefined, { category: job.category });
             b.done++;
             if (outcome.phase === 'done') {
@@ -189,7 +238,7 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
           }
           update({
             phase: b.added + b.duplicates > 0 ? (b.added > 0 ? 'done' : 'duplicate') : 'error',
-            message: b.added + b.duplicates > 0 ? undefined : ([...errors][0] ?? 'Dosyalar yüklenemedi.'),
+            message: b.added + b.duplicates > 0 ? undefined : ([...errors][0] ?? (b.skipped >= b.total ? 'Arşivde DICOM görüntü dosyası bulunamadı.' : 'Dosyalar yüklenemedi.')),
             notes: [...notes, ...[...errors].map((e) => `Okunamayan dosya: ${e}`)].slice(0, 4),
             file: first,
             batch: { ...b },
@@ -225,7 +274,7 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
         <div>
           <p className="label-caps mb-1.5">Belgelerim</p>
           <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">Tahlil ve görüntüleme belgelerin</h1>
-          <p className="mt-1.5 text-sm text-fg-muted">Laboratuvar raporları, MR, tomografi, röntgen ve ultrason. Yalnızca bu cihazda, dosya başına ayrı anahtarla şifreli.</p>
+          <p className="mt-1.5 text-sm text-fg-muted">Tahliller; MR, tomografi, röntgen, ultrason; patoloji, endoskopi, EKG ve diğer raporlar. Yalnızca bu cihazda, dosya başına ayrı anahtarla şifreli.</p>
         </div>
         {files && files.length > 0 && (
           <p className="text-sm text-fg-muted">
@@ -349,13 +398,20 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
   );
 }
 
-function DropZone({ onFiles }: { onFiles: (files: File[], category: DocCategory, folder?: boolean) => void }) {
+/** Sık kullanılan türler düğme olarak; diğerleri açılır listede. */
+const MAIN_TYPES: DocCategory[] = ['lab', 'mr', 'ct', 'xray', 'us'];
+const MORE_TYPES = DOC_CATEGORIES.filter((c) => !MAIN_TYPES.includes(c));
+
+function DropZone({ onFiles }: { onFiles: (files: File[], category: UploadCategory, folder?: boolean) => void }) {
   const [over, setOver] = useState(false);
-  const [category, setCategory] = useState<DocCategory>('lab');
+  const [category, setCategory] = useState<UploadCategory>('auto');
   const pickRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
-  const imaging = isImaging(category);
+  const auto = category === 'auto';
+  // Otomatik kipte DICOM ve klasör de kabul edilir; tür dosyanın kendisinden anlaşılır.
+  const imaging = auto || isImaging(category);
+  const more = category !== 'auto' && MORE_TYPES.includes(category);
   // Klasör seçimi masaüstü tarayıcılarda çalışır; Android uygulaması ve dokunmatik cihazlarda çoklu dosya seçimi kullanılır.
   const [folderPick] = useState(() => platform.platform === 'web' && typeof matchMedia === 'function' && matchMedia('(pointer: fine)').matches);
 
@@ -386,8 +442,8 @@ function DropZone({ onFiles }: { onFiles: (files: File[], category: DocCategory,
         over ? 'border-accent bg-accent/8' : 'border-ink-500 bg-ink-850/50'
       }`}
     >
-      <div className="mb-5 flex flex-wrap justify-center gap-1.5" role="radiogroup" aria-label="Belge türü">
-        {DOC_CATEGORIES.map((c) => (
+      <div className="mb-5 flex flex-wrap items-center justify-center gap-1.5" role="radiogroup" aria-label="Belge türü">
+        {(['auto', ...MAIN_TYPES] as UploadCategory[]).map((c) => (
           <button
             key={c}
             type="button"
@@ -398,16 +454,31 @@ function DropZone({ onFiles }: { onFiles: (files: File[], category: DocCategory,
               category === c ? 'border-accent/50 bg-accent/12 text-fg' : 'border-ink-600 text-fg-muted hover:border-ink-500 hover:text-fg'
             }`}
           >
-            {CATEGORY_LABEL[c]}
+            {c === 'auto' ? 'Otomatik algıla' : CATEGORY_LABEL[c]}
           </button>
         ))}
+        <select
+          aria-label="Diğer belge türleri"
+          value={more ? category : ''}
+          onChange={(e) => e.target.value && setCategory(e.target.value as DocCategory)}
+          className={`h-[30px] rounded-full border bg-transparent px-3 text-xs font-medium ${more ? 'border-accent/50 bg-accent/12 text-fg' : 'border-ink-600 text-fg-muted'}`}
+        >
+          <option value="">Diğer türler…</option>
+          {MORE_TYPES.map((c) => (
+            <option key={c} value={c}>
+              {CATEGORY_LABEL[c]}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/25 bg-accent/10 text-accent">
         {imaging ? <ScanIcon size={22} /> : <UploadIcon size={22} />}
       </div>
-      <h2 className="text-base font-semibold">{CATEGORY_UPLOAD_TITLE[category]}</h2>
+      <h2 className="text-base font-semibold">{auto ? 'Tahlil, Rapor veya Görüntü Yükle' : CATEGORY_UPLOAD_TITLE[category]}</h2>
       <p className="mt-1 text-sm text-fg-muted">
-        {imaging ? (
+        {auto ? (
+          <>Kan/idrar tahlili, MR·BT·röntgen·ultrason raporu ya da görüntüsü, patoloji, endoskopi, EKG… Türü dosyadan anlaşılır; emin olunamazsa okuduktan sonra sorulur.</>
+        ) : imaging ? (
           <>Raporun PDF'i veya fotoğrafı, filmin fotoğrafı ya da CD/USB'deki DICOM görüntü dosyaları</>
         ) : (
           <>
@@ -430,9 +501,11 @@ function DropZone({ onFiles }: { onFiles: (files: File[], category: DocCategory,
         </button>
       </div>
       <p className="mt-4 text-xs text-fg-faint">
-        {imaging ? 'PDF, JPG, PNG, DICOM (.dcm veya uzantısız) · DICOM için en fazla 60 MB · dosya bu cihazdan çıkmaz' : 'PDF, JPG, PNG · en fazla 20 MB · dosya bu cihazdan çıkmaz'}
+        {imaging
+          ? 'PDF, JPG, PNG, DICOM (.dcm veya uzantısız), DICOM içeren ZIP · DICOM için en fazla 60 MB · dosya bu cihazdan çıkmaz'
+          : 'PDF, JPG, PNG · en fazla 20 MB · dosya bu cihazdan çıkmaz'}
       </p>
-      {imaging && (
+      {imaging && !auto && (
         <p className="mt-1 text-xs text-fg-faint">
           MR ve tomografi CD'lerinde görüntüler genellikle DICOM klasöründedir.{' '}
           {folderPick ? 'Klasörü seçersen' : 'Dosyaları birlikte seçersen'} aynı seriye ait kesitler tek görüntüleyicide bir arada gösterilir.
@@ -517,7 +590,7 @@ function UploadRow({ item, onOpen, onDismiss }: { item: QueueItem; onOpen: (id: 
             <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${b.total ? Math.round((b.done / b.total) * 100) : 0}%` }} />
           </div>
         )}
-        {b && b.skipped > 0 && <p className="mt-0.5 text-xs text-fg-muted">DICOM olmayan {b.skipped} dosya (ör. DICOMDIR, görüntüleyici programı) atlandı.</p>}
+        {b && b.skipped > 0 && <p className="mt-0.5 text-xs text-fg-muted">DICOM olmayan ya da açılamayan {b.skipped} dosya (ör. DICOMDIR, görüntüleyici programı) atlandı.</p>}
         {item.notes.map((n) => (
           <p key={n} className="mt-0.5 text-xs text-fg-muted">
             {n}

@@ -14,7 +14,7 @@ import { severityWeights, useInterpretation } from '../lib/interpretation';
 import { reviewFlags, studiesForStructure, useImagingStudies } from '../lib/imagingStudies';
 import { CATEGORY_SHORT } from '../lib/imaging';
 import { formatDate } from '../lib/format';
-import { highlightName, highlightsFrom, withImagingHighlights, withReviewHighlights } from '../anatomy/highlight';
+import { highlightName, highlightsFrom, withFindingHighlights, withImagingHighlights, withReviewHighlights } from '../anatomy/highlight';
 import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene';
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { partLabel, partLatin } from '../anatomy/names';
@@ -184,7 +184,10 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   // Tahlil vurgularına referans dışı görüntüleme ölçümleri de eklenir (bir tahlile odaklanılmadıkça).
   const highlights = useMemo(() => {
     const base = highlightsFrom(series, focusTest, weights);
-    return focusTest || !studies ? base : withReviewHighlights(withImagingHighlights(base, studies.flatMap((st) => st.abnormal)), reviewFlags(studies));
+    if (focusTest || !studies) return base;
+    const withMeasures = withImagingHighlights(base, studies.flatMap((st) => st.abnormal));
+    const withFindings = withFindingHighlights(withMeasures, studies.flatMap((st) => st.findings.map((f) => ({ ...f, fileId: st.head.id }))));
+    return withReviewHighlights(withFindings, reviewFlags(studies));
   }, [series, focusTest, weights, studies]);
   const allParts = useMemo(() => [...models.parts, ...models.schematic], [models.parts, models.schematic]);
   const boxes = useMemo(() => structureBoxes(allParts), [allParts]);

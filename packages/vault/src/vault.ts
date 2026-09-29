@@ -11,8 +11,12 @@ export type FileKind = 'pdf' | 'jpeg' | 'png' | 'dicom';
  * Belgenin türü: laboratuvar tahlili ya da bir görüntüleme (MR, BT/tomografi, röntgen, ultrason).
  * Eski kayıtlarda bulunmaz; o zaman 'lab' sayılır.
  */
-export type DocCategory = 'lab' | 'mr' | 'ct' | 'xray' | 'us' | 'other';
-export const DOC_CATEGORIES: readonly DocCategory[] = ['lab', 'mr', 'ct', 'xray', 'us', 'other'];
+/**
+ * Belge türleri: tahlil, radyoloji (MR, BT, röntgen, ultrason, mamografi, PET, anjiyografi, DEXA) ve
+ * diğer tıbbi raporlar (patoloji/biyopsi, endoskopi/kolonoskopi, EKG, solunum fonksiyon testi).
+ */
+export type DocCategory = 'lab' | 'mr' | 'ct' | 'xray' | 'us' | 'mammo' | 'pet' | 'angio' | 'dexa' | 'pathology' | 'endoscopy' | 'ekg' | 'pft' | 'other';
+export const DOC_CATEGORIES: readonly DocCategory[] = ['lab', 'mr', 'ct', 'xray', 'us', 'mammo', 'pet', 'angio', 'dexa', 'pathology', 'endoscopy', 'ekg', 'pft', 'other'];
 
 /** Kullanıcının düzenleyebildiği belge bilgileri. `null` alanı temizler. */
 export interface FileMeta {

@@ -9,8 +9,8 @@ import {
   testByKey,
 } from '@kh/catalog';
 import { type MissingValue, type ReportDraft, type SourceBox, type UnrecognizedRow, needsReview, parseRange } from '@kh/parser';
-import type { Bytes, DocCategory, FileInfo } from '@kh/vault';
-import { CATEGORY_LABEL, type ImagingCategory } from '../lib/imaging';
+import { type Bytes, DOC_CATEGORIES, type DocCategory, type FileInfo } from '@kh/vault';
+import { CATEGORY_LABEL, type DocTypeGuess, type ImagingCategory, detectDocType, isReadableReport } from '../lib/imaging';
 import { classifyPhoto } from '../lib/photo';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { go } from '../state/router';
@@ -75,11 +75,48 @@ function ImagingChoice({ text, onChoose, onLab }: { text: string; onChoose: (c: 
           </button>
         ))}
       </div>
+      <MoreTypes onChoose={onChoose} />
       {onLab && (
         <button type="button" className="text-xs text-fg-muted underline-offset-4 hover:text-fg hover:underline" onClick={onLab}>
           Hayır, tahlil raporu olarak oku
         </button>
       )}
+    </div>
+  );
+}
+
+function MoreTypes({ onChoose, label = 'Başka bir tür…' }: { onChoose: (c: DocCategory) => void; label?: string }) {
+  return (
+    <select
+      aria-label="Belge türünü seç"
+      value=""
+      onChange={(e) => e.target.value && onChoose(e.target.value as DocCategory)}
+      className="h-7 rounded-full border border-ink-500 bg-transparent px-2.5 text-xs text-fg-muted"
+    >
+      <option value="">{label}</option>
+      {DOC_CATEGORIES.filter((c) => c !== 'lab').map((c) => (
+        <option key={c} value={c}>
+          {CATEGORY_LABEL[c]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** Tahlil değeri çıkmayan, okunabilir metinli belge: metinden tahmin edilen tür onaya sunulur. */
+function TypeSuggestion({ guess, onChoose }: { guess: DocTypeGuess; onChoose: (c: DocCategory) => void }) {
+  return (
+    <div className="space-y-2.5 rounded-xl border border-accent/35 bg-accent/8 p-3.5 text-sm" role="region" aria-label="Belge türü önerisi">
+      <p className="leading-relaxed">
+        Bu belgede tahlil değeri yok; metni bir <strong>{CATEGORY_LABEL[guess.category]}</strong> raporuna benziyor.
+      </p>
+      <p className="text-xs text-fg-muted">Metinde geçenler: {guess.signs.map((w) => `“${w}”`).join(', ')} · tahmin cihazda, yalnızca sözcüklere bakılarak yapıldı.</p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={() => onChoose(guess.category)}>
+          <CheckIcon size={14} /> Evet, {CATEGORY_LABEL[guess.category]} olarak aç
+        </button>
+        <MoreTypes onChoose={onChoose} label="Hayır, başka bir tür…" />
+      </div>
     </div>
   );
 }
@@ -103,6 +140,7 @@ export function ReportPanel({
   const [mode, setMode] = useState<'loading' | 'saved' | 'extracting' | 'review' | 'error' | 'film'>('loading');
   const [saved, setSaved] = useState<StoredReport | null>(null);
   const [draft, setDraft] = useState<{ rows: ReviewRow[]; unrecognized: UnrecognizedRow[]; missing?: MissingValue[]; meta: Pick<ReportDraft, 'reportDate' | 'labName' | 'method'> } | null>(null);
+  const [guess, setGuess] = useState<DocTypeGuess | undefined>();
   const [progress, setProgress] = useState<ExtractProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sex, setSex] = useState<Sex>('unspecified');
@@ -118,6 +156,8 @@ export function ReportPanel({
       const { extractDraft } = await import('../lib/extract');
       const d = await extractDraft(info, bytes, { sex: s, userAliases: aliases, onProgress: setProgress });
       setDraft({ rows: draftToReview(d), unrecognized: d.unrecognized, missing: d.missing, meta: { reportDate: d.reportDate, labName: d.labName, method: d.method } });
+      // Tahlil değeri çıkmadıysa belge türü metinden önerilir (OCR metni önce okunabilirlik denetiminden geçer).
+      setGuess(d.rows.length === 0 && (d.method === 'text' || isReadableReport(d.plainText)) ? detectDocType(d.plainText) : undefined);
       setMode('review');
     } catch (e) {
       setError(e instanceof OcrError ? ocrMessage(e) : userMessage(e));
@@ -207,7 +247,11 @@ export function ReportPanel({
       )}
       {(mode === 'error' || (mode === 'review' && draft && draft.rows.length === 0 && !saved)) && onCategoryChange && (
         <div className="px-5 pt-5">
-          <ImagingChoice text="Tahlil değeri bulunamadı. Bu belge bir görüntüleme (MR, tomografi, röntgen, ultrason) görüntüsü ya da raporu mu?" onChoose={onCategoryChange} />
+          {mode === 'review' && guess ? (
+            <TypeSuggestion guess={guess} onChoose={onCategoryChange} />
+          ) : (
+            <ImagingChoice text="Tahlil değeri bulunamadı. Bu belge bir görüntüleme (MR, tomografi, röntgen, ultrason) görüntüsü ya da başka türde bir rapor mu?" onChoose={onCategoryChange} />
+          )}
         </div>
       )}
       {mode === 'error' && (

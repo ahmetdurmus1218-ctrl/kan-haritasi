@@ -55,6 +55,12 @@ export function ImagingStudyCard({ study, compact = false }: { study: ImagingStu
               {study.measures.length > (compact ? 3 : 6) && <span className="px-1 text-[11px] text-fg-faint">+{study.measures.length - (compact ? 3 : 6)}</span>}
             </span>
           )}
+          {study.findings.length > 0 && (
+            <span className="mt-1.5 mr-1 inline-block rounded-full border border-ink-600 px-2 py-0.5 text-[11px] text-fg-muted">
+              {study.findings.length} bulgu cümlesi · {study.findings.filter((f) => f.status === 'abnormal').length} dikkat
+              {study.findings.some((f) => f.status === 'uncertain') ? ` · ${study.findings.filter((f) => f.status === 'uncertain').length} belirsiz` : ''}
+            </span>
+          )}
           {study.review && study.review.regions.length > 0 && (
             <span className="mt-1.5 inline-block rounded-full border border-caution/40 px-2 py-0.5 text-[11px] text-caution-fg">
               Otomatik inceleme · {study.review.regions.length} dikkat bölgesi · tanı değildir

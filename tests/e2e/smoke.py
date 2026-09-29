@@ -55,7 +55,7 @@ with sync_playwright() as p:
     page.fill("#confirm", PASS)
     page.check("input[type=checkbox]")
     page.get_by_role("button", name="Kasayı oluştur").click()
-    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for(timeout=20000)
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for(timeout=20000)
     page.screenshot(path=SHOTS / "02-belgeler-bos.png")
 
     # Yükleme: PDF + PNG + sahte (.pdf uzantılı HTML)
@@ -123,7 +123,7 @@ with sync_playwright() as p:
     check(page.input_value("input[aria-label='Sayfa numarası']") == "2", "sayfa gezinme")
 
     page.get_by_role("button", name="Belgelere dön").click()
-    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for()
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
 
     # Görseli aç, döndür
     page.locator("ul li").filter(has_text="· PNG ·").first.locator("button").first.click()

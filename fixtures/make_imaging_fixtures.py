@@ -9,6 +9,8 @@ radyoloji raporu (PDF). Gerçek kişi, gerçek kurum, gerçek görüntü veya ki
  - imaging/rontgen-film-foto.jpg          telefonla çekilmiş gibi röntgen filmi fotoğrafı (koyu, gri)
  - imaging/toraks-bt-raporu-foto.png      kâğıt BT raporunun fotoğrafı (OCR ile okunur)
  - imaging/batin-usg-raporu.pdf           ölçümlü batın ultrason raporu (dalak, karaciğer, böbrek, koledok…)
+ - imaging/tarama-0417.pdf                 adı türünü söylemeyen endoskopi raporu (tür metinden önerilmeli)
+ - imaging/beyin-mr.zip                    beyin-mr klasörünün ZIP arşivi (DICOMDIR ve BENIOKU.TXT atlanmalı)
 
 Kullanım: python3 fixtures/make_imaging_fixtures.py
 """
@@ -202,6 +204,8 @@ def main() -> None:
     report_photo()
     abdomen_report()
     mr_collage()
+    endoscopy_report()
+    mr_zip()
 
 
 def film_photo() -> None:
@@ -316,6 +320,51 @@ def mr_collage() -> None:
     head(2 * (w + gap), profile=True)
     im = im.filter(ImageFilter.GaussianBlur(1.2)).convert("RGB")
     im.save(OUT / "mr-kolaj-foto.jpg", quality=90)
+
+
+def endoscopy_report() -> None:
+    """Dosya adı türünü söylemeyen endoskopi raporu: tahlil değeri yok, tür metinden önerilir."""
+    c = canvas.Canvas(str(OUT / "tarama-0417.pdf"), pagesize=A4)
+    c.setTitle("Sentetik endoskopi raporu")
+    y = 280 * mm
+    c.setFont("DejaVu-Bold", 13)
+    c.drawString(20 * mm, y, "ÖZOFAGOGASTRODUODENOSKOPİ RAPORU (SENTETİK)")
+    y -= 8 * mm
+    c.setFont("DejaVu", 10)
+    c.drawString(20 * mm, y, "İşlem tarihi: 11.09.2026")
+    blocks = [
+        ("BULGULAR:", [
+            "Özofagus mukozası doğal, Z çizgisi düzenli.",
+            "Antrumda yaygın hiperemi ve birkaç adet yüzeyel erozyon izlendi.",
+            "Bulbus ve ikinci kıta duodenum doğal.",
+        ]),
+        ("SONUÇ:", ["Erozif antral gastrit. Antrumdan biyopsi alındı."]),
+    ]
+    y -= 12 * mm
+    for head, lines in blocks:
+        c.setFont("DejaVu-Bold", 10.5)
+        c.drawString(20 * mm, y, head)
+        y -= 6 * mm
+        c.setFont("DejaVu", 10)
+        for line in lines:
+            c.drawString(24 * mm, y, line)
+            y -= 5.5 * mm
+        y -= 4 * mm
+    c.setFont("DejaVu", 8)
+    c.drawString(20 * mm, 15 * mm, "Bu belge test amaçlı üretilmiş sentetik bir örnektir; gerçek bir kişiye ait değildir.")
+    c.save()
+
+
+def mr_zip() -> None:
+    """Hastanelerin verdiği arşivlere benzer: klasör yapısı korunur, sıkıştırılır; tarih sabit (tekrarlanabilir)."""
+    import zipfile
+
+    src = OUT / "beyin-mr"
+    with zipfile.ZipFile(OUT / "beyin-mr.zip", "w") as z:
+        for f in sorted(src.iterdir()):
+            info = zipfile.ZipInfo(f"CD/DICOM/{f.name}", date_time=(2026, 9, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            z.writestr(info, f.read_bytes())
 
 
 if __name__ == "__main__":

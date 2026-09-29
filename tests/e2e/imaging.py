@@ -63,7 +63,7 @@ with sync_playwright() as p:
     page.fill("#confirm", PASS)
     page.check("input[type=checkbox]")
     page.get_by_role("button", name="Kasayı oluştur").click()
-    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for(timeout=20000)
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for(timeout=20000)
 
     # --- MR: DICOM klasörü
     page.get_by_role("radio", name="MR", exact=True).click()
@@ -72,7 +72,7 @@ with sync_playwright() as p:
     page.screenshot(path=SHOTS / "60-goruntuleme-yukle.png")
     page.set_input_files("input[aria-label='DICOM klasörü']", str(IMG / "beyin-mr"))
     page.get_by_text("8 dosya şifrelendi ve kaydedildi").wait_for(timeout=60000)
-    check(page.get_by_text("DICOM olmayan 2 dosya").count() == 1, "DICOMDIR ve metin dosyası atlandı")
+    check(page.get_by_text("DICOM olmayan ya da açılamayan 2 dosya", exact=False).count() == 1, "DICOMDIR ve metin dosyası atlandı")
     check(page.get_by_text("MR · Beyin / kafa olarak kaydedildi.").count() >= 1, "tür ve bölge başlıktan")
     check(page.get_by_text("8 kesit").count() == 1, "seri listede tek satır, 8 kesit")
     page.screenshot(path=SHOTS / "61-seri-listede.png")
@@ -123,8 +123,8 @@ with sync_playwright() as p:
     page.set_input_files("input[type=file][multiple]", [str(IMG / "beyin-mr-raporu.pdf")])
     page.get_by_role("button", name="Aç ve oku").click()
     page.get_by_text("Raporda geçen terimler").wait_for(timeout=60000)
-    check(page.get_by_text("Frontal beyaz cevherde nonspesifik milimetrik hiperintens odaklar.").count() == 1, "SONUÇ bölümü ayrıldı")
-    check(page.get_by_text("Hiperintens / hipointens").count() == 1, "terim: hiperintens")
+    check(page.get_by_role("region", name="Rapor metni").get_by_text("Frontal beyaz cevherde nonspesifik milimetrik hiperintens odaklar.").count() == 1, "SONUÇ bölümü ayrıldı")
+    check(page.get_by_role("region", name="Raporda geçen terimler").get_by_text("Hiperintens / hipointens").count() == 1, "terim: hiperintens")
     check(page.get_by_text("Klinik korelasyon önerilir", exact=True).count() >= 1, "terim: klinik korelasyon")
     check(page.get_by_text("Sonuçları onayla").count() == 0, "görüntüleme raporunda tahlil onayı açılmıyor")
     if page.get_by_role("button", name="Uygula").count():
@@ -135,11 +135,29 @@ with sync_playwright() as p:
         check(False, "rapordan çekim tarihi önerisi")
     page.get_by_text("Aynı çekime ait belgeler").wait_for(timeout=10000)
     check(page.get_by_text("AX T2", exact=False).count() >= 1, "rapor ile MR serisi aynı çekim olarak bağlandı")
+    # Bulgular: cümle cümle, konum ve olağan/dikkat ayrımıyla; tıklayınca 3B'de ilgili bölüm
+    findings = page.get_by_role("region", name="Rapordaki bulgular")
+    fcount = (findings.text_content() or "") if findings.count() else ""
+    check("Rapordaki bulgular (6)" in fcount, f"rapordaki 6 bulgu cümlesi listeleniyor (başlık/alt bilgi hariç): {fcount[:40]!r}")
+    ftext = findings.inner_text()
+    check("Frontal lob (iki taraf) · Hiperintens / hipointens" in ftext, "bulgu: iki taraflı frontal lob, hiperintens")
+    check("Sağ paranazal sinüsler" in ftext, "bulgu: sağ maksiller sinüs")
+    check("olağan ifadeyi göster" in ftext, "olağan ifadeler ayrı (difüzyon, ventriküller)")
+    findings.get_by_role("button", name="Normal ile karşılaştır").first.click()
+    check(findings.get_by_text("Normalde", exact=True).count() >= 1 and findings.get_by_text("Raporunda", exact=True).count() >= 1, "normal ile karşılaştırma açılıyor")
+    page.screenshot(path=SHOTS / "75-rapor-bulgulari.png", full_page=True)
+    doc_url = page.url
+    findings.get_by_role("button", name="Vücutta göster").first.click()
+    page.wait_for_url("**#/vucut/yapi/brain/frontal", timeout=30000)
+    page.get_by_text("Rapor: Frontal lob", exact=False).first.wait_for(timeout=120000)
+    check(True, "bulguya tıklayınca beynin frontal lobu açıldı ve vurgulandı")
+    page.screenshot(path=SHOTS / "76-bulgu-frontal-lob.png")
+    page.goto(doc_url)
     page.screenshot(path=SHOTS / "64-radyoloji-raporu.png", full_page=True)
 
     # --- Tahlil olarak yüklenmiş röntgen filmi fotoğrafı: OCR'dan önce sorulur, görüntüleyicide incelenir
     page.goto(URL + "#/belgeler")
-    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for()
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
     # Telefon galerisi adı: dosya adından tür anlaşılmasın.
     film = {"name": "IMG_2041.jpg", "mimeType": "image/jpeg", "buffer": (IMG / "rontgen-film-foto.jpg").read_bytes()}
     page.set_input_files("input[type=file][multiple]", [film])
@@ -261,7 +279,7 @@ with sync_playwright() as p:
     # yazılardan (ör. "MR BEYIN") önerilir → tek dokunuşla vücutta beyin → organ panelinde listelenir
     page.set_viewport_size({"width": 1366, "height": 900})
     page.goto(URL + "#/belgeler")
-    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for()
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
     shot = {"name": "IMG_3001.jpg", "mimeType": "image/jpeg", "buffer": (IMG / "mr-ekran-foto.jpg").read_bytes()}
     page.set_input_files("input[type=file][multiple]", [shot])
     page.get_by_role("button", name="Aç ve oku").click()
@@ -279,7 +297,7 @@ with sync_playwright() as p:
     # --- Yazısız MR kolajı: kesitler ayrılır, sağ-sol karşılaştırması yapılır, dikkat bölgesi
     # sonuçlara eklenince 3B beyin işaretlenir ve "Sonucuma göre" görüntüyü açar
     page.goto(URL + "#/belgeler")
-    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for()
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
     page.get_by_role("radio", name="MR", exact=True).click()
     kolaj = {"name": "IMG_3002.jpg", "mimeType": "image/jpeg", "buffer": (IMG / "mr-kolaj-foto.jpg").read_bytes()}
     page.set_input_files("input[type=file][multiple]", [kolaj])
@@ -314,6 +332,31 @@ with sync_playwright() as p:
     page.wait_for_url("**#/belge/**", timeout=20000)
     page.get_by_text("Sonuçlarına eklendi", exact=False).wait_for(timeout=30000)
     check(page.get_by_role("region", name="Otomatik görüntü incelemesi").count() == 1, "Sonucuma göre → incelemesi kaydedilen görüntü açıldı")
+
+    # --- Otomatik tür: ZIP içindeki DICOM serisi (aynı kesitler zaten yüklü → çift kayıt sayılır)
+    page.goto(URL + "#/belgeler")
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
+    check(page.get_by_role("radio", name="Otomatik algıla").get_attribute("aria-checked") == "true", "varsayılan tür: otomatik algıla")
+    page.set_input_files("input[type=file][multiple]", [str(IMG / "beyin-mr.zip")])
+    page.get_by_text("ZIP · beyin-mr.zip").wait_for(timeout=20000)
+    page.get_by_text("8 zaten yüklü").wait_for(timeout=60000)
+    check(page.get_by_text("DICOM olmayan ya da açılamayan 2 dosya", exact=False).count() == 1, "ZIP: DICOMDIR ve metin dosyası atlandı")
+
+    # --- Adı türünü söylemeyen endoskopi raporu: tahlil değeri yok → tür metinden önerilir, onayla açılır
+    page.set_input_files("input[type=file][multiple]", [str(IMG / "tarama-0417.pdf")])
+    page.get_by_role("button", name="Aç ve oku").first.click()
+    sugg = page.get_by_role("region", name="Belge türü önerisi")
+    sugg.wait_for(timeout=60000)
+    check("Endoskopi / kolonoskopi" in sugg.inner_text() and "özofagogastroduodenoskopi" in sugg.inner_text(), "tür önerisi ve gerekçesi (metindeki sözcük)")
+    page.screenshot(path=SHOTS / "75-tur-onerisi.png")
+    sugg.get_by_role("button", name="Evet, Endoskopi / kolonoskopi olarak aç").click()
+    found = page.get_by_role("region", name="Rapordaki bulgular")
+    found.wait_for(timeout=60000)
+    check("erozyon" in found.inner_text() and "Dikkat" in found.inner_text(), "endoskopi bulgusu dikkat olarak çıkarıldı")
+    page.screenshot(path=SHOTS / "76-endoskopi-bulgulari.png", full_page=True)
+    found.get_by_role("button", name="Vücutta göster").first.click()
+    page.wait_for_url("**#/vucut/yapi/stomach**", timeout=20000)
+    check("#/vucut/yapi/stomach" in page.url, "endoskopi bulgusu → 3B mide")
 
     csp = page.evaluate("window.__csp || []")
     check(not external, f"dış istek yok ({len(external)})")

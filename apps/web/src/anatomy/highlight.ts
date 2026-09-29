@@ -64,6 +64,31 @@ export function withReviewHighlights(base: Map<string, StructureHighlight>, flag
 }
 
 /**
+ * Görüntüleme raporundaki dikkat çeken ve belirsiz bulgular: ilgili yapı vurgulanır (raporda yazan
+ * bulgu; yönü olmadığı için "karışık" gösterilir). Konumu belgenin bölgesinden varsayılanlar da dahil.
+ */
+export function withFindingHighlights(
+  base: Map<string, StructureHighlight>,
+  findings: Array<{ fileId: string; structure?: string; status: 'abnormal' | 'uncertain' | 'normal'; label: string; key: string }>,
+): Map<string, StructureHighlight> {
+  const flagged = findings.filter((f) => f.structure && f.status !== 'normal');
+  if (!flagged.length) return base;
+  const map = new Map([...base].map(([k, v]) => [k, { ...v, tests: [...v.tests] }]));
+  for (const f of flagged) {
+    const sid = f.structure!;
+    const score = f.status === 'abnormal' ? 2 : 1;
+    const h: StructureHighlight = map.get(sid) ?? { status: 'mixed', score: 0, tests: [] };
+    h.score = Math.max(h.score, score);
+    // Aynı bulgu Bulgular ve Sonuç bölümünde tekrarlanır: yer + terim anahtarıyla bir kez
+    const key = `img-find:${f.fileId}:${f.key}`;
+    if (!h.tests.some((t) => t.key === key)) h.tests.push({ key, status: 'unknown', score, name: `Rapor: ${f.label}` });
+    h.tests.sort((a, b) => b.score - a.score);
+    map.set(sid, h);
+  }
+  return map;
+}
+
+/**
  * Son sonuçlardan yapı vurgularını çıkarır: aralık dışındaki her test, katalogdaki ilişkili
  * yapılarını işaretler. Bir yapıda hem yüksek hem düşük sonuç varsa "mixed".
  * `onlyTest` verilirse yalnızca o testin yapıları (Vücutta göster).
