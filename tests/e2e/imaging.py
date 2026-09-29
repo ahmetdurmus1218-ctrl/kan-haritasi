@@ -190,6 +190,25 @@ with sync_playwright() as p:
     page.wait_for_timeout(800)
     page.screenshot(path=SHOTS / "66-telefon-belge.png")
 
+    # --- Ekrandan çekilmiş MR fotoğrafı, tahlil olarak yüklenir: sorulur → MR → bölge görüntüdeki
+    # yazılardan (ör. "MR BEYIN") önerilir → tek dokunuşla vücutta beyin → organ panelinde listelenir
+    page.set_viewport_size({"width": 1366, "height": 900})
+    page.goto(URL + "#/belgeler")
+    page.get_by_text("Laboratuvar Raporunu Yükle").wait_for()
+    shot = {"name": "IMG_3001.jpg", "mimeType": "image/jpeg", "buffer": (IMG / "mr-ekran-foto.jpg").read_bytes()}
+    page.set_input_files("input[type=file][multiple]", [shot])
+    page.get_by_role("button", name="Aç ve oku").click()
+    page.get_by_text("Bu fotoğraf bir tahlil raporundan çok bir görüntüye").wait_for(timeout=20000)
+    page.locator("main").get_by_role("button", name="MR", exact=True).last.click()
+    page.get_by_text("Görüntüdeki yazılardan önerilen:").wait_for(timeout=180000)
+    check("Beyin / kafa" in page.get_by_text("Görüntüdeki yazılardan önerilen:").locator("..").inner_text(), "MR fotoğrafı: bölge görüntüdeki yazılardan (beyin)")
+    page.screenshot(path=SHOTS / "71-mr-foto-bolge-onerisi.png")
+    page.get_by_role("button", name="Uygula ve vücutta göster").click()
+    page.wait_for_url("**#/vucut/yapi/brain", timeout=30000)
+    page.wait_for_timeout(4000)
+    check("Görüntülemelerin" in (page.text_content("main") or ""), "beyin panelinde görüntüleme belgeleri listeleniyor")
+    page.screenshot(path=SHOTS / "72-beyin-goruntulemeler.png")
+
     csp = page.evaluate("window.__csp || []")
     check(not external, f"dış istek yok ({len(external)})")
     check(not [c for c in console if c.startswith("pageerror")], "sayfa hatası yok")

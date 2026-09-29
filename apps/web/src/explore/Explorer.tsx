@@ -878,6 +878,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                 onEnterScene={(scene, from) => enter(scene, from)}
                 interp={interp}
                 initialTab={panelTab?.tab}
+                imaging={studies ? studiesForStructure(structure, studies) : []}
               />
             ) : system ? (
               <SystemPanel system={system} body={body} highlights={highlights} series={seriesMap} interp={interp} onEnter={(scene, from) => enter(scene, from)} />

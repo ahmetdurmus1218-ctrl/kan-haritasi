@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { type Interpretation, PROCESSES, type PartDef, type ProcessId, type SystemId, TESTS, formatNumber, partDef, partsOf, structureById, systemById, testByKey } from '@kh/catalog';
 import type { TestSeries } from '../lib/useReports';
+import type { ImagingStudy } from '../lib/imagingStudies';
+import { ImagingStudyList } from '../components/imaging';
 import type { StructureHighlight } from '../anatomy/highlight';
 import { CONNECTIONS, ORGANS, insidesOf } from '../anatomy/organs';
 import { isVein, partLabel, partLatin } from '../anatomy/names';
@@ -334,7 +336,10 @@ export function OrganPanel({
   onEnterScene,
   interp,
   initialTab,
+  imaging = [],
 }: {
+  /** Bu bölgeye ait görüntüleme belgeleri (MR, BT, röntgen, ultrason). */
+  imaging?: ImagingStudy[];
   structure: string;
   body: 'male' | 'female';
   onSwitchBody: (b: 'male' | 'female') => void;
@@ -405,6 +410,16 @@ export function OrganPanel({
             {SCORE_WORD[Math.min(3, Math.round(h.score))]} sapma. İlişkili süreçleri gösterir; yapıda sorun olduğu anlamına gelmez.
           </p>
         </div>
+      )}
+
+      {!part && imaging.length > 0 && (
+        <section className="mb-5">
+          <Caps className="text-fg-faint">Görüntülemelerin ({imaging.length})</Caps>
+          <div className="mt-2">
+            <ImagingStudyList studies={imaging} compact />
+          </div>
+          <p className="mt-1.5 text-[11px] leading-relaxed text-fg-faint">Belge bu bölgeyle ilişkilendirildi; görüntü ve rapor uygulama tarafından yorumlanmaz.</p>
+        </section>
       )}
 
       {!part && insides[0] && (
