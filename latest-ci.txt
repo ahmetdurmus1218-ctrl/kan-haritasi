@@ -1,8 +1,30 @@
 workflow: CI
-run: 36698966160
-sha: 5aa0cdcc908494bfba7a2ea890be7c188b8f799a
+run: 36701091220
+sha: 9578c0f71e23a67afefd17f7616e5c1210919138
 conclusion: success
 
+e2e: success
+  - Set up job: success
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Run pnpm build: success
+  - Run actions/setup-python@v5: success
+  - Playwright (Chromium): success
+  - Önizleme sunucusu: success
+  - Belgeler ve kasa (smoke): success
+  - Okuma → sonuçlar → vücutta göster → simülasyon: success
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
+  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
+  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
+  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
+  - Run actions/upload-artifact@v4: success
+  - Post Run actions/setup-python@v5: success
+  - Post Run actions/setup-node@v4: success
+  - Post Run pnpm/action-setup@v4: success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 dependencies: success
   - Set up job: success
   - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
@@ -22,28 +44,6 @@ web: success
   - Derleme: success
   - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
   - Run actions/upload-artifact@v4: success
-  - Post Run actions/setup-node@v4: success
-  - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-e2e: success
-  - Set up job: success
-  - Run actions/checkout@v4: success
-  - Run pnpm/action-setup@v4: success
-  - Run actions/setup-node@v4: success
-  - Run pnpm install --frozen-lockfile: success
-  - Run pnpm build: success
-  - Run actions/setup-python@v5: success
-  - Playwright (Chromium): success
-  - Önizleme sunucusu: success
-  - Belgeler ve kasa (smoke): success
-  - Okuma → sonuçlar → vücutta göster → simülasyon: success
-  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
-  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
-  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
-  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
-  - Run actions/upload-artifact@v4: success
-  - Post Run actions/setup-python@v5: success
   - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
