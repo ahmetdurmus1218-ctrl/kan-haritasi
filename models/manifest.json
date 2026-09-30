@@ -1,0 +1,1203 @@
+{
+ "source": "HuBMAP Human Reference Atlas — 3D Reference Object Library (VH Male, VH Female), CC BY 4.0; BodyParts3D 3.0 (DBCLS), CC BY-SA 2.1 JP (skin [male], skeleton, muscles, stomach, esophagus, glands, diaphragm)",
+ "bp3d": {
+  "repo": "https://github.com/Kevin-Mattheus-Moerman/BodyParts3D",
+  "commit": "f0eeb6e843380cfe6b83797cf8c3e1af74de5e61"
+ },
+ "sourceUrl": "https://github.com/hubmapconsortium/ccf-3d-reference-object-library",
+ "sourceCommit": "f1a3a63f110e27ff0736047d52d04dba5d3087f9",
+ "units": "meter; +Y up, +X subject left, +Z anterior",
+ "maleToFemale": {
+  "s": 0.9474131535726638,
+  "R": [
+   [
+    0.9975515385556587,
+    0.013469898030698587,
+    -0.06862572238076019
+   ],
+   [
+    -0.01390318889516129,
+    0.9998862908193328,
+    -0.005840100179127613
+   ],
+   [
+    0.06853925345219351,
+    0.00677991730033454,
+    0.9976253823242558
+   ]
+  ],
+  "t": [
+   -0.015128214748123241,
+   -0.00037655989137586054,
+   -0.06953166038611344
+  ]
+ },
+ "bodies": {
+  "male": {
+   "body": {
+    "file": "m/body.glb",
+    "bytes": 921820,
+    "triangles": 35850,
+    "bounds": {
+     "min": [
+      -0.334,
+      -0.8618,
+      -0.1771
+     ],
+     "max": [
+      0.3695,
+      0.9172,
+      0.1378
+     ]
+    },
+    "nodes": [
+     "skin"
+    ]
+   },
+   "skeleton": {
+    "file": "m/skeleton.glb",
+    "bytes": 3671080,
+    "triangles": 138986,
+    "bounds": {
+     "min": [
+      -0.3285,
+      -0.8543,
+      -0.1555
+     ],
+     "max": [
+      0.3638,
+      0.9136,
+      0.1181
+     ]
+    },
+    "nodes": [
+     "bones|femur-l",
+     "bones|femur-r",
+     "bones|foot-l",
+     "bones|foot-r",
+     "bones|forearm-l",
+     "bones|forearm-r",
+     "bones|hand-l",
+     "bones|hand-r",
+     "bones|humerus-l",
+     "bones|humerus-r",
+     "bones|leg-l",
+     "bones|leg-r",
+     "bones|pelvis",
+     "bones|ribcage",
+     "bones|shoulder-l",
+     "bones|shoulder-r",
+     "bones|skull",
+     "bones|spine",
+     "knee|meniscus",
+     "knee|cartilage",
+     "knee|cartilage",
+     "knee|meniscus",
+     "knee|collateral",
+     "knee|pcl",
+     "knee|acl",
+     "knee|patellar",
+     "knee|acl",
+     "knee|collateral",
+     "knee|pcl",
+     "knee|patellar"
+    ]
+   },
+   "endocrine": {
+    "file": "m/endocrine.glb",
+    "bytes": 118424,
+    "triangles": 3996,
+    "bounds": {
+     "min": [
+      -0.0804,
+      0.3203,
+      -0.0457
+     ],
+     "max": [
+      0.0784,
+      0.7939,
+      0.0165
+     ]
+    },
+    "nodes": [
+     "pituitary",
+     "adrenals|right",
+     "adrenals|left"
+    ]
+   },
+   "digestive": {
+    "file": "m/digestive.glb",
+    "bytes": 2112328,
+    "triangles": 78404,
+    "bounds": {
+     "min": [
+      -0.1332,
+      -0.0389,
+      -0.0896
+     ],
+     "max": [
+      0.1431,
+      0.6748,
+      0.139
+     ]
+    },
+    "nodes": [
+     "stomach",
+     "esophagus",
+     "liver|capsule",
+     "liver|porta",
+     "liver|caudate",
+     "liver|right-lobe",
+     "liver|left-lobe",
+     "liver|quadrate",
+     "liver|ligaments",
+     "gallbladder|gallbladder",
+     "pancreas|ducts",
+     "gallbladder|bile-ducts",
+     "pancreas|body",
+     "pancreas|tail",
+     "pancreas|head",
+     "small-intestine|ileum",
+     "small-intestine|jejunum",
+     "small-intestine|duodenum",
+     "large-intestine|ascending",
+     "large-intestine|descending",
+     "large-intestine|rectum",
+     "large-intestine|sigmoid",
+     "large-intestine|transverse",
+     "large-intestine|cecum"
+    ]
+   },
+   "urinary": {
+    "file": "m/urinary.glb",
+    "bytes": 1533088,
+    "triangles": 55002,
+    "bounds": {
+     "min": [
+      -0.0969,
+      -0.1091,
+      -0.0686
+     ],
+     "max": [
+      0.1094,
+      0.3564,
+      0.1117
+     ]
+    },
+    "nodes": [
+     "kidneys|capsule",
+     "kidneys|hilum",
+     "kidneys|column",
+     "kidneys|cortex",
+     "kidneys|papilla",
+     "kidneys|pyramid",
+     "kidneys|capsule",
+     "kidneys|hilum",
+     "kidneys|papilla",
+     "kidneys|pyramid",
+     "kidneys|column",
+     "kidneys|cortex",
+     "urinary-tract|renal-pelvis",
+     "urinary-tract|calyces",
+     "urinary-tract|ureter",
+     "urinary-tract|calyces",
+     "urinary-tract|renal-pelvis",
+     "urinary-tract|ureter",
+     "urinary-tract|bladder-neck",
+     "urinary-tract|bladder",
+     "urinary-tract|trigone",
+     "urinary-tract|urethra",
+     "prostate|ducts",
+     "prostate|apex-base",
+     "prostate|peripheral",
+     "prostate|transition",
+     "prostate|central",
+     "prostate|stroma"
+    ]
+   },
+   "reproductive": {
+    "file": "m/reproductive.glb",
+    "bytes": 254500,
+    "triangles": 9196,
+    "bounds": {
+     "min": [
+      -0.0717,
+      -0.1057,
+      -0.0695
+     ],
+     "max": [
+      0.0971,
+      0.0808,
+      0.0875
+     ]
+    },
+    "nodes": [
+     "testes|right",
+     "testes|left",
+     "male-genitals|seminal-vesicles",
+     "male-genitals|vas-deferens",
+     "male-genitals|penis"
+    ]
+   },
+   "respiratory": {
+    "file": "m/respiratory.glb",
+    "bytes": 1630860,
+    "triangles": 61651,
+    "bounds": {
+     "min": [
+      -0.1255,
+      0.2209,
+      -0.0922
+     ],
+     "max": [
+      0.1347,
+      0.7002,
+      0.1031
+     ]
+    },
+    "nodes": [
+     "diaphragm",
+     "lungs|hilum",
+     "lungs|left-upper",
+     "lungs|left-lower",
+     "lungs|right-middle",
+     "lungs|right-lower",
+     "lungs|right-upper",
+     "airways|lobar-bronchi",
+     "airways|bronchial-cartilage",
+     "airways|segmental-bronchi",
+     "airways|main-bronchi",
+     "airways|trachea",
+     "airways|tracheal-rings",
+     "airways|larynx",
+     "airways|epiglottis"
+    ]
+   },
+   "nervous": {
+    "file": "m/nervous.glb",
+    "bytes": 2890280,
+    "triangles": 102032,
+    "bounds": {
+     "min": [
+      -0.2815,
+      -0.8337,
+      -0.124
+     ],
+     "max": [
+      0.3034,
+      0.9025,
+      0.0979
+     ]
+    },
+    "nodes": [
+     "nerves|brachial",
+     "nerves|median",
+     "nerves|ulnar",
+     "nerves|radial",
+     "nerves|femoral",
+     "nerves|sciatic",
+     "nerves|tibial",
+     "nerves|peroneal",
+     "nerves|vagus",
+     "nerves|brachial",
+     "nerves|median",
+     "nerves|ulnar",
+     "nerves|radial",
+     "nerves|femoral",
+     "nerves|sciatic",
+     "nerves|tibial",
+     "nerves|peroneal",
+     "nerves|vagus",
+     "brain|olfactory",
+     "brain|insula",
+     "brain|basal-nuclei",
+     "brain|amygdala",
+     "brain|thalamus",
+     "pineal",
+     "hypothalamus|regions",
+     "brain|white-matter",
+     "brain|corpus-callosum",
+     "brain|visual-pathway",
+     "brain|ventricles",
+     "brain|cerebellum",
+     "brain|motor",
+     "brain|frontal",
+     "brain|sensory",
+     "brain|parietal",
+     "brain|temporal",
+     "brain|auditory",
+     "brain|occipital",
+     "brain|cingulate",
+     "brain|hippocampus",
+     "brain|midbrain",
+     "brain|pons",
+     "brain|medulla",
+     "spinal-cord|cervical",
+     "spinal-cord|thoracic",
+     "spinal-cord|lumbar",
+     "spinal-cord|sacral",
+     "eyes|conjunctiva",
+     "eyes|retina",
+     "eyes|sclera",
+     "eyes|iris",
+     "eyes|cornea",
+     "eyes|ciliary",
+     "eyes|aqueous",
+     "eyes|choroid",
+     "eyes|lens",
+     "eyes|vitreous",
+     "eyes|zonule",
+     "eyes|macula",
+     "eyes|optic-disc",
+     "eyes|conjunctiva",
+     "eyes|sclera",
+     "eyes|iris",
+     "eyes|aqueous",
+     "eyes|choroid",
+     "eyes|ciliary",
+     "eyes|cornea",
+     "eyes|lens",
+     "eyes|retina",
+     "eyes|zonule",
+     "eyes|macula",
+     "eyes|optic-disc",
+     "eyes|vitreous",
+     "eyes|optic-nerve",
+     "eyes|optic-nerve",
+     "eyes|muscles",
+     "eyes|muscles"
+    ]
+   },
+   "immune": {
+    "file": "m/immune.glb",
+    "bytes": 596360,
+    "triangles": 21164,
+    "bounds": {
+     "min": [
+      -0.0267,
+      0.3107,
+      -0.0808
+     ],
+     "max": [
+      0.1363,
+      0.7524,
+      0.078
+     ]
+    },
+    "nodes": [
+     "spleen|surface",
+     "spleen|hilum",
+     "thymus",
+     "tonsils",
+     "tonsils",
+     "lymph-node|afferent",
+     "lymph-node|capsule",
+     "lymph-node|follicles",
+     "lymph-node|efferent",
+     "lymph-node|medulla",
+     "lymph-node|paracortex",
+     "lymph-node|vessels"
+    ]
+   },
+   "cardio": {
+    "file": "m/cardio.glb",
+    "bytes": 4903492,
+    "triangles": 182115,
+    "bounds": {
+     "min": [
+      -0.286,
+      -0.8298,
+      -0.1476
+     ],
+     "max": [
+      0.3124,
+      0.8288,
+      0.0969
+     ]
+    },
+    "nodes": [
+     "carotid-arteries|right subclavian artery",
+     "carotid-arteries|left subclavian artery",
+     "carotid-arteries|right common carotid artery",
+     "abdominal-vessels|right common iliac artery",
+     "abdominal-vessels|left common iliac artery",
+     "abdominal-vessels|right external iliac artery",
+     "abdominal-vessels|left external iliac artery",
+     "abdominal-vessels|right internal iliac artery",
+     "abdominal-vessels|left internal iliac artery",
+     "veins|right internal jugular vein",
+     "veins|left internal jugular vein",
+     "veins|right subclavian vein",
+     "veins|left subclavian vein",
+     "limb-vessels|right axillary and brachial artery",
+     "limb-vessels|right radial artery",
+     "limb-vessels|right ulnar artery",
+     "limb-vessels|right palmar arch",
+     "limb-vessels|right axillary and brachial vein",
+     "limb-vessels|right cephalic vein",
+     "limb-vessels|right basilic vein",
+     "limb-vessels|right femoral and popliteal artery",
+     "limb-vessels|right anterior tibial artery",
+     "limb-vessels|right posterior tibial artery",
+     "limb-vessels|right femoral and popliteal vein",
+     "limb-vessels|right great saphenous vein",
+     "limb-vessels|right small saphenous vein",
+     "limb-vessels|left axillary and brachial artery",
+     "limb-vessels|left radial artery",
+     "limb-vessels|left ulnar artery",
+     "limb-vessels|left palmar arch",
+     "limb-vessels|left axillary and brachial vein",
+     "limb-vessels|left cephalic vein",
+     "limb-vessels|left basilic vein",
+     "limb-vessels|left femoral and popliteal artery",
+     "limb-vessels|left anterior tibial artery",
+     "limb-vessels|left posterior tibial artery",
+     "limb-vessels|left femoral and popliteal vein",
+     "limb-vessels|left great saphenous vein",
+     "limb-vessels|left small saphenous vein",
+     "heart|mitral",
+     "heart|tricuspid",
+     "heart|aortic-valve",
+     "heart|pulmonary-valve",
+     "heart|papillary",
+     "heart|left-atrium",
+     "heart|right-atrium",
+     "heart|right-ventricle",
+     "heart|septum",
+     "heart|left-ventricle",
+     "eye-vessels|ophthalmic vein L",
+     "eye-vessels|superior ophthalmic vein L",
+     "eye-vessels|inferior ophthalmic vein L",
+     "eye-vessels|central retinal vein L",
+     "eye-vessels|ophthalmic vein R",
+     "eye-vessels|superior ophthalmic vein R",
+     "eye-vessels|inferior ophthalmic vein R",
+     "eye-vessels|central retinal vein R",
+     "eye-vessels|central retinal artery L",
+     "eye-vessels|opthalmic artery L",
+     "eye-vessels|long posterior ciliary artery L",
+     "eye-vessels|central retinal artery R",
+     "eye-vessels|opthalmic artery R",
+     "eye-vessels|long posterior ciliary artery R",
+     "abdominal-vessels|inferior mesenteric vein",
+     "abdominal-vessels|median sacral vein",
+     "abdominal-vessels|sigmoid vein",
+     "abdominal-vessels|superior mesenteric vein",
+     "abdominal-vessels|superior rectal vein",
+     "veins|common iliac vein L",
+     "veins|common iliac vein R",
+     "abdominal-vessels|inferior pancreaticoduodenal vein",
+     "veins|external iliac vein L",
+     "veins|external iliac vein R",
+     "abdominal-vessels|inferior rectal vein L",
+     "abdominal-vessels|inferior rectal vein R",
+     "abdominal-vessels|internal pudendal vein L",
+     "abdominal-vessels|internal pudendal vein R",
+     "veins|internal iliac vein L",
+     "veins|internal iliac vein R",
+     "abdominal-vessels|left colic vein",
+     "abdominal-vessels|ileocolic vein",
+     "abdominal-vessels|right colic vein",
+     "abdominal-vessels|middle colic vein",
+     "abdominal-vessels|middle rectal vein L",
+     "abdominal-vessels|middle rectal vein R",
+     "abdominal-vessels|right colic artery",
+     "abdominal-vessels|middle colic artery",
+     "abdominal-vessels|left colic artery",
+     "abdominal-vessels|ileocolic artery",
+     "abdominal-vessels|sigmoid artery a",
+     "abdominal-vessels|sigmoid artery b",
+     "abdominal-vessels|sigmoid artery c",
+     "abdominal-vessels|inferior mesenteric artery",
+     "abdominal-vessels|superior mesenteric artery",
+     "abdominal-vessels|marginal artery of Drummond",
+     "renal-vessels|renal vein L",
+     "renal-vessels|renal vein R",
+     "renal-vessels|left renal artery",
+     "renal-vessels|right renal artery",
+     "aorta|aortic arch",
+     "aorta|ascending aorta",
+     "carotid-arteries|brachiocephalic artery b",
+     "carotid-arteries|brachiocephalic artery a",
+     "carotid-arteries|left common carotid artery a",
+     "carotid-arteries|left common carotid artery b",
+     "carotid-arteries|left subclavian artery a",
+     "carotid-arteries|left subclavian artery b",
+     "aorta|descending aorta a",
+     "aorta|descending aorta b",
+     "coronary-arteries|left anterior descending artery",
+     "coronary-arteries|right marginal artery",
+     "coronary-arteries|right posterior descending artery",
+     "coronary-arteries|diagonal branch of anterior descending branch of left coronary artery",
+     "coronary-arteries|left coronary artery",
+     "coronary-arteries|right coronary artery",
+     "coronary-arteries|diagonal branch of left anterior descending artery",
+     "coronary-arteries|left marginal branch",
+     "pulmonary-vessels|pulmonary artery L",
+     "pulmonary-vessels|pulmonary artery R",
+     "pulmonary-vessels|pulmonary trunk",
+     "veins|great cardiac vein",
+     "veins|middle cardiac vein",
+     "veins|oblique vein of left atrium",
+     "veins|anterior cardiac vein",
+     "veins|coronary sinus",
+     "veins|posterior vein of left ventricle",
+     "veins|small cardiac vein",
+     "pulmonary-vessels|pulmonary vein R inf",
+     "pulmonary-vessels|pulmonary vein R sup",
+     "pulmonary-vessels|pulmonary vein L inf",
+     "pulmonary-vessels|pulmonary vein L sup",
+     "veins|brachiocephalic vein L",
+     "veins|brachiocephalic vein R",
+     "veins|superior vena cava",
+     "veins|inferior vena cava b",
+     "veins|inferior vena cava a",
+     "abdominal-vessels|splenic vein",
+     "abdominal-vessels|splenic artery",
+     "abdominal-vessels|cystic vein",
+     "abdominal-vessels|cystic artery",
+     "abdominal-vessels|celiac trunk",
+     "abdominal-vessels|left hepatic artery",
+     "abdominal-vessels|proper hepatic artery",
+     "abdominal-vessels|posterior segmental right hepatic artery",
+     "abdominal-vessels|right hepatic artery",
+     "abdominal-vessels|anterior segmental right hepatic artery",
+     "abdominal-vessels|common hepatic artery",
+     "abdominal-vessels|middle hepatic artery branch of left hepatic artery",
+     "abdominal-vessels|right hepatic vein",
+     "abdominal-vessels|left hepatic vein",
+     "abdominal-vessels|middle hepatic vein",
+     "abdominal-vessels|left branch of portal vein",
+     "abdominal-vessels|right branch of portal vein",
+     "abdominal-vessels|portal vein",
+     "abdominal-vessels|hepatic portal vein"
+    ]
+   },
+   "muscles": {
+    "file": "m/muscles.glb",
+    "bytes": 4043600,
+    "triangles": 149748,
+    "bounds": {
+     "min": [
+      -0.325,
+      -0.8545,
+      -0.1591
+     ],
+     "max": [
+      0.3567,
+      0.916,
+      0.134
+     ]
+    },
+    "nodes": [
+     "skeletal-muscle|abdomen",
+     "skeletal-muscle|back",
+     "skeletal-muscle|forearm-l",
+     "skeletal-muscle|forearm-r",
+     "skeletal-muscle|head",
+     "skeletal-muscle|hip-l",
+     "skeletal-muscle|hip-r",
+     "skeletal-muscle|leg-l",
+     "skeletal-muscle|leg-r",
+     "skeletal-muscle|neck",
+     "skeletal-muscle|thigh-l",
+     "skeletal-muscle|thigh-r",
+     "skeletal-muscle|thorax",
+     "skeletal-muscle|upper-arm-l",
+     "skeletal-muscle|upper-arm-r"
+    ]
+   }
+  },
+  "female": {
+   "body": {
+    "file": "f/body.glb",
+    "bytes": 946196,
+    "triangles": 40000,
+    "bounds": {
+     "min": [
+      -0.4895,
+      -0.7948,
+      -0.2225
+     ],
+     "max": [
+      0.4778,
+      0.8715,
+      0.1066
+     ]
+    },
+    "nodes": [
+     "skin"
+    ]
+   },
+   "skeleton": {
+    "file": "f/skeleton.glb",
+    "bytes": 4110116,
+    "triangles": 155370,
+    "bounds": {
+     "min": [
+      -0.4657,
+      -0.7922,
+      -0.1825
+     ],
+     "max": [
+      0.4601,
+      0.8652,
+      0.0628
+     ]
+    },
+    "nodes": [
+     "bones|femur-l",
+     "bones|femur-r",
+     "bones|foot-l",
+     "bones|foot-r",
+     "bones|forearm-l",
+     "bones|forearm-r",
+     "bones|hand-l",
+     "bones|hand-r",
+     "bones|humerus-l",
+     "bones|humerus-r",
+     "bones|leg-l",
+     "bones|leg-r",
+     "bones|ribcage",
+     "bones|shoulder-l",
+     "bones|shoulder-r",
+     "bones|skull",
+     "bones|spine",
+     "bones|spine",
+     "bones|pelvis",
+     "knee|meniscus",
+     "knee|cartilage",
+     "knee|meniscus",
+     "knee|cartilage",
+     "knee|collateral",
+     "knee|patellar",
+     "knee|acl",
+     "knee|pcl",
+     "knee|collateral",
+     "knee|acl",
+     "knee|pcl",
+     "knee|patellar"
+    ]
+   },
+   "endocrine": {
+    "file": "f/endocrine.glb",
+    "bytes": 118452,
+    "triangles": 3998,
+    "bounds": {
+     "min": [
+      -0.0848,
+      0.2755,
+      -0.118
+     ],
+     "max": [
+      0.0768,
+      0.7499,
+      -0.0474
+     ]
+    },
+    "nodes": [
+     "pituitary",
+     "adrenals|right",
+     "adrenals|left"
+    ]
+   },
+   "digestive": {
+    "file": "f/digestive.glb",
+    "bytes": 2045716,
+    "triangles": 76055,
+    "bounds": {
+     "min": [
+      -0.1349,
+      -0.0133,
+      -0.1538
+     ],
+     "max": [
+      0.1181,
+      0.6388,
+      0.0469
+     ]
+    },
+    "nodes": [
+     "stomach",
+     "esophagus",
+     "liver|capsule",
+     "liver|porta",
+     "liver|left-lobe",
+     "liver|quadrate",
+     "liver|right-lobe",
+     "liver|caudate",
+     "liver|ligaments",
+     "gallbladder|gallbladder",
+     "gallbladder|bile-ducts",
+     "pancreas|ducts",
+     "pancreas|tail",
+     "pancreas|body",
+     "pancreas|head",
+     "small-intestine|duodenum",
+     "small-intestine|jejunum",
+     "small-intestine|ileum",
+     "large-intestine|ascending",
+     "large-intestine|transverse",
+     "large-intestine|cecum",
+     "large-intestine|descending",
+     "large-intestine|rectum",
+     "large-intestine|sigmoid"
+    ]
+   },
+   "urinary": {
+    "file": "f/urinary.glb",
+    "bytes": 1261692,
+    "triangles": 45109,
+    "bounds": {
+     "min": [
+      -0.1087,
+      -0.018,
+      -0.1394
+     ],
+     "max": [
+      0.1132,
+      0.3006,
+      0.0024
+     ]
+    },
+    "nodes": [
+     "kidneys|capsule",
+     "kidneys|hilum",
+     "kidneys|pyramid",
+     "kidneys|column",
+     "kidneys|cortex",
+     "kidneys|capsule",
+     "kidneys|hilum",
+     "kidneys|cortex",
+     "kidneys|column",
+     "kidneys|pyramid",
+     "urinary-tract|calyces",
+     "kidneys|papilla",
+     "urinary-tract|renal-pelvis",
+     "urinary-tract|ureter",
+     "urinary-tract|calyces",
+     "kidneys|papilla",
+     "urinary-tract|renal-pelvis",
+     "urinary-tract|ureter",
+     "urinary-tract|bladder",
+     "urinary-tract|bladder-neck",
+     "urinary-tract|trigone"
+    ]
+   },
+   "reproductive": {
+    "file": "f/reproductive.glb",
+    "bytes": 887468,
+    "triangles": 30939,
+    "bounds": {
+     "min": [
+      -0.15,
+      -0.0521,
+      -0.1606
+     ],
+     "max": [
+      0.1387,
+      0.528,
+      0.0893
+     ]
+    },
+    "nodes": [
+     "fallopian-tubes|infundibulum",
+     "uterus|body",
+     "uterus|fundus",
+     "uterus|lower-segment",
+     "uterus|cervix",
+     "uterus|ligaments",
+     "ovaries|left",
+     "ovaries|right",
+     "fallopian-tubes|ampulla",
+     "fallopian-tubes|isthmus",
+     "fallopian-tubes|infundibulum",
+     "fallopian-tubes|ampulla",
+     "fallopian-tubes|isthmus",
+     "fallopian-tubes|infundibulum",
+     "vagina|vagina",
+     "breasts|fat",
+     "breasts|nipple",
+     "breasts|lobes",
+     "breasts|ducts",
+     "breasts|ligaments",
+     "breasts|fat",
+     "breasts|nipple",
+     "breasts|ducts",
+     "breasts|lobes",
+     "breasts|ligaments"
+    ]
+   },
+   "respiratory": {
+    "file": "f/respiratory.glb",
+    "bytes": 1619376,
+    "triangles": 60972,
+    "bounds": {
+     "min": [
+      -0.1305,
+      0.2089,
+      -0.1564
+     ],
+     "max": [
+      0.1206,
+      0.6639,
+      0.0299
+     ]
+    },
+    "nodes": [
+     "diaphragm",
+     "lungs|hilum",
+     "lungs|left-upper",
+     "lungs|left-lower",
+     "lungs|right-lower",
+     "lungs|right-middle",
+     "lungs|right-upper",
+     "airways|lobar-bronchi",
+     "airways|segmental-bronchi",
+     "airways|trachea",
+     "airways|tracheal-rings",
+     "airways|larynx",
+     "airways|epiglottis"
+    ]
+   },
+   "nervous": {
+    "file": "f/nervous.glb",
+    "bytes": 2882828,
+    "triangles": 100908,
+    "bounds": {
+     "min": [
+      -0.4059,
+      -0.7692,
+      -0.154
+     ],
+     "max": [
+      0.3889,
+      0.857,
+      0.0345
+     ]
+    },
+    "nodes": [
+     "nerves|brachial",
+     "nerves|median",
+     "nerves|ulnar",
+     "nerves|radial",
+     "nerves|femoral",
+     "nerves|sciatic",
+     "nerves|tibial",
+     "nerves|peroneal",
+     "nerves|vagus",
+     "nerves|brachial",
+     "nerves|median",
+     "nerves|ulnar",
+     "nerves|radial",
+     "nerves|femoral",
+     "nerves|sciatic",
+     "nerves|tibial",
+     "nerves|peroneal",
+     "nerves|vagus",
+     "brain|visual-pathway",
+     "brain|olfactory",
+     "brain|insula",
+     "brain|basal-nuclei",
+     "brain|amygdala",
+     "brain|thalamus",
+     "pineal",
+     "hypothalamus|regions",
+     "brain|white-matter",
+     "brain|corpus-callosum",
+     "brain|ventricles",
+     "brain|cerebellum",
+     "brain|motor",
+     "brain|frontal",
+     "brain|sensory",
+     "brain|parietal",
+     "brain|temporal",
+     "brain|auditory",
+     "brain|occipital",
+     "brain|cingulate",
+     "brain|hippocampus",
+     "brain|midbrain",
+     "brain|pons",
+     "brain|medulla",
+     "spinal-cord|cervical",
+     "spinal-cord|thoracic",
+     "spinal-cord|lumbar",
+     "spinal-cord|sacral",
+     "eyes|conjunctiva",
+     "eyes|retina",
+     "eyes|sclera",
+     "eyes|iris",
+     "eyes|cornea",
+     "eyes|ciliary",
+     "eyes|aqueous",
+     "eyes|choroid",
+     "eyes|lens",
+     "eyes|vitreous",
+     "eyes|zonule",
+     "eyes|macula",
+     "eyes|optic-disc",
+     "eyes|sclera",
+     "eyes|iris",
+     "eyes|aqueous",
+     "eyes|choroid",
+     "eyes|ciliary",
+     "eyes|cornea",
+     "eyes|lens",
+     "eyes|retina",
+     "eyes|zonule",
+     "eyes|macula",
+     "eyes|optic-disc",
+     "eyes|vitreous",
+     "eyes|conjunctiva",
+     "eyes|optic-nerve",
+     "eyes|optic-nerve",
+     "eyes|muscles",
+     "eyes|muscles"
+    ]
+   },
+   "immune": {
+    "file": "f/immune.glb",
+    "bytes": 595720,
+    "triangles": 21442,
+    "bounds": {
+     "min": [
+      -0.0282,
+      0.2169,
+      -0.1532
+     ],
+     "max": [
+      0.1263,
+      0.7008,
+      0.0033
+     ]
+    },
+    "nodes": [
+     "spleen|surface",
+     "spleen|hilum",
+     "thymus",
+     "tonsils",
+     "tonsils",
+     "lymph-node|afferent",
+     "lymph-node|capsule",
+     "lymph-node|follicles",
+     "lymph-node|efferent",
+     "lymph-node|medulla",
+     "lymph-node|paracortex",
+     "lymph-node|vessels"
+    ]
+   },
+   "cardio": {
+    "file": "f/cardio.glb",
+    "bytes": 4889164,
+    "triangles": 180574,
+    "bounds": {
+     "min": [
+      -0.4176,
+      -0.7675,
+      -0.1573
+     ],
+     "max": [
+      0.4018,
+      0.7834,
+      0.0336
+     ]
+    },
+    "nodes": [
+     "carotid-arteries|right subclavian artery",
+     "carotid-arteries|left subclavian artery",
+     "carotid-arteries|right common carotid artery",
+     "abdominal-vessels|right common iliac artery",
+     "abdominal-vessels|left common iliac artery",
+     "abdominal-vessels|right external iliac artery",
+     "abdominal-vessels|left external iliac artery",
+     "abdominal-vessels|right internal iliac artery",
+     "abdominal-vessels|left internal iliac artery",
+     "veins|right internal jugular vein",
+     "veins|left internal jugular vein",
+     "veins|right subclavian vein",
+     "veins|left subclavian vein",
+     "limb-vessels|right axillary and brachial artery",
+     "limb-vessels|right radial artery",
+     "limb-vessels|right ulnar artery",
+     "limb-vessels|right palmar arch",
+     "limb-vessels|right axillary and brachial vein",
+     "limb-vessels|right cephalic vein",
+     "limb-vessels|right basilic vein",
+     "limb-vessels|right femoral and popliteal artery",
+     "limb-vessels|right anterior tibial artery",
+     "limb-vessels|right posterior tibial artery",
+     "limb-vessels|right femoral and popliteal vein",
+     "limb-vessels|right great saphenous vein",
+     "limb-vessels|right small saphenous vein",
+     "limb-vessels|left axillary and brachial artery",
+     "limb-vessels|left radial artery",
+     "limb-vessels|left ulnar artery",
+     "limb-vessels|left palmar arch",
+     "limb-vessels|left axillary and brachial vein",
+     "limb-vessels|left cephalic vein",
+     "limb-vessels|left basilic vein",
+     "limb-vessels|left femoral and popliteal artery",
+     "limb-vessels|left anterior tibial artery",
+     "limb-vessels|left posterior tibial artery",
+     "limb-vessels|left femoral and popliteal vein",
+     "limb-vessels|left great saphenous vein",
+     "limb-vessels|left small saphenous vein",
+     "heart|septum",
+     "heart|left-atrium",
+     "heart|left-ventricle",
+     "heart|right-atrium",
+     "heart|right-ventricle",
+     "heart|papillary",
+     "heart|aortic-valve",
+     "heart|pulmonary-valve",
+     "heart|mitral",
+     "heart|tricuspid",
+     "abdominal-vessels|left uterine artery",
+     "abdominal-vessels|right uterine artery",
+     "abdominal-vessels|left uterine vein",
+     "abdominal-vessels|right uterine vein",
+     "eye-vessels|ophthalmic vein L",
+     "eye-vessels|superior ophthalmic vein L",
+     "eye-vessels|inferior ophthalmic vein L",
+     "eye-vessels|central retinal vein L",
+     "eye-vessels|ophthalmic vein R",
+     "eye-vessels|superior ophthalmic vein R",
+     "eye-vessels|inferior ophthalmic vein R",
+     "eye-vessels|central retinal vein R",
+     "eye-vessels|long posterior ciliary artery L",
+     "eye-vessels|opthalmic artery L",
+     "eye-vessels|central retinal artery L",
+     "eye-vessels|long posterior ciliary artery R",
+     "eye-vessels|opthalmic artery R",
+     "eye-vessels|central retinal artery R",
+     "renal-vessels|right renal artery",
+     "renal-vessels|left renal artery",
+     "renal-vessels|left renal vein",
+     "renal-vessels|right renal vein",
+     "abdominal-vessels|superior mesenteric vein",
+     "abdominal-vessels|superior rectal vein",
+     "veins|left common iliac vein",
+     "veins|right common iliac vein",
+     "abdominal-vessels|left colic vein",
+     "abdominal-vessels|right colic vein",
+     "abdominal-vessels|ileocolic vein",
+     "abdominal-vessels|middle colic vein",
+     "abdominal-vessels|inferior rectal vein L",
+     "abdominal-vessels|inferior rectal vein R",
+     "veins|internal iliac vein L",
+     "veins|internal iliac vein R",
+     "abdominal-vessels|internal pudendal vein L",
+     "abdominal-vessels|internal pudendal vein R",
+     "abdominal-vessels|middle rectal vein L",
+     "abdominal-vessels|middle rectal vein R",
+     "abdominal-vessels|sigmoid vein a",
+     "abdominal-vessels|sigmoid vein c",
+     "abdominal-vessels|median sacral vein",
+     "abdominal-vessels|sigmoid vein b",
+     "abdominal-vessels|inferior pancreaticoduodenal vein",
+     "abdominal-vessels|inferior mesenteric vein",
+     "abdominal-vessels|left colic artery",
+     "abdominal-vessels|right colic artery",
+     "abdominal-vessels|ileocolic artery",
+     "abdominal-vessels|middle colic artery",
+     "abdominal-vessels|celiac trunk",
+     "abdominal-vessels|superior rectal artery",
+     "abdominal-vessels|superior mesenteric artery",
+     "abdominal-vessels|inferior mesenteric artery",
+     "abdominal-vessels|marginal artery of Drummond",
+     "abdominal-vessels|sigmoid artery c",
+     "abdominal-vessels|sigmoid artery b",
+     "abdominal-vessels|sigmoid artery a",
+     "abdominal-vessels|splenic artery",
+     "abdominal-vessels|splenic vein",
+     "abdominal-vessels|cystic artery",
+     "abdominal-vessels|cystic vein",
+     "abdominal-vessels|middle hepatic artery branch of left hepatic artery",
+     "abdominal-vessels|proper hepatic artery",
+     "abdominal-vessels|right hepatic artery",
+     "abdominal-vessels|common hepatic artery",
+     "abdominal-vessels|posterior segmental right hepatic artery",
+     "abdominal-vessels|anterior segmental right hepatic artery",
+     "abdominal-vessels|left hepatic artery",
+     "abdominal-vessels|hepatic portal vein",
+     "abdominal-vessels|middle hepatic vein",
+     "abdominal-vessels|left hepatic vein",
+     "abdominal-vessels|right hepatic vein",
+     "abdominal-vessels|right branch of portal vein",
+     "abdominal-vessels|left branch of portal vein",
+     "pulmonary-vessels|pulmonary vein L sup",
+     "pulmonary-vessels|pulmonary vein R inf",
+     "pulmonary-vessels|pulmonary vein R sup",
+     "pulmonary-vessels|pulmonary vein L inf",
+     "veins|coronary sinus",
+     "veins|great cardiac vein",
+     "veins|middle cardiac vein",
+     "veins|oblique vein of left atrium",
+     "abdominal-vessels|left marginal vein",
+     "veins|posterior vein of left ventricle",
+     "veins|anterior cardiac vein",
+     "veins|small cardiac vein",
+     "veins|superior vena cava",
+     "veins|inferior vena cava a",
+     "veins|inferior vena cava b",
+     "coronary-arteries|left anterior descending artery",
+     "abdominal-vessels|left circumflex artery",
+     "coronary-arteries|diagonal branch of left anterior descending artery",
+     "coronary-arteries|left coronary artery",
+     "coronary-arteries|left marginal branch",
+     "coronary-arteries|left posterior descending branch of circumflex branch of left coronary artery",
+     "abdominal-vessels|posterior left ventricular branch",
+     "coronary-arteries|right coronary artery",
+     "coronary-arteries|right marginal artery",
+     "pulmonary-vessels|pulmonary artery L",
+     "pulmonary-vessels|pulmonary trunk",
+     "pulmonary-vessels|pulmonary artery R",
+     "aorta|aortic arch",
+     "aorta|ascending aorta",
+     "aorta|descending aorta a",
+     "aorta|descending aorta b",
+     "carotid-arteries|left common carotid artery a",
+     "carotid-arteries|left common carotid artery b",
+     "carotid-arteries|left subclavian artery a",
+     "carotid-arteries|left subclavian artery b",
+     "carotid-arteries|brachiocephalic artery b",
+     "carotid-arteries|brachiocephalic artery a"
+    ]
+   },
+   "muscles": {
+    "file": "f/muscles.glb",
+    "bytes": 4052944,
+    "triangles": 149698,
+    "bounds": {
+     "min": [
+      -0.4618,
+      -0.7911,
+      -0.1973
+     ],
+     "max": [
+      0.4533,
+      0.8673,
+      0.0565
+     ]
+    },
+    "nodes": [
+     "skeletal-muscle|abdomen",
+     "skeletal-muscle|back",
+     "skeletal-muscle|forearm-l",
+     "skeletal-muscle|forearm-r",
+     "skeletal-muscle|head",
+     "skeletal-muscle|hip-l",
+     "skeletal-muscle|hip-r",
+     "skeletal-muscle|leg-l",
+     "skeletal-muscle|leg-r",
+     "skeletal-muscle|neck",
+     "skeletal-muscle|thigh-l",
+     "skeletal-muscle|thigh-r",
+     "skeletal-muscle|thorax",
+     "skeletal-muscle|upper-arm-l",
+     "skeletal-muscle|upper-arm-r"
+    ]
+   }
+  }
+ }
+}
