@@ -1,6 +1,6 @@
 workflow: pages build and deployment
-run: 36615774926
-sha: 1619c15efa159dcf35c3e5ffe410a5f8b3001647
+run: 36701183140
+sha: 456c0ca21b3722416c7cd447b1642d42f9299847
 conclusion: success
 
 build: success
@@ -9,12 +9,12 @@ build: success
   - Upload artifact: success
   - Post Checkout: success
   - Complete job: success
-deploy: success
-  - Set up job: success
-  - Deploy to GitHub Pages: success
-  - Complete job: success
 report-build-status: success
   - Set up job: success
   - Report Build Status: success
+  - Complete job: success
+deploy: success
+  - Set up job: success
+  - Deploy to GitHub Pages: success
   - Complete job: success
 
