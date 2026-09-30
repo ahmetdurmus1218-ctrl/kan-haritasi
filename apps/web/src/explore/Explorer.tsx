@@ -21,7 +21,8 @@ import { partLabel, partLatin } from '../anatomy/names';
 import { type BodyModel, webglAvailable } from '../anatomy/models';
 import { highlightColor } from '../anatomy/palette';
 import { Banner } from '../components/ui';
-import { LayersIcon } from '../components/icons';
+import { LayersIcon, MaximizeIcon, MinimizeIcon } from '../components/icons';
+import { setImmersive, useImmersive } from '../state/immersive';
 import { useModels, structureBoxes } from './useModels';
 import { INTRO_START, OVERVIEW, PRESETS, type Shot, applyShot, direction, frameBox, overviewShot, panelOffset, shotDistance } from './camera';
 import { SceneDirector } from './SceneDirector';
@@ -134,6 +135,9 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const cloudRefs = useCloudRefs();
   const [sheetExpand, setSheetExpand] = useState(0);
   const [panelTab, setPanelTab] = useState<{ tab: OrganTab; n: number } | null>(null);
+  // "Yalnızca model": paneller ve uygulama çerçevesi gizlenir; döndürme, yakınlaştırma ve dokunma çalışır.
+  const immersive = useImmersive();
+  useEffect(() => () => setImmersive(false), []);
 
   useEffect(() => {
     loadSex(vault).then(setSex, () => undefined);
@@ -467,8 +471,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const hasInner = !!structure && vessels.some((v) => v.def?.inner);
 
   /* ---------------------------------------------------------- klavye */
-  const keyState = useRef({ goUp, hideCurrent, onReset, onView, onZoom, structure, hasInner, shownKey, body, switchBody });
-  keyState.current = { goUp, hideCurrent, onReset, onView, onZoom, structure, hasInner, shownKey, body, switchBody };
+  const keyState = useRef({ goUp, hideCurrent, onReset, onView, onZoom, structure, hasInner, shownKey, body, switchBody, immersive });
+  keyState.current = { goUp, hideCurrent, onReset, onView, onZoom, structure, hasInner, shownKey, body, switchBody, immersive };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target;
@@ -482,6 +486,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === 'Escape') {
         if (helpOpen) return setHelpOpen(false);
+        if (k.immersive) return setImmersive(false);
         if (searchOpen) return;
         if (layersOpen) setLayersOpen(false);
         else k.goUp();
@@ -494,6 +499,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         return;
       }
       if (e.key === '?') return setHelpOpen(true);
+      if (e.key === 'f' || e.key === 'F') return setImmersive(!k.immersive);
       if (k.shownKey !== 'body') return;
       switch (e.key) {
         case 'i':
@@ -747,7 +753,22 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         <CameraControls ref={setControls} makeDefault minDistance={0.05} maxDistance={6} smoothTime={0.55} draggingSmoothTime={0.1} dollySpeed={0.6} />
       </Canvas>
 
+      {/* Yalnızca model kipinden çıkış: küçük, köşede */}
+      {immersive && (
+        <button
+          type="button"
+          onClick={() => setImmersive(false)}
+          className="absolute right-3 top-3 z-40 flex items-center gap-1.5 rounded-full border border-ink-600/60 bg-ink-950/55 px-2.5 py-1.5 text-fg-muted backdrop-blur transition hover:text-fg"
+          aria-label="Arayüzü göster"
+          title="Arayüzü göster (Esc)"
+        >
+          <MinimizeIcon size={15} />
+          <Caps className="text-[10px]">Arayüz</Caps>
+        </button>
+      )}
+
       {/* Üst çubuk: gezinme yolu + vücut seçimi + katmanlar */}
+      {!immersive && (
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start gap-2 px-4 pt-4 md:gap-3 md:px-6 md:pt-5">
         {/* Masaüstünde sağ panelin üstüne taşmasın: uzun yol görünür tuval alanında sarılır. */}
         <div className="min-w-0 flex-1">
@@ -808,11 +829,24 @@ export function Explorer({ route }: { route: ExploreRoute }) {
             <SimulationBadge scene={shownInside} />
           </div>
         )}
+        <button
+          type="button"
+          onClick={() => {
+            setLayersOpen(false);
+            setImmersive(true);
+          }}
+          className="pointer-events-auto flex items-center rounded-full border border-ink-600/70 bg-ink-950/70 px-3 py-1.5 text-fg-muted backdrop-blur transition hover:text-fg"
+          aria-label="Yalnızca modeli göster"
+          title="Yalnızca modeli göster: panelleri gizle (F)"
+        >
+          <MaximizeIcon size={15} />
+        </button>
       </div>
+      )}
 
 
       {/* Araç çubuğu ve kesit */}
-      {shownKey === 'body' && !intro && (
+      {shownKey === 'body' && !intro && !immersive && (
         <div className={`pointer-events-none absolute left-4 z-20 flex flex-col items-start gap-2 md:left-6 ${!structure && !focusTest ? 'top-[5.75rem]' : 'top-[6.25rem]'} md:top-auto md:bottom-20`}>
           <ToolBar
             canFocusTools={!!structure}
@@ -845,7 +879,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       )}
 
       {/* Sistem menüsü */}
-      {shownKey === 'body' && !structure && !focusTest && (
+      {shownKey === 'body' && !structure && !focusTest && !immersive && (
         <nav
           aria-label="Vücut sistemleri"
           className="pointer-events-auto absolute inset-x-0 top-12 z-10 flex gap-1.5 overflow-x-auto px-4 pb-2 md:inset-x-auto md:left-6 md:top-24 md:w-48 md:flex-col md:gap-0 md:overflow-visible md:px-0"
@@ -881,13 +915,22 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       </div>
 
       {/* Bağlam paneli */}
-      {!intro && shownKey === 'body' && (
+      {!intro && shownKey === 'body' && !immersive && (
         <ContextSheet
           onSize={onCover}
           label="Bilgi paneli"
           onClose={structure || system || focusTest ? goUp : undefined}
           peek={!!cloudData}
           expandNonce={sheetExpand}
+          summary={
+            structure
+              ? (part?.label ?? structureById.get(structure)!.nameTr)
+              : system
+                ? systemById.get(system)!.nameTr
+                : focusTest
+                  ? `Tahlil · ${testByKey.get(focusTest)!.nameTr}`
+                  : 'Vücut ve sonuçların'
+          }
         >
           <div key={`${structure}-${system}-${focusTest}-${partKey}-${panelTab?.n ?? 0}`} className="kh-fade-in">
             {structure ? (
@@ -916,8 +959,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
           </div>
         </ContextSheet>
       )}
-      {shownInside && insideState && (
-        <ContextSheet onSize={onCover} label="Simülasyon paneli" onClose={goUp}>
+      {shownInside && insideState && !immersive && (
+        <ContextSheet onSize={onCover} label="Simülasyon paneli" onClose={goUp} summary={INSIDE[shownInside].title} startOpen>
           {ready ? (
             personal && <InsidePanel state={insideState} actions={insideActions} personal={personal} origin={fromStructure} />
           ) : (

@@ -15,6 +15,8 @@ export const FINDING_TONE: Record<FindingStatus, { label: string; cls: string }>
   normal: { label: 'Olağan', cls: 'border-accent/30 bg-accent/5 text-accent' },
 };
 
+const SECTION_LABEL: Partial<Record<ImagingFinding['section'], string>> = { bulgular: 'Bulgular bölümü', sonuc: 'Sonuç bölümü', diger: 'rapor gövdesi' };
+
 const ORDER: Record<FindingStatus, number> = {
   abnormal: 0,
   uncertain: 1,
@@ -41,13 +43,17 @@ function FindingItem({ f }: { f: ImagingFinding }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-fg">{f.label}</p>
           <p className="mt-0.5 text-[13px] leading-relaxed text-fg-muted">“{f.text}”</p>
-          {f.located === 'region' && s && <p className="mt-0.5 text-[11px] text-fg-faint">Cümlede yer adı yok; belgenin bölgesi ({s.nameTr}) kullanıldı.</p>}
+          <p className="mt-1 text-[11px] leading-relaxed text-fg-faint">
+            Kaynak: rapor metni · {SECTION_LABEL[f.section] ?? 'rapor'}
+            {f.size ? ` · Ölçü: ${f.size}` : ''}
+            {f.structure ? (f.located === 'text' ? ' · Konum raporda yazıyor' : ` · Konum yaklaşık: cümlede yer adı yok, belgenin bölgesi (${s?.nameTr ?? ''}) kullanıldı`) : ' · Konum belirlenemedi'}
+          </p>
         </div>
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5 pl-[3.25rem]">
         {s && (
           <button type="button" className="btn-ghost px-2.5 py-1 text-xs" onClick={() => openFinding(f)}>
-            <BodyIcon size={13} /> Vücutta göster
+            <BodyIcon size={13} /> {f.located === 'text' ? 'Vücutta göster' : 'Vücutta göster (yaklaşık)'}
           </button>
         )}
         {inside && f.structure && (

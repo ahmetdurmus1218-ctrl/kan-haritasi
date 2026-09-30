@@ -32,6 +32,14 @@ export interface ImagingFinding {
   label: string;
   /** Aynı yer ve terim için ortak anahtar (Bulgular ve Sonuç'ta tekrarlanan bulgu). */
   key: string;
+  /** Cümlede yazan ölçü (ör. "6 mm", "12 x 8 mm"). */
+  size?: string;
+}
+
+/** Cümledeki ilk boyut ölçüsü: "6 mm", "1,2 cm", "12x8 mm", "3 x 2 x 1,5 cm". */
+export function sizeOf(sentence: string): string | undefined {
+  const m = /(\d+(?:[.,]\d+)?(?:\s*[x×*]\s*\d+(?:[.,]\d+)?){0,2})\s*(mm|cm)\b/i.exec(sentence);
+  return m ? `${m[1]!.replace(/\s*[x×*]\s*/g, ' × ')} ${m[2]!.toLowerCase()}` : undefined;
 }
 
 type Context = 'head' | 'neck' | 'chest' | 'abdomen' | 'pelvis' | 'spine' | 'limb' | 'breast' | 'any';
@@ -366,6 +374,7 @@ export function extractFindings(text: string, region?: string): ImagingFinding[]
         status,
         label,
         key: `${structure ?? '-'}|${part ?? '-'}|${lvl?.level ?? '-'}|${main?.key ?? status}`,
+        size: sizeOf(s),
       });
     }
   }

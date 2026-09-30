@@ -126,6 +126,7 @@ export function ImageReviewCard({
   noteFileId,
   stored,
   onHeadLike,
+  onReview,
 }: {
   info: FileInfo;
   bytes: Bytes;
@@ -133,6 +134,8 @@ export function ImageReviewCard({
   stored?: StoredReview;
   /** Kesitler baş kesitine benziyorsa (bölge önerisi için). */
   onHeadLike?: () => void;
+  /** İnceleme bitince özeti (karşılaştırılan ve fark bulunan kesit sayısı). */
+  onReview?: (r: { compared: number; flagged: number }) => void;
 }) {
   const vault = useUnlockedVault();
   const { bump } = useVault();
@@ -154,6 +157,7 @@ export function ImageReviewCard({
           const review = runReview(img);
           setState({ img, review });
           if (review.headLike) onHeadLike?.();
+          onReview?.({ compared: review.compared, flagged: review.flagged });
         })
         .catch(() => !cancelled && setState('unsupported'));
     }, 30);
