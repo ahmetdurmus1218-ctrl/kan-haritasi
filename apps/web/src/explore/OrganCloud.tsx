@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef } from 'react';
+import { type PointerEvent as ReactPointerEvent, type RefObject, useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Vector3 } from 'three';
 import { XIcon } from '../components/icons';
@@ -34,10 +34,14 @@ export interface CloudRefs {
   box: RefObject<HTMLDivElement | null>;
   line: RefObject<SVGLineElement | null>;
   dot: RefObject<HTMLDivElement | null>;
+  /** Kullanıcının kartı sürükleyerek verdiği kaydırma (px). */
+  offset: RefObject<{ x: number; y: number }>;
+  /** Sahneyi yeniden çizdirir (kart sürüklenirken). */
+  redraw: RefObject<(() => void) | null>;
 }
 
 export function useCloudRefs(): CloudRefs {
-  return { root: useRef(null), box: useRef(null), line: useRef(null), dot: useRef(null) };
+  return { root: useRef(null), box: useRef(null), line: useRef(null), dot: useRef(null), offset: useRef({ x: 0, y: 0 }), redraw: useRef(null) };
 }
 
 const v = new Vector3();
@@ -50,7 +54,12 @@ export function CloudAnchor({ point, refs, cover }: { point: [number, number, nu
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
   const invalidate = useThree((s) => s.invalidate);
-  useEffect(() => invalidate(), [point, invalidate]);
+  useEffect(() => {
+    // Yeni organ seçilince kart yeniden kendi yerine oturur.
+    refs.offset.current = { x: 0, y: 0 };
+    refs.redraw.current = invalidate;
+    invalidate();
+  }, [point, invalidate, refs]);
   useFrame(() => {
     const box = refs.box.current;
     const line = refs.line.current;
@@ -65,13 +74,23 @@ export function CloudAnchor({ point, refs, cover }: { point: [number, number, nu
     const right = size.width - (cover.current?.right ?? 0);
     const bottom = size.height - (cover.current?.bottom ?? 0);
     const gap = 34;
-    // Önce sağ üst; sığmazsa sol üst; dikeyde görünür alana sıkıştır.
-    let x = ax + gap;
-    if (x + w > right - 8) x = ax - gap - w;
+    let x: number;
+    let y: number;
+    if (size.width < 640) {
+      // Dar ekran: kart organın üstünü kapatmasın diye ekranın organdan uzak kenarına (üst ya da alt) yerleşir.
+      x = (right - w) / 2;
+      y = ay > size.height * 0.5 ? 64 : bottom - h - 12;
+    } else {
+      // Önce sağ üst; sığmazsa sol üst; dikeyde görünür alana sıkıştır.
+      x = ax + gap;
+      if (x + w > right - 8) x = ax - gap - w;
+      y = ay - h - gap * 0.6;
+      if (y < 64) y = ay + gap * 0.6;
+    }
+    x += refs.offset.current?.x ?? 0;
+    y += refs.offset.current?.y ?? 0;
     x = Math.max(8, Math.min(right - w - 8, x));
-    let y = ay - h - gap * 0.6;
-    if (y < 64) y = ay + gap * 0.6;
-    y = Math.max(64, Math.min(bottom - h - 8, y));
+    y = Math.max(8, Math.min(bottom - h - 8, y));
     box.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
     box.style.visibility = behind ? 'hidden' : 'visible';
     dot.style.transform = `translate3d(${Math.round(ax)}px, ${Math.round(ay)}px, 0)`;
@@ -89,6 +108,23 @@ export function CloudAnchor({ point, refs, cover }: { point: [number, number, nu
 }
 
 export function OrganCloud({ data, refs, accent, onClose }: { data: CloudData; refs: CloudRefs; accent: string; onClose: () => void }) {
+  // Kart başlığından sürüklenerek taşınabilir (modeli döndürmeden).
+  const drag = useRef<{ id: number; x: number; y: number; ox: number; oy: number } | null>(null);
+  const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    const o = refs.offset.current ?? { x: 0, y: 0 };
+    drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, ox: o.x, oy: o.y };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    refs.offset.current = { x: d.ox + e.clientX - d.x, y: d.oy + e.clientY - d.y };
+    refs.redraw.current?.();
+  };
+  const onUp = () => {
+    drag.current = null;
+  };
   return (
     <div ref={refs.root} className="pointer-events-none absolute inset-0 z-30" style={{ ['--kh-accent' as string]: accent }}>
       <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
@@ -97,7 +133,14 @@ export function OrganCloud({ data, refs, accent, onClose }: { data: CloudData; r
       <div ref={refs.dot} className="kh-holo-dot absolute left-0 top-0" style={{ visibility: 'hidden' }} aria-hidden="true" />
       <div ref={refs.box} className="absolute left-0 top-0 w-[min(272px,calc(100vw-16px))] will-change-transform" style={{ visibility: 'hidden' }}>
         <div className="kh-holo pointer-events-auto" role="dialog" aria-label={`${data.title} · hızlı bilgi`}>
-          <div className="flex items-start gap-2 px-3.5 pt-3">
+          <div
+            className="flex cursor-grab touch-none items-start gap-2 px-3.5 pt-3 active:cursor-grabbing"
+            onPointerDown={onDown}
+            onPointerMove={onMove}
+            onPointerUp={onUp}
+            onPointerCancel={onUp}
+            title="Kartı taşımak için sürükle"
+          >
             <div className="min-w-0 flex-1">
               <Caps className="text-[9.5px] text-fg-faint">{data.caps}</Caps>
               <p className="mt-0.5 truncate text-[17px] font-light leading-tight text-fg">{data.title}</p>

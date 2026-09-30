@@ -22,6 +22,9 @@ import { ImagingStudyList } from '../components/imaging';
 import { ImageReviewCard } from '../components/ImageReviewCard';
 import { FindingList } from '../components/findings';
 import { extractFindings } from '../lib/imagingFindings';
+import { type ImageEvidence, evaluate, protocolFor, techniqueOf } from '../lib/imagingProtocol';
+import { SystematicReview } from '../components/checklist';
+import { KIND_LABEL } from '../lib/format';
 
 const METHOD_TEXT: Record<ImagingNote['method'], string> = {
   text: 'PDF metninden okundu',
@@ -54,6 +57,8 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   const [overlay, setOverlay] = useState<'idle' | 'reading' | 'done'>('idle');
   /** Fotoğraf bir rapor kâğıdı/ekranı mı (kendiliğinden okunur) yoksa film mi? */
   const [photoKind, setPhotoKind] = useState<'document' | 'film' | 'unknown' | null>(null);
+  /** Görüntüden yapılan basit sağ-sol karşılaştırmasının özeti (yapıldıysa). */
+  const [imageEvidence, setImageEvidence] = useState<ImageEvidence | undefined>();
   const studies = useImagingStudies();
   const related = useMemo(() => {
     const self = studies?.find((st) => st.files.some((f) => f.id === info.id));
@@ -200,6 +205,33 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   const terms = useMemo(() => (note && hasText && !garbled ? findTerms(note.text) : []), [note, hasText, garbled]);
   const findings = useMemo(() => (note && hasText && !garbled ? extractFindings(note.text, info.region ?? CATEGORY_REGION[info.category]) : []), [note, hasText, garbled, info.region, info.category]);
   const measures = useMemo(() => measurementsOf(note ?? undefined, info.region, sex), [note, info.region, sex]);
+  const hasReport = Boolean(note && hasText && !garbled);
+  const hasImage = info.kind === 'dicom' || ((info.kind === 'jpeg' || info.kind === 'png') && photoKind !== null && photoKind !== 'document');
+  const review = useMemo(() => {
+    const text = hasReport && note ? note.text : '';
+    const schemaRegion = info.region ?? CATEGORY_REGION[category] ?? (text ? guessRegion(text.slice(0, 600)) : undefined);
+    const sources = [text, dicom?.studyDescription, dicom?.seriesDescription, info.displayName].filter((x): x is string => Boolean(x));
+    const technique = techniqueOf(category, sources);
+    const protocol = protocolFor(category, schemaRegion, [text.slice(0, 600), dicom?.studyDescription, dicom?.seriesDescription, info.displayName].join(' '));
+    const results = evaluate(protocol, { category, findings, hasReport, hasImage, technique, image: imageEvidence });
+    const regionLabel = schemaRegion ? regionByKey.get(schemaRegion)?.label : undefined;
+    return {
+      protocol,
+      results,
+      steps: {
+        method: `${KIND_LABEL[info.kind]} · ${CATEGORY_LABEL[category]}${info.kind === 'dicom' && dicom?.modality ? ` (dosya başlığında ${dicom.modality})` : ''}`,
+        region: regionLabel ? `${regionLabel}${info.region ? '' : ' (tahmin)'}` : undefined,
+        technique: technique.labels,
+        quality: technique.quality,
+        report: hasReport ? `Okundu · ${findings.length} bulgu cümlesi yapılandırıldı.` : 'Rapor metni yok; başlıklar rapordan değerlendirilemiyor.',
+        image: !hasImage
+          ? 'Bu belgede incelenebilir görüntü yok (rapor belgesi).'
+          : imageEvidence && imageEvidence.compared > 0
+            ? `Görüntü açıldı; ${imageEvidence.compared} kesitte basit sağ-sol karşılaştırması yapıldı. Bunun dışında görüntüden otomatik bulgu analizi yapılmıyor.`
+            : 'Görüntü görüntüleyicide açılabiliyor; görüntüden otomatik bulgu analizi yapılmıyor (yalnızca uygun kesitlerde basit sağ-sol karşılaştırması).',
+      },
+    };
+  }, [category, info.region, info.kind, info.displayName, dicom, note, hasReport, hasImage, findings, imageEvidence]);
   const abnormal = measures.filter(isAbnormal);
   const spacing = Boolean(dicom?.pixelSpacing);
   const canRead = info.kind === 'pdf' || info.kind === 'jpeg' || info.kind === 'png';
@@ -272,8 +304,11 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             onHeadLike={() => {
               if (!info.region) setSuggested((s) => s ?? { region: 'beyin', from: 'shape' });
             }}
+            onReview={setImageEvidence}
           />
         )}
+
+        {isImaging(category) && note !== undefined && <SystematicReview protocol={review.protocol} results={review.results} steps={review.steps} />}
 
         {/* Bulgular: rapordaki her cümle, konumu ve olağan/dikkat ayrımıyla; tıklayınca 3B'de ilgili yer */}
         {findings.length > 0 && (

@@ -209,23 +209,32 @@ export function ContextSheet({
   onClose,
   peek = false,
   expandNonce = 0,
+  summary,
+  startOpen = false,
 }: {
   children: ReactNode;
   onSize: (cover: { right: number; bottom: number }) => void;
   label: string;
   onClose?: () => void;
-  /** Mobilde yalnızca başlık görünecek kadar küçük (bilgi bulutu açıkken). */
+  /** Bilgi bulutu açık: mobilde panel kapanır (bulut yeter). */
   peek?: boolean;
   /** Değiştikçe (0 dışında) panel genişletilir (ör. buluttaki "Ayrıntılar"). */
   expandNonce?: number;
+  /** Mobilde panel kapalıyken alttaki küçük düğmede görünen kısa başlık. */
+  summary?: string;
+  /** Mobilde yarı açık başla (ör. simülasyon denetimleri); varsayılan kapalı: ekranda yalnızca model. */
+  startOpen?: boolean;
 }) {
   const ref = useRef<HTMLElement>(null);
-  const [expanded, setExpanded] = useState(false);
+  // Mobil: kapalı (yalnızca küçük düğme) → yarım → tam. Masaüstünde panel her zaman sağda açıktır.
+  const [mobile, setMobile] = useState<'closed' | 'half' | 'full'>(startOpen ? 'half' : 'closed');
+  const expanded = mobile === 'full';
+  const setExpanded = (fn: (v: boolean) => boolean) => setMobile((m) => (fn(m === 'full') ? 'full' : 'half'));
   useEffect(() => {
-    if (expandNonce) setExpanded(true);
+    if (expandNonce) setMobile('full');
   }, [expandNonce]);
   useEffect(() => {
-    if (peek) setExpanded(false);
+    if (peek) setMobile('closed');
   }, [peek]);
   const onSizeRef = useRef(onSize);
   onSizeRef.current = onSize;
@@ -248,31 +257,52 @@ export function ContextSheet({
   }, []);
 
   return (
-    <aside
-      ref={ref}
-      aria-label={label}
-      className={`pointer-events-auto absolute inset-x-0 bottom-0 z-10 flex flex-col overflow-hidden rounded-t-3xl border-t border-ink-600/60 bg-ink-950/90 backdrop-blur-md transition-[max-height] duration-300 lg:inset-x-auto lg:bottom-0 lg:right-0 lg:top-0 lg:max-h-none lg:w-[420px] lg:rounded-none lg:border-l lg:border-t-0 lg:bg-gradient-to-l lg:from-ink-950 lg:via-ink-950/92 lg:to-ink-950/40 ${
-        expanded ? 'max-h-[80%]' : peek ? 'max-h-[7.25rem]' : 'max-h-[38%]'
-      }`}
-    >
-      <div className="flex items-center justify-center pt-2 lg:hidden">
+    <>
+      {/* Mobil: panel kapalıyken yalnızca küçük bir düğme; model ekranın tamamını kullanır. */}
+      {mobile === 'closed' && !peek && (
         <button
           type="button"
-          className="flex h-6 w-16 items-center justify-center"
-          onClick={() => setExpanded((v) => !v)}
-          aria-label={expanded ? 'Paneli küçült' : 'Paneli genişlet'}
-          aria-expanded={expanded}
+          onClick={() => setMobile('half')}
+          aria-label={`${label}: aç`}
+          className="pointer-events-auto absolute bottom-3 left-1/2 z-10 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-ink-600/70 bg-ink-950/80 px-4 py-2 text-xs text-fg-muted shadow-lg backdrop-blur-md transition hover:text-fg lg:hidden"
         >
-          <span className="h-1 w-10 rounded-full bg-ink-500" />
-        </button>
-      </div>
-      {onClose && (
-        <button type="button" className="icon-btn absolute right-3 top-3 z-10 lg:right-5 lg:top-5" onClick={onClose} aria-label="Kapat">
-          {expanded ? <MinimizeIcon size={16} /> : <XIcon size={16} />}
+          <span aria-hidden="true" className="text-[var(--kh-accent)]">
+            <ChevronRightIcon size={14} className="-rotate-90" />
+          </span>
+          <span className="truncate">{summary ?? 'Bilgi'}</span>
+          <Caps className="shrink-0 text-[10px] text-fg-faint">Ayrıntılar</Caps>
         </button>
       )}
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-2 lg:px-9 lg:pb-10 lg:pt-24">{children}</div>
-    </aside>
+      <aside
+        ref={ref}
+        aria-label={label}
+        className={`pointer-events-auto absolute inset-x-0 bottom-0 z-10 flex-col overflow-hidden rounded-t-3xl border-t border-ink-600/60 bg-ink-950/90 backdrop-blur-md transition-[max-height] duration-300 lg:inset-x-auto lg:bottom-0 lg:right-0 lg:top-0 lg:flex lg:max-h-none lg:w-[420px] lg:rounded-none lg:border-l lg:border-t-0 lg:bg-gradient-to-l lg:from-ink-950 lg:via-ink-950/92 lg:to-ink-950/40 ${
+          mobile === 'closed' ? 'hidden' : 'flex'
+        } ${expanded ? 'max-h-[80%]' : 'max-h-[42%]'}`}
+      >
+        <div className="flex items-center justify-center pt-2 lg:hidden">
+          <button
+            type="button"
+            className="flex h-6 w-16 items-center justify-center"
+            onClick={() => setExpanded((v) => !v)}
+            aria-label={expanded ? 'Paneli küçült' : 'Paneli genişlet'}
+            aria-expanded={expanded}
+          >
+            <span className="h-1 w-10 rounded-full bg-ink-500" />
+          </button>
+        </div>
+        {/* Mobilde kapat: panel gizlenir, model yeniden tüm ekranı kullanır. Masaüstünde bir üst seviyeye çıkar. */}
+        <button type="button" className="icon-btn absolute right-3 top-3 z-10 lg:hidden" onClick={() => setMobile('closed')} aria-label="Paneli kapat">
+          <XIcon size={16} />
+        </button>
+        {onClose && (
+          <button type="button" className="icon-btn absolute right-5 top-5 z-10 hidden lg:flex" onClick={onClose} aria-label="Kapat">
+            {expanded ? <MinimizeIcon size={16} /> : <XIcon size={16} />}
+          </button>
+        )}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6 pt-2 lg:px-9 lg:pb-10 lg:pt-24">{children}</div>
+      </aside>
+    </>
   );
 }
 

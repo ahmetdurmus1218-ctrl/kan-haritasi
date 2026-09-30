@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useVault } from '../state/VaultContext';
+import { useImmersive } from '../state/immersive';
 import { type Route, hrefFor } from '../state/router';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BodyIcon, ChartIcon, DropIcon, FolderIcon, ListIcon, LockIcon, ShieldIcon } from '../components/icons';
@@ -34,11 +35,15 @@ function activeKey(route: Route): NavKey {
 export function AppShell({ route, children }: { route: Route; children: ReactNode }) {
   const { lock, hidden } = useVault();
   const active = activeKey(route);
+  // Keşfet'te telefonun üst çubuğu gizlenir (3B sahne kendi gezinme yolunu gösterir); "yalnızca model"
+  // kipinde ise tüm çerçeve gizlenir.
+  const immersive = useImmersive();
+  const explore = route.name === 'body' || route.name === 'simulation';
 
   return (
     <div className="flex h-full min-h-0 flex-col md:flex-row">
       {/* Masaüstü / tablet kenar çubuğu */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-ink-700 bg-ink-900/70 md:flex">
+      <aside className={`hidden w-60 shrink-0 flex-col border-r border-ink-700 bg-ink-900/70 ${immersive ? '' : 'md:flex'}`}>
         <div className="flex items-center gap-2.5 px-5 pb-6 pt-6">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-accent">
             <DropIcon size={19} />
@@ -80,7 +85,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       </aside>
 
       {/* Mobil üst çubuk */}
-      <header className="flex items-center justify-between border-b border-ink-700 bg-ink-900/80 px-4 py-3 backdrop-blur md:hidden">
+      <header className={`items-center justify-between border-b border-ink-700 bg-ink-900/80 px-4 py-3 backdrop-blur md:hidden ${explore || immersive ? 'hidden' : 'flex'}`}>
         <div className="flex items-center gap-2">
           <span className="text-accent">
             <DropIcon size={20} />
@@ -98,7 +103,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       <main className={`min-h-0 flex-1 overflow-y-auto transition ${hidden ? 'privacy-veil' : ''}`}>{children}</main>
 
       {/* Mobil alt gezinme */}
-      <nav className="safe-bottom grid grid-cols-5 border-t border-ink-700 bg-ink-900/95 backdrop-blur md:hidden" aria-label="Ana gezinme">
+      <nav className={`safe-bottom grid-cols-5 border-t border-ink-700 bg-ink-900/95 backdrop-blur md:hidden ${immersive ? 'hidden' : 'grid'}`} aria-label="Ana gezinme">
         {NAV.map(({ key, label, icon: Icon }) => {
           const isActive = key === active;
           return (
