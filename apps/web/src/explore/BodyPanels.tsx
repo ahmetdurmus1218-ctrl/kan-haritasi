@@ -1,3 +1,4 @@
+import { GRAPH } from '@kh/analysis';
 import { useState } from 'react';
 import { type Interpretation, PROCESSES, type PartDef, type ProcessId, type SystemId, TESTS, formatNumber, partDef, partsOf, structureById, systemById, testByKey } from '@kh/catalog';
 import type { TestSeries } from '../lib/useReports';
@@ -323,6 +324,9 @@ function ImagingBlock({ studies, accent, structure }: { studies: ImagingStudy[];
             <span className="mt-0.5 line-clamp-2 block text-xs leading-snug text-fg-muted">
               {conclusion ? `Sonuç: ${conclusion}` : 'Rapor metni yok · görüntüyü açmak için dokun'}
             </span>
+            {st.note?.analysis && (
+              <span className="mt-1 block text-[11px] text-fg-muted">Görüntü analizi ({st.note.analysis.status === 'UNAVAILABLE' ? 'bu tür için yok' : 'kısmi'}): {st.note.analysis.summary}</span>
+            )}
             {st.review && st.review.regions.length > 0 && (
               <span className="mt-1 block text-[11px] text-caution-fg">
                 Otomatik inceleme · {st.review.regions.length} dikkat bölgesi (sağ-sol farkı) · tanı değildir
@@ -484,6 +488,17 @@ export function OrganPanel({
       )}
 
       {!part && imaging.length > 0 && <ImagingBlock studies={imaging} accent={accent} structure={structure} />}
+
+      {/* 3B ↔ organ sayfası: bu yapının normal anatomisi, senin verilerin ve gerçek görüntülerin */}
+      <button
+        type="button"
+        onClick={() => go({ name: 'organ', id: GRAPH.nodeForStructure(structure, part?.def?.key)?.id ?? structure, view: imaging.length ? 'benim' : 'normal' })}
+        className="kh-holo-btn mb-6 block w-full rounded-xl border px-3 py-2.5 text-left text-sm transition"
+        style={{ borderColor: `${accent}66` }}
+      >
+        <span className="block text-fg">Organ sayfası · Normal / Benim durumum →</span>
+        <span className="block text-xs text-fg-muted">Normal işleyiş, tahlillerin, raporların ve görüntülerinden çıkan gözlemler kaynaklarıyla birlikte.</span>
+      </button>
 
       {!part && insides[0] && (
         <div className="mb-6 space-y-2">

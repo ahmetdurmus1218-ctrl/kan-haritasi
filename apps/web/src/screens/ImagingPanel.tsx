@@ -20,11 +20,17 @@ import { relatedStudies, useImagingStudies } from '../lib/imagingStudies';
 import { classifyPhoto } from '../lib/photo';
 import { ImagingStudyList } from '../components/imaging';
 import { ImageReviewCard } from '../components/ImageReviewCard';
+import { AnalysisCard } from '../components/AnalysisCard';
+import { reportFindingsFrom } from '../lib/analysisBridge';
+import { useReports } from '../lib/useReports';
 import { FindingList } from '../components/findings';
 import { extractFindings } from '../lib/imagingFindings';
 import { type ImageEvidence, evaluate, protocolFor, techniqueOf } from '../lib/imagingProtocol';
 import { SystematicReview } from '../components/checklist';
 import { KIND_LABEL } from '../lib/format';
+
+/** Sağ-sol simetri incelemesinin anlamlı olduğu kesitsel/radyolojik türler (EKG, patoloji, ultrason vb. hariç). */
+const CROSS_SECTIONAL: ReadonlySet<DocCategory> = new Set(['mr', 'ct', 'pet', 'angio', 'xray', 'mammo', 'other']);
 
 const METHOD_TEXT: Record<ImagingNote['method'], string> = {
   text: 'PDF metninden okundu',
@@ -60,9 +66,15 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
   /** Görüntüden yapılan basit sağ-sol karşılaştırmasının özeti (yapıldıysa). */
   const [imageEvidence, setImageEvidence] = useState<ImageEvidence | undefined>();
   const studies = useImagingStudies();
+  const { reports: labReports } = useReports();
   const related = useMemo(() => {
     const self = studies?.find((st) => st.files.some((f) => f.id === info.id));
     return self && studies ? relatedStudies(self, studies) : [];
+  }, [studies, info.id]);
+  /** Aynı tür ve bölgede, bu çalışmadan farklı tarihli başka görüntüleme var mı (zaman karşılaştırması için). */
+  const previousAvailable = useMemo(() => {
+    const self = studies?.find((st) => st.files.some((f) => f.id === info.id));
+    return Boolean(self && studies?.some((st) => st.key !== self.key && st.category === self.category && st.region === self.region && st.date !== self.date));
   }, [studies, info.id]);
 
   useEffect(() => {
@@ -232,6 +244,12 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
       },
     };
   }, [category, info.region, info.kind, info.displayName, dicom, note, hasReport, hasImage, findings, imageEvidence]);
+  // Görüntü analizinin karşılaştırılacağı rapor bulguları: kendi raporu ya da aynı çekime bağlı rapor belgesi (ayrı kaynak).
+  const analysisReportFindings = useMemo(() => {
+    if (findings.length) return reportFindingsFrom(findings, { documentId: info.id, ocr: note?.method === 'ocr' });
+    const linked = related.find((r) => r.findings.length > 0);
+    return linked ? reportFindingsFrom(linked.findings, { documentId: linked.head.id }) : [];
+  }, [findings, related, info.id, note?.method]);
   const abnormal = measures.filter(isAbnormal);
   const spacing = Boolean(dicom?.pixelSpacing);
   const canRead = info.kind === 'pdf' || info.kind === 'jpeg' || info.kind === 'png';
@@ -295,7 +313,21 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           takip eden hekime aittir.
         </Banner>
 
-        {isImaging(category) && (info.kind === 'dicom' || ((info.kind === 'jpeg' || info.kind === 'png') && photoKind !== null && photoKind !== 'document')) && (
+        {isImaging(category) && hasImage && note !== undefined && (
+          <AnalysisCard
+            info={info}
+            bytes={bytes}
+            dicom={dicom}
+            noteFileId={noteFileId}
+            stored={note?.analysis}
+            reportFindings={analysisReportFindings}
+            labsAvailable={Boolean(labReports?.some((r) => r.results.length > 0))}
+            previousAvailable={previousAvailable}
+            showOverlay={!CROSS_SECTIONAL.has(category)}
+          />
+        )}
+
+        {isImaging(category) && CROSS_SECTIONAL.has(category) && (info.kind === 'dicom' || ((info.kind === 'jpeg' || info.kind === 'png') && photoKind !== null && photoKind !== 'document')) && (
           <ImageReviewCard
             info={info}
             bytes={bytes}

@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
+    "@kh/analysis": "workspace:*",
     "@kh/catalog": "workspace:*",
     "@kh/ingest": "workspace:*",
     "@kh/parser": "workspace:*",

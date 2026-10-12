@@ -17,6 +17,9 @@ export const FINDING_TONE: Record<FindingStatus, { label: string; cls: string }>
 
 const SECTION_LABEL: Partial<Record<ImagingFinding['section'], string>> = { bulgular: 'Bulgular bölümü', sonuc: 'Sonuç bölümü', diger: 'rapor gövdesi' };
 
+const SEVERITY_TR = { mild: 'hafif', moderate: 'orta', severe: 'belirgin / ileri' } as const;
+const TEMPORAL_TR = { new: 'yeni', stable: 'stabil', increased: 'artmış', decreased: 'azalmış', resolved: 'kaybolmuş' } as const;
+
 const ORDER: Record<FindingStatus, number> = {
   abnormal: 0,
   uncertain: 1,
@@ -43,10 +46,17 @@ function FindingItem({ f }: { f: ImagingFinding }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-fg">{f.label}</p>
           <p className="mt-0.5 text-[13px] leading-relaxed text-fg-muted">“{f.text}”</p>
+          {(f.severity || f.temporal || f.recommendation) && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {f.severity && <span className="rounded-md border border-ink-600 px-1.5 py-0.5 text-[10.5px] text-fg-muted">Raporda derece: {SEVERITY_TR[f.severity]}</span>}
+              {f.temporal && <span className="rounded-md border border-ink-600 px-1.5 py-0.5 text-[10.5px] text-fg-muted">Önceki tetkike göre: {TEMPORAL_TR[f.temporal]}</span>}
+              {f.recommendation && <span className="rounded-md border border-low/40 px-1.5 py-0.5 text-[10.5px] text-low">Raporda öneri var</span>}
+            </div>
+          )}
           <p className="mt-1 text-[11px] leading-relaxed text-fg-faint">
-            Kaynak: rapor metni · {SECTION_LABEL[f.section] ?? 'rapor'}
+            <span className="font-medium text-fg-muted">Kaynak: RAPOR</span> (rapordan okunan; görüntü analizi değil) · {SECTION_LABEL[f.section] ?? 'rapor'}
             {f.size ? ` · Ölçü: ${f.size}` : ''}
-            {f.structure ? (f.located === 'text' ? ' · Konum raporda yazıyor' : ` · Konum yaklaşık: cümlede yer adı yok, belgenin bölgesi (${s?.nameTr ?? ''}) kullanıldı`) : ' · Konum belirlenemedi'}
+            {f.structure ? (f.located === 'text' ? ' · Yaklaşık anatomik konum — rapor/metin tabanlı (görüntü üzerinde piksel konumu değil)' : ` · Konum yaklaşık: cümlede yer adı yok, belgenin bölgesi (${s?.nameTr ?? ''}) kullanıldı`) : ' · Konum belirlenemedi'}
           </p>
         </div>
       </div>

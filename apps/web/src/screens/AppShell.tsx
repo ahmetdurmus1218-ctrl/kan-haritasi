@@ -3,14 +3,16 @@ import { useVault } from '../state/VaultContext';
 import { useImmersive } from '../state/immersive';
 import { type Route, hrefFor } from '../state/router';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { BodyIcon, ChartIcon, DropIcon, FolderIcon, ListIcon, LockIcon, ShieldIcon } from '../components/icons';
+import { BodyIcon, ChartIcon, DropIcon, FolderIcon, LayersIcon, ListIcon, LockIcon, ShieldIcon } from '../components/icons';
 
-type NavKey = 'documents' | 'results' | 'body' | 'timeline' | 'privacy';
+type NavKey = 'mybody' | 'documents' | 'results' | 'body' | 'timeline' | 'privacy';
 
+/** Ana gezinme vücut merkezlidir: önce "Vücudum" (organlar, bulgular, zaman), sonra belgeler ve araçlar. */
 const NAV: { key: NavKey; label: string; icon: (p: { size?: number }) => ReactNode }[] = [
+  { key: 'mybody', label: 'Vücudum', icon: BodyIcon },
   { key: 'documents', label: 'Belgeler', icon: FolderIcon },
   { key: 'results', label: 'Sonuçlar', icon: ListIcon },
-  { key: 'body', label: 'Keşfet', icon: BodyIcon },
+  { key: 'body', label: 'Keşfet', icon: LayersIcon },
   { key: 'timeline', label: 'Zaman', icon: ChartIcon },
   { key: 'privacy', label: 'Gizlilik', icon: ShieldIcon },
 ];
@@ -27,6 +29,8 @@ function activeKey(route: Route): NavKey {
       return 'privacy';
     case 'coverage':
       return 'body';
+    case 'organ':
+      return 'mybody';
     default:
       return route.name;
   }
@@ -103,7 +107,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       <main className={`min-h-0 flex-1 overflow-y-auto transition ${hidden ? 'privacy-veil' : ''}`}>{children}</main>
 
       {/* Mobil alt gezinme */}
-      <nav className={`safe-bottom grid-cols-5 border-t border-ink-700 bg-ink-900/95 backdrop-blur md:hidden ${immersive ? 'hidden' : 'grid'}`} aria-label="Ana gezinme">
+      <nav className={`safe-bottom grid-cols-6 border-t border-ink-700 bg-ink-900/95 backdrop-blur md:hidden ${immersive ? 'hidden' : 'grid'}`} aria-label="Ana gezinme">
         {NAV.map(({ key, label, icon: Icon }) => {
           const isActive = key === active;
           return (
@@ -111,7 +115,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
               key={key}
               href={hrefFor({ name: key } as Route)}
               aria-current={isActive ? 'page' : undefined}
-              className={`relative flex flex-col items-center gap-1 py-2.5 text-[11px] ${isActive ? 'text-accent' : 'text-fg-muted'}`}
+              className={`relative flex min-w-0 flex-col items-center gap-1 py-2.5 text-[10.5px] ${isActive ? 'text-accent' : 'text-fg-muted'}`}
             >
               <Icon size={20} />
               {label}

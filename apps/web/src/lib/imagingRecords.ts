@@ -1,4 +1,5 @@
 import { type Vault, randomId } from '@kh/vault';
+import type { AnalysisStatus, ImageObservation, Modality } from '@kh/analysis';
 
 /** Kullanıcının görüntü üzerinde yaptığı ölçüm (cetvel, yoğunluk, oran). */
 export interface ManualMeasurement {
@@ -28,6 +29,31 @@ export interface StoredReview {
   confirmed: boolean;
 }
 
+/**
+ * Ham görüntü analizinin (rapordan bağımsız) kaydedilen özeti. Kaynağı her zaman IMAGE_ANALYSIS'tir;
+ * Vücudum / organ sayfaları ve zaman çizelgesi bunu "doğrulanmamış görüntü gözlemi" olarak gösterir.
+ */
+export interface StoredAnalysis {
+  at: string;
+  /** İncelenen dosya (DICOM serisinde açık olan kesit). */
+  sourceId: string;
+  modality: Modality;
+  modalitySource: string;
+  structure?: string;
+  status: AnalysisStatus;
+  adapterId: string;
+  model: { id: string; name: string; version: string };
+  summary: string;
+  observations: ImageObservation[];
+  qualityIssues: string[];
+}
+
+function isAnalysis(v: unknown): v is StoredAnalysis {
+  if (typeof v !== 'object' || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.at === 'string' && typeof o.modality === 'string' && typeof o.status === 'string' && Array.isArray(o.observations);
+}
+
 function isReview(v: unknown): v is StoredReview {
   if (typeof v !== 'object' || v === null) return false;
   const o = v as Record<string, unknown>;
@@ -43,6 +69,7 @@ export interface ImagingNote {
   updatedAt: string;
   measurements?: ManualMeasurement[];
   review?: StoredReview;
+  analysis?: StoredAnalysis;
 }
 
 function isManual(v: unknown): v is ManualMeasurement {
@@ -64,7 +91,12 @@ export async function listImagingNotes(vault: Vault): Promise<ImagingNote[]> {
   return items
     .map((i) => i.value)
     .filter(isNote)
-    .map((n) => ({ ...n, measurements: Array.isArray(n.measurements) ? n.measurements.filter(isManual) : undefined, review: isReview(n.review) ? n.review : undefined }));
+    .map((n) => ({
+      ...n,
+      measurements: Array.isArray(n.measurements) ? n.measurements.filter(isManual) : undefined,
+      review: isReview(n.review) ? n.review : undefined,
+      analysis: isAnalysis(n.analysis) ? n.analysis : undefined,
+    }));
 }
 
 export async function noteForFile(vault: Vault, fileId: string): Promise<ImagingNote | undefined> {
@@ -79,13 +111,16 @@ export async function saveImagingNote(
   method: ImagingNote['method'],
   measurements?: ManualMeasurement[],
   review?: StoredReview | null,
+  analysis?: StoredAnalysis | null,
 ): Promise<ImagingNote> {
   const previous = (await listImagingNotes(vault)).filter((n) => n.fileId === fileId);
   const kept = measurements ?? previous.flatMap((p) => p.measurements ?? []);
   const keptReview = review === undefined ? previous.find((p) => p.review)?.review : (review ?? undefined);
+  const keptAnalysis = analysis === undefined ? previous.find((p) => p.analysis)?.analysis : (analysis ?? undefined);
   const note: ImagingNote = { id: randomId(), fileId, text: text.slice(0, MAX_NOTE_CHARS), method, updatedAt: new Date().toISOString() };
   if (kept.length) note.measurements = kept.slice(0, 200);
   if (keptReview) note.review = { ...keptReview, regions: keptReview.regions.slice(0, 40) };
+  if (keptAnalysis) note.analysis = { ...keptAnalysis, observations: keptAnalysis.observations.slice(0, 24) };
   await vault.putRecord('imaging', note.id, note);
   for (const p of previous) await vault.deleteRecord('imaging', p.id);
   return note;
@@ -111,4 +146,10 @@ export async function removeManualMeasurement(vault: Vault, fileId: string, id: 
 export async function saveReview(vault: Vault, fileId: string, review: StoredReview | null): Promise<ImagingNote> {
   const current = await noteForFile(vault, fileId);
   return saveImagingNote(vault, fileId, current?.text ?? '', current?.method ?? 'manual', current?.measurements ?? [], review);
+}
+
+/** Ham görüntü analizinin özetini kaydeder (null: siler). Metin, ölçümler ve inceleme korunur. */
+export async function saveAnalysis(vault: Vault, fileId: string, analysis: StoredAnalysis | null): Promise<ImagingNote> {
+  const current = await noteForFile(vault, fileId);
+  return saveImagingNote(vault, fileId, current?.text ?? '', current?.method ?? 'manual', current?.measurements ?? [], undefined, analysis);
 }

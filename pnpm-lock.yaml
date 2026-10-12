@@ -11,6 +11,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.11.0(jiti@2.7.0))
+      '@napi-rs/canvas':
+        specifier: 1.0.9
+        version: 1.0.9
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3
@@ -38,6 +41,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@kh/analysis':
+        specifier: workspace:*
+        version: link:../../packages/analysis
       '@kh/catalog':
         specifier: workspace:*
         version: link:../../packages/catalog
@@ -123,6 +129,15 @@ importers:
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
+
+  packages/analysis:
+    dependencies:
+      '@kh/catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@kh/ingest':
+        specifier: workspace:*
+        version: link:../ingest
 
   packages/catalog: {}
 
@@ -2524,7 +2539,6 @@ snapshots:
       '@napi-rs/canvas-linux-x64-musl': 1.0.9
       '@napi-rs/canvas-win32-arm64-msvc': 1.0.9
       '@napi-rs/canvas-win32-x64-msvc': 1.0.9
-    optional: true
 
   '@oxc-project/types@0.151.0': {}
 

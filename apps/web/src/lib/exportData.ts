@@ -1,4 +1,5 @@
 import type { Vault } from '@kh/vault';
+import { anonymizeDicom } from '@kh/ingest';
 import { STATUS_LABEL, testByKey } from '@kh/catalog';
 import { listReports, loadSex } from './reports';
 import { listImagingNotes } from './imagingRecords';
@@ -13,7 +14,13 @@ import { makeZip, safeEntryName, type ZipEntry } from './zip';
  *  - sonuclar.csv  aynı veriler, tablo programları için (UTF-8, noktalı virgül)
  *  - OKUBENI.txt   içerik ve uyarı
  */
-export async function buildExport(vault: Vault, onProgress?: (done: number, total: number) => void): Promise<{ bytes: Uint8Array<ArrayBuffer>; files: number; results: number }> {
+export async function buildExport(
+  vault: Vault,
+  onProgress?: (done: number, total: number) => void,
+  options: { anonymizeDicom?: boolean } = {},
+): Promise<{ bytes: Uint8Array<ArrayBuffer>; files: number; results: number; anonymized: number }> {
+  const anonymize = options.anonymizeDicom ?? true;
+  let anonymized = 0;
   const { files } = await vault.listFiles();
   const reports = await listReports(vault);
   const entries: ZipEntry[] = [];
@@ -28,7 +35,18 @@ export async function buildExport(vault: Vault, onProgress?: (done: number, tota
     for (let n = 2; used.has(name); n++) name = `belgeler/${base}-${n}${ext}`;
     used.add(name);
     fileNames.set(info.id, name);
-    entries.push({ name, data: bytes, date: new Date(info.createdAt) });
+    let data = bytes;
+    if (anonymize && info.kind === 'dicom') {
+      try {
+        const a = anonymizeDicom(bytes);
+        bytes.fill(0);
+        data = a.bytes;
+        anonymized++;
+      } catch {
+        // Okunamayan DICOM olduğu gibi eklenir (kullanıcıya OKUBENI'de söylenir).
+      }
+    }
+    entries.push({ name, data, date: new Date(info.createdAt) });
     onProgress?.(i + 1, files.length + 1);
   }
 
@@ -122,7 +140,9 @@ export async function buildExport(vault: Vault, onProgress?: (done: number, tota
         '',
         'Bu arşiv ŞİFRESİZDİR. Kimlerle paylaştığına ve nerede sakladığına dikkat et.',
         '',
-        'belgeler/      Yüklediğin orijinal dosyalar: tahlil raporları, MR/BT/röntgen görüntüleri (.dcm) ve raporları (değiştirilmedi)',
+        anonymize
+          ? 'belgeler/      Yüklediğin orijinal dosyalar. DICOM (.dcm) dosyalarında hasta adı, kimlik no, doğum tarihi, erişim no, kurum ve hekim adları boşlukla değiştirildi; görüntünün içine yazılmış yazılar temizlenemez.'
+          : 'belgeler/      Yüklediğin orijinal dosyalar: tahlil raporları, MR/BT/röntgen görüntüleri (.dcm) ve raporları (değiştirilmedi; DICOM kimlik alanları DAHİL)',
         'sonuclar.json  Onayladığın tüm sonuçlar ve görüntüleme belgelerinin türü, bölgesi, tarihi, rapor metni',
         'sonuclar.csv   Aynı sonuçlar; Excel/LibreOffice ile açılabilir (ayraç: ;)',
         '',
@@ -135,5 +155,5 @@ export async function buildExport(vault: Vault, onProgress?: (done: number, tota
   const bytes = makeZip(entries);
   for (const e of entries) if (e.name.startsWith('belgeler/')) e.data.fill(0);
   onProgress?.(files.length + 1, files.length + 1);
-  return { bytes, files: files.length, results: rows.length };
+  return { bytes, files: files.length, results: rows.length, anonymized };
 }

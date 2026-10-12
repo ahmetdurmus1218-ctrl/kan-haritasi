@@ -34,7 +34,39 @@ export interface ImagingFinding {
   key: string;
   /** Cümlede yazan ölçü (ör. "6 mm", "12 x 8 mm"). */
   size?: string;
+  /** Cümle bir şeyin OLMADIĞINI söylüyor ("kitle izlenmedi"): bulgu yok diye kaydedilir. */
+  negated: boolean;
+  /** Raporda yazan derece ("hafif", "orta derecede", "belirgin / ileri derecede"). */
+  severity?: 'mild' | 'moderate' | 'severe';
+  /** Önceki tetkikle karşılaştırma ifadesi ("önceki tetkike göre artmış", "stabil"). */
+  temporal?: 'new' | 'stable' | 'increased' | 'decreased' | 'resolved';
+  /** Öneri cümlesi ("kontrol önerilir", "klinik korelasyon"). */
+  recommendation: boolean;
 }
+
+const SEVERE = /\b(ileri derece|siddetli|belirgin|ciddi|yaygin|masif)/;
+const MODERATE = /\b(orta derece|orta siddette|ilimli)/;
+const MILD = /\b(hafif|minimal|sinirda|cok kucuk|silik)/;
+/** Önceki tetkikle karşılaştırma bağlamı. */
+const COMPARE = /\b(onceki|eski|karsilastir|kiyasla|gore|daha once|son tetkik|kontrol tetkik)/;
+
+/** Rapordaki derece ifadesi. */
+export function severityOf(norm: string): ImagingFinding['severity'] {
+  return SEVERE.test(norm) ? 'severe' : MODERATE.test(norm) ? 'moderate' : MILD.test(norm) ? 'mild' : undefined;
+}
+
+/** Önceki tetkikle karşılaştırma ifadesi (yalnızca karşılaştırma bağlamı varsa ya da "stabil/yeni gelişen" gibi açık sözcüklerle). */
+export function temporalOf(norm: string): ImagingFinding['temporal'] {
+  if (/\b(stabil|degismemis|degisiklik izlenmedi|benzer gorunum|sabit)/.test(norm)) return 'stable';
+  if (/\b(yeni (gelisen|ortaya cikan|olusan)|onceki tetkikte (izlenmeyen|bulunmayan|olmayan))/.test(norm)) return 'new';
+  if (/\b(kaybolmus|rezolusyon|tamamen gerilemis|artik izlenmemektedir)/.test(norm)) return 'resolved';
+  if (!COMPARE.test(norm)) return undefined;
+  if (/\b(artmis|buyumus|ilerlemis|progresyon|genislemis|belirginlesmis)/.test(norm)) return 'increased';
+  if (/\b(azalmis|kuculmus|gerilemis|regresyon)/.test(norm)) return 'decreased';
+  return undefined;
+}
+
+const RECOMMEND = /\b(onerilir|onerilmistir|tavsiye|klinik korelasyon|klinik ve laboratuvar korelasyon|takip|kontrol (tetkik|mr|bt|usg|grafi)|ileri tetkik|biyopsi onerilir)/;
 
 /** Cümledeki ilk boyut ölçüsü: "6 mm", "1,2 cm", "12x8 mm", "3 x 2 x 1,5 cm". */
 export function sizeOf(sentence: string): string | undefined {
@@ -375,6 +407,10 @@ export function extractFindings(text: string, region?: string): ImagingFinding[]
         label,
         key: `${structure ?? '-'}|${part ?? '-'}|${lvl?.level ?? '-'}|${main?.key ?? status}`,
         size: sizeOf(s),
+        negated: status === 'normal' && NEGATION.test(norm),
+        severity: status === 'normal' ? undefined : severityOf(norm),
+        temporal: temporalOf(norm),
+        recommendation: RECOMMEND.test(norm),
       });
     }
   }
