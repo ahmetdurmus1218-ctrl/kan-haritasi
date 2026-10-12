@@ -1,0 +1,28 @@
+name: Eski artifact temizliği
+
+# Tek seferlik: bu dala push edilince depodaki eski build dosyalarını
+# (APK/raporlar) siler, en yeni 3 tanesini bırakır. main'e dokunmaz.
+on:
+  push:
+    branches: [claude/artifact-cleanup]
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete old artifacts (keep newest 3)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" -q '.artifacts[] | [.created_at, .id, .name, .size_in_bytes] | @tsv' |
+            sort -r > artifacts.tsv
+          echo "Toplam artifact: $(wc -l < artifacts.tsv)"
+          head -n 3 artifacts.tsv | awk -F'\t' '{print "kalıyor: " $3 " (" $1 ")"}'
+          tail -n +4 artifacts.tsv | while IFS=$'\t' read -r created id name size; do
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}" && echo "silindi: ${name} ${created} $((size/1048576)) MB"
+          done
