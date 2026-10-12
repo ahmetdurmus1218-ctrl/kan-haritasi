@@ -2,3 +2,8 @@ packages:
   - "packages/*"
   - "apps/*"
   - "assets-pipeline"
+
+# Güvenlik: geçişli bağımlılıklardaki bilinen açıklar (OSV taraması) için düzeltilmiş sürümler.
+overrides:
+  sharp: ^0.35.5
+  source-map-js: ^1.2.2
