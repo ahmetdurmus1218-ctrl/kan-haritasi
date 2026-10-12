@@ -1,24 +1,8 @@
 workflow: CI
-run: 38293331358
-sha: 32fbd1a5979e589c91477bd8801e911b63a86b0b
+run: 38293110752
+sha: 4bc435d4a9271963f84021bc868b441fbdf91423
 conclusion: success
 
-web: success
-  - Set up job: success
-  - Run actions/checkout@v4: success
-  - Run pnpm/action-setup@v4: success
-  - Run actions/setup-node@v4: success
-  - Run pnpm install --frozen-lockfile: success
-  - Lint (güvenlik kuralları dahil): success
-  - Tip denetimi: success
-  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
-  - Derleme: success
-  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
-  - Run actions/upload-artifact@v4: success
-  - Post Run actions/setup-node@v4: success
-  - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
 dependencies: success
   - Set up job: success
   - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
@@ -45,6 +29,22 @@ e2e: success
   - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
   - Run actions/upload-artifact@v4: success
   - Post Run actions/setup-python@v5: success
+  - Post Run actions/setup-node@v4: success
+  - Post Run pnpm/action-setup@v4: success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
+web: success
+  - Set up job: success
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Lint (güvenlik kuralları dahil): success
+  - Tip denetimi: success
+  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
+  - Derleme: success
+  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
+  - Run actions/upload-artifact@v4: success
   - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
