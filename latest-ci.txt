@@ -1,15 +1,8 @@
 workflow: CI
-run: 38288598713
-sha: bcd9370651bbb48bec9c929920b0f2104426d5d6
+run: 38288616008
+sha: 0c46d40d45f4a03587bd312efb38adcec2888001
 conclusion: failure
 
-dependencies: failure
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): failure
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
 web: success
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -49,26 +42,33 @@ e2e: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
+dependencies: failure
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): failure
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 
-dependencies	Bağımlılık açıkları (OSV)	﻿2026-10-12T18:06:04.9672269Z ##[group]Run google/osv-scanner-action/osv-scanner-action@v2.3.8
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:04.9672773Z with:
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:04.9672965Z   scan-args: -r
+dependencies	Bağımlılık açıkları (OSV)	﻿2026-10-12T18:06:08.5484928Z ##[group]Run google/osv-scanner-action/osv-scanner-action@v2.3.8
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:08.5485353Z with:
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:08.5485591Z   scan-args: -r
 dependencies	Bağımlılık açıkları (OSV)	./
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:04.9673143Z ##[endgroup]
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:04.9742453Z ##[command]/usr/bin/docker run --name ghcriogoogleosvscanneractionv238_3b738a --label 79b529 --workdir /github/workspace --rm -e "INPUT_SCAN-ARGS" -e "HOME" -e "GITHUB_JOB" -e "GITHUB_REF" -e "GITHUB_SHA" -e "GITHUB_REPOSITORY" -e "GITHUB_REPOSITORY_OWNER" -e "GITHUB_REPOSITORY_OWNER_ID" -e "GITHUB_RUN_ID" -e "GITHUB_RUN_NUMBER" -e "GITHUB_RETENTION_DAYS" -e "GITHUB_RUN_ATTEMPT" -e "GITHUB_ACTOR_ID" -e "GITHUB_ACTOR" -e "GITHUB_WORKFLOW" -e "GITHUB_HEAD_REF" -e "GITHUB_BASE_REF" -e "GITHUB_EVENT_NAME" -e "GITHUB_SERVER_
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:08.5485809Z ##[endgroup]
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:08.5597388Z ##[command]/usr/bin/docker run --name ghcriogoogleosvscanneractionv238_723aad --label 147eea --workdir /github/workspace --rm -e "INPUT_SCAN-ARGS" -e "HOME" -e "GITHUB_JOB" -e "GITHUB_REF" -e "GITHUB_SHA" -e "GITHUB_REPOSITORY" -e "GITHUB_REPOSITORY_OWNER" -e "GITHUB_REPOSITORY_OWNER_ID" -e "GITHUB_RUN_ID" -e "GITHUB_RUN_NUMBER" -e "GITHUB_RETENTION_DAYS" -e "GITHUB_RUN_ATTEMPT" -e "GITHUB_ACTOR_ID" -e "GITHUB_ACTOR" -e "GITHUB_WORKFLOW" -e "GITHUB_HEAD_REF" -e "GITHUB_BASE_REF" -e "GITHUB_EVENT_NAME" -e "GITHUB_SERVER_
 dependencies	Bağımlılık açıkları (OSV)	./"
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:05.4325561Z Scanning dir ./
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:05.4325908Z Starting filesystem walk for root: /
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:05.4378175Z Scanned /github/workspace/pnpm-lock.yaml file and found 390 packages
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:05.4410368Z End status: 89 dirs visited, 495 inodes visited, 1 Extract calls, 8.630002ms elapsed, 8.630112ms wall time
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1452723Z 
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1453581Z Total 2 packages affected by 2 known vulnerabilities (0 Critical, 2 High, 0 Medium, 0 Low, 0 Unknown) from 1 ecosystem.
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1453902Z 2 vulnerabilities can be fixed.
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1453995Z 
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1454134Z +-------------------------------------+------+-----------+---------------+---------+---------------+----------------+
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1454490Z | OSV URL                             | CVSS | ECOSYSTEM | PACKAGE       | VERSION | FIXED VERSION | SOURCE         |
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1454794Z +-------------------------------------+------+-----------+---------------+---------+---------------+----------------+
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1455139Z | https://osv.dev/GHSA-wq5f-xc86-pv6w | 8.9  | npm       | sharp         | 0.35.4  | 0.35.5        | pnpm-lock.yaml |
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1455532Z | https://osv.dev/GHSA-68fv-2mgg-jv7q | 8.7  | npm       | source-map-js | 1.2.1   | 1.2.2         | pnpm-lock.yaml |
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1455856Z +-------------------------------------+------+-----------+---------------+---------+---------------+----------------+
-dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:06.1476083Z Exit code: 1
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:08.8445825Z Scanning dir ./
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:08.8446391Z Starting filesystem walk for root: /
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:08.8519270Z Scanned /github/workspace/pnpm-lock.yaml file and found 390 packages
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:08.8589153Z End status: 88 dirs visited, 496 inodes visited, 1 Extract calls, 14.309463ms elapsed, 14.309643ms wall time
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7409146Z 
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7410366Z Total 2 packages affected by 2 known vulnerabilities (0 Critical, 2 High, 0 Medium, 0 Low, 0 Unknown) from 1 ecosystem.
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7411125Z 2 vulnerabilities can be fixed.
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7411326Z 
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7411579Z +-------------------------------------+------+-----------+---------------+---------+---------------+----------------+
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7412226Z | OSV URL                             | CVSS | ECOSYSTEM | PACKAGE       | VERSION | FIXED VERSION | SOURCE         |
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7412859Z +-------------------------------------+------+-----------+---------------+---------+---------------+----------------+
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7413541Z | https://osv.dev/GHSA-wq5f-xc86-pv6w | 8.9  | npm       | sharp         | 0.35.4  | 0.35.5        | pnpm-lock.yaml |
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7414271Z | https://osv.dev/GHSA-68fv-2mgg-jv7q | 8.7  | npm       | source-map-js | 1.2.1   | 1.2.2         | pnpm-lock.yaml |
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7414965Z +-------------------------------------+------+-----------+---------------+---------+---------------+----------------+
+dependencies	Bağımlılık açıkları (OSV)	2026-10-12T18:06:09.7433200Z Exit code: 1
