@@ -1,6 +1,6 @@
 workflow: Pages (web sürümü)
-run: 36701091223
-sha: 9578c0f71e23a67afefd17f7616e5c1210919138
+run: 38288615965
+sha: 0c46d40d45f4a03587bd312efb38adcec2888001
 conclusion: success
 
 deploy: success
