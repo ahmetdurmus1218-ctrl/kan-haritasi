@@ -11,16 +11,28 @@ import { TimelinePage } from './screens/TimelinePage';
 import { AboutPage } from './screens/AboutPage';
 import { CoveragePage } from './screens/CoveragePage';
 import { ResultDetail, ResultsPage } from './screens/ResultsPage';
+
 import { Banner } from './components/ui';
 import { SpinnerIcon } from './components/icons';
 
 // 3D keşif ekranı (three.js) büyük olduğu için yalnızca açıldığında yüklenir.
 const Explorer = lazy(() => import('./explore/Explorer').then((m) => ({ default: m.Explorer })));
+// Vücut merkezli ekranlar (bilgi grafiği ve analiz motoru) da açıldığında yüklenir.
+const MyBodyPage = lazy(() => import('./screens/MyBodyPage').then((m) => ({ default: m.MyBodyPage })));
+const OrganPage = lazy(() => import('./screens/OrganPage').then((m) => ({ default: m.OrganPage })));
 
 function ExplorerFallback() {
   return (
     <div className="explore-bg flex h-full items-center justify-center gap-2 text-sm text-fg-muted">
       <SpinnerIcon size={16} /> 3D sahne hazırlanıyor…
+    </div>
+  );
+}
+
+function PageFallback() {
+  return (
+    <div className="flex h-full items-center justify-center gap-2 text-sm text-fg-muted">
+      <SpinnerIcon size={16} /> Hazırlanıyor…
     </div>
   );
 }
@@ -67,6 +79,14 @@ function Gate() {
             </Suspense>
           ) : route.name === 'timeline' ? (
             <TimelinePage testKey={route.key} />
+          ) : route.name === 'mybody' ? (
+            <Suspense fallback={<PageFallback />}>
+              <MyBodyPage />
+            </Suspense>
+          ) : route.name === 'organ' ? (
+            <Suspense fallback={<PageFallback />}>
+              <OrganPage key={route.id} id={route.id} view={route.view} />
+            </Suspense>
           ) : (
             <DocumentsPage navigate={navigate} />
           )}

@@ -406,7 +406,7 @@ export const TESTS: readonly LabTestDef[] = [
   // ---------------------------------------------------------------- Şeker
   {
     key: 'glucose', loinc: '1558-6', nameTr: 'Açlık kan şekeri (glukoz)', group: 'glucose',
-    aliases: ['Glukoz', 'Aclik kan sekeri', 'Aclik glukozu', 'Glukoz (aclik)', 'AKS', 'GLU', 'Kan sekeri', 'Glukoz aclik', 'Aclik plazma glukozu'],
+    aliases: ['Glukoz', 'Aclik kan sekeri', 'Aclik glukozu', 'Glukoz (aclik)', 'AKS', 'GLU', 'Kan sekeri', 'Glukoz aclik', 'Aclik plazma glukozu', 'Glucose', 'Fasting glucose', 'Fasting plasma glucose'],
     unit: 'mg/dL', conversions: { 'mg/dl': [1], 'mmol/l': [18.016] }, ranges: [{ min: 70, max: 100 }],
     plausible: [10, 1500], decimals: 0, processes: ['glucose-regulation'], structures: ['pancreas', 'liver'], systems: ['endocrine', 'digestive'],
   },

@@ -15,7 +15,16 @@ export type Route =
   | { name: 'coverage' }
   | { name: 'timeline'; key?: string }
   | { name: 'privacy' }
-  | { name: 'about' };
+  | { name: 'about' }
+  /** Vücut merkezli ana ekran: organlar, bulgular, zaman. */
+  | { name: 'mybody' }
+  /** Organ / bölge / doku sayfası (bilgi grafiği düğümü, ör. "pancreas", "brain.frontal"). view: normal | benim | fark */
+  | { name: 'organ'; id: string; view?: OrganViewMode };
+
+export type OrganViewMode = 'normal' | 'benim' | 'fark';
+const VIEWS: readonly string[] = ['normal', 'benim', 'fark'];
+/** Bilgi grafiği düğüm kimliği: küçük harf, rakam, tire ve nokta. */
+const NODE = /^[a-z0-9][a-z0-9.-]{0,59}$/;
 
 export type SimulationMode = 'temel' | 'benim';
 const MODES: readonly string[] = ['temel', 'benim'];
@@ -49,6 +58,11 @@ export function parseHash(hash: string): Route {
       return { name: 'privacy' };
     case 'hakkinda':
       return { name: 'about' };
+    case 'vucudum':
+      return { name: 'mybody' };
+    case 'organ':
+      if (!arg || !NODE.test(arg)) return { name: 'mybody' };
+      return arg2 && VIEWS.includes(arg2) ? { name: 'organ', id: arg, view: arg2 as OrganViewMode } : { name: 'organ', id: arg };
     default:
       return { name: 'documents' };
   }
@@ -76,6 +90,10 @@ export function hrefFor(route: Route): string {
       return '#/gizlilik';
     case 'about':
       return '#/hakkinda';
+    case 'mybody':
+      return '#/vucudum';
+    case 'organ':
+      return `#/organ/${route.id}${route.view ? `/${route.view}` : ''}`;
     default:
       return '#/belgeler';
   }

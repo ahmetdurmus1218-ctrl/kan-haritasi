@@ -768,3 +768,102 @@ export function summarizeDicom(info: DicomInfo): DicomSummary {
     decodable: canDecode(info),
   };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Anonimleştirme
+
+/**
+ * Kimlik taşıyan alanlar (DICOM PS3.15 temel profilinden seçilmiş): hasta adı/kimliği/doğum tarihi,
+ * adres-telefon, erişim (accession) numarası, kurum ve hekim adları, çalışma kimliği, serbest notlar.
+ * Cinsiyet ve yaş klinik bağlam için korunur.
+ */
+export const IDENTIFYING_TAGS: ReadonlyMap<number, string> = new Map([
+  [tag(0x0010, 0x0010), 'PatientName'],
+  [tag(0x0010, 0x0020), 'PatientID'],
+  [tag(0x0010, 0x0030), 'PatientBirthDate'],
+  [tag(0x0010, 0x0032), 'PatientBirthTime'],
+  [tag(0x0010, 0x1000), 'OtherPatientIDs'],
+  [tag(0x0010, 0x1001), 'OtherPatientNames'],
+  [tag(0x0010, 0x1040), 'PatientAddress'],
+  [tag(0x0010, 0x1060), 'PatientMotherBirthName'],
+  [tag(0x0010, 0x2154), 'PatientTelephoneNumbers'],
+  [tag(0x0010, 0x21b0), 'AdditionalPatientHistory'],
+  [tag(0x0010, 0x4000), 'PatientComments'],
+  [tag(0x0008, 0x0050), 'AccessionNumber'],
+  [tag(0x0008, 0x0080), 'InstitutionName'],
+  [tag(0x0008, 0x0081), 'InstitutionAddress'],
+  [tag(0x0008, 0x0090), 'ReferringPhysicianName'],
+  [tag(0x0008, 0x1048), 'PhysiciansOfRecord'],
+  [tag(0x0008, 0x1050), 'PerformingPhysicianName'],
+  [tag(0x0008, 0x1060), 'NameOfPhysiciansReadingStudy'],
+  [tag(0x0008, 0x1070), 'OperatorsName'],
+  [tag(0x0020, 0x0010), 'StudyID'],
+  [tag(0x0032, 0x1032), 'RequestingPhysician'],
+]);
+
+export interface AnonymizeResult {
+  bytes: Uint8Array<ArrayBuffer>;
+  /** Temizlenen alan adları (değerleri değil). */
+  cleared: string[];
+}
+
+/**
+ * Kimlik alanlarının değerlerini aynı uzunlukta boşlukla değiştirir (dosya yapısı ve uzunluklar
+ * bozulmaz, görüntü aynen kalır). İç içe dizilerdeki (SQ) alanlar da temizlenir. Görüntünün içine
+ * yakılmış (burned-in) yazılar temizlenemez; arayüz bunu ayrıca söyler.
+ */
+export function anonymizeDicom(input: Uint8Array): AnonymizeResult {
+  if (!isDicom(input)) throw new DicomError('NOT_DICOM');
+  const bytes = input.slice() as Uint8Array<ArrayBuffer>;
+  const r = new Reader(bytes);
+  let pos = 132;
+  let ts: string = DICOM_TS.explicitLE;
+  while (pos + 8 <= bytes.length && r.u16(pos, true) === 0x0002) {
+    const el = r.element(pos, true, true);
+    if (el.length === UNDEFINED) throw new DicomError('CORRUPT', 'meta');
+    if (el.tag === T.transferSyntax) ts = decodeText(bytes.subarray(el.value, el.value + el.length), undefined);
+    pos = el.next;
+  }
+  if (ts === DICOM_TS.deflatedLE) throw new DicomError('UNSUPPORTED', 'deflated');
+  const le = ts !== DICOM_TS.explicitBE;
+  const explicit = ts === DICOM_TS.implicitLE ? r.isVr(pos + 4) && bytes[pos + 5] !== 0 : true;
+  const cleared: string[] = [];
+
+  const dataset = (p: number, end: number, expl: boolean, depth: number): number => {
+    if (depth > 32) throw new DicomError('CORRUPT', 'nesting');
+    for (let guard = 0; guard < 1_000_000 && p + 8 <= end; guard++) {
+      const el = r.element(p, expl, le);
+      if (el.tag === T.itemEnd || el.tag === T.seqEnd) return p + 8;
+      if (el.tag === T.pixelData) return depth === 0 ? bytes.length : el.length === UNDEFINED ? r.skipSequence(el.value, expl, le, depth + 1) : el.next;
+      if (el.vr === 'SQ' || el.length === UNDEFINED) {
+        p = sequence(el, expl && el.vr !== 'UN', depth + 1);
+        continue;
+      }
+      r.need(el.value, el.length);
+      const name = IDENTIFYING_TAGS.get(el.tag);
+      if (name && el.length > 0) {
+        bytes.fill(0x20, el.value, el.value + el.length);
+        cleared.push(name);
+      }
+      p = el.next;
+    }
+    return p;
+  };
+  const sequence = (el: Element, expl: boolean, depth: number): number => {
+    const end = el.length === UNDEFINED ? bytes.length : el.value + el.length;
+    let p = el.value;
+    for (let guard = 0; guard < 1_000_000 && p + 8 <= end; guard++) {
+      const it = r.element(p, false, le);
+      if (it.tag === T.seqEnd) return p + 8;
+      if (it.tag !== T.item) throw new DicomError('CORRUPT', 'bad item');
+      if (it.length === UNDEFINED) p = dataset(it.value, bytes.length, expl, depth);
+      else {
+        dataset(it.value, it.value + it.length, expl, depth);
+        p = it.next;
+      }
+    }
+    return end;
+  };
+  dataset(pos, bytes.length, explicit, 0);
+  return { bytes, cleared };
+}

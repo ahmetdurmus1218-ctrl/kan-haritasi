@@ -61,6 +61,7 @@ export function PrivacyPage() {
   const [pass2, setPass2] = useState('');
   const [current, setCurrent] = useState('');
   const [confirmText, setConfirmText] = useState('');
+  const [anonymize, setAnonymize] = useState(true);
   const [restoreFile, setRestoreFile] = useState<{ bytes: Uint8Array<ArrayBuffer>; name: string; createdAt: string } | null>(null);
   const restoreInput = useRef<HTMLInputElement>(null);
 
@@ -143,7 +144,7 @@ export function PrivacyPage() {
 
   const doExport = () =>
     run(async () => {
-      const { bytes, files, results } = await buildExport(vault, (d, t) => setProgress(`Hazırlanıyor… ${d}/${t}`));
+      const { bytes, files, results } = await buildExport(vault, (d, t) => setProgress(`Hazırlanıyor… ${d}/${t}`), { anonymizeDicom: anonymize });
       setProgress('Kaydediliyor…');
       const saved = await platform.files.save(`kan-haritasi-verilerim-${stamp()}.zip`, bytes, 'application/zip');
       bytes.fill(0);
@@ -182,6 +183,10 @@ export function PrivacyPage() {
             Raporların {info?.platform === 'android' ? 'bu telefonda' : 'bu tarayıcıda'} işlenir (PDF okuma, fotoğraf OCR ve MR/BT/röntgen görüntülerinin (DICOM) açılması dahil) ve hiçbir sunucuya gönderilmez.
             Güvenlik politikası (CSP) uygulamanın kendi dosyaları dışındaki adreslere bağlantıyı engeller
             {info?.platform === 'android' ? '; Android uygulamasının internet izni de yoktur.' : '.'}
+          </Fact>
+          <Fact>
+            Ham görüntü analizi (MR/BT asimetrisi, EKG ritmi ve hızı, ultrason görüntü alanı, patoloji doku ölçümleri) de cihazda, ayrı bir iş parçacığında çalışan kural tabanlı
+            algoritmalarla yapılır. Öğrenilmiş bir yapay zekâ görüntü modeli paketlenmez ve görüntü hiçbir servise gönderilmez.
           </Fact>
           <Fact>Reklam, analitik, takip veya çökme raporlama servisi kullanılmıyor.</Fact>
           <Fact>
@@ -436,6 +441,13 @@ export function PrivacyPage() {
           ZIP dosyası <strong className="text-fg">şifresiz</strong> olacak: içindeki raporları ve sonuçları dosyaya erişen herkes görebilir. Paylaşmadan önce kime
           gönderdiğinden emin ol.
         </p>
+        <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--color-accent)]" checked={anonymize} onChange={(e) => setAnonymize(e.target.checked)} />
+          <span>
+            DICOM dosyalarında kimlik alanlarını temizle (hasta adı, kimlik no, doğum tarihi, erişim no, kurum ve hekim adları).
+            <span className="block text-xs text-fg-muted">Görüntünün içine yazılmış (yakılmış) yazılar temizlenemez. Kasadaki özgün dosya değişmez.</span>
+          </span>
+        </label>
         {progress && <p className="mt-3 text-xs text-fg-muted">{progress}</p>}
         {error && <p className="mt-3 text-sm text-danger">{error}</p>}
       </Dialog>
