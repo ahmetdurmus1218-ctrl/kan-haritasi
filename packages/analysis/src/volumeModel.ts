@@ -39,6 +39,14 @@ export interface VolumeSpec {
   topK: number;
   cropNonzero: boolean;
   minSlices: number;
+  /**
+   * Basamaklı (cascade) model: önce `model` (ör. BT anatomi) çalışmış olmalı; onun `labels` yapılarının
+   * sınırlayıcı kutusu + `addonMm` kadar pay alınarak özgün seri kırpılır ve bu model yalnızca orada çalışır
+   * (TotalSegmentator'ın `crop` / `crop_addon` davranışı).
+   */
+  cascade?: { model: string; labels: string[]; addonMm: number };
+  /** Argmax'tan sonra arka plana çevrilen yardımcı sınıflar (TotalSegmentator remove_auxiliary_labels). */
+  dropLabels?: number[];
 }
 
 export interface RasGrid {
@@ -64,6 +72,10 @@ export interface VolumeStructure {
   bboxMax: Vec3;
   sliceRange: [number, number];
   centroidSlice: number;
+  /** Manifestten: bulgu sınıfının gösterim eşiği ve fizyolojik üst sınırı (mL). */
+  minMl?: number;
+  normalMaxMl?: number;
+  normalNote?: string;
 }
 
 export interface VolumeSegmentation {
@@ -219,7 +231,7 @@ export async function segmentVolume(
   vol: SourceVolume,
   manifest: ModelManifest,
   engine: InferenceEngine,
-  opts: { onProgress?: (p: VolumeProgress) => void; isCancelled?: () => boolean } = {},
+  opts: { onProgress?: (p: VolumeProgress) => void; isCancelled?: () => boolean; statsVolume?: SourceVolume } = {},
 ): Promise<VolumeSegmentation> {
   const spec = manifest.volume;
   if (!spec) throw new Error('Bu model 3B hacim modeli değil.');
@@ -374,9 +386,9 @@ export async function segmentVolume(
             bl = L;
           }
         }
-        labels[((s + b0[0]) * A + (a + b0[1])) * R + (r + b0[2])] = bl;
+        labels[((s + b0[0]) * A + (a + b0[1])) * R + (r + b0[2])] = spec.dropLabels?.includes(bl) ? 0 : bl;
       }
-  const structures = structureStats(labels, grid, vol, manifest);
+  const structures = structureStats(labels, grid, opts.statsVolume ?? vol, manifest);
   opts.onProgress?.({ stage: 'merge', done: 1, total: 1 });
   return { grid, labels, structures, tiles: tiles.length };
 }
@@ -429,6 +441,9 @@ export function structureStats(labels: Uint8Array, grid: RasGrid, vol: SourceVol
         bboxMax: e.max.map((v) => Math.round(v * 10) / 10) as Vec3,
         sliceRange: [clampK(Math.min(e.kmin, e.kmax)), clampK(Math.max(e.kmin, e.kmax))] as [number, number],
         centroidSlice: clampK(ck),
+        ...(l?.minMl !== undefined ? { minMl: l.minMl } : {}),
+        ...(l?.normalMaxMl !== undefined ? { normalMaxMl: l.normalMaxMl } : {}),
+        ...(l?.normalNote ? { normalNote: l.normalNote } : {}),
       };
     })
     .sort((a, b) => b.voxels - a.voxels);
@@ -451,6 +466,19 @@ export function sliceLabels(seg: Pick<VolumeSegmentation, 'grid' | 'labels'>, vo
       out[o] = seg.labels[(s * A + a) * R + r]!;
     }
   return out;
+}
+
+/**
+ * 3B bulgu sınıfının nasıl sunulacağı (veriyle: manifest eşikleri):
+ *  - below: gösterim eşiğinin altında (çok küçük; model belirsizliği) → bulgu olarak gösterilmez, ayrıca yazılır;
+ *  - normal: fizyolojik üst sınıra kadar → "normal sınırda" (Normal ↔ Sende);
+ *  - finding: modelin bulgusu.
+ */
+export function findingClass(s: Pick<VolumeStructure, 'kind' | 'volumeMl' | 'minMl' | 'normalMaxMl'>): 'anatomy' | 'below' | 'normal' | 'finding' {
+  if (s.kind !== 'finding') return 'anatomy';
+  if (s.minMl !== undefined && s.volumeMl < s.minMl) return 'below';
+  if (s.normalMaxMl !== undefined && s.volumeMl <= s.normalMaxMl) return 'normal';
+  return 'finding';
 }
 
 /** Etiket hacmini saklamak için RLE ([değer, tekrar, ...]). */
@@ -477,6 +505,88 @@ export function decodeRle(rle: readonly number[], length: number): Uint8Array {
   return out;
 }
 
+/** Kaynak serinin (i, j, k) indeks kutusu (yarı açık: [i0, i1)). */
+export interface IndexBox {
+  i: [number, number];
+  j: [number, number];
+  k: [number, number];
+}
+
+/**
+ * Basamaklı model için kırpma kutusu: önceki modelin (ör. 3 mm BT anatomi) etiket hacminde istenen yapıların
+ * kapladığı kaynak vokselleri + her eksende ⌊addonMm / voksel boyu⌋ pay. TotalSegmentator crop_to_mask ile aynı
+ * mantık. Yapılardan hiçbiri yoksa null (model çalıştırılmaz; "kırpılacak yapı bulunamadı").
+ */
+export function cascadeBox(vol: SourceVolume, prior: Pick<VolumeSegmentation, 'grid' | 'labels'>, labelIds: readonly number[], addonMm: number): IndexBox | null {
+  const want = new Uint8Array(256);
+  for (const id of labelIds) want[id] = 1;
+  const [S, A, R] = prior.grid.shape;
+  const sp = prior.grid.spacing;
+  const toSrc = sourceMapper(vol);
+  const mn: Vec3 = [Infinity, Infinity, Infinity];
+  const mx: Vec3 = [-Infinity, -Infinity, -Infinity];
+  for (let s = 0, o = 0; s < S; s++)
+    for (let a = 0; a < A; a++)
+      for (let r = 0; r < R; r++, o++) {
+        if (!want[prior.labels[o]!]) continue;
+        const p = toSrc([prior.grid.lo[0] + r * sp, prior.grid.lo[1] + a * sp, prior.grid.lo[2] + s * sp]);
+        for (let d = 0; d < 3; d++) {
+          if (p[d]! < mn[d]!) mn[d] = p[d]!;
+          if (p[d]! > mx[d]!) mx[d] = p[d]!;
+        }
+      }
+  if (!Number.isFinite(mn[0])) return null;
+  const zoom = [vol.iVec, vol.jVec, vol.kVec].map((v) => Math.hypot(v[0], v[1], v[2]));
+  const dims = [vol.cols, vol.rows, vol.slices];
+  const box = [0, 1, 2].map((d) => {
+    // önceki ızgaranın vokseli (en yakın komşu ile özgün ızgaraya taşındığında) yarım ızgara adımı kadar yayılır
+    const half = sp / 2 / zoom[d]!;
+    const add = Math.floor(addonMm / zoom[d]! + 1e-9);
+    const lo = Math.max(0, Math.ceil(mn[d]! - half - 1e-6) - add);
+    const hi = Math.min(dims[d]!, Math.floor(mx[d]! + half + 1e-6) + 1 + add);
+    return [lo, hi] as [number, number];
+  });
+  return { i: box[0]!, j: box[1]!, k: box[2]! };
+}
+
+/** Kaynak hacmin bir kutusu (veri kopyalanır; konum vektörleri aynı, köken kaydırılır). */
+export function cropVolume(vol: SourceVolume, box: IndexBox): SourceVolume {
+  const [i0, i1] = box.i;
+  const [j0, j1] = box.j;
+  const [k0, k1] = box.k;
+  const cols = i1 - i0;
+  const rows = j1 - j0;
+  const slices = k1 - k0;
+  if (cols <= 0 || rows <= 0 || slices <= 0) throw new Error('Kırpma kutusu boş.');
+  const data = new Float32Array(slices * rows * cols);
+  for (let k = 0; k < slices; k++)
+    for (let j = 0; j < rows; j++) {
+      const src = ((k + k0) * vol.rows + (j + j0)) * vol.cols + i0;
+      data.set(vol.data.subarray(src, src + cols), (k * rows + j) * cols);
+    }
+  const origin = [0, 1, 2].map((d) => vol.origin[d]! + i0 * vol.iVec[d]! + j0 * vol.jVec[d]! + k0 * vol.kVec[d]!) as Vec3;
+  return { slices, rows, cols, data, origin, iVec: vol.iVec, jVec: vol.jVec, kVec: vol.kVec };
+}
+
+/** Önceki modelin etiket anahtarlarından kimliklere (basamaklı kırpma için). */
+export function cascadeLabelIds(prior: Pick<ModelManifest, 'labels'>, keys: readonly string[]): number[] {
+  return prior.labels.filter((l) => l.key && keys.includes(l.key)).map((l) => l.id);
+}
+
+/**
+ * Modelin çalışacağı hacim: basamaklı değilse serinin kendisi; basamaklıysa önceki model sonucuna göre kırpılmış
+ * hacim. Önceki sonuç yoksa ya da ilgili yapılar bulunamadıysa açık bir hata verir (tahminle kırpılmaz).
+ */
+export function cascadeInput(vol: SourceVolume, manifest: Pick<ModelManifest, 'volume'>, prior?: { manifest: Pick<ModelManifest, 'labels'>; seg: Pick<VolumeSegmentation, 'grid' | 'labels'> }): SourceVolume {
+  const c = manifest.volume?.cascade;
+  if (!c) return vol;
+  if (!prior) throw new Error(`Bu model önce aynı seride "${c.model}" anatomi modelinin çalışmasını gerektirir.`);
+  const ids = cascadeLabelIds(prior.manifest, c.labels);
+  const box = ids.length ? cascadeBox(vol, prior.seg, ids, c.addonMm) : null;
+  if (!box) throw new Error('Bu modelin bakacağı yapılar (' + c.labels.join(', ') + ') anatomi bölütlemesinde bulunamadı; model çalıştırılmadı.');
+  return cropVolume(vol, box);
+}
+
 /** Tahmini süre (karo sayısı): kullanıcıya çalıştırmadan önce söylenir. */
 export function estimateTiles(vol: SourceVolume, spec: VolumeSpec): number {
   const g = rasGrid(vol, spec.spacing);
@@ -490,11 +600,12 @@ export async function runVolumeModel(
   manifest: ModelManifest,
   bytes: Uint8Array,
   createEngine: EngineFactory,
-  opts: { onProgress?: (p: VolumeProgress) => void; isCancelled?: () => boolean } = {},
+  opts: { onProgress?: (p: VolumeProgress) => void; isCancelled?: () => boolean; prior?: { manifest: Pick<ModelManifest, 'labels'>; seg: Pick<VolumeSegmentation, 'grid' | 'labels'> } } = {},
 ): Promise<VolumeSegmentation> {
+  const input = cascadeInput(vol, manifest, opts.prior);
   const engine = await createEngine(bytes, manifest);
   try {
-    return await segmentVolume(vol, manifest, engine, opts);
+    return await segmentVolume(input, manifest, engine, { ...opts, statsVolume: vol });
   } finally {
     engine.dispose();
   }

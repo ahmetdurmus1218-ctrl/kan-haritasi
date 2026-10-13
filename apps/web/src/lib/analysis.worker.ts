@@ -15,6 +15,9 @@ import {
   defaultMedicalImageProviders,
   modelVersionOf,
   runMedicalImageModel,
+  type RasGrid,
+  cascadeInput,
+  decodeRle,
   segmentVolume,
 } from '@kh/analysis';
 import { volumeFromDicom } from '@kh/ingest';
@@ -23,7 +26,15 @@ import { ortEngineFactory } from './localModels/engine';
 type Request =
   | { kind?: 'analyze'; id: number; image: RasterImage; context: ImageContext; reportAvailable: boolean }
   | { kind: 'model'; id: number; manifest: ModelManifest; bytes?: ArrayBuffer; image: RasterImage; modality: Modality; context: ImageContext; documentId?: string }
-  | { kind: 'volume'; id: number; manifest: ModelManifest; bytes?: ArrayBuffer; files: ArrayBuffer[] };
+  | {
+      kind: 'volume';
+      id: number;
+      manifest: ModelManifest;
+      bytes?: ArrayBuffer;
+      files: ArrayBuffer[];
+      /** Basamaklı model için aynı serideki önceki (anatomi) sonucu. */
+      prior?: { labels: ModelManifest['labels']; grid: RasGrid; labelsRle: number[] };
+    };
 
 const post = (m: unknown, transfer: Transferable[] = []) => (self as unknown as Worker).postMessage(m, transfer);
 const providers = new Map<string, LocalModelProvider>();
@@ -48,7 +59,9 @@ async function runVolume(msg: Extract<Request, { kind: 'volume' }>) {
   }
   const vol = built.volume;
   const t0 = performance.now();
-  const seg = await segmentVolume(vol, msg.manifest, volumeEngine.engine, { onProgress: (p) => post({ id: msg.id, progress: p }) });
+  const prior = msg.prior ? { manifest: { labels: msg.prior.labels }, seg: { grid: msg.prior.grid, labels: decodeRle(msg.prior.labelsRle, msg.prior.grid.shape[0] * msg.prior.grid.shape[1] * msg.prior.grid.shape[2]) } } : undefined;
+  const input = cascadeInput(vol, msg.manifest, prior);
+  const seg = await segmentVolume(input, msg.manifest, volumeEngine.engine, { onProgress: (p) => post({ id: msg.id, progress: p }), statsVolume: vol });
   const { data: _data, ...geometry } = vol;
   post(
     {

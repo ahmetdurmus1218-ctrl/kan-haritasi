@@ -5,13 +5,13 @@
  * bağlantıları, model kökeni. Model yoksa ya da seri geometrisi güvenilir değilse nedeni açıkça yazılır.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GRAPH, encodeRle, type Modality } from '@kh/analysis';
+import { GRAPH, type ModelManifest, encodeRle, findingClass, type Modality } from '@kh/analysis';
 import type { DicomInfo } from '@kh/ingest';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { go } from '../state/router';
 import { type VolumeJobProgress, runVolumeAnalysis } from '../lib/analysisBridge';
-import { type StoredVolume, saveVolume } from '../lib/imagingRecords';
-import { useLocalModels } from '../lib/localModels/store';
+import { type StoredVolume, savePathologyVolume, saveVolume } from '../lib/imagingRecords';
+import { type StoredModel, useLocalModels } from '../lib/localModels/store';
 import { labelColor, setSeriesOverlay, updateSeriesOverlay, useSeriesOverlay } from '../lib/seriesOverlay';
 import { TONE } from '../lib/tone';
 import { BodyIcon, SpinnerIcon } from './icons';
@@ -30,13 +30,18 @@ function group(structure?: string): 'Organlar' | 'Damarlar' | 'Kemikler' | 'Kasl
 
 const ml = (v: number) => (v >= 1000 ? `${(v / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 2 })} L` : `${v.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} mL`);
 
-export function SeriesModelPanel({ seriesIds, dicom, stored, noteFileId }: { seriesIds: string[]; dicom: DicomInfo; stored: StoredVolume | undefined; noteFileId: string }) {
+type Job = { status: 'idle' } | { status: 'reading'; modelId: string; done: number } | { status: 'running'; modelId: string; p: VolumeJobProgress } | { status: 'error'; modelId: string; reason: string };
+
+export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], noteFileId }: { seriesIds: string[]; dicom: DicomInfo; stored: StoredVolume | undefined; pathology?: StoredVolume[]; noteFileId: string }) {
   const vault = useUnlockedVault();
   const { bump } = useVault();
   const models = useLocalModels();
   const modality = dicom.modality ? MODALITY[dicom.modality] : undefined;
-  const model = useMemo(() => models?.find((m) => m.manifest.task === 'segmentation-3d' && modality && m.manifest.modalities.includes(modality)), [models, modality]);
-  const [job, setJob] = useState<{ status: 'idle' } | { status: 'reading'; done: number } | { status: 'running'; p: VolumeJobProgress } | { status: 'error'; reason: string }>({ status: 'idle' });
+  const volumeModels = useMemo(() => models?.filter((m) => m.manifest.task === 'segmentation-3d' && modality && m.manifest.modalities.includes(modality)) ?? [], [models, modality]);
+  // Anatomi modeli: kırpma gerektirmeyen; patoloji modelleri: anatomi sonucuna göre kırpılan (basamaklı) modeller.
+  const model = volumeModels.find((m) => !m.manifest.volume?.cascade);
+  const pathologyModels = volumeModels.filter((m) => m.manifest.volume?.cascade);
+  const [job, setJob] = useState<Job>({ status: 'idle' });
   const abort = useRef<AbortController | null>(null);
   const overlay = useSeriesOverlay(seriesIds[0]);
   const [showAll, setShowAll] = useState(false);
@@ -61,25 +66,33 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, noteFileId }: { ser
   })();
   const minutes = Math.max(1, Math.round((tilesEstimate * (SECONDS_PER_TILE[modality] ?? 45)) / 60));
 
-  const start = async () => {
-    if (!model) return;
+  const start = async (target: StoredModel | undefined) => {
+    if (!target) return;
+    const modelId = target.manifest.id;
+    const cascade = target.manifest.volume?.cascade;
+    const priorModel = cascade ? models?.find((x) => x.manifest.id === cascade.model) : undefined;
+    if (cascade && (!stored || stored.model.id !== cascade.model || !priorModel)) {
+      setJob({ status: 'error', modelId, reason: 'Bu model önce aynı seride anatomi bölütlemesinin çalışmasını gerektirir.' });
+      return;
+    }
     const ctrl = new AbortController();
     abort.current = ctrl;
-    setJob({ status: 'reading', done: 0 });
+    setJob({ status: 'reading', modelId, done: 0 });
     const files: Uint8Array[] = [];
     for (const [i, id] of seriesIds.entries()) {
       if (ctrl.signal.aborted) return;
       files.push((await vault.readFile(id)).bytes);
-      if (i % 10 === 0) setJob({ status: 'reading', done: i + 1 });
+      if (i % 10 === 0) setJob({ status: 'reading', modelId, done: i + 1 });
     }
-    setJob({ status: 'running', p: { stage: 'loading', done: 0, total: 1 } });
-    const r = await runVolumeAnalysis(model.manifest, files, { signal: ctrl.signal, onProgress: (p) => !ctrl.signal.aborted && setJob({ status: 'running', p }) });
+    setJob({ status: 'running', modelId, p: { stage: 'loading', done: 0, total: 1 } });
+    const prior = cascade && stored && priorModel ? { labels: priorModel.manifest.labels, grid: stored.grid, labelsRle: stored.labelsRle } : undefined;
+    const r = await runVolumeAnalysis(target.manifest, files, { signal: ctrl.signal, prior, onProgress: (p) => !ctrl.signal.aborted && setJob({ status: 'running', modelId, p }) });
     if (ctrl.signal.aborted) return;
     if (!r.ok) {
-      setJob({ status: 'error', reason: r.reason });
+      setJob({ status: 'error', modelId, reason: r.reason });
       return;
     }
-    const m = model.manifest;
+    const m = target.manifest;
     const result: StoredVolume = {
       at: new Date().toISOString(),
       model: { id: m.id, name: m.name, version: m.version, sha256: m.sha256, license: m.license, source: m.source },
@@ -91,8 +104,10 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, noteFileId }: { ser
       tiles: r.tiles,
       seconds: r.seconds,
       modality,
+      ...(cascade && stored ? { cascadeFrom: { model: stored.model.id, at: stored.at } } : {}),
     };
-    await saveVolume(vault, noteFileId, result);
+    if (cascade) await savePathologyVolume(vault, noteFileId, m.id, result);
+    else await saveVolume(vault, noteFileId, result);
     setJob({ status: 'idle' });
     bump();
   };
@@ -103,13 +118,45 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, noteFileId }: { ser
   };
 
   const busy = job.status === 'reading' || job.status === 'running';
-  const findings = stored?.structures.filter((s) => s.kind === 'finding') ?? [];
+  const findings = stored?.structures.filter((s) => findingClass(s) === 'finding') ?? [];
   const anatomy = stored?.structures.filter((s) => s.kind === 'anatomy') ?? [];
   const groups = (['Organlar', 'Damarlar', 'Kemikler', 'Kaslar'] as const).map((g) => ({ g, items: anatomy.filter((s) => group(s.structure) === g) })).filter((x) => x.items.length);
-  const show = (fileId: string | undefined, labelId: number) => {
-    if (!fileId) return;
-    updateSeriesOverlay({ visible: true, highlight: labelId, goto: { fileId, nonce: Date.now() } });
+  const show = (v: StoredVolume, fileId: string | undefined, labelId: number) => {
+    if (!fileId || !seriesIds[0]) return;
+    setSeriesOverlay({ headId: seriesIds[0], volume: v, visible: true, highlight: labelId, goto: { fileId, nonce: Date.now() } });
   };
+  const running = (id: string | undefined) => busy && id !== undefined && 'modelId' in job && job.modelId === id;
+  const progress = (spacing: number) =>
+    busy && (
+      <div className="space-y-2" aria-live="polite" data-testid="series-progress">
+        <p className="flex items-center gap-2 text-sm text-fg">
+          <SpinnerIcon size={14} />
+          {job.status === 'reading'
+            ? `Kesitler kasadan okunuyor (${job.done}/${seriesIds.length})…`
+            : job.p.stage === 'loading'
+              ? 'Model yükleniyor…'
+              : job.p.stage === 'resample'
+                ? `Hacim ${spacing.toLocaleString('tr-TR')} mm ızgaraya hazırlanıyor…`
+                : job.p.stage === 'inference'
+                  ? `Model çalışıyor: karo ${job.p.done + 1}/${job.p.total}`
+                  : 'Sonuçlar birleştiriliyor…'}
+        </p>
+        {job.status === 'running' && job.p.stage === 'inference' && (
+          <div className="h-1.5 overflow-hidden rounded-full bg-ink-700">
+            <div className="h-full bg-[#a78bfa]" style={{ width: `${Math.round((job.p.done / Math.max(1, job.p.total)) * 100)}%` }} />
+          </div>
+        )}
+        <button type="button" className="btn-ghost px-2.5 py-1 text-xs" onClick={cancel}>
+          İptal
+        </button>
+      </div>
+    );
+  const errorText = (id: string | undefined) =>
+    job.status === 'error' && job.modelId === id ? (
+      <p className="text-sm text-caution-fg" role="status" data-testid="series-error">
+        {/geometri|kesit|aralık|yönelim|konum|boyut|çok kareli|sıkıştırılmış/i.test(job.reason) ? `Bu seri güvenilir 3B analiz için uygun değil: ${job.reason}` : job.reason}
+      </p>
+    ) : null;
 
   return (
     <section className="space-y-3 rounded-2xl border border-[#a78bfa]/40 bg-ink-850/60 p-4" aria-label="Seri analizi (3B yerel model)" data-testid="series-model-panel">
@@ -125,47 +172,19 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, noteFileId }: { ser
 
       {!stored && model && seriesIds.length < minSlices && <p className="text-sm text-fg-muted">Seride {seriesIds.length} kesit var; bu model için en az {minSlices} kesit gerekir. Seri analizi yapılmadı.</p>}
 
-      {!stored && model && seriesIds.length >= minSlices && !busy && (
+      {!stored && model && seriesIds.length >= minSlices && !running(model.manifest.id) && (
         <div className="space-y-2">
           <p className="text-sm text-fg-muted">
             Tüm seri cihazda, {model.manifest.name} ile bölütlenir (organlar, damarlar, kemikler, kaslar{model.manifest.labels.some((l) => l.kind === 'finding') ? ' ve modelin bulgu sınıfları' : ''}). Yaklaşık {tilesEstimate} karo · masaüstünde ~{minutes} dk, telefonda daha uzun sürebilir. Görüntü cihazdan çıkmaz.
           </p>
-          <button type="button" className="btn-primary px-3 py-1.5 text-sm" onClick={() => void start()} data-testid="run-series-model">
+          <button type="button" className="btn-primary px-3 py-1.5 text-sm" disabled={busy} onClick={() => void start(model)} data-testid="run-series-model">
             Seriyi analiz et
           </button>
         </div>
       )}
 
-      {busy && (
-        <div className="space-y-2" aria-live="polite" data-testid="series-progress">
-          <p className="flex items-center gap-2 text-sm text-fg">
-            <SpinnerIcon size={14} />
-            {job.status === 'reading'
-              ? `Kesitler kasadan okunuyor (${job.done}/${seriesIds.length})…`
-              : job.p.stage === 'loading'
-                ? 'Model yükleniyor…'
-                : job.p.stage === 'resample'
-                  ? 'Hacim 3 mm ızgaraya hazırlanıyor…'
-                  : job.p.stage === 'inference'
-                    ? `Model çalışıyor: karo ${job.p.done + 1}/${job.p.total}`
-                    : 'Sonuçlar birleştiriliyor…'}
-          </p>
-          {job.status === 'running' && job.p.stage === 'inference' && (
-            <div className="h-1.5 overflow-hidden rounded-full bg-ink-700">
-              <div className="h-full bg-[#a78bfa]" style={{ width: `${Math.round((job.p.done / Math.max(1, job.p.total)) * 100)}%` }} />
-            </div>
-          )}
-          <button type="button" className="btn-ghost px-2.5 py-1 text-xs" onClick={cancel}>
-            İptal
-          </button>
-        </div>
-      )}
-
-      {job.status === 'error' && (
-        <p className="text-sm text-caution-fg" role="status" data-testid="series-error">
-          {/geometri|kesit|aralık|yönelim|konum|boyut|çok kareli|sıkıştırılmış/i.test(job.reason) ? `Bu seri güvenilir 3B analiz için uygun değil: ${job.reason}` : job.reason}
-        </p>
-      )}
+      {running(model?.manifest.id) && progress(model?.manifest.volume?.spacing ?? 3)}
+      {errorText(model?.manifest.id)}
 
       {stored && (
         <>
@@ -186,7 +205,7 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, noteFileId }: { ser
                   <p className="mt-0.5 text-xs text-fg-muted">
                     {ml(f.volumeMl)} · kesit {f.sliceRange[0] + 1}–{f.sliceRange[1] + 1} · modelin sınıfıdır, tanı değildir
                   </p>
-                  <button type="button" className="mt-1 text-xs text-accent underline" onClick={() => show(stored.fileIds[f.centroidSlice], f.labelId)}>
+                  <button type="button" className="mt-1 text-xs text-accent underline" onClick={() => show(stored, stored.fileIds[f.centroidSlice], f.labelId)}>
                     Görüntüde göster
                   </button>
                 </div>
@@ -213,7 +232,7 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, noteFileId }: { ser
                           {ml(s.volumeMl)} · kesit {s.sliceRange[0] + 1}–{s.sliceRange[1] + 1}
                         </span>
                         <span className="ml-auto flex shrink-0 items-center gap-2">
-                          <button type="button" className="text-xs text-accent underline" onClick={() => show(stored.fileIds[s.centroidSlice], s.labelId)}>
+                          <button type="button" className="text-xs text-accent underline" onClick={() => show(stored, stored.fileIds[s.centroidSlice], s.labelId)}>
                             Görüntüde
                           </button>
                           {node && (
@@ -240,37 +259,7 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, noteFileId }: { ser
             )}
           </div>
 
-          <details className="text-xs text-fg-muted">
-            <summary className="cursor-pointer text-fg">Analiz ayrıntıları ve model kökeni</summary>
-            <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5" aria-label="Seri modeli kökeni">
-              <dt className="text-fg-faint">Model</dt>
-              <dd>
-                {stored.model.name} · {stored.model.version} ({stored.model.id})
-              </dd>
-              <dt className="text-fg-faint">SHA-256</dt>
-              <dd className="break-all font-mono">{stored.model.sha256}</dd>
-              <dt className="text-fg-faint">Lisans</dt>
-              <dd>{stored.model.license}</dd>
-              <dt className="text-fg-faint">Kaynak</dt>
-              <dd className="break-all">{stored.model.source}</dd>
-              <dt className="text-fg-faint">Girdi</dt>
-              <dd>
-                DICOM seri · {stored.geometry.slices} kesit · {stored.grid.spacing} mm izotropik ızgara ({stored.grid.shape.join('×')})
-              </dd>
-              <dt className="text-fg-faint">Çalışma</dt>
-              <dd>
-                {stored.tiles} karo · {stored.seconds} sn · {new Date(stored.at).toLocaleString('tr-TR')} · cihazda
-              </dd>
-            </dl>
-            {model?.manifest.validation && <p className="mt-1">Doğrulama: {model.manifest.validation}</p>}
-            {model && (
-              <ul className="mt-1 list-disc pl-4">
-                {model.manifest.limitations.map((l) => (
-                  <li key={l}>{l}</li>
-                ))}
-              </ul>
-            )}
-          </details>
+          <Provenance v={stored} manifest={model?.manifest} />
           {model && (
             <button type="button" className="text-xs text-fg-muted underline" onClick={() => void saveVolume(vault, noteFileId, null).then(bump)}>
               Sonucu sil (yeniden analiz için)
@@ -278,6 +267,122 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, noteFileId }: { ser
           )}
         </>
       )}
+
+      {pathologyModels.length > 0 && (
+        <div className="space-y-2 border-t border-ink-700 pt-3" aria-label="Patoloji modelleri (seri)" data-testid="pathology-models">
+          <p className="text-sm font-medium text-fg">Patoloji modelleri</p>
+          <p className="text-xs text-fg-muted">Her biri ayrı bir yerel modeldir; anatomi bölütlemesindeki ilgili organların çevresinde, daha ince (1,5 mm) ızgarada çalışır. Sonuç tanı değildir.</p>
+          {pathologyModels.map((pm) => {
+            const res = pathology.find((v) => v.model.id === pm.manifest.id && stored && v.cascadeFrom?.at === stored.at);
+            const found = res?.structures.filter((x) => findingClass(x) === 'finding') ?? [];
+            const normal = res?.structures.filter((x) => findingClass(x) === 'normal') ?? [];
+            const below = res?.structures.filter((x) => findingClass(x) === 'below') ?? [];
+            const needs = !stored;
+            return (
+              <div key={pm.manifest.id} className="space-y-1.5 rounded-lg border border-ink-700 px-2.5 py-2" data-testid="pathology-model" data-model={pm.manifest.id} data-state={res ? 'done' : needs ? 'needs-anatomy' : 'ready'}>
+                <p className="text-sm text-fg">{pm.manifest.name}</p>
+                {needs && <p className="text-xs text-fg-muted">Önce yukarıdaki anatomi analizi çalışmalı (model, ilgili organların bulunduğu bölgeye bakar).</p>}
+                {!needs && !res && !running(pm.manifest.id) && (
+                  <button type="button" className="btn-ghost px-2.5 py-1 text-xs" disabled={busy} onClick={() => void start(pm)} data-testid="run-pathology-model">
+                    Bu modeli çalıştır
+                  </button>
+                )}
+                {running(pm.manifest.id) && progress(pm.manifest.volume?.spacing ?? 1.5)}
+                {errorText(pm.manifest.id)}
+                {res && found.length === 0 && (
+                  <p className="text-sm text-fg-muted" data-testid="pathology-none">
+                    ✓ Modelin bulgu sınıfı ({pm.manifest.labels.filter((l) => l.kind === 'finding').map((l) => l.finding).join(', ')}) bu seride {normal.length ? 'fizyolojik sınırın üstünde ' : ''}bulunmadı. Bu, bulgunun olmadığını kesinleştirmez.
+                  </p>
+                )}
+                {normal.map((f) => (
+                  <div key={f.labelId} className="rounded-lg border border-ink-700 px-2.5 py-2 text-sm" data-testid="pathology-normal">
+                    <p className="text-fg">✓ {f.name}: normal sınırda</p>
+                    <p className="mt-0.5 text-xs text-fg-muted">
+                      Normal: ≤ {ml(f.normalMaxMl ?? 0)}{f.normalNote ? ` (${f.normalNote})` : ''} · Sende (modelin ölçtüğü): {ml(f.volumeMl)}
+                    </p>
+                    <button type="button" className="mt-1 text-xs text-accent underline" onClick={() => show(res!, res!.fileIds[f.centroidSlice], f.labelId)}>
+                      Görüntüde göster
+                    </button>
+                  </div>
+                ))}
+                {below.length > 0 && (
+                  <p className="text-xs text-fg-muted" data-testid="pathology-below">
+                    Eşik altı (bulgu olarak gösterilmedi; çok küçük alan, model belirsizliği olabilir): {below.map((f) => `${f.name} ${ml(f.volumeMl)}`).join(', ')}.
+                  </p>
+                )}
+                {found.map((f) => (
+                  <div key={f.labelId} className={`rounded-lg border px-2.5 py-2 text-sm ${TONE.attention.border} ${TONE.attention.bg}`} data-testid="pathology-finding">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <SourceBadge source="IMAGE_MODEL" />
+                      <span className={`font-medium ${TONE.attention.text}`}>◆ {f.name}</span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-fg-muted">
+                      {ml(f.volumeMl)} · kesit {f.sliceRange[0] + 1}–{f.sliceRange[1] + 1} · modelin bölütlemesidir, tanı değildir
+                    </p>
+                    <span className="mt-1 flex flex-wrap gap-3">
+                      <button type="button" className="text-xs text-accent underline" onClick={() => show(res!, res!.fileIds[f.centroidSlice], f.labelId)}>
+                        Görüntüde göster
+                      </button>
+                      {f.node && GRAPH.node(f.node) && (
+                        <button type="button" className="text-xs text-accent underline" onClick={() => go({ name: 'organ', id: f.node! })}>
+                          Organ
+                        </button>
+                      )}
+                      {f.structure && (
+                        <button type="button" className="inline-flex items-center gap-0.5 text-xs text-accent underline" onClick={() => go({ name: 'body', structure: f.structure! })}>
+                          <BodyIcon size={12} /> 3B
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                ))}
+                {res && <Provenance v={res} manifest={pm.manifest} />}
+                {res && (
+                  <button type="button" className="text-xs text-fg-muted underline" onClick={() => void savePathologyVolume(vault, noteFileId, pm.manifest.id, null).then(bump)}>
+                    Bu sonucu sil
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </section>
+  );
+}
+
+function Provenance({ v, manifest }: { v: StoredVolume; manifest: ModelManifest | undefined }) {
+  return (
+    <details className="text-xs text-fg-muted">
+      <summary className="cursor-pointer text-fg">Analiz ayrıntıları ve model kökeni</summary>
+      <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5" aria-label="Seri modeli kökeni">
+        <dt className="text-fg-faint">Model</dt>
+        <dd>
+          {v.model.name} · {v.model.version} ({v.model.id})
+        </dd>
+        <dt className="text-fg-faint">SHA-256</dt>
+        <dd className="break-all font-mono">{v.model.sha256}</dd>
+        <dt className="text-fg-faint">Lisans</dt>
+        <dd>{v.model.license}</dd>
+        <dt className="text-fg-faint">Kaynak</dt>
+        <dd className="break-all">{v.model.source}</dd>
+        <dt className="text-fg-faint">Girdi</dt>
+        <dd>
+          DICOM seri · {v.geometry.slices} kesit · {v.grid.spacing.toLocaleString('tr-TR')} mm izotropik ızgara ({v.grid.shape.join('×')}){v.cascadeFrom ? ` · anatomi sonucuna (${v.cascadeFrom.model}) göre kırpılmış bölge` : ''}
+        </dd>
+        <dt className="text-fg-faint">Çalışma</dt>
+        <dd>
+          {v.tiles} karo · {v.seconds} sn · {new Date(v.at).toLocaleString('tr-TR')} · cihazda
+        </dd>
+      </dl>
+      {manifest?.validation && <p className="mt-1">Doğrulama: {manifest.validation}</p>}
+      {manifest && (
+        <ul className="mt-1 list-disc pl-4">
+          {manifest.limitations.map((l) => (
+            <li key={l}>{l}</li>
+          ))}
+        </ul>
+      )}
+    </details>
   );
 }

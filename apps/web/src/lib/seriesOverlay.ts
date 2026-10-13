@@ -4,6 +4,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import { colorFor } from '../anatomy/palette';
+import { TONE_HEX } from './tone';
 import type { StoredVolume } from './imagingRecords';
 
 export interface SeriesOverlayState {
@@ -43,10 +44,13 @@ export function useSeriesOverlay(headId: string | undefined): SeriesOverlayState
   return s && headId && s.headId === headId ? s : null;
 }
 
-/** Etiket rengi: 3B modeldeki organ rengiyle aynı (tek renk kaynağı); bilinmeyende sabit bir ton. */
+/**
+ * Etiket rengi: anatomik yapıda 3B modeldeki organ rengiyle aynı (tek renk kaynağı); modelin bulgu sınıfında
+ * "dikkat" tonu (yazı ve simgeyle birlikte gösterilir, yalnızca renge dayanmaz).
+ */
 export function labelColor(v: StoredVolume, labelId: number): [number, number, number] {
   const s = v.structures.find((x) => x.labelId === labelId);
-  const hex = s?.structure ? colorFor(s.structure, s.part ?? null) : '#a78bfa';
+  const hex = s?.kind === 'finding' ? TONE_HEX.high : s?.structure ? colorFor(s.structure, s.part ?? null) : TONE_HEX.model;
   const n = Number.parseInt(hex.replace('#', '').slice(0, 6), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }

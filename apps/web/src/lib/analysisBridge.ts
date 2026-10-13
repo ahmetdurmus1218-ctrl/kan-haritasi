@@ -240,7 +240,7 @@ export async function runLocalModel(
 export async function runVolumeAnalysis(
   manifest: ModelManifest,
   files: Uint8Array[],
-  opts: { signal?: AbortSignal; onProgress?: (p: VolumeJobProgress) => void } = {},
+  opts: { signal?: AbortSignal; onProgress?: (p: VolumeJobProgress) => void; prior?: { labels: ModelManifest['labels']; grid: RasGrid; labelsRle: number[] } } = {},
 ): Promise<VolumeResult> {
   const w = getWorker();
   if (!w) return { ok: false, reason: 'Bu tarayıcıda arka plan işçisi (Web Worker) yok.' };
@@ -252,14 +252,14 @@ export async function runVolumeAnalysis(
     let r: WorkerReply = { id: 0, needBytes: true };
     if (loadedModels.has(`vol:${manifest.sha256}`)) {
       const bufs = copies();
-      r = await ask(w, { kind: 'volume', manifest, files: bufs }, bufs, onP);
+      r = await ask(w, { kind: 'volume', manifest, files: bufs, prior: opts.prior }, bufs, onP);
     }
     if (r.needBytes) {
       opts.onProgress?.({ stage: 'loading', done: 0, total: 1 });
       const bytes = await modelBytes(manifest.id);
       if (!bytes) return { ok: false, reason: 'Model dosyası cihazda bulunamadı.' };
       const bufs = copies();
-      r = await ask(w, { kind: 'volume', manifest, files: bufs, bytes }, [bytes, ...bufs], onP);
+      r = await ask(w, { kind: 'volume', manifest, files: bufs, bytes, prior: opts.prior }, [bytes, ...bufs], onP);
       loadedModels.add(`vol:${manifest.sha256}`);
     }
     return r.volume ?? { ok: false, reason: 'Model sonuç döndürmedi.' };
@@ -392,9 +392,7 @@ const STUDY_MODALITY: Record<string, string> = { mr: 'MRI', ct: 'CT', xray: 'XRA
 export function healthModelFrom(reports: StoredReport[], studies: ImagingStudy[]): HealthModel {
   const images = studies.flatMap((st) => {
     const vol = st.note?.volume;
-    const volumeInput = vol
-      ? [{ run: volumeRun(vol, st.findings.length > 0), date: st.date, documentId: st.head.id, studyKey: st.key, modality: STUDY_MODALITY[st.category] ?? st.category }]
-      : [];
+    const volumeInput = (vol ? [vol, ...(st.note?.pathology ?? [])] : []).map((v) => ({ run: volumeRun(v, st.findings.length > 0), date: st.date, documentId: st.head.id, studyKey: st.key, modality: STUDY_MODALITY[st.category] ?? st.category }));
     const a = st.note?.analysis;
     if (!a) return volumeInput;
     const structure = a.structure ?? (st.region ? regionByKey.get(st.region)?.structure : undefined);

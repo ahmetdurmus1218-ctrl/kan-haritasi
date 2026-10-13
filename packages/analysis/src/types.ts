@@ -393,7 +393,7 @@ export interface ModelStructure {
   localization: Localization;
   anatomicalStructure?: AnatomicalLocation;
   /** Modelin çıktısından hesaplanan ölçüm (ör. hacim, kardiyotorasik oran). */
-  measurements: Array<{ name: string; value: number; unit: string; method: string }>;
+  measurements: Array<{ name: string; value: number; unit: string; method: string; /** Fizyolojik üst sınır (varsa). */ refMax?: number }>;
   confidence: Confidence;
   limitations: string[];
 }

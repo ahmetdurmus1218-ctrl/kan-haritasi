@@ -278,7 +278,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
 
 
         {dicom && seriesIds.length > 1 && note !== undefined && (dicom.modality === 'CT' || dicom.modality === 'MR') && (
-          <SeriesModelPanel seriesIds={seriesIds} dicom={dicom} stored={note?.volume} noteFileId={noteFileId} />
+          <SeriesModelPanel seriesIds={seriesIds} dicom={dicom} stored={note?.volume} pathology={note?.pathology} noteFileId={noteFileId} />
         )}
 
         {isImaging(category) && hasImage && note !== undefined && (

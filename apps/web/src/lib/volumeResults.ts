@@ -3,7 +3,7 @@
  * (hacim ölçümüyle), "finding" türündeki sınıflar → MedicalFinding. Konum gerçek voksel kümesidir
  * (Localization 'volume'); köken model-derived (model, sürüm, SHA-256, lisans, belge, kesit).
  */
-import { type ImageAnalysisRun, type MedicalFinding, type ModelStructure, type Provenance, anatomyForLabel, decodeRle, score, sliceLabels } from '@kh/analysis';
+import { type ImageAnalysisRun, type MedicalFinding, type ModelStructure, type Provenance, anatomyForLabel, decodeRle, findingClass, score, sliceLabels } from '@kh/analysis';
 import type { StoredVolume } from './imagingRecords';
 
 export function volumeStructures(v: StoredVolume): { structures: ModelStructure[]; findings: MedicalFinding[] } {
@@ -11,6 +11,9 @@ export function volumeStructures(v: StoredVolume): { structures: ModelStructure[
   const structures: ModelStructure[] = [];
   const findings: MedicalFinding[] = [];
   for (const s of v.structures) {
+    const cls = findingClass(s);
+    // Gösterim eşiğinin altındaki bulgu sınıfı birleşik modele girmez (panelde "eşik altı" diye ayrıca yazılır).
+    if (cls === 'below') continue;
     const localization = { kind: 'volume' as const, labelId: s.labelId, voxels: s.voxels, volumeMl: s.volumeMl, centroid: s.centroid, bboxMin: s.bboxMin, bboxMax: s.bboxMax, sliceRange: s.sliceRange, centroidSlice: s.centroidSlice };
     const provenance: Provenance = {
       derivation: 'model-derived',
@@ -22,7 +25,7 @@ export function volumeStructures(v: StoredVolume): { structures: ModelStructure[
     };
     const anatomicalStructure = anatomyForLabel(s, localization, conf);
     const id = `vol-${v.model.id}-${s.labelId}`;
-    if (s.kind === 'finding')
+    if (cls === 'finding')
       findings.push({
         id,
         source: 'IMAGE_MODEL',
@@ -32,7 +35,7 @@ export function volumeStructures(v: StoredVolume): { structures: ModelStructure[
         confidence: conf,
         localization,
         ...(anatomicalStructure ? { anatomicalStructure } : {}),
-        limitations: ['Bölütleme modelinin bir sınıfıdır; ayrı bir lezyon modeli değildir. Tanı değildir.'],
+        limitations: [v.cascadeFrom ? `Ayrı bir patoloji modelinin (${v.model.name}) bölütlemesidir; anatomi sonucuna göre kırpılan bölgede çalıştı. Tanı değildir; hekim değerlendirmesi gerekir.` : 'Bölütleme modelinin bir sınıfıdır; ayrı bir lezyon modeli değildir. Tanı değildir.'],
       });
     else
       structures.push({
@@ -43,9 +46,13 @@ export function volumeStructures(v: StoredVolume): { structures: ModelStructure[
         provenance,
         localization,
         ...(anatomicalStructure ? { anatomicalStructure } : {}),
-        measurements: [{ name: 'Hacim', value: s.volumeMl, unit: 'mL', method: `${v.model.name} bölütlemesinden (voksel sayısı × ${v.grid.spacing} mm³)` }],
+        measurements: [{ name: 'Hacim', value: s.volumeMl, unit: 'mL', method: `${v.model.name} bölütlemesinden (voksel sayısı × ${v.grid.spacing} mm³)`, ...(cls === 'normal' && s.normalMaxMl !== undefined ? { refMax: s.normalMaxMl } : {}) }],
         confidence: conf,
-        limitations: ['Bölütleme normal anatomiyi gösterir; bölütlenmesi organın sağlıklı olduğu anlamına gelmez. Hacim referans aralığıyla karşılaştırılmadı.'],
+        limitations: [
+          cls === 'normal'
+            ? `Fizyolojik sınırda (≤ ${s.normalMaxMl} mL). ${s.normalNote ?? ''} Tanı değildir.`.replace('  ', ' ')
+            : 'Bölütleme normal anatomiyi gösterir; bölütlenmesi organın sağlıklı olduğu anlamına gelmez. Hacim referans aralığıyla karşılaştırılmadı.',
+        ],
       });
   }
   return { structures, findings };
@@ -67,7 +74,7 @@ export function volumeRun(v: StoredVolume, reportAvailable: boolean): ImageAnaly
     sequence: { source: 'none', text: '—' },
     reportAvailable,
     statements: [],
-    result: { adapterId: 'local-volume-model', modality: v.modality, status: 'AVAILABLE', model: { id: v.model.id, name: v.model.name, version: v.model.version, kind: 'learned', local: true }, capabilities: [], observations: [], limitations: [], summary: `${v.model.name}: ${v.structures.length} yapı bölütlendi.` },
+    result: { adapterId: 'local-volume-model', modality: v.modality, status: 'AVAILABLE', model: { id: v.model.id, name: v.model.name, version: v.model.version, kind: 'learned', local: true }, capabilities: [], observations: [], limitations: [], summary: v.cascadeFrom ? `${v.model.name}: ${findings.length ? findings.map((f) => f.finding).join(', ') : 'modelin bulgu sınıfı bu seride bulunmadı'}.` : `${v.model.name}: ${v.structures.length} yapı bölütlendi.` },
   };
 }
 

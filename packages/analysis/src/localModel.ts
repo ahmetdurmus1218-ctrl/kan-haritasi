@@ -35,6 +35,12 @@ export interface ModelLabel {
   part?: string;
   /** Bilgi grafiği düğümü (organ sayfası / fizyoloji). */
   node?: string;
+  /** 3B bulgu sınıfı: bu hacmin (mL) altı bulgu olarak gösterilmez ("eşik altı" diye ayrıca yazılır). */
+  minMl?: number;
+  /** 3B bulgu sınıfı: bu hacme (mL) kadarı fizyolojik kabul edilir (Normal ↔ Sende karşılaştırması). */
+  normalMaxMl?: number;
+  /** Normal fizyolojinin kısa açıklaması (normalMaxMl ile birlikte). */
+  normalNote?: string;
 }
 
 /** Bir yerel modelin kimlik kartı: ne yapar, hangi girdiyi bekler, çıktısı nasıl okunur, kaynağı ve lisansı. */
@@ -129,10 +135,16 @@ export function validateManifest(json: unknown): { ok: true; manifest: ModelMani
     const okNorm = v?.normalization?.scheme === 'zscore' || (v?.normalization?.scheme === 'ct' && Array.isArray(v.normalization.clip) && v.normalization.std > 0);
     if (!v || !(v.spacing > 0) || !okPatch || v.axisOrder !== 'SAR' || !okNorm || !(v.tileStep > 0 && v.tileStep <= 1) || !(Number.isInteger(v.topK) && v.topK >= 1 && v.topK <= 16) || !(v.minSlices >= 1))
       e.push('volume: spacing > 0, patch [S,A,R], axisOrder "SAR", normalization (ct | zscore), tileStep (0–1], topK (1–16), minSlices gerekli.');
+    const c = v?.cascade;
+    if (c !== undefined && !(c && typeof c.model === 'string' && c.model && Array.isArray(c.labels) && c.labels.length && c.labels.every((x) => typeof x === 'string') && c.addonMm >= 0 && c.addonMm <= 200))
+      e.push('volume.cascade: { model, labels: [yapı anahtarları], addonMm (0–200) }.');
+    if (v?.dropLabels !== undefined && !(Array.isArray(v.dropLabels) && v.dropLabels.every((x) => Number.isInteger(x) && x > 0))) e.push('volume.dropLabels: pozitif tamsayı listesi.');
   }
   if (m.calibration && !(m.calibration.kind === 'xrv-op-norm' && Array.isArray(m.calibration.thresholds) && m.calibration.thresholds.length >= (m.labels?.length ?? 0)))
     e.push('calibration: { kind: "xrv-op-norm", thresholds: [etiket sayısı kadar] }.');
   if (Array.isArray(m.labels) && m.labels.some((l) => l && l.kind !== undefined && l.kind !== 'anatomy' && l.kind !== 'finding')) e.push('labels[].kind: anatomy | finding.');
+  if (Array.isArray(m.labels) && m.labels.some((l) => l && ((l.minMl !== undefined && !(l.minMl >= 0)) || (l.normalMaxMl !== undefined && !(l.normalMaxMl > 0)))))
+    e.push('labels[].minMl ≥ 0 ve normalMaxMl > 0 olmalı.');
   if (!Array.isArray(m.labels) || !m.labels.length || m.labels.some((l) => typeof l?.id !== 'number' || typeof l.finding !== 'string' || !l.finding.trim())) e.push('labels: en az bir {id, finding} gerekli.');
   if (typeof m.scoreThreshold !== 'number' || m.scoreThreshold < 0 || m.scoreThreshold > 1) e.push('scoreThreshold 0–1 arası olmalı.');
   if (!Array.isArray(m.limitations)) e.push('limitations bir liste olmalı (boş olabilir).');

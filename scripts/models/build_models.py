@@ -85,6 +85,68 @@ MODELS = {
     },
 }
 
+# Patoloji (basamaklı) modelleri: TotalSegmentator'ın açık lisanslı ayrı görevleri. Uygulamada önce BT anatomi modeli
+# çalışır; onun ilgili yapılarının kutusu + pay ile özgün seri kırpılır, model yalnızca orada 1,5 mm'de çalışır.
+# Doğrulama metinleri ölçüm sonuçlarından (--validation JSON) gelir; ölçülmediyse "ölçülmedi" yazar.
+TS_KIDNEY_VALIDATION = "{kidney_real}"
+TS_EFFUSION_VALIDATION = "{effusion_real}"
+PATHOLOGY = {
+    "kidney-cysts": {
+        "zip": f"{TS_URL}/v2.5.0-weights/Dataset789_kidney_cyst_501subj.zip",
+        "zip_sha256": "fd528187b1526135894ac03e15861ae4de9b39ed317fbfce06ab9066e9817425",
+        "folder": "Dataset789_kidney_cyst_501subj",
+        "labels": {1: ("kidney_cyst_left", "Sol böbrekte kist (patoloji modeli)", "kidneys", "kidneys", "finding"), 2: ("kidney_cyst_right", "Sağ böbrekte kist (patoloji modeli)", "kidneys", "kidneys", "finding"), 3: ("kidney_left_aux", "Sol böbrek (yardımcı sınıf)", "kidneys", "kidneys", "anatomy"), 4: ("kidney_right_aux", "Sağ böbrek (yardımcı sınıf)", "kidneys", "kidneys", "anatomy")},
+        "drop": [3, 4],
+        # ~6 mm çaplı kist ≈ 0,1 mL; daha küçüğü 1,5 mm ızgarada güvenilir değil
+        "thresholds": {1: {"minMl": 0.1}, 2: {"minMl": 0.1}},
+        "cascade": {"model": "totalseg-ct-total-3mm", "labels": ["kidney_left", "kidney_right", "liver", "spleen", "colon"], "addonMm": 10},
+        "manifest": {
+            "id": "totalseg-ct-kidney-cysts",
+            "name": "TotalSegmentator — böbrek kisti (BT patoloji)",
+            "version": "2.5.0-weights · Dataset789 (1,5 mm)",
+            "modalities": ["CT"],
+            "license": "Apache-2.0 (TotalSegmentator 'kidney_cysts' görevi; açık görevler listesinde)",
+            "source": "https://github.com/wasserth/TotalSegmentator",
+            "intendedUse": "BT serisinde böbrek kistlerinin bölütlenmesi (sol/sağ). Önce BT anatomi modeli çalışır; böbrek, karaciğer, dalak ve kalın bağırsak çevresi kırpılır. Tanı aracı değildir.",
+            "validation_key": "kidney",
+            "compatibleDevice": "Masaüstü tarayıcı ya da ≥ 8 GB RAM'li telefon; 1,5 mm ızgarada karo başına ~60–90 sn (tek çekirdek WASM), tipik BT'de 4–12 karo.",
+            "limitations": [
+                "Yalnızca kisti bölütler; kistin türünü (basit/karmaşık, Bosniak) ayırmaz, solid kitleyi tanımaz.",
+                "Çok küçük kistler (birkaç mm) 1,5 mm ızgarada kaçabilir; bulunmaması kist olmadığını kesinleştirmez.",
+                "Önce BT anatomi modeli çalışmalıdır; böbrekler bölütlenemediyse model çalıştırılmaz.",
+                "Klinik kullanım için onaylı tıbbi cihaz değildir.",
+            ],
+        },
+    },
+    "effusion": {
+        "zip": f"{TS_URL}/v2.0.0-weights/Dataset315_thoraxCT.zip",
+        "zip_sha256": "974fd151df6b6755e86b34e3c7a9a11dfcee7351393f09d8621278c0aa2a5a75",
+        "folder": "Dataset315_thoraxCT",
+        "labels": {1: ("lung_pleural", "Akciğer (yardımcı sınıf)", "lungs", "lungs", "anatomy"), 2: ("pleural_effusion", "Plevral efüzyon — akciğer zarı arasında sıvı (patoloji modeli)", "lungs", "lungs", "finding"), 3: ("pericardial_effusion", "Perikardiyal efüzyon — kalp zarında sıvı (patoloji modeli)", "heart", "heart", "finding")},
+        "drop": [1],
+        # 1 mL altı: ızgara/yeniden örnekleme kaynaklı küçük alanlar (gerçek göğüs BT'sinde resmi çıktıda olmayan 0,26 mL gibi)
+        "thresholds": {2: {"minMl": 1.0}, 3: {"minMl": 1.0, "normalMaxMl": 50, "normalNote": "kalp zarı yaprakları arasında normalde 15–50 mL kaydırıcı sıvı bulunur"}},
+        "cascade": {"model": "totalseg-ct-total-3mm", "labels": ["lung_upper_lobe_left", "lung_lower_lobe_left", "lung_upper_lobe_right", "lung_middle_lobe_right", "lung_lower_lobe_right"], "addonMm": 50},
+        "manifest": {
+            "id": "totalseg-ct-effusion",
+            "name": "TotalSegmentator — plevral ve perikardiyal efüzyon (BT patoloji)",
+            "version": "2.0.0-weights · Dataset315 (1,5 mm)",
+            "modalities": ["CT"],
+            "license": "Apache-2.0 (TotalSegmentator 'pleural_pericard_effusion' görevi; açık görevler listesinde)",
+            "source": "https://github.com/wasserth/TotalSegmentator",
+            "intendedUse": "Göğüs BT'sinde akciğer zarları arasındaki (plevral) ve kalp zarındaki (perikardiyal) sıvının bölütlenmesi. Önce BT anatomi modeli çalışır; akciğerler + 5 cm çevresi kırpılır. Tanı aracı değildir.",
+            "validation_key": "effusion",
+            "compatibleDevice": "Masaüstü tarayıcı ya da ≥ 8 GB RAM'li telefon; 1,5 mm ızgarada karo başına ~45–60 sn (tek çekirdek WASM), tam göğüs BT'sinde 12–20 karo (10–20 dk).",
+            "limitations": [
+                "Sıvının türünü (transüda/eksüda/kan) ayırmaz; yalnızca hacmini ve yerini verir.",
+                "Akciğerlerin yalnızca bir kısmını içeren kesitlerde (ör. üst batın BT'sinin akciğer tabanları) sonuç güvenilir değildir.",
+                "Önce BT anatomi modeli çalışmalıdır; akciğerler bölütlenemediyse model çalıştırılmaz.",
+                "Klinik kullanım için onaylı tıbbi cihaz değildir.",
+            ],
+        },
+    },
+}
+
 XRV_CLS_TARGETS_TR = {
     "Atelectasis": ("Atelektazi (akciğer sönmesi) bulgusu", "lungs"),
     "Consolidation": ("Konsolidasyon bulgusu", "lungs"),
@@ -202,6 +264,59 @@ def build_totalseg(work: Path, key: str, out_dir: Path) -> None:
     write_model(out_dir, topk, manifest, notice)
 
 
+def build_pathology(work: Path, key: str, out_dir: Path, validation: dict) -> None:
+    spec = PATHOLOGY[key]
+    z = download(spec["zip"], work / (spec["folder"] + ".zip"), spec["zip_sha256"])
+    unpack = work / spec["folder"]
+    if not unpack.exists():
+        with zipfile.ZipFile(z) as f:
+            f.extractall(unpack)
+    trained = next((unpack / spec["folder"]).glob("*__3d_fullres"))
+    plans = json.loads((trained / "plans.json").read_text())
+    ds = json.loads((trained / "dataset.json").read_text())
+    fp = json.loads((trained / "dataset_fingerprint.json").read_text())["foreground_intensity_properties_per_channel"]["0"]
+    cfg = plans["configurations"]["3d_fullres"]
+    if sorted(int(v) for v in ds["labels"].values() if v) != sorted(spec["labels"]):
+        raise SystemExit(f"{key}: etiketler beklenenle uyuşmuyor: {ds['labels']}")
+    raw, fp16, topk = work / f"{key}.fp32.onnx", work / f"{key}.fp16.onnx", work / f"{key}.onnx"
+    print(run(str(HERE / "export_nnunet_onnx.py"), str(trained), str(raw)).strip())
+    run(str(HERE / "fp16_storage.py"), str(raw), str(fp16))
+    run(str(HERE / "add_topk.py"), str(fp16), str(topk), "4")
+    labels = [{"id": i, "key": k, "finding": tr, "structure": st, "node": nd, "kind": kind, **spec.get("thresholds", {}).get(i, {})} for i, (k, tr, st, nd, kind) in spec["labels"].items()]
+    m = dict(spec["manifest"])
+    vkey = m.pop("validation_key")
+    m["validation"] = (TS_KIDNEY_VALIDATION if vkey == "kidney" else TS_EFFUSION_VALIDATION).format(**validation)
+    manifest = {
+        "schema": "kh-model-manifest/2",
+        **m,
+        "task": "segmentation-3d",
+        "format": "onnx",
+        "citation": TS_CITATION,
+        "input": {"name": "input", "layout": "NCDHW", "channels": 1, "width": cfg["patch_size"][2], "height": cfg["patch_size"][1], "scale": 1, "mean": [0], "std": [1]},
+        "output": {"topkValues": "topk_values", "topkIndices": "topk_indices"},
+        "volume": {
+            "spacing": cfg["spacing"][0],
+            "patch": cfg["patch_size"],
+            "axisOrder": "SAR",
+            "normalization": {"scheme": "ct", "clip": [fp["percentile_00_5"], fp["percentile_99_5"]], "mean": fp["mean"], "std": fp["std"]},
+            "tileStep": 0.8,
+            "topK": 4,
+            "cropNonzero": True,
+            "minSlices": 10,
+            "cascade": spec["cascade"],
+            "dropLabels": spec["drop"],
+        },
+        "labels": labels,
+        "scoreThreshold": 0.5,
+        "upstream": {"weights": spec["zip"], "weightsSha256": spec["zip_sha256"]},
+    }
+    notice = (
+        f"{manifest['name']}\nKaynak: {manifest['source']}\nAğırlıklar: {spec['zip']} (SHA-256 {spec['zip_sha256']})\n"
+        f"Lisans: {manifest['license']}\nAtıf: {TS_CITATION}\nDeğişiklik: PyTorch → ONNX (opset 17), ağırlıklar float16 saklanır, çıktıya TopK(4) eklendi.\n"
+    )
+    write_model(out_dir, topk, manifest, notice)
+
+
 def build_xrv(work: Path, sample: Path, cls_dir: Path | None, seg_dir: Path | None) -> None:
     wdir = work / "xrv"
     wdir.mkdir(exist_ok=True)
@@ -279,14 +394,25 @@ def main() -> None:
     ap.add_argument("--bundle", help="uygulamaya gömülecek modellerin klasörü (apps/web/public/ai-models)")
     ap.add_argument("--packs", help="isteğe bağlı model paketlerinin yazılacağı klasör")
     ap.add_argument("--xray-sample", required=True, help="doğrulama için örnek göğüs röntgeni (PNG)")
+    ap.add_argument("--only", help="yalnızca bu modeller (virgülle: totalseg-ct, totalseg-mr, xrv, kidney-cysts, effusion)")
+    ap.add_argument("--validation", help="patoloji modellerinin ölçülmüş doğrulama sonuçları (JSON: kidney_real, effusion_real)")
     a = ap.parse_args()
     work = Path(a.work)
     work.mkdir(parents=True, exist_ok=True)
     if a.bundle:
         b = Path(a.bundle)
-        build_totalseg(work, "totalseg-ct", b / "totalseg-ct-total-3mm")
-        build_totalseg(work, "totalseg-mr", b / "totalseg-mr-total-3mm")
-        build_xrv(work, Path(a.xray_sample), b / "xrv-densenet121-nih", None)
+        want = set(a.only.split(",")) if a.only else {"totalseg-ct", "totalseg-mr", "xrv", "kidney-cysts", "effusion"}
+        if "totalseg-ct" in want:
+            build_totalseg(work, "totalseg-ct", b / "totalseg-ct-total-3mm")
+        if "totalseg-mr" in want:
+            build_totalseg(work, "totalseg-mr", b / "totalseg-mr-total-3mm")
+        if "xrv" in want:
+            build_xrv(work, Path(a.xray_sample), b / "xrv-densenet121-nih", None)
+        validation = json.loads(Path(a.validation).read_text()) if a.validation else {"kidney_real": "ölçülmedi", "effusion_real": "ölçülmedi"}
+        if "kidney-cysts" in want:
+            build_pathology(work, "kidney-cysts", b / "totalseg-ct-kidney-cysts", validation)
+        if "effusion" in want:
+            build_pathology(work, "effusion", b / "totalseg-ct-effusion", validation)
         index = sorted(p.name for p in b.iterdir() if (p / "manifest.json").exists())
         (b / "index.json").write_text(json.dumps({"schema": "kh-model-index/1", "models": index}, indent=1))
     if a.packs:

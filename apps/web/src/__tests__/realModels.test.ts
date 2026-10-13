@@ -10,7 +10,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { type ModelManifest, cardiothoracicRatio, decodeRle, multilabelScores, preprocess, rasterFromRgba, runVolumeModel, sliceLabels, validateManifest } from '@kh/analysis';
+import { type ModelManifest, cardiothoracicRatio, cascadeBox, cascadeLabelIds, decodeRle, findingClass, multilabelScores, preprocess, rasterFromRgba, runVolumeModel, sliceLabels, validateManifest } from '@kh/analysis';
 import { volumeFromDicom } from '@kh/ingest';
 import { ortEngineFactory } from '../lib/localModels/engine';
 
@@ -76,6 +76,56 @@ describe('gerçek yerel modeller (cihaz içi motor) — resmi çıktıyla karş�
     expect(liver.centroid[0]).toBeLessThan(spleen.centroid[0]);
     console.log(JSON.stringify({ ct: { agreement: r.agreement, meanDice: r.meanDice, minDice: r.minDice, classes: r.classes, tiles: r.seg.tiles } }));
   }, 600_000);
+
+  it('BT patoloji (basamaklı): böbrek kisti modeli anatomi sonucuna göre kırpılan bölgede çalışır; yardımcı böbrek maskesi anatomiyle örtüşür', async () => {
+    const anatomy = await compareVolume('totalseg-ct-total-3mm', 'totalseg-ct-sm');
+    const cyst = model('totalseg-ct-kidney-cysts');
+    expect(cyst.manifest.volume?.cascade?.model).toBe('totalseg-ct-total-3mm');
+    const prior = { manifest: anatomy.manifest, seg: anatomy.seg };
+    // Kırpma kutusu böbrekleri içerir ve serinin tamamı değildir
+    const box = cascadeBox(anatomy.vol, anatomy.seg, cascadeLabelIds(anatomy.manifest, cyst.manifest.volume!.cascade!.labels), cyst.manifest.volume!.cascade!.addonMm)!;
+    expect(box).not.toBeNull();
+    // Yardımcı sınıfları silmeden çalıştır: modelin kendi böbrek maskesi, anatomi modelinin böbreğiyle örtüşmeli (yer/yön doğru).
+    const keepAux: ModelManifest = { ...cyst.manifest, volume: { ...cyst.manifest.volume!, dropLabels: [] } };
+    const seg = await runVolumeModel(anatomy.vol, keepAux, cyst.bytes, ortEngineFactory(), { prior });
+    const [K, J, I] = [anatomy.vol.slices, anatomy.vol.rows, anatomy.vol.cols];
+    const mine = new Uint8Array(K * J * I);
+    const theirs = new Uint8Array(K * J * I);
+    for (let k = 0; k < K; k++) {
+      mine.set(sliceLabels(seg, anatomy.vol, k), k * J * I);
+      theirs.set(sliceLabels(anatomy.seg, anatomy.vol, k), k * J * I);
+    }
+    const dice = (a: number, b: number) => {
+      let x = 0, y = 0, both = 0;
+      for (let i = 0; i < mine.length; i++) {
+        const p = mine[i] === a;
+        const q = theirs[i] === b;
+        if (p) x++;
+        if (q) y++;
+        if (p && q) both++;
+      }
+      return (2 * both) / (x + y);
+    };
+    const leftId = anatomy.manifest.labels.find((l) => l.key === 'kidney_left')!.id;
+    const rightId = anatomy.manifest.labels.find((l) => l.key === 'kidney_right')!.id;
+    const dl = dice(3, leftId);
+    const dr = dice(4, rightId);
+    expect(dl).toBeGreaterThan(0.85);
+    expect(dr).toBeGreaterThan(0.85);
+    // Resmi TotalSegmentator bu görüntüde kist bulmuyor; uygulama da bulmamalı (yardımcı sınıfların silinmesi ayrıca birim testinde).
+    expect(cyst.manifest.volume?.dropLabels).toEqual([3, 4]);
+    expect(seg.structures.filter((s) => findingClass(s) === 'finding')).toHaveLength(0);
+    // Kesit aralıkları özgün seriye göre (kırpılmış hacme göre değil)
+    for (const s of seg.structures) expect(s.sliceRange[1]).toBeLessThan(anatomy.vol.slices);
+    console.log(JSON.stringify({ kidneyCystCascade: { box, tiles: seg.tiles, diceLeft: dl, diceRight: dr } }));
+  }, 900_000);
+
+  it('Basamaklı model anatomi sonucu olmadan çalışmaz (tahminle kırpılmaz)', async () => {
+    const cyst = model('totalseg-ct-kidney-cysts');
+    const built = volumeFromDicom(series('totalseg-ct-sm'));
+    if (!built.ok) throw new Error(built.reason);
+    await expect(runVolumeModel(built.volume, cyst.manifest, cyst.bytes, ortEngineFactory())).rejects.toThrow(/anatomi modelinin/);
+  });
 
   it('MR: TotalSegmentator total_mr (3 mm) — resmi --fast çıktısıyla aynı', async () => {
     const r = await compareVolume('totalseg-mr-total-3mm', 'totalseg-mr-sm');
