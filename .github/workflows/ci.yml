@@ -30,12 +30,6 @@ jobs:
         run: pnpm build
       - name: Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no)
         run: pnpm check:security
-      - uses: actions/upload-artifact@v4
-        continue-on-error: true
-        with:
-          name: web-dist
-          path: apps/web/dist
-          retention-days: 7
 
   e2e:
     # Gerçek Chromium'da uçtan uca: kasa, yükleme, PDF/OCR okuma, 3D keşif ve simülasyon,
@@ -77,13 +71,15 @@ jobs:
         run: python tests/e2e/multimodal.py "$RUNNER_TEMP/shots"
       - name: Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon
         run: python tests/e2e/explore.py "$RUNNER_TEMP/shots/explore"
+      # Ekran görüntüleri yalnızca test düşerse yüklenir: her çalıştırmada ~40 MB yüklemek
+      # Actions depolama kotasını doldurup APK yüklemesini engelliyordu.
       - uses: actions/upload-artifact@v4
         continue-on-error: true
-        if: always()
+        if: failure()
         with:
           name: e2e-ekran-goruntuleri
           path: ${{ runner.temp }}/shots
-          retention-days: 7
+          retention-days: 3
 
   dependencies:
     runs-on: ubuntu-latest

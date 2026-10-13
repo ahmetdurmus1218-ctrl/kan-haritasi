@@ -95,7 +95,8 @@ jobs:
         with:
           name: KanHaritasi-APK-${{ steps.name.outputs.version }}
           path: out/
-          retention-days: 30
+          # Kalıcı indirme yeri Releases → apk-son; buradaki kopya kısa süreli (kota).
+          retention-days: 7
 
       - name: "Son sürüm: telefondan indirilebilir yayın (apk-son)"
         if: github.ref == 'refs/heads/main'
