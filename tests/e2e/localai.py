@@ -176,6 +176,7 @@ with sync_playwright() as p:
     conf = card.get_by_test_id("model-conflict").first.inner_text()
     check("ÇELİŞKİ" in conf and "İki kaynak ayrı gösterilir" in conf and "⚠" in conf, "S4: rapor 'olağan' ↔ model bulgusu çelişkisi gizlenmiyor (simge + metin)")
     check("Rapor da var" in card.inner_text(), "S4: rapor ayrı kaynak olarak belirtilmiş")
+    card.get_by_test_id("model-finding").first.wait_for(timeout=60000)
     check(card.get_by_test_id("model-finding").count() >= 1, "S4: model bulgusu raporla silinmedi/ezilmedi")
     card.screenshot(path=SHOTS / "a5-rapor-model-celiski.png")
     page.goto(URL + "#/goruntuler")

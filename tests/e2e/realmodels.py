@@ -106,7 +106,7 @@ with sync_playwright() as p:
     check("kardiyomegali" in f.lower() and re.search(r"güven %\d+", f) is not None, f"B: kardiyomegali bulgusu ve skoru ({f[:80]!r})")
     check(card.get_by_test_id("model-overlay").count() == 0, "B: sınıflandırıcı konum vermez: görüntüye kutu çizilmedi (sahte konum yok)")
     scores = card.get_by_test_id("model-scores")
-    check(scores.count() == 1 and scores.inner_text().count("%") >= 10, "B: 14 bulgunun skor tablosu")
+    check(scores.count() == 1 and scores.locator("li").count() == 14 and re.search(r"0,\d\d", scores.text_content()) is not None, "B: 14 bulgunun skor tablosu")
     prov = card.locator("details", has_text="Model kökeni").first
     prov.locator("summary").first.click()
     check(manifest("xrv-densenet121-nih")["sha256"] in card.inner_text(), "B: köken: model SHA-256")

@@ -16,7 +16,7 @@
   "Önce BT anatomi modeli çalışmalıdır; böbrekler bölütlenemediyse model çalıştırılmaz.",
   "Klinik kullanım için onaylı tıbbi cihaz değildir."
  ],
- "validation": "Aynı kırpılmış girdide resmi nnU-Net v2 öngörücüsüyle (aynı ağırlıklar) karşılaştırma: böbrek (yardımcı sınıf) Dice 0,978 / 0,985, voksel uyumu %99,95. Kist sınıfı: örnek BT'de ve gerçek bir göğüs BT'sinde (MSD Task06 lung_053, TCIA, CC BY-SA 4.0) resmi TotalSegmentator kidney_cysts çıktısı da bu hat da kist bulmadı (yanlış pozitif yok). Kistli bir vaka üzerinde ayrıca doğrulanmadı.",
+ "validation": "Aynı kırpılmış girdide resmi nnU-Net v2 öngörücüsüyle (aynı ağırlıklar) karşılaştırma: böbrek (yardımcı sınıf) Dice 0,978 / 0,985, voksel uyumu %99,95. Kistli gerçek BT'de (MSD Task09 spleen_19, CC BY-SA 4.0) resmi TotalSegmentator kidney_cysts: sol böbrek kisti 0,58 mL ↔ bu hat 0,51 mL (Dice 0,865); örnek BT'de ve gerçek bir göğüs BT'sinde (MSD Task06 lung_053) resmi çıktı da bu hat da kist bulmadı.",
  "task": "segmentation-3d",
  "format": "onnx",
  "citation": "Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.",
