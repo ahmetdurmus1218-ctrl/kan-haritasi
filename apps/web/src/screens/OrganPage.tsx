@@ -5,7 +5,7 @@
  *   [Normal]  [Benim durumum]  [Karşılaştır]
  */
 import { useMemo, useState } from 'react';
-import { GRAPH, type KNode, LEVEL_LABEL, type OrganView, REF_TR, RELATION_LABEL, buildOrganView } from '@kh/analysis';
+import { GRAPH, type KNode, LEVEL_LABEL, type OrganView, REF_TR, buildOrganView } from '@kh/analysis';
 import { structureById } from '@kh/catalog';
 import { type OrganViewMode, go } from '../state/router';
 import { useHealthModel } from '../lib/analysisBridge';
@@ -13,16 +13,16 @@ import { studiesForStructure } from '../lib/imagingStudies';
 import { CATEGORY_LABEL } from '../lib/imaging';
 import { formatDate } from '../lib/format';
 import { Banner } from '../components/ui';
-import { BodyIcon, ChartIcon, ChevronLeftIcon, SpinnerIcon } from '../components/icons';
+import { REPORTED } from '@kh/analysis';
+import { type Tone, TONE, labTone } from '../lib/tone';
+import { BodyIcon, ChevronLeftIcon, PlusIcon, SpinnerIcon } from '../components/icons';
 import { ConfidenceNote, LocationPath, SourceBadge, WhyButton } from '../components/evidence';
 
-const TABS: Array<{ key: OrganViewMode; label: string }> = [
+const TABS: Array<{ key: 'normal' | 'benim'; label: string }> = [
   { key: 'normal', label: 'Normal' },
-  { key: 'benim', label: 'Benim durumum' },
-  { key: 'fark', label: 'Karşılaştır' },
+  { key: 'benim', label: 'Benimki' },
 ];
 
-const STATUS_CLS = { high: 'text-high', low: 'text-low', normal: 'text-accent', unknown: 'text-fg-muted' } as const;
 const STATUS_TR = { high: 'yüksek', low: 'düşük', normal: 'aralıkta', unknown: 'aralık yok' } as const;
 
 function Section({ title, children, hint }: { title: string; children: React.ReactNode; hint?: string }) {
@@ -178,8 +178,7 @@ function PersonalView({ v, model, studies }: { v: OrganView; model: ReturnType<t
                   <span className="tabular-nums">
                     {l.value.toLocaleString('tr-TR')} {l.unit}
                   </span>
-                  <span className={`text-xs ${STATUS_CLS[l.status]}`}>{STATUS_TR[l.status]}</span>
-                  {l.critical && <span className="rounded border border-high/50 px-1 text-[10px] font-semibold text-high">ACİL DEĞERLENDİRME</span>}
+                  <span className={`rounded-full border px-2 py-0.5 text-[11px] ${TONE[labTone(l)].chip}`}>{l.status === 'normal' ? STATUS_TR.normal : TONE[labTone(l)].label}</span>
                 </div>
                 <p className="mt-0.5 text-[11px] text-fg-faint">
                   {l.refMin !== undefined || l.refMax !== undefined ? `Referans ${l.refMin ?? '…'}–${l.refMax ?? '…'}${l.refSource ? ` (${REF_TR[l.refSource]})` : ''} · ` : ''}
@@ -329,8 +328,9 @@ function DiffView({ v }: { v: OrganView }) {
   );
 }
 
-export function OrganPage({ id, view = 'normal' }: { id: string; view?: OrganViewMode }) {
+export function OrganPage({ id, view }: { id: string; view?: OrganViewMode }) {
   const { model, studies } = useHealthModel();
+  const [more, setMore] = useState(false);
   const v = useMemo(() => buildOrganView(id, model), [id, model]);
   const fallback = !GRAPH.node(id) ? structureById.get(id) : undefined;
 
@@ -375,9 +375,12 @@ export function OrganPage({ id, view = 'normal' }: { id: string; view?: OrganVie
 
   const critical = v.personal.labs.filter((l) => l.critical);
   const structure = v.node.structure;
+  // İki sekme: Normal / Benimki. Veri varsa "Benimki" açılır; eski "fark" bağlantıları ayrıntıyı açık getirir.
+  const mode: 'normal' | 'benim' = view === 'normal' ? 'normal' : view === 'benim' || view === 'fark' || v.personal.hasData ? 'benim' : 'normal';
+  const expanded = more || view === 'fark';
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 md:px-8 md:py-8">
+    <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 md:px-8 md:py-10">
       <nav aria-label="Konum" className="flex flex-wrap items-center gap-1 text-xs text-fg-muted">
         <button type="button" className="hover:text-accent" onClick={() => go({ name: 'mybody' })}>
           Vücudum
@@ -389,27 +392,19 @@ export function OrganPage({ id, view = 'normal' }: { id: string; view?: OrganVie
           </span>
         ))}
       </nav>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="label-caps">{LEVEL_LABEL[v.node.kind]}</p>
-          <h1 className="text-2xl font-semibold tracking-tight">{v.node.nameTr}</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {structure && (
-            <button type="button" className="btn-primary px-3 py-1.5 text-sm" onClick={() => go(v.node.part ? { name: 'body', structure, part: v.node.part } : { name: 'body', structure })}>
-              <BodyIcon size={15} /> 3B'de göster
-            </button>
-          )}
-          <button type="button" className="btn-ghost px-3 py-1.5 text-sm" onClick={() => go({ name: 'timeline' })}>
-            <ChartIcon size={15} /> Zaman
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="text-3xl font-semibold tracking-tight">{v.node.nameTr}</h1>
+        {structure && (
+          <button type="button" className="btn-primary min-h-[44px] px-3.5 py-2 text-sm" onClick={() => go(v.node.part ? { name: 'body', structure, part: v.node.part } : { name: 'body', structure })}>
+            <BodyIcon size={15} /> Vücudumda göster
           </button>
-        </div>
+        )}
       </div>
 
       {critical.length > 0 && (
         <Banner tone="warn">
-          <strong>ACİL DEĞERLENDİRME:</strong> {critical.map((l) => l.name).join(', ')} kritik kabul edilen düzeyde. Bu bulgu acil klinik değerlendirme gerektirebilecek bir durumla ilişkili
-          olabilir. Doktor değerlendirmesi gerekir.
+          <strong>Acil değerlendirme gerekebilir:</strong> {critical.map((l) => l.name).join(', ')} kritik kabul edilen düzeyde. Bu bulgu acil klinik değerlendirme gerektirebilecek bir durumla
+          ilişkili olabilir. Doktor değerlendirmesi gerekir.
         </Banner>
       )}
 
@@ -419,8 +414,8 @@ export function OrganPage({ id, view = 'normal' }: { id: string; view?: OrganVie
             key={t.key}
             type="button"
             role="tab"
-            aria-selected={view === t.key}
-            className={`rounded-lg px-3 py-1.5 text-sm transition ${view === t.key ? 'bg-ink-700 text-fg' : 'text-fg-muted hover:text-fg'}`}
+            aria-selected={mode === t.key}
+            className={`min-h-[44px] rounded-lg px-4 py-1.5 text-sm transition ${mode === t.key ? 'bg-ink-700 text-fg' : 'text-fg-muted hover:text-fg'}`}
             onClick={() => go({ name: 'organ', id, view: t.key })}
           >
             {t.label}
@@ -428,64 +423,151 @@ export function OrganPage({ id, view = 'normal' }: { id: string; view?: OrganVie
         ))}
       </div>
 
-      {view === 'normal' ? <NormalView v={v} /> : view === 'benim' ? <PersonalView v={v} model={model} studies={studies} /> : <DiffView v={v} />}
+      {mode === 'normal' ? <NormalSummary v={v} /> : <MySummary v={v} model={model} />}
 
-      {v.time.length > 0 && (
-        <Section title="Zaman içinde" hint={v.time[0]!.trend.caution}>
-          <ul className="space-y-1">
-            {v.time.map((t) => (
-              <li key={t.testKey} className="text-[13px] text-fg-muted">
-                <button type="button" className="text-left hover:text-accent" onClick={() => go({ name: 'timeline', key: t.testKey })}>
-                  {t.trend.statement}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
-      {model.comparisons.some((c) => c.changes.length > 0 && (structure ? c.changes.some((x) => x.key.includes(structure)) : false)) && (
-        <Section title="Eski ↔ yeni görüntüleme">
-          {model.comparisons
-            .filter((c) => structure && c.changes.some((x) => x.key.includes(structure)))
-            .map((c, i) => (
-              <div key={i} className="space-y-1">
-                <p className="text-xs text-fg-muted">
-                  {formatDate(c.previous.date)} → {formatDate(c.current.date)}
-                </p>
-                <ul className="space-y-0.5 text-[13px]">
-                  {c.changes.map((x, j) => (
-                    <li key={j} className="text-fg-muted">
-                      <SourceBadge source={x.source} /> <span className="text-fg">{CHANGE_TR[x.change]}</span>: {x.label} — {x.detail}
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-[11px] text-fg-faint">{c.reliability.join(' ')}</p>
+      {!expanded ? (
+        <button type="button" className="btn-ghost w-full justify-center" onClick={() => setMore(true)}>
+          Daha fazla göster
+        </button>
+      ) : (
+        <div className="space-y-4">
+          {mode === 'normal' ? (
+            <NormalView v={v} />
+          ) : (
+            <>
+              <PersonalView v={v} model={model} studies={studies} />
+              <DiffView v={v} />
+            </>
+          )}
+          {v.time.length > 0 && (
+            <Section title="Zaman içinde" hint={v.time[0]!.trend.caution}>
+              <ul className="space-y-1">
+                {v.time.map((t) => (
+                  <li key={t.testKey} className="text-[13px] text-fg-muted">
+                    <button type="button" className="text-left hover:text-accent" onClick={() => go({ name: 'timeline', key: t.testKey })}>
+                      {t.trend.statement}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
+          {model.comparisons.some((c) => structure && c.changes.some((x) => x.key.includes(structure))) && (
+            <Section title="Eski ↔ yeni görüntüleme">
+              {model.comparisons
+                .filter((c) => structure && c.changes.some((x) => x.key.includes(structure)))
+                .map((c, i) => (
+                  <div key={i} className="space-y-1">
+                    <p className="text-xs text-fg-muted">
+                      {formatDate(c.previous.date)} → {formatDate(c.current.date)}
+                    </p>
+                    <ul className="space-y-0.5 text-[13px]">
+                      {c.changes.map((x, j) => (
+                        <li key={j} className="text-fg-muted">
+                          <span className="text-fg">{CHANGE_TR[x.change]}</span>: {x.label} — {x.detail}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-[11px] text-fg-faint">{c.reliability.join(' ')}</p>
+                  </div>
+                ))}
+            </Section>
+          )}
+          <Section title="Ne kesin, ne olasılık?">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div>
+                <p className="text-xs font-medium text-fg">Ölçülmüş / yazılı</p>
+                <ul className="mt-1 space-y-0.5 text-[12px] text-fg-muted">{v.uncertainty.certain.length ? v.uncertainty.certain.map((x, i) => <li key={i}>{x}</li>) : <li>—</li>}</ul>
               </div>
-            ))}
-        </Section>
-      )}
-      <Section title="Belirsizlik · ne kesin, ne olasılık?">
-        <div className="grid gap-3 md:grid-cols-3">
-          <div>
-            <p className="text-xs font-medium text-accent">Ölçülmüş / yazılı</p>
-            <ul className="mt-1 space-y-0.5 text-[12px] text-fg-muted">{v.uncertainty.certain.length ? v.uncertainty.certain.map((x, i) => <li key={i}>{x}</li>) : <li>—</li>}</ul>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-caution-fg">Olasılıksal</p>
-            <ul className="mt-1 space-y-0.5 text-[12px] text-fg-muted">{v.uncertainty.probabilistic.length ? v.uncertainty.probabilistic.map((x, i) => <li key={i}>{x}</li>) : <li>—</li>}</ul>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-fg-muted">Eksik bilgi</p>
-            <ul className="mt-1 space-y-0.5 text-[12px] text-fg-faint">{v.uncertainty.missing.length ? v.uncertainty.missing.map((x, i) => <li key={i}>{x}</li>) : <li>—</li>}</ul>
-          </div>
+              <div>
+                <p className="text-xs font-medium text-fg">Olasılıksal</p>
+                <ul className="mt-1 space-y-0.5 text-[12px] text-fg-muted">{v.uncertainty.probabilistic.length ? v.uncertainty.probabilistic.map((x, i) => <li key={i}>{x}</li>) : <li>—</li>}</ul>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-fg">Eksik bilgi</p>
+                <ul className="mt-1 space-y-0.5 text-[12px] text-fg-faint">{v.uncertainty.missing.length ? v.uncertainty.missing.map((x, i) => <li key={i}>{x}</li>) : <li>—</li>}</ul>
+              </div>
+            </div>
+            <p className="text-[11px] leading-relaxed text-fg-faint">
+              Kan Haritası tanı koymaz ve doktorun yerini tutmaz. Görüntü analizleri yanlış pozitif ya da yanlış negatif olabilir; eksik veriler değerlendirmeyi sınırlar.
+            </p>
+          </Section>
+          <button type="button" className="text-sm text-fg-muted hover:text-fg" onClick={() => setMore(false)}>
+            Daha az göster
+          </button>
         </div>
-        <p className="text-[11px] leading-relaxed text-fg-faint">
-          Kan Haritası tanı koymaz ve doktorun yerini tutmaz. Görüntü analizleri yanlış pozitif ya da yanlış negatif olabilir; eksik veriler değerlendirmeyi sınırlar.
-        </p>
-      </Section>
-      <p className="text-[11px] text-fg-faint">İlişki türleri: {Object.values(RELATION_LABEL).join(' · ')}</p>
+      )}
     </div>
   );
 }
+
+/** Normal · özet: ne, nerede, en önemli işlevleri. Ayrıntı "Daha fazla göster"de. */
+function NormalSummary({ v }: { v: OrganView }) {
+  return (
+    <section className="space-y-3">
+      <p className="text-[15px] leading-relaxed text-fg">{v.normal.summary}</p>
+      {v.normal.functions.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-sm font-medium text-fg-muted">Normalde ne işe yarar?</p>
+          <ul className="space-y-1">
+            {v.normal.functions.slice(0, 3).map((f) => (
+              <li key={f.id} className="text-[14px] text-fg">
+                • {f.nameTr}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Benimki · özet: son durum (en fazla üç satır), ne anlama geliyor, "Neden?". */
+function MySummary({ v, model }: { v: OrganView; model: ReturnType<typeof useHealthModel>['model'] }) {
+  if (!v.personal.hasData)
+    return (
+      <section className="rounded-2xl border border-dashed border-ink-600 p-5 text-center">
+        <p className="text-[15px] text-fg">Bu organla ilgili verin yok.</p>
+        <p className="mt-1 text-sm text-fg-muted">Bir tahlil, rapor ya da görüntü eklediğinde burada özetlenir. Normal işleyişini “Normal” sekmesinde görebilirsin.</p>
+        <button type="button" className="btn-primary mt-4" onClick={() => go({ name: 'add' })}>
+          <PlusIcon size={16} /> Veri ekle
+        </button>
+      </section>
+    );
+  const labs = [...v.personal.labs].sort((a, b) => RANK[labTone(b)] - RANK[labTone(a)]);
+  const imgN = v.personal.imageObservations.filter((o) => o.kind !== 'quality' && o.kind !== 'structure-presence').length;
+  const repN = v.personal.reportFindings.filter((f) => !f.negated && f.status !== 'normal').length;
+  const rows: Array<{ key: string; label: string; value?: string; tone: Tone }> = labs.slice(0, imgN || repN ? 2 : 3).map((l) => ({ key: l.testKey, label: l.name, value: `${l.value.toLocaleString('tr-TR')} ${l.unit}`, tone: labTone(l) }));
+  if (imgN || repN)
+    rows.push({ key: 'img', label: [imgN && `${imgN} görüntü gözlemi`, repN && `${repN} rapor bulgusu`].filter(Boolean).join(' · '), tone: 'attention' });
+  const off = labs.filter((l) => labTone(l) !== 'normal').length;
+  const meaning = v.personal.patterns[0]?.meaning ?? (off ? 'Sonuçlarından bazıları bu organın işleyişiyle ilişkili değerlerde aralık dışında. Bu tek başına bir tanı değildir; önemi için hekimine danışabilirsin.' : imgN || repN ? 'Görüntü ya da raporunda bu organla ilgili not edilmiş bir bulgu var. Ayrıntısı ve kaynağı aşağıda.' : 'Bu organla ilişkili sonuçların aralıkta görünüyor.');
+  const loc = { path: v.path.map((n) => n.id), structure: v.node.structure, basis: 'knowledge' as const, confidence: REPORTED };
+  return (
+    <section className="space-y-4">
+      <div>
+        <p className="mb-2 text-sm font-medium text-fg-muted">Son durum</p>
+        <ul className="divide-y divide-ink-700 rounded-2xl border border-ink-600/60 bg-ink-850/60">
+          {rows.map((r) => (
+            <li key={r.key} className="flex items-center gap-3 px-4 py-3">
+              <span className="min-w-0 flex-1 text-[15px] text-fg">{r.label}</span>
+              {r.value && <span className="text-[15px] tabular-nums text-fg">{r.value}</span>}
+              <span className={`rounded-full border px-2 py-0.5 text-[11px] ${TONE[r.tone].chip}`}>{TONE[r.tone].label}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <p className="mb-1 text-sm font-medium text-fg-muted">Ne anlama geliyor?</p>
+        <p className="text-[15px] leading-relaxed text-fg">{meaning}</p>
+        <div className="mt-2">
+          <WhyButton location={loc} model={model} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const RANK: Record<Tone, number> = { normal: 0, follow: 1, attention: 2, urgent: 3 };
 
 const CHANGE_TR = { new: 'Yeni', resolved: 'Artık kayıtlı değil', persisting: 'Devam ediyor', growing: 'Büyümüş', shrinking: 'Küçülmüş', 'stable-size': 'Boyut stabil', 'report-states': 'Rapor diyor ki' } as const;

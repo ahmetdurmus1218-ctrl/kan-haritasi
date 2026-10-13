@@ -36,7 +36,9 @@ describe('yönlendirme', () => {
     expect(parseHash('#/belge/11111111-2222-4333-8444-555555555555')).toEqual({ name: 'document', id: '11111111-2222-4333-8444-555555555555' });
     expect(parseHash('#/belge/../../etc/passwd')).toEqual({ name: 'documents' });
     expect(parseHash('#/belge/<script>')).toEqual({ name: 'documents' });
-    expect(parseHash('#/bilinmeyen')).toEqual({ name: 'documents' });
+    expect(parseHash('#/bilinmeyen')).toEqual({ name: 'home' });
+    expect(parseHash('')).toEqual({ name: 'home' });
+    expect(parseHash('#/organ/../x')).toEqual({ name: 'mybody' });
   });
 });
 

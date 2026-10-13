@@ -197,20 +197,24 @@ export function labObservationsFrom(reports: StoredReport[]): LabObservation[] {
       date: reportDate(r),
       source: 'LAB' as const,
       confidence: res.userEdited || res.verified ? REPORTED : score(res.confidence ?? 1, 'okuma (OCR/PDF) güveni'),
-      critical: Boolean(
-        gradeResult({
-          testKey: res.testKey,
-          value: res.canonicalValue ?? res.value,
-          canonical: res.canonicalValue !== null,
-          unit: res.unit,
-          refMin: res.refMin,
-          refMax: res.refMax,
-          status: res.status,
-          qualifier: res.qualifier,
-        })?.critical,
-      ),
+      ...gradeFields(res),
     })),
   );
+}
+
+/** Katalog yorum motorundan sapma derecesi ve kritik düzey. */
+function gradeFields(res: StoredReport['results'][number]): Pick<LabObservation, 'critical' | 'severity'> {
+  const g = gradeResult({
+    testKey: res.testKey,
+    value: res.canonicalValue ?? res.value,
+    canonical: res.canonicalValue !== null,
+    unit: res.unit,
+    refMin: res.refMin,
+    refMax: res.refMax,
+    status: res.status,
+    qualifier: res.qualifier,
+  });
+  return g ? { critical: g.critical, severity: g.severity } : {};
 }
 
 const STUDY_MODALITY: Record<string, string> = { mr: 'MRI', ct: 'CT', xray: 'XRAY', us: 'ULTRASOUND', mammo: 'MAMMOGRAPHY', pet: 'PET_CT', ekg: 'ECG', pathology: 'PATHOLOGY', endoscopy: 'ENDOSCOPY' };
@@ -250,18 +254,22 @@ export function useHealthModel(): { model: HealthModel | null; studies: ImagingS
 }
 
 /** Bir dosya için analiz durumunu döndüren küçük kanca (ImagingPanel için). */
-export function useImageAnalysis(info: FileInfo, bytes: Bytes, context: ImageContext, reportAvailable: boolean, enabled: boolean): { run: ImageAnalysisRun | null; raster: RasterImage | null; state: 'idle' | 'running' | 'done' | 'unsupported' | 'error' } {
-  const [out, setOut] = useState<{ run: ImageAnalysisRun | null; raster: RasterImage | null; state: 'idle' | 'running' | 'done' | 'unsupported' | 'error' }>({ run: null, raster: null, state: 'idle' });
+/** Gerçek işlem aşaması: dosya okunuyor → görüntü analiz ediliyor → bitti. */
+export type AnalysisStage = 'idle' | 'reading' | 'analyzing' | 'done' | 'unsupported' | 'error';
+
+export function useImageAnalysis(info: FileInfo, bytes: Bytes, context: ImageContext, reportAvailable: boolean, enabled: boolean): { run: ImageAnalysisRun | null; raster: RasterImage | null; state: AnalysisStage } {
+  const [out, setOut] = useState<{ run: ImageAnalysisRun | null; raster: RasterImage | null; state: AnalysisStage }>({ run: null, raster: null, state: 'idle' });
   const key = JSON.stringify(context);
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    setOut({ run: null, raster: null, state: 'running' });
+    setOut({ run: null, raster: null, state: 'reading' });
     const t = setTimeout(() => {
       loadRaster(info, bytes)
         .then(async (raster) => {
           if (cancelled) return;
           if (!raster) return setOut({ run: null, raster: null, state: 'unsupported' });
+          setOut({ run: null, raster, state: 'analyzing' });
           const run = await runImageAnalysis(raster, context, reportAvailable);
           if (!cancelled) setOut({ run, raster, state: 'done' });
         })

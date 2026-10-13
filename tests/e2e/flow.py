@@ -47,6 +47,9 @@ with sync_playwright() as p:
     page.check("input[type=checkbox]")
     page.get_by_role("button", name="Kasayı oluştur").click()
     page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for(timeout=20000)
+    # Yeni bilgi mimarisi: kasa açılınca ana sayfa; belgeler "Verilerim"de
+    page.goto(URL + "#/belgeler")
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
 
     # --- PDF: metin katmanı
     page.set_input_files("input[type=file][multiple]", [str(PDF)])
@@ -83,7 +86,8 @@ with sync_playwright() as p:
     page.get_by_role("heading", name="Sonuçlar").wait_for(timeout=10000)
 
     # --- Sonuçlarım
-    page.get_by_role("link", name="Sonuçlar").first.click()
+    page.get_by_role("link", name="Verilerim").first.click()
+    page.get_by_role("link", name="Sonuçlar").click()
     page.get_by_text("Tahlil sonuçların").wait_for()
     page.wait_for_timeout(500)
     page.screenshot(path=SHOTS / "24-sonuclarim.png", full_page=True)

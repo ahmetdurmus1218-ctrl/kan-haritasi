@@ -271,11 +271,39 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           </div>
         </div>
 
+
+        {isImaging(category) && hasImage && note !== undefined && (
+          <AnalysisCard
+            info={info}
+            bytes={bytes}
+            dicom={dicom}
+            noteFileId={noteFileId}
+            stored={note?.analysis}
+            reportFindings={analysisReportFindings}
+            labsAvailable={Boolean(labReports?.some((r) => r.results.length > 0))}
+            previousAvailable={previousAvailable}
+            showOverlay={!CROSS_SECTIONAL.has(category)}
+          />
+        )}
+
+        {isImaging(category) && CROSS_SECTIONAL.has(category) && (info.kind === 'dicom' || ((info.kind === 'jpeg' || info.kind === 'png') && photoKind !== null && photoKind !== 'document')) && (
+          <ImageReviewCard
+            info={info}
+            bytes={bytes}
+            noteFileId={noteFileId}
+            stored={note?.review}
+            onHeadLike={() => {
+              if (!info.region) setSuggested((s) => s ?? { region: 'beyin', from: 'shape' });
+            }}
+            onReview={setImageEvidence}
+          />
+        )}
+
         {/* Vücutta göster: bölge biliniyorsa doğrudan; bilinmiyorsa önce bölge sorulur. */}
         <div className="space-y-2">
           <button
             type="button"
-            className="btn-primary w-full justify-center"
+            className={`${hasImage && isImaging(category) ? 'btn-ghost' : 'btn-primary'} w-full justify-center`}
             onClick={() => (region?.structure ? go({ name: 'body', structure: region.structure }) : setPickRegion((v) => !v))}
           >
             <BodyIcon size={16} /> {region?.structure ? `Vücutta göster · ${region.label}` : 'Vücutta göster'}
@@ -307,38 +335,6 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           <p className="text-[11px] leading-relaxed text-fg-faint">3B model, görüntülenen bölgenin vücuttaki genel yerini gösterir; görüntüdeki bir bulgunun yerini göstermez.</p>
         </div>
 
-        <Banner tone="info">
-          Kan Haritası görüntüye bakıp <strong>teşhis koymaz</strong>. Rapordaki ve senin görüntü üzerinde yaptığın ölçümleri, tahlillerdeki gibi genel referans
-          aralıklarıyla karşılaştırır; terimleri açıklar; görüntünün kendisinde yalnızca basit bir sağ-sol karşılaştırması yapar. Değerlendirme, raporu yazan ve seni
-          takip eden hekime aittir.
-        </Banner>
-
-        {isImaging(category) && hasImage && note !== undefined && (
-          <AnalysisCard
-            info={info}
-            bytes={bytes}
-            dicom={dicom}
-            noteFileId={noteFileId}
-            stored={note?.analysis}
-            reportFindings={analysisReportFindings}
-            labsAvailable={Boolean(labReports?.some((r) => r.results.length > 0))}
-            previousAvailable={previousAvailable}
-            showOverlay={!CROSS_SECTIONAL.has(category)}
-          />
-        )}
-
-        {isImaging(category) && CROSS_SECTIONAL.has(category) && (info.kind === 'dicom' || ((info.kind === 'jpeg' || info.kind === 'png') && photoKind !== null && photoKind !== 'document')) && (
-          <ImageReviewCard
-            info={info}
-            bytes={bytes}
-            noteFileId={noteFileId}
-            stored={note?.review}
-            onHeadLike={() => {
-              if (!info.region) setSuggested((s) => s ?? { region: 'beyin', from: 'shape' });
-            }}
-            onReview={setImageEvidence}
-          />
-        )}
 
         {isImaging(category) && note !== undefined && <SystematicReview protocol={review.protocol} results={review.results} steps={review.steps} />}
 
@@ -495,38 +491,6 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
 
         {error && <Banner tone="error">{error}</Banner>}
 
-        {/* DICOM bilgileri */}
-        {dicom && (
-          <section className="rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Görüntü bilgileri">
-            <p className="label-caps mb-2">Görüntü bilgileri (DICOM)</p>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-              {(
-                [
-                  ['Modalite', dicom.modality],
-                  ['Çalışma', dicom.studyDescription],
-                  ['Seri', dicom.seriesDescription],
-                  ['İncelenen bölge', dicom.bodyPart],
-                  ['Kesit', seriesIds.length > 1 ? `${seriesIds.length} dosya` : dicom.frames > 1 ? `${dicom.frames} kare` : 'Tek görüntü'],
-                  ['Boyut', `${dicom.columns} × ${dicom.rows} piksel`],
-                  ['Piksel aralığı', dicom.pixelSpacing ? `${dicom.pixelSpacing.map((v) => v.toLocaleString('tr-TR', { maximumFractionDigits: 3 })).join(' × ')} mm` : undefined],
-                  ['Kesit kalınlığı', dicom.sliceThickness ? `${dicom.sliceThickness.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} mm` : undefined],
-                  ['Kodlama', dicom.codec === 'native' ? 'Sıkıştırmasız' : dicom.codec === 'rle' ? 'RLE (kayıpsız)' : dicom.codec === 'jpeg-baseline' ? 'JPEG' : 'Desteklenmeyen sıkıştırma'],
-                ] as Array<[string, string | undefined]>
-              )
-                .filter(([, v]) => v)
-                .map(([k, v]) => (
-                  <div key={k} className="contents">
-                    <dt className="text-fg-muted">{k}</dt>
-                    <dd className="min-w-0 break-words">{v}</dd>
-                  </div>
-                ))}
-            </dl>
-            <p className="mt-3 text-[11px] leading-relaxed text-fg-faint">
-              Hasta adı, kimlik numarası ve doğum tarihi gibi alanlar okunmaz ve burada gösterilmez; özgün dosya kasada değiştirilmeden, şifreli durur.
-            </p>
-          </section>
-        )}
-
         {/* Rapor metni */}
         <section className="space-y-3" aria-label="Rapor metni">
           <div className="flex items-center justify-between gap-2">
@@ -671,6 +635,41 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           </section>
         )}
 
+        <details className="rounded-2xl border border-ink-600/60 bg-ink-850/40 p-4">
+          <summary className="cursor-pointer text-sm font-medium text-fg">Daha fazla bilgi · yöntem, doktora sorular{dicom ? ', DICOM bilgileri' : ''}</summary>
+          <div className="mt-4 space-y-4">
+        {/* DICOM bilgileri */}
+        {dicom && (
+          <section className="rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Görüntü bilgileri">
+            <p className="label-caps mb-2">Görüntü bilgileri (DICOM)</p>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+              {(
+                [
+                  ['Modalite', dicom.modality],
+                  ['Çalışma', dicom.studyDescription],
+                  ['Seri', dicom.seriesDescription],
+                  ['İncelenen bölge', dicom.bodyPart],
+                  ['Kesit', seriesIds.length > 1 ? `${seriesIds.length} dosya` : dicom.frames > 1 ? `${dicom.frames} kare` : 'Tek görüntü'],
+                  ['Boyut', `${dicom.columns} × ${dicom.rows} piksel`],
+                  ['Piksel aralığı', dicom.pixelSpacing ? `${dicom.pixelSpacing.map((v) => v.toLocaleString('tr-TR', { maximumFractionDigits: 3 })).join(' × ')} mm` : undefined],
+                  ['Kesit kalınlığı', dicom.sliceThickness ? `${dicom.sliceThickness.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} mm` : undefined],
+                  ['Kodlama', dicom.codec === 'native' ? 'Sıkıştırmasız' : dicom.codec === 'rle' ? 'RLE (kayıpsız)' : dicom.codec === 'jpeg-baseline' ? 'JPEG' : 'Desteklenmeyen sıkıştırma'],
+                ] as Array<[string, string | undefined]>
+              )
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <div key={k} className="contents">
+                    <dt className="text-fg-muted">{k}</dt>
+                    <dd className="min-w-0 break-words">{v}</dd>
+                  </div>
+                ))}
+            </dl>
+            <p className="mt-3 text-[11px] leading-relaxed text-fg-faint">
+              Hasta adı, kimlik numarası ve doğum tarihi gibi alanlar okunmaz ve burada gösterilmez; özgün dosya kasada değiştirilmeden, şifreli durur.
+            </p>
+          </section>
+        )}
+
         {about && (
           <section className="rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Yöntem hakkında">
             <p className="label-caps mb-1.5">{about.name} — temelde nasıl çalışır</p>
@@ -687,6 +686,13 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             ))}
           </ul>
         </section>
+          </div>
+        </details>
+
+        <p className="text-[11px] leading-relaxed text-fg-faint">
+          Kan Haritası görüntüye bakıp teşhis koymaz. Rapordaki ve senin görüntü üzerinde yaptığın ölçümleri genel referans aralıklarıyla karşılaştırır, terimleri açıklar ve
+          görüntünün kendisinde yalnızca açıkça listelenen otomatik ölçümleri yapar. Değerlendirme, raporu yazan ve seni takip eden hekime aittir.
+        </p>
       </div>
     </div>
   );

@@ -29,6 +29,14 @@ def check(cond, msg):
         problems.append(msg)
 
 
+def pick_type(page, name, exact=True):
+    """Belge türü isteğe bağlıdır ve varsayılan olarak kapalıdır: önce "Türünü kendim seçeyim"."""
+    radio = page.get_by_role("radio", name=name, exact=exact)
+    if not radio.count() or not radio.first.is_visible():
+        page.get_by_role("button", name=re.compile("Türünü kendim seçeyim|Tür: ")).click()
+    radio.first.click()
+
+
 def canvas_brightness(page):
     return page.evaluate(
         """() => {
@@ -64,9 +72,12 @@ with sync_playwright() as p:
     page.check("input[type=checkbox]")
     page.get_by_role("button", name="Kasayı oluştur").click()
     page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for(timeout=20000)
+    # Yeni bilgi mimarisi: kasa açılınca ana sayfa; belgeler "Verilerim"de
+    page.goto(URL + "#/belgeler")
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
 
     # --- MR: DICOM klasörü
-    page.get_by_role("radio", name="MR", exact=True).click()
+    pick_type(page, "MR")
     page.get_by_text("MR Görüntüsü veya Raporu Yükle").wait_for()
     check(page.get_by_role("button", name="DICOM klasörü seç").count() == 1, "MR seçilince klasör düğmesi görünüyor")
     page.screenshot(path=SHOTS / "60-goruntuleme-yukle.png")
@@ -116,7 +127,7 @@ with sync_playwright() as p:
 
     # --- BT: tek dosya, BT pencere ön ayarları
     page.goto(URL + "#/belgeler")
-    page.get_by_role("radio", name="Tomografi (BT)").click()
+    pick_type(page, "Tomografi (BT)")
     page.set_input_files("input[type=file][multiple]", [str(IMG / "toraks-bt.dcm")])
     page.get_by_role("button", name="Aç ve oku").click()
     page.locator("canvas[role=img]").wait_for(timeout=20000)
@@ -127,7 +138,7 @@ with sync_playwright() as p:
 
     # --- Radyoloji raporu PDF
     page.goto(URL + "#/belgeler")
-    page.get_by_role("radio", name="MR", exact=True).click()
+    pick_type(page, "MR")
     page.set_input_files("input[type=file][multiple]", [str(IMG / "beyin-mr-raporu.pdf")])
     page.get_by_role("button", name="Aç ve oku").click()
     page.get_by_text("Raporda geçen terimler").wait_for(timeout=60000)
@@ -217,7 +228,7 @@ with sync_playwright() as p:
 
     # --- Kâğıt BT raporunun fotoğrafı: kendiliğinden okunur, BT kesitiyle bağlanır
     page.goto(URL + "#/belgeler")
-    page.get_by_role("radio", name="Tomografi (BT)").click()
+    pick_type(page, "Tomografi (BT)")
     page.set_input_files("input[type=file][multiple]", [str(IMG / "toraks-bt-raporu-foto.png")])
     page.get_by_role("button", name="Aç ve oku").click()
     page.get_by_text("Raporda geçen terimler").wait_for(timeout=240000)
@@ -242,7 +253,7 @@ with sync_playwright() as p:
 
     # --- Ölçümler tahlil gibi: rapordaki sayılar genel referansa göre
     page.goto(URL + "#/belgeler")
-    page.get_by_role("radio", name="Ultrason", exact=True).click()
+    pick_type(page, "Ultrason")
     page.set_input_files("input[type=file][multiple]", [str(IMG / "batin-usg-raporu.pdf")])
     page.get_by_role("button", name="Aç ve oku").click()
     page.get_by_text("Raporda geçen terimler").wait_for(timeout=60000)
@@ -329,7 +340,7 @@ with sync_playwright() as p:
     # sonuçlara eklenince 3B beyin işaretlenir ve "Sonucuma göre" görüntüyü açar
     page.goto(URL + "#/belgeler")
     page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
-    page.get_by_role("radio", name="MR", exact=True).click()
+    pick_type(page, "MR")
     kolaj = {"name": "IMG_3002.jpg", "mimeType": "image/jpeg", "buffer": (IMG / "mr-kolaj-foto.jpg").read_bytes()}
     page.set_input_files("input[type=file][multiple]", [kolaj])
     page.get_by_role("button", name="Aç ve oku").click()
@@ -367,7 +378,7 @@ with sync_playwright() as p:
     # --- Otomatik tür: ZIP içindeki DICOM serisi (aynı kesitler zaten yüklü → çift kayıt sayılır)
     page.goto(URL + "#/belgeler")
     page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
-    check(page.get_by_role("radio", name="Otomatik algıla").get_attribute("aria-checked") == "true", "varsayılan tür: otomatik algıla")
+    check(page.get_by_role("button", name="Türünü kendim seçeyim").count() == 1, "varsayılan tür: otomatik algıla (seçim isteğe bağlı, kapalı)")
     page.set_input_files("input[type=file][multiple]", [str(IMG / "beyin-mr.zip")])
     page.get_by_text("ZIP · beyin-mr.zip").wait_for(timeout=20000)
     page.get_by_text("8 zaten yüklü").wait_for(timeout=60000)

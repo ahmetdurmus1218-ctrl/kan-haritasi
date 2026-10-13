@@ -219,6 +219,8 @@ export interface LabObservation {
   confidence: Confidence;
   /** Laboratuvar kritik değer listelerine göre acil değerlendirme gerektirebilecek düzey. */
   critical?: boolean;
+  /** Sapma derecesi (referans sınırına göre): hafif sapma "takip", belirgin sapma "dikkat" olarak gösterilir. */
+  severity?: 'normal' | 'borderline' | 'mild' | 'moderate' | 'marked' | 'unknown';
 }
 
 export type ReferenceSource = 'report' | 'laboratory' | 'demographic' | 'system';

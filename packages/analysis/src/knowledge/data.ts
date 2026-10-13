@@ -168,6 +168,8 @@ const digestion = node({ id: 'proc.digestion', kind: 'process', nameTr: 'Sindiri
 edge(endo, 'made_of', beta);
 edge(endo, 'made_of', alpha);
 edge(exo, 'made_of', acinar);
+edge(endo, 'performs', glucoseReg);
+edge(exo, 'performs', digestion);
 edge(beta, 'produces', insulin);
 edge(beta, 'produces', cpep);
 edge(alpha, 'produces', glucagon);

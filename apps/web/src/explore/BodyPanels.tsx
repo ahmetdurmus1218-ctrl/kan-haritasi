@@ -194,7 +194,7 @@ export function BodyIntroPanel({
         <p className="mt-6 text-sm text-fg-faint">
           {hasReports ? 'Onaylı sonuçlarının tamamı rapordaki aralık içinde; işaretli yapı yok.' : 'Rapor yükleyip sonuçları onayladığında ilgili yapılar burada işaretlenir.'}
           {series.size === 0 && !hasReports && (
-            <button type="button" className="mt-3 block text-accent underline-offset-4 hover:underline" onClick={() => go({ name: 'documents' })}>
+            <button type="button" className="mt-3 block text-accent underline-offset-4 hover:underline" onClick={() => go({ name: 'add' })}>
               Rapor yükle
             </button>
           )}
