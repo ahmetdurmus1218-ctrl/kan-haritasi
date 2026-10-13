@@ -1,8 +1,39 @@
 workflow: CI
-run: 38405203648
-sha: 67cbd8645338952c8b67fe613941789642124cc0
-conclusion: success
+run: 38433284870
+sha: 66c4e4a28cff0044cda048e95f8c5a5dc1ad0904
+conclusion: failure
 
+dependencies: success
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
+e2e: failure
+  - Set up job: success
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Run pnpm build: success
+  - Run actions/setup-python@v5: success
+  - Playwright (Chromium): success
+  - Önizleme sunucusu: success
+  - Belgeler ve kasa (smoke): success
+  - Okuma → sonuçlar → vücutta göster → simülasyon: success
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: failure
+  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: skipped
+  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: skipped
+  - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: skipped
+  - Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR: skipped
+  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: skipped
+  - Run actions/upload-artifact@v4: success
+  - Post Run actions/setup-python@v5: skipped
+  - Post Run actions/setup-node@v4: skipped
+  - Post Run pnpm/action-setup@v4: success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 web: success
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -18,34 +49,36 @@ web: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-dependencies: success
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-e2e: success
-  - Set up job: success
-  - Run actions/checkout@v4: success
-  - Run pnpm/action-setup@v4: success
-  - Run actions/setup-node@v4: success
-  - Run pnpm install --frozen-lockfile: success
-  - Run pnpm build: success
-  - Run actions/setup-python@v5: success
-  - Playwright (Chromium): success
-  - Önizleme sunucusu: success
-  - Belgeler ve kasa (smoke): success
-  - Okuma → sonuçlar → vücutta göster → simülasyon: success
-  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
-  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
-  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
-  - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: success
-  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
-  - Run actions/upload-artifact@v4: skipped
-  - Post Run actions/setup-python@v5: success
-  - Post Run actions/setup-node@v4: success
-  - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
 
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	﻿2026-10-13T16:51:16.8715766Z ##[group]Run python tests/e2e/data.py "$RUNNER_TEMP/shots"
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8716467Z ^[[36;1mpython tests/e2e/data.py "$RUNNER_TEMP/shots"^[[0m
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8763322Z shell: /usr/bin/bash -e {0}
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8763615Z env:
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8763881Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8764270Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8764691Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8765102Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8765471Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8765837Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8766204Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:16.8766537Z ##[endgroup]
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4792146Z FAIL LDL için iki ölçümlü grafik
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4793412Z PASS seçili ölçüm tarihi
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4794559Z PASS seçili ölçümden rapora gidiş
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4795462Z PASS rapor geçmişi
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4796298Z PASS yedek dosyası imzası
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4797328Z PASS yedekte açık metin yok (şifreli)
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4798950Z PASS ZIP bütünlüğü (CRC)
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4799726Z PASS ZIP'te orijinal PDF
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4800532Z PASS ZIP'te orijinal PNG
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4801451Z PASS orijinal PDF bayt bayt aynı
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4802018Z PASS sonuclar.json iki rapor
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4802560Z PASS sonuclar.csv içerik
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4803177Z PASS yanlış yedek parolası reddedildi
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4803795Z PASS geri yüklenen kasada sonuçlar
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4804402Z PASS geri yüklenen kasada iki belge
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4804903Z PASS CSP ihlali yok []
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4805402Z PASS konsol hatası yok []
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4805900Z PASS harici istek yok []
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.4806537Z {'problems': ['LDL için iki ölçümlü grafik']}
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-13T16:51:48.5025629Z ##[error]Process completed with exit code 1.
