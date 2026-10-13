@@ -28,6 +28,7 @@ import { type ImageEvidence, type ReviewCoverage, evaluate, protocolFor, techniq
 import { SystematicReview } from '../components/checklist';
 import { KIND_LABEL } from '../lib/format';
 import { LOCATION_NOTICE } from '../lib/locationNotice';
+import { SeriesModelPanel } from '../components/SeriesModelPanel';
 
 
 const METHOD_TEXT: Record<ImagingNote['method'], string> = {
@@ -275,6 +276,10 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           </div>
         </div>
 
+
+        {dicom && seriesIds.length > 1 && note !== undefined && (dicom.modality === 'CT' || dicom.modality === 'MR') && (
+          <SeriesModelPanel seriesIds={seriesIds} dicom={dicom} stored={note?.volume} noteFileId={noteFileId} />
+        )}
 
         {isImaging(category) && hasImage && note !== undefined && (
           <AnalysisCard

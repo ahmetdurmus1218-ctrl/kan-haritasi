@@ -6,7 +6,7 @@ import { type KNode, type KnowledgeGraph, GRAPH } from './knowledge';
 import type { HealthModel, OrganState } from './fusion';
 import type { PatternResult } from './patterns';
 import type { Trend } from './trend';
-import { type AnatomicalLocation, type EvidenceSource, type ImageObservation, type LabObservation, type MedicalFinding, type ReportFinding, SOURCE_LABEL, isPositiveReport } from './types';
+import { type AnatomicalLocation, type EvidenceSource, type ImageObservation, type LabObservation, type MedicalFinding, type ModelStructure, type ReportFinding, SOURCE_LABEL, isPositiveReport } from './types';
 
 export interface ChainOverlay {
   chain: KNode[];
@@ -26,14 +26,14 @@ export interface OrganView {
   path: KNode[];
   systems: KNode[];
   normal: { summary: string; parts: KNode[]; functions: KNode[]; physiology: KNode[][]; biomarkers: KNode[] };
-  personal: { labs: LabObservation[]; reportFindings: ReportFinding[]; imageObservations: ImageObservation[]; modelFindings: MedicalFinding[]; patterns: PatternResult[]; hasData: boolean };
+  personal: { labs: LabObservation[]; reportFindings: ReportFinding[]; imageObservations: ImageObservation[]; modelFindings: MedicalFinding[]; modelStructures: ModelStructure[]; patterns: PatternResult[]; hasData: boolean };
   difference: DiffItem[];
   relations: ChainOverlay[];
   time: Array<{ testKey: string; name: string; trend: Trend }>;
   uncertainty: { certain: string[]; probabilistic: string[]; missing: string[] };
 }
 
-const EMPTY: OrganState = { organ: '', imageObservations: [], reportFindings: [], modelFindings: [], labs: [], patterns: [], attention: false };
+const EMPTY: OrganState = { organ: '', imageObservations: [], reportFindings: [], modelFindings: [], modelStructures: [], labs: [], patterns: [], attention: false };
 
 export function buildOrganView(organId: string, model: HealthModel | null, graph: KnowledgeGraph = GRAPH): OrganView | null {
   const node = graph.node(organId);
@@ -94,8 +94,9 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
       reportFindings: state.reportFindings,
       imageObservations: state.imageObservations,
       modelFindings: state.modelFindings,
+      modelStructures: state.modelStructures ?? [],
       patterns: state.patterns,
-      hasData: state.labs.length + state.reportFindings.length + state.imageObservations.length + state.modelFindings.length > 0,
+      hasData: state.labs.length + state.reportFindings.length + state.imageObservations.length + state.modelFindings.length + (state.modelStructures?.length ?? 0) > 0,
     },
     difference,
     relations,

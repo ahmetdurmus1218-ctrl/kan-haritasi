@@ -17,7 +17,7 @@ import { type EvidenceSet, type PatternResult, evaluatePatterns } from './patter
 import type { ImageAnalysisRun } from './pipeline';
 import { type StudyComparison, type StudySnapshot, compareStudies, itemFromObservation, itemFromReport } from './temporal';
 import { type Trend, computeTrend } from './trend';
-import { type AnatomicalLocation, type Confidence, type EvidenceSource, type ImageObservation, type LabObservation, type MedicalFinding, type ReportFinding, isPositiveReport } from './types';
+import { type AnatomicalLocation, type Confidence, type EvidenceSource, type ImageObservation, type LabObservation, type MedicalFinding, type ModelStructure, type ReportFinding, isPositiveReport } from './types';
 
 export interface ImageStudyInput {
   run: ImageAnalysisRun;
@@ -78,6 +78,8 @@ export interface OrganState {
   reportFindings: ReportFinding[];
   /** Yerel tıbbi görüntü modelinin bulguları (model-derived). */
   modelFindings: MedicalFinding[];
+  /** Yerel modelin bölütlediği anatomik yapılar (ölçüm + konum; bulgu değil). */
+  modelStructures: ModelStructure[];
   labs: LabObservation[];
   patterns: PatternResult[];
   /** Dikkat çeken veri var mı (aralık dışı tahlil, rapordaki bulgu, görüntü gözlemi, örüntü). */
@@ -212,12 +214,13 @@ export function buildHealthModel(input: HealthInput): HealthModel {
 
   // Organ durumları
   const organs = new Map<string, OrganState>();
-  const get = (id: string) => organs.get(id) ?? organs.set(id, { organ: id, imageObservations: [], reportFindings: [], modelFindings: [], labs: [], patterns: [], attention: false }).get(id)!;
+  const get = (id: string) => organs.get(id) ?? organs.set(id, { organ: id, imageObservations: [], reportFindings: [], modelFindings: [], modelStructures: [], labs: [], patterns: [], attention: false }).get(id)!;
   for (const f of modelFindings) if (f.anatomicalStructure?.structure) {
     const s = get(f.anatomicalStructure.structure);
     s.modelFindings.push(f);
     s.attention = true;
   }
+  for (const st of input.images.flatMap((i) => i.run.modelStructures ?? [])) if (st.anatomicalStructure?.structure) get(st.anatomicalStructure.structure).modelStructures.push(st);
   for (const o of imageObservations) if (o.location?.structure) {
     const s = get(o.location.structure);
     s.imageObservations.push(o);

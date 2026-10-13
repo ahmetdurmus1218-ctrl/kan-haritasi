@@ -408,6 +408,11 @@ export function cardiothoracicRatio(outputs: Record<string, Tensor>, manifest: M
 
 /* ------------------------------------------------------------------ Sağlayıcı */
 
+export interface ModelExtras {
+  scores?: Array<{ key: string; name: string; structure?: string; score: number }>;
+  ctr?: { ratio: number; heartWidth: number; thoraxWidth: number };
+}
+
 export function modelVersionOf(m: ModelManifest): ModelVersion & { sha256: string; license: string } {
   return { id: m.id, name: m.name, version: m.version, kind: 'learned', local: true, sha256: m.sha256, license: m.license };
 }
@@ -423,6 +428,8 @@ export class LocalModelProvider implements MedicalImageAIProvider {
   readonly modalities: readonly Modality[];
   private engine: Promise<InferenceEngine> | null = null;
   private readonly fallback: UnavailableImageProvider;
+  /** Son çalıştırmanın ek çıktıları: tüm skorlar (çok etiketli) ve maskelerden ölçümler. */
+  lastExtras: ModelExtras = {};
 
   constructor(
     readonly manifest: ModelManifest,
@@ -456,11 +463,18 @@ export class LocalModelProvider implements MedicalImageAIProvider {
 
   async detectFindings(input: StudyInput): Promise<ProviderOutput<ModelFinding[]>> {
     if (!this.manifest.modalities.includes(input.modality)) return { status: 'unavailable', reason: `Bu model ${input.modality} için değil.` };
+    if (this.manifest.task === 'segmentation-3d') return { status: 'unavailable', reason: 'Bu 3B hacim modeli tek görüntüde değil, DICOM serisinde çalışır.' };
     const findings: ModelFinding[] = [];
     const engine = await this.session();
+    this.lastExtras = {};
     for (const [frame, img] of input.images.entries()) {
       const outputs = await engine.run({ [this.manifest.input.name]: preprocess(img, this.manifest) });
       findings.push(...postprocess(outputs, this.manifest, { width: img.width, height: img.height }, frame));
+      if (this.manifest.task === 'multilabel' && !this.lastExtras.scores) this.lastExtras.scores = multilabelScores(outputs, this.manifest);
+      if (this.manifest.task === 'segmentation' && !this.lastExtras.ctr) {
+        const ctr = cardiothoracicRatio(outputs, this.manifest);
+        if (ctr) this.lastExtras.ctr = ctr;
+      }
     }
     return this.ok(findings);
   }
@@ -535,8 +549,10 @@ const PRECHECK: Partial<Record<Modality, string>> = {
  */
 export function capabilitiesFor(modality: Modality, models: readonly ModelManifest[] = []): ModalityCapability[] {
   const mine = models.filter((m) => m.modalities.includes(modality));
-  const localizing = mine.filter((m) => m.task !== 'classification');
+  const localizing = mine.filter((m) => m.task !== 'classification' && m.task !== 'multilabel');
   const mapped = mine.filter((m) => m.labels.some((l) => l.structure && (GRAPH.node(l.structure) || l.structure)));
+  const describe = (m: ModelManifest) =>
+    `${m.name} ${m.version}${m.task === 'segmentation-3d' ? ' — 3B, yalnızca DICOM serisinde' : m.task === 'multilabel' || m.task === 'classification' ? ' — görüntü düzeyinde skor, konum vermez' : ''}${m.labels.every((l) => l.kind === 'anatomy') ? ' (anatomi bölütleme; bulgu değil)' : ''}`;
   const cross = modality === 'MRI' || modality === 'CT';
   return [
     { key: 'dicom', label: 'DICOM okuma (seri, kesit, başlık, anonimleştirme)', supported: modality !== 'ECG', reason: modality === 'ECG' ? 'EKG dalga formu DICOM\'u okunmuyor; kâğıt EKG fotoğrafı/taraması destekleniyor.' : 'Cihazda (Explicit/Implicit VR, sıkıştırmasız, RLE, JPEG Baseline).' },
@@ -547,13 +563,19 @@ export function capabilitiesFor(modality: Modality, models: readonly ModelManife
       key: 'local-model',
       label: 'Yerel tıbbi AI modeli',
       supported: mine.length > 0,
-      reason: mine.length ? mine.map((m) => `${m.name} ${m.version}`).join(', ') : 'Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor.',
+      reason: mine.length ? mine.map(describe).join('; ') : 'Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor.',
     },
     {
       key: 'localization',
       label: 'Görüntü üzerinde konum (kutu / maske)',
       supported: localizing.length > 0,
-      reason: localizing.length ? `Model çıktısı (${localizing.map((m) => m.task).join(', ')}).` : cross ? 'Yalnızca ön kontroldeki asimetri alanları (bulgu değil); gerçek bulgu konumu için model gerekir.' : 'Konum üreten bir model kurulu değil.',
+      reason: localizing.length
+        ? `Model çıktısı: ${localizing.map((m) => (m.task === 'segmentation-3d' ? '3B voksel maskesi (seri)' : m.task === 'segmentation' ? 'piksel maskesi' : 'kutu')).join(', ')}.`
+        : mine.length
+          ? 'Kurulu model görüntü düzeyinde sınıflandırır; konum vermez (yalnızca ilgili organ).'
+          : cross
+            ? 'Yalnızca ön kontroldeki asimetri alanları (bulgu değil); gerçek bulgu konumu için model gerekir.'
+            : 'Konum üreten bir model kurulu değil.',
     },
     {
       key: 'anatomy',

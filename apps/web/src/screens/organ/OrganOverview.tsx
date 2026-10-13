@@ -178,6 +178,19 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
                 ))}
               </ul>
             )}
+            {v.personal.modelStructures.length > 0 && (
+              <p className="flex items-start gap-2 rounded-xl border border-ink-600/60 px-3 py-2 text-sm text-fg" data-testid="organ-model-structure-summary">
+                <span aria-hidden="true">◇</span>
+                <span>
+                  Yerel model görüntünde bu organı bölütledi
+                  {(() => {
+                    const vol = v.personal.modelStructures.flatMap((s) => s.measurements.filter((m) => m.unit === 'mL')).reduce((a, m) => a + m.value, 0);
+                    return vol ? ` · hacim ${vol >= 1000 ? `${(vol / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 2 })} L` : `${vol.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} mL`}` : '';
+                  })()}{' '}
+                  <span className="text-fg-muted">(normal anatomi bölütlemesi; bulgu değil)</span>
+                </span>
+              </p>
+            )}
             {modelN > 0 && (
               <p className="flex items-start gap-2 rounded-xl border border-high/40 bg-high/[0.06] px-3 py-2 text-sm text-high" data-testid="organ-model-summary">
                 <span aria-hidden="true">◆</span>

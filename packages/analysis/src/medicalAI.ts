@@ -15,7 +15,7 @@
  * Veriyi cihaz dışına gönderen (`sendsDataOffDevice`) sağlayıcı kaydedilmez ve çalıştırılmaz — onayla bile.
  */
 import { GRAPH } from './knowledge';
-import type { AnatomicalLocation, Confidence, ImageContext, Localization, MedicalFinding, Modality, ModelVersion, RasterImage } from './types';
+import type { AnatomicalLocation, Confidence, ImageContext, Localization, MedicalFinding, Modality, ModelStructure, ModelVersion, Provenance, RasterImage } from './types';
 
 /** Modelin dosya düzeyindeki kimliği (yerel modellerde manifestten). */
 export type ModelIdentity = ModelVersion & { sha256?: string; license?: string };
@@ -245,7 +245,7 @@ export function anatomyForLabel(label: { key?: string; structure?: string; part?
   };
 }
 
-export type ModelRun = { status: 'ran'; provider: string; model: ModelVersion; findings: MedicalFinding[] } | { status: 'unavailable'; reason: string };
+export type ModelRun = { status: 'ran'; provider: string; model: ModelVersion; findings: MedicalFinding[]; structures?: ModelStructure[] } | { status: 'unavailable'; reason: string };
 
 /**
  * Bir çalışmayı modalitenin gerçek modeline gönderir. Sağlayıcı yoksa ya da kullanılamıyorsa
@@ -274,29 +274,54 @@ export async function runMedicalImageModel(
     if (detected.status !== 'ok') return { status: 'unavailable', reason: detected.reason };
     const localized = await withTimeout(provider.localizeFindings(input, detected.value));
     const list = localized.status === 'ok' ? localized.value : detected.value;
-    const findings: MedicalFinding[] = list.map((f) => {
-      const anatomicalStructure = anatomyFor(f.structure, f.localization, f.confidence);
+    const at = (opts.now?.() ?? new Date()).toISOString();
+    const provenanceFor = (f: ModelFinding): Provenance => {
       const frame = f.localization.kind === 'pixel' || f.localization.kind === 'point' ? f.localization.frame : undefined;
       return {
-        id: `mf-${(fseq++).toString(36)}`,
+        derivation: 'model-derived',
         source: 'IMAGE_MODEL',
-        provenance: {
-          derivation: 'model-derived',
-          source: 'IMAGE_MODEL',
-          model: { ...detected.model, ...(opts.identity?.sha256 ? { sha256: opts.identity.sha256 } : {}), ...(opts.identity?.license ? { license: opts.identity.license } : {}) },
-          ...(opts.documentId ? { documentId: opts.documentId } : {}),
-          ...(frame !== undefined ? { frame } : {}),
-          at: (opts.now?.() ?? new Date()).toISOString(),
-        },
-        finding: f.finding,
-        model: detected.model,
-        confidence: f.confidence,
-        localization: f.localization,
-        ...(anatomicalStructure ? { anatomicalStructure } : {}),
-        limitations: [...detected.limitations, ...(f.limitations ?? [])],
+        model: { ...detected.model, ...(opts.identity?.sha256 ? { sha256: opts.identity.sha256 } : {}), ...(opts.identity?.license ? { license: opts.identity.license } : {}) },
+        ...(opts.documentId ? { documentId: opts.documentId } : {}),
+        ...(frame !== undefined ? { frame } : {}),
+        at,
       };
-    });
-    return { status: 'ran', provider: provider.id, model: detected.model, findings };
+    };
+    const anatomyOf = (f: ModelFinding) => (f.key || f.node || f.part ? anatomyForLabel(f, f.localization, f.confidence) : anatomyFor(f.structure, f.localization, f.confidence));
+    // Normal anatomi bölütlemesi BULGU değildir: ayrı listede (yapı + ölçüm), organı "dikkat" durumuna geçirmez.
+    const findings: MedicalFinding[] = list
+      .filter((f) => f.kind !== 'anatomy')
+      .map((f) => {
+        const anatomicalStructure = anatomyOf(f);
+        return {
+          id: `mf-${(fseq++).toString(36)}`,
+          source: 'IMAGE_MODEL',
+          provenance: provenanceFor(f),
+          finding: f.finding,
+          model: detected.model,
+          confidence: f.confidence,
+          localization: f.localization,
+          ...(anatomicalStructure ? { anatomicalStructure } : {}),
+          limitations: [...detected.limitations, ...(f.limitations ?? [])],
+        };
+      });
+    const structures: ModelStructure[] = list
+      .filter((f) => f.kind === 'anatomy')
+      .map((f) => {
+        const anatomicalStructure = anatomyOf(f);
+        return {
+          id: `ms-${(fseq++).toString(36)}`,
+          key: f.key ?? f.finding,
+          name: f.finding,
+          source: 'IMAGE_MODEL',
+          provenance: provenanceFor(f),
+          localization: f.localization,
+          ...(anatomicalStructure ? { anatomicalStructure } : {}),
+          measurements: f.areaFraction !== undefined ? [{ name: 'Görüntüdeki alan', value: Math.round(f.areaFraction * 1000) / 10, unit: '%', method: 'model maskesi' }] : [],
+          confidence: f.confidence,
+          limitations: detected.limitations,
+        };
+      });
+    return { status: 'ran', provider: provider.id, model: detected.model, findings, structures };
   } catch (e) {
     return { status: 'unavailable', reason: e instanceof Error && e.message === 'timeout' ? `Model ${Math.round(timeout / 1000)} saniyede yanıt vermedi.` : 'Model çalıştırılırken hata oluştu; bulgu üretilmedi.' };
   }

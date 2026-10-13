@@ -10,7 +10,7 @@
 import { type AdapterRegistry, defaultRegistry } from './adapters/registry';
 import { type AnatomyEstimate, type ImageFeatures, type ModalityEstimate, classifyModality, estimateAnatomy, imageFeatures } from './modality';
 import { type QualityReport, assessQuality } from './quality';
-import { type AdapterResult, type ImageContext, type MedicalFinding, type Modality, MODALITY_LABEL, type RasterImage } from './types';
+import { type AdapterResult, type ImageContext, type MedicalFinding, type Modality, MODALITY_LABEL, type ModelStructure, type RasterImage } from './types';
 
 /**
  * İnceleme kapsamı: tek bir fotoğraf (birkaç kesit) ile yüzlerce kesitlik DICOM serisi aynı şey
@@ -55,7 +55,22 @@ export function sequenceFrom(ctx: ImageContext, modality: Modality): SequenceInf
   return { value, source: 'DICOM_METADATA', text: `MR sekansı: ${value} (DICOM başlığından: “${desc.trim().slice(0, 60)}”)` };
 }
 
-export function coverageOf(ctx: ImageContext, frames: number | undefined): StudyCoverage {
+const SECTIONAL: ReadonlySet<string> = new Set(['MRI', 'CT', 'PET', 'PET_CT', 'SPECT']);
+
+/**
+ * İnceleme kapsamı. "Kapsam sınırlı / N kesit" uyarısı yalnızca kesitsel incelemeler (MR, BT, PET) içindir;
+ * tek bir röntgen, EKG ya da patoloji görüntüsü zaten incelemenin kendisidir.
+ */
+export function coverageOf(ctx: ImageContext, frames: number | undefined, modality?: Modality): StudyCoverage {
+  const c = coverageRaw(ctx, frames);
+  if (modality && !SECTIONAL.has(modality)) {
+    const { limited: _l, ...rest } = c;
+    return rest;
+  }
+  return c;
+}
+
+function coverageRaw(ctx: ImageContext, frames: number | undefined): StudyCoverage {
   if (ctx.dicom) {
     const n = Math.max(ctx.dicom.frames ?? 1, ctx.files ?? 1);
     return n > 1
@@ -88,6 +103,8 @@ export interface ImageAnalysisRun {
   kind: 'precheck' | 'model';
   /** Yerel tıbbi model çalıştıysa bulguları (kaynak IMAGE_MODEL, model-derived). Ön kontrol asla buraya yazmaz. */
   modelFindings?: MedicalFinding[];
+  /** Yerel modelin bölütlediği anatomik yapılar (bulgu değil; organı "dikkat" durumuna geçirmez). */
+  modelStructures?: ModelStructure[];
   modelInfo?: { id: string; name: string; version: string; sha256?: string; license?: string; at: string };
   coverage: StudyCoverage;
   sequence: SequenceInfo;
@@ -174,5 +191,5 @@ export function analyzeImage(image: RasterImage, ctx: ImageContext = {}, opts: A
   if (result.status === 'UNAVAILABLE') statements.push(`Otomatik görüntü yorumu: bu modalite (${MODALITY_LABEL[m]}) için bu kurulumda mevcut değil ya da bu görüntüde yapılamadı.`);
   else statements.push(`Görüntü ön incelemesi: ${result.capabilities.filter((c) => c.status === 'done').length} kural tabanlı kontrol çalıştı; ${result.capabilities.filter((c) => c.status === 'not-implemented').length} yetenek tıbbi görüntü modeli gerektirdiği için bu kurulumda yok.`);
   if (!reportAvailable && result.observations.length) statements.push('Bu gözlemler bir radyolog raporu değildir; rapor olmadığı için doğrulanamadı.');
-  return { id, at, quality, features, modality, anatomy, route: 'image-analysis', result, kind, coverage: coverageOf(ctx, result.frames), sequence: sequenceFrom(ctx, m), reportAvailable, statements };
+  return { id, at, quality, features, modality, anatomy, route: 'image-analysis', result, kind, coverage: coverageOf(ctx, result.frames, m), sequence: sequenceFrom(ctx, m), reportAvailable, statements };
 }

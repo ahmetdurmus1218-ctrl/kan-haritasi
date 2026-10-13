@@ -1,0 +1,283 @@
+/**
+ * DICOM serisinde 3B yerel tıbbi model (ör. TotalSegmentator BT/MR): seri hacim olarak cihazda analiz edilir.
+ * Dakikalar sürebileceği için kullanıcı başlatır; ilerleme ve iptal vardır. Sonuç: bölütlenen yapılar (hacim,
+ * kesit aralığı), modelin bulgu sınıfları (ör. böbrek kisti), görüntü üzerinde maske, organ sayfası ve 3B
+ * bağlantıları, model kökeni. Model yoksa ya da seri geometrisi güvenilir değilse nedeni açıkça yazılır.
+ */
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { GRAPH, encodeRle, type Modality } from '@kh/analysis';
+import type { DicomInfo } from '@kh/ingest';
+import { useUnlockedVault, useVault } from '../state/VaultContext';
+import { go } from '../state/router';
+import { type VolumeJobProgress, runVolumeAnalysis } from '../lib/analysisBridge';
+import { type StoredVolume, saveVolume } from '../lib/imagingRecords';
+import { useLocalModels } from '../lib/localModels/store';
+import { labelColor, setSeriesOverlay, updateSeriesOverlay, useSeriesOverlay } from '../lib/seriesOverlay';
+import { TONE } from '../lib/tone';
+import { BodyIcon, SpinnerIcon } from './icons';
+import { SourceBadge } from './evidence';
+
+const MODALITY: Record<string, Modality> = { CT: 'CT', MR: 'MRI' };
+const VESSELS = new Set(['aorta', 'veins', 'carotid-arteries', 'pulmonary-vessels', 'abdominal-vessels', 'coronary-arteries', 'limb-vessels', 'renal-vessels']);
+const SECONDS_PER_TILE: Record<string, number> = { CT: 45, MRI: 30 };
+
+function group(structure?: string): 'Organlar' | 'Damarlar' | 'Kemikler' | 'Kaslar' {
+  if (structure === 'bones') return 'Kemikler';
+  if (structure === 'skeletal-muscle') return 'Kaslar';
+  if (structure && VESSELS.has(structure)) return 'Damarlar';
+  return 'Organlar';
+}
+
+const ml = (v: number) => (v >= 1000 ? `${(v / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 2 })} L` : `${v.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} mL`);
+
+export function SeriesModelPanel({ seriesIds, dicom, stored, noteFileId }: { seriesIds: string[]; dicom: DicomInfo; stored: StoredVolume | undefined; noteFileId: string }) {
+  const vault = useUnlockedVault();
+  const { bump } = useVault();
+  const models = useLocalModels();
+  const modality = dicom.modality ? MODALITY[dicom.modality] : undefined;
+  const model = useMemo(() => models?.find((m) => m.manifest.task === 'segmentation-3d' && modality && m.manifest.modalities.includes(modality)), [models, modality]);
+  const [job, setJob] = useState<{ status: 'idle' } | { status: 'reading'; done: number } | { status: 'running'; p: VolumeJobProgress } | { status: 'error'; reason: string }>({ status: 'idle' });
+  const abort = useRef<AbortController | null>(null);
+  const overlay = useSeriesOverlay(seriesIds[0]);
+  const [showAll, setShowAll] = useState(false);
+
+  // Kayıtlı sonuç görüntüleyiciye bağlanır (maske katmanı).
+  useEffect(() => {
+    if (stored && seriesIds[0]) setSeriesOverlay({ headId: seriesIds[0], volume: stored, visible: true, highlight: null, goto: null });
+    return () => setSeriesOverlay(null);
+  }, [stored, seriesIds]);
+  useEffect(() => () => abort.current?.abort(), []);
+
+  if (!modality) return null;
+  const minSlices = model?.manifest.volume?.minSlices ?? 10;
+  const tilesEstimate = (() => {
+    const sp = model?.manifest.volume?.spacing ?? 3;
+    const patch = model?.manifest.volume?.patch ?? [128, 112, 112];
+    const fovX = (dicom.columns * (dicom.pixelSpacing?.[1] ?? 1)) / sp;
+    const fovY = (dicom.rows * (dicom.pixelSpacing?.[0] ?? 1)) / sp;
+    const fovZ = (seriesIds.length * (dicom.sliceThickness ?? sp)) / sp;
+    const n = (size: number, p: number) => (size <= p ? 1 : Math.ceil((size - p) / (p * 0.8)) + 1);
+    return n(fovZ, patch[0]) * n(fovY, patch[1]) * n(fovX, patch[2]);
+  })();
+  const minutes = Math.max(1, Math.round((tilesEstimate * (SECONDS_PER_TILE[modality] ?? 45)) / 60));
+
+  const start = async () => {
+    if (!model) return;
+    const ctrl = new AbortController();
+    abort.current = ctrl;
+    setJob({ status: 'reading', done: 0 });
+    const files: Uint8Array[] = [];
+    for (const [i, id] of seriesIds.entries()) {
+      if (ctrl.signal.aborted) return;
+      files.push((await vault.readFile(id)).bytes);
+      if (i % 10 === 0) setJob({ status: 'reading', done: i + 1 });
+    }
+    setJob({ status: 'running', p: { stage: 'loading', done: 0, total: 1 } });
+    const r = await runVolumeAnalysis(model.manifest, files, { signal: ctrl.signal, onProgress: (p) => !ctrl.signal.aborted && setJob({ status: 'running', p }) });
+    if (ctrl.signal.aborted) return;
+    if (!r.ok) {
+      setJob({ status: 'error', reason: r.reason });
+      return;
+    }
+    const m = model.manifest;
+    const result: StoredVolume = {
+      at: new Date().toISOString(),
+      model: { id: m.id, name: m.name, version: m.version, sha256: m.sha256, license: m.license, source: m.source },
+      fileIds: r.geometry.order.map((i) => seriesIds[i]!),
+      geometry: { rows: r.geometry.rows, cols: r.geometry.cols, slices: r.geometry.slices, origin: r.geometry.origin, iVec: r.geometry.iVec, jVec: r.geometry.jVec, kVec: r.geometry.kVec },
+      grid: r.grid,
+      labelsRle: encodeRle(r.labels),
+      structures: r.structures,
+      tiles: r.tiles,
+      seconds: r.seconds,
+      modality,
+    };
+    await saveVolume(vault, noteFileId, result);
+    setJob({ status: 'idle' });
+    bump();
+  };
+
+  const cancel = () => {
+    abort.current?.abort();
+    setJob({ status: 'idle' });
+  };
+
+  const busy = job.status === 'reading' || job.status === 'running';
+  const findings = stored?.structures.filter((s) => s.kind === 'finding') ?? [];
+  const anatomy = stored?.structures.filter((s) => s.kind === 'anatomy') ?? [];
+  const groups = (['Organlar', 'Damarlar', 'Kemikler', 'Kaslar'] as const).map((g) => ({ g, items: anatomy.filter((s) => group(s.structure) === g) })).filter((x) => x.items.length);
+  const show = (fileId: string | undefined, labelId: number) => {
+    if (!fileId) return;
+    updateSeriesOverlay({ visible: true, highlight: labelId, goto: { fileId, nonce: Date.now() } });
+  };
+
+  return (
+    <section className="space-y-3 rounded-2xl border border-[#a78bfa]/40 bg-ink-850/60 p-4" aria-label="Seri analizi (3B yerel model)" data-testid="series-model-panel">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-[15px] font-medium text-fg" data-testid="series-state" data-state={stored ? 'model' : model ? 'ready' : 'none'}>
+            {stored ? 'Seri yerel tıbbi AI modeli ile analiz edildi' : model ? 'Seri 3B yerel modelle analiz edilebilir' : 'Bu analiz için gerekli yerel model cihazda kurulu değil.'}
+          </p>
+          <p className="text-xs text-fg-muted">{stored ? `${stored.model.name} · ${stored.structures.length} yapı · ${stored.tiles} karo · ${stored.seconds} sn` : model ? model.manifest.name : `${modality === 'CT' ? 'BT' : 'MR'} serisi için 3B bölütleme modeli yok.`}</p>
+        </div>
+        {(stored || model) && <span className="shrink-0 rounded-full border border-[#a78bfa]/50 px-2 py-0.5 text-[11px] text-[#a78bfa]">yerel model · cihazda</span>}
+      </div>
+
+      {!stored && model && seriesIds.length < minSlices && <p className="text-sm text-fg-muted">Seride {seriesIds.length} kesit var; bu model için en az {minSlices} kesit gerekir. Seri analizi yapılmadı.</p>}
+
+      {!stored && model && seriesIds.length >= minSlices && !busy && (
+        <div className="space-y-2">
+          <p className="text-sm text-fg-muted">
+            Tüm seri cihazda, {model.manifest.name} ile bölütlenir (organlar, damarlar, kemikler, kaslar{model.manifest.labels.some((l) => l.kind === 'finding') ? ' ve modelin bulgu sınıfları' : ''}). Yaklaşık {tilesEstimate} karo · masaüstünde ~{minutes} dk, telefonda daha uzun sürebilir. Görüntü cihazdan çıkmaz.
+          </p>
+          <button type="button" className="btn-primary px-3 py-1.5 text-sm" onClick={() => void start()} data-testid="run-series-model">
+            Seriyi analiz et
+          </button>
+        </div>
+      )}
+
+      {busy && (
+        <div className="space-y-2" aria-live="polite" data-testid="series-progress">
+          <p className="flex items-center gap-2 text-sm text-fg">
+            <SpinnerIcon size={14} />
+            {job.status === 'reading'
+              ? `Kesitler kasadan okunuyor (${job.done}/${seriesIds.length})…`
+              : job.p.stage === 'loading'
+                ? 'Model yükleniyor…'
+                : job.p.stage === 'resample'
+                  ? 'Hacim 3 mm ızgaraya hazırlanıyor…'
+                  : job.p.stage === 'inference'
+                    ? `Model çalışıyor: karo ${job.p.done + 1}/${job.p.total}`
+                    : 'Sonuçlar birleştiriliyor…'}
+          </p>
+          {job.status === 'running' && job.p.stage === 'inference' && (
+            <div className="h-1.5 overflow-hidden rounded-full bg-ink-700">
+              <div className="h-full bg-[#a78bfa]" style={{ width: `${Math.round((job.p.done / Math.max(1, job.p.total)) * 100)}%` }} />
+            </div>
+          )}
+          <button type="button" className="btn-ghost px-2.5 py-1 text-xs" onClick={cancel}>
+            İptal
+          </button>
+        </div>
+      )}
+
+      {job.status === 'error' && (
+        <p className="text-sm text-caution-fg" role="status" data-testid="series-error">
+          {/geometri|kesit|aralık|yönelim|konum|boyut|çok kareli|sıkıştırılmış/i.test(job.reason) ? `Bu seri güvenilir 3B analiz için uygun değil: ${job.reason}` : job.reason}
+        </p>
+      )}
+
+      {stored && (
+        <>
+          <label className="flex items-center gap-2 text-sm text-fg">
+            <input type="checkbox" checked={overlay?.visible ?? true} onChange={(e) => updateSeriesOverlay({ visible: e.target.checked })} />
+            Görüntü üzerinde bölütlemeyi göster
+          </label>
+
+          {findings.length > 0 && (
+            <div className="space-y-1.5" aria-label="Model bulguları (seri)">
+              <p className="text-sm font-medium text-fg">Model bulguları</p>
+              {findings.map((f) => (
+                <div key={f.labelId} className={`rounded-lg border px-2.5 py-2 text-sm ${TONE.attention.border} ${TONE.attention.bg}`} data-testid="series-finding">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SourceBadge source="IMAGE_MODEL" />
+                    <span className={`font-medium ${TONE.attention.text}`}>◆ {f.name}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-fg-muted">
+                    {ml(f.volumeMl)} · kesit {f.sliceRange[0] + 1}–{f.sliceRange[1] + 1} · modelin sınıfıdır, tanı değildir
+                  </p>
+                  <button type="button" className="mt-1 text-xs text-accent underline" onClick={() => show(stored.fileIds[f.centroidSlice], f.labelId)}>
+                    Görüntüde göster
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-2" aria-label="Bölütlenen yapılar">
+            <p className="text-sm font-medium text-fg">Bölütlenen yapılar (normal anatomi; bulgu değildir)</p>
+            {groups.map(({ g, items }) => (
+              <div key={g}>
+                <p className="text-xs font-medium uppercase tracking-wide text-fg-faint">
+                  {g} · {items.length}
+                </p>
+                <ul className="mt-1 space-y-1">
+                  {(showAll ? items : items.slice(0, 6)).map((s) => {
+                    const [r, gg, b] = labelColor(stored, s.labelId);
+                    const node = s.node && GRAPH.node(s.node) ? s.node : undefined;
+                    return (
+                      <li key={s.labelId} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm" data-testid="series-structure">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: `rgb(${r},${gg},${b})` }} aria-hidden="true" />
+                        <span className="text-fg">{s.name}</span>
+                        <span className="text-xs text-fg-muted">
+                          {ml(s.volumeMl)} · kesit {s.sliceRange[0] + 1}–{s.sliceRange[1] + 1}
+                        </span>
+                        <span className="ml-auto flex shrink-0 items-center gap-2">
+                          <button type="button" className="text-xs text-accent underline" onClick={() => show(stored.fileIds[s.centroidSlice], s.labelId)}>
+                            Görüntüde
+                          </button>
+                          {node && (
+                            <button type="button" className="text-xs text-accent underline" onClick={() => go({ name: 'organ', id: node })}>
+                              Organ
+                            </button>
+                          )}
+                          {s.structure && (
+                            <button type="button" className="inline-flex items-center gap-0.5 text-xs text-accent underline" aria-label={`${s.name}: 3B anatomide göster`} onClick={() => go(s.part ? { name: 'body', structure: s.structure!, part: s.part } : { name: 'body', structure: s.structure! })}>
+                              <BodyIcon size={12} /> 3B
+                            </button>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+            {anatomy.length > 24 && !showAll && (
+              <button type="button" className="text-xs text-accent underline" onClick={() => setShowAll(true)}>
+                Tümünü göster ({anatomy.length})
+              </button>
+            )}
+          </div>
+
+          <details className="text-xs text-fg-muted">
+            <summary className="cursor-pointer text-fg">Analiz ayrıntıları ve model kökeni</summary>
+            <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5" aria-label="Seri modeli kökeni">
+              <dt className="text-fg-faint">Model</dt>
+              <dd>
+                {stored.model.name} · {stored.model.version} ({stored.model.id})
+              </dd>
+              <dt className="text-fg-faint">SHA-256</dt>
+              <dd className="break-all font-mono">{stored.model.sha256}</dd>
+              <dt className="text-fg-faint">Lisans</dt>
+              <dd>{stored.model.license}</dd>
+              <dt className="text-fg-faint">Kaynak</dt>
+              <dd className="break-all">{stored.model.source}</dd>
+              <dt className="text-fg-faint">Girdi</dt>
+              <dd>
+                DICOM seri · {stored.geometry.slices} kesit · {stored.grid.spacing} mm izotropik ızgara ({stored.grid.shape.join('×')})
+              </dd>
+              <dt className="text-fg-faint">Çalışma</dt>
+              <dd>
+                {stored.tiles} karo · {stored.seconds} sn · {new Date(stored.at).toLocaleString('tr-TR')} · cihazda
+              </dd>
+            </dl>
+            {model?.manifest.validation && <p className="mt-1">Doğrulama: {model.manifest.validation}</p>}
+            {model && (
+              <ul className="mt-1 list-disc pl-4">
+                {model.manifest.limitations.map((l) => (
+                  <li key={l}>{l}</li>
+                ))}
+              </ul>
+            )}
+          </details>
+          {model && (
+            <button type="button" className="text-xs text-fg-muted underline" onClick={() => void saveVolume(vault, noteFileId, null).then(bump)}>
+              Sonucu sil (yeniden analiz için)
+            </button>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

@@ -23,3 +23,4 @@ export * from './organView';
 export * from './flows';
 export * from './localModel';
 export * from './volumeModel';
+export * from './modelAgreement';

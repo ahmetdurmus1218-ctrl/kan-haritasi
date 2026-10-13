@@ -5,11 +5,14 @@
  */
 import { useSyncExternalStore } from 'react';
 import { type ModelManifest, validateManifest } from '@kh/analysis';
+import { readAppAsset, readAppJson } from '../appAssets';
 
 export interface StoredModel {
   manifest: ModelManifest;
   size: number;
   importedAt: string;
+  /** bundled: uygulamayla gelen (APK / web paketi); installed: kullanıcının cihaza kurduğu. */
+  origin?: 'bundled' | 'installed';
 }
 
 export interface ModelBackend {
@@ -117,9 +120,42 @@ let cache: StoredModel[] | null = null;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
+/* ------------------------------------------------------------------ Uygulamayla gelen modeller */
+
+let bundledSource: () => Promise<StoredModel[]> = loadBundled;
+let bundled: Promise<StoredModel[]> | null = null;
+
+/** ai-models/index.json + her modelin manifesti (uygulamanın kendi dosyaları). Yoksa boş liste. */
+async function loadBundled(): Promise<StoredModel[]> {
+  if (typeof document === 'undefined') return [];
+  try {
+    const index = await readAppJson<{ schema: string; models: string[] }>('ai-models/index.json');
+    const out: StoredModel[] = [];
+    for (const id of index.models ?? []) {
+      const v = validateManifest(await readAppJson<unknown>(`ai-models/${id}/manifest.json`));
+      if (v.ok) out.push({ manifest: v.manifest, size: v.manifest.size ?? 0, importedAt: '', origin: 'bundled' });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/** Testler için: uygulamayla gelen modellerin kaynağını değiştir. */
+export function setBundledSource(src: () => Promise<StoredModel[]>) {
+  bundledSource = src;
+  bundled = null;
+  cache = null;
+}
+
 async function refresh() {
   try {
-    cache = (await backend.list()).sort((a, b) => a.manifest.name.localeCompare(b.manifest.name, 'tr'));
+    bundled ??= bundledSource();
+    const [b, mine] = await Promise.all([bundled, backend.list()]);
+    const ids = new Set(b.map((m) => m.manifest.id));
+    cache = [...b, ...mine.filter((m) => !ids.has(m.manifest.id)).map((m) => ({ ...m, origin: 'installed' as const }))].sort(
+      (a, c) => (a.origin === c.origin ? a.manifest.name.localeCompare(c.manifest.name, 'tr') : a.origin === 'bundled' ? -1 : 1),
+    );
   } catch {
     cache = [];
   }
@@ -144,8 +180,13 @@ export async function listModels(): Promise<StoredModel[]> {
   return cache ?? [];
 }
 
-export function modelBytes(id: string): Promise<ArrayBuffer | undefined> {
-  return backend.bytes(id);
+/** Model dosyası: uygulamayla gelen modelde paketten okunur ve SHA-256 manifestle doğrulanır. */
+export async function modelBytes(id: string): Promise<ArrayBuffer | undefined> {
+  const b = (await (bundled ??= bundledSource())).find((m) => m.manifest.id === id);
+  if (!b) return backend.bytes(id);
+  const bytes = await readAppAsset(`ai-models/${id}/${b.manifest.file}`);
+  if ((await sha256Hex(bytes)) !== b.manifest.sha256) throw new Error('Uygulamayla gelen model dosyası bozuk (SHA-256 uyuşmuyor).');
+  return bytes;
 }
 
 export async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
@@ -180,6 +221,7 @@ export async function importModelFiles(files: ReadonlyArray<Pick<File, 'name' | 
 }
 
 export async function removeModel(id: string): Promise<void> {
+  if ((await (bundled ??= bundledSource())).some((m) => m.manifest.id === id)) throw new Error('Uygulamayla gelen model kaldırılamaz.');
   await backend.remove(id);
   await refresh();
 }
