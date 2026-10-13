@@ -313,7 +313,7 @@ function ImagingBlock({ studies, accent, structure }: { studies: ImagingStudy[];
       <Caps className="text-fg-faint">Görüntülemelerin ({studies.length})</Caps>
       {studies.slice(0, 4).map((st) => {
         const conclusion = st.conclusion ?? st.linked?.conclusion;
-        const own = st.findings.filter((f) => f.structure === structure && f.status !== 'normal');
+        const own = st.findings.filter((f) => f.structure === structure && (f.status === 'abnormal' || f.status === 'uncertain'));
         return (
           <div key={st.key} className="rounded-xl border" style={{ borderColor: `${accent}66` }}>
             <button type="button" onClick={() => go({ name: 'document', id: st.head.id })} className="kh-holo-btn block w-full rounded-xl px-3 py-2.5 text-left transition">
@@ -329,7 +329,7 @@ function ImagingBlock({ studies, accent, structure }: { studies: ImagingStudy[];
             )}
             {st.review && st.review.regions.length > 0 && (
               <span className="mt-1 block text-[11px] text-caution-fg">
-                Otomatik inceleme · {st.review.regions.length} dikkat bölgesi (sağ-sol farkı) · tanı değildir
+                Sağ-sol ön kontrol · {st.review.regions.length} asimetri gözlemi · tanı değildir
               </span>
             )}
             {st.measures.some((m) => m.def.structure === structure) && (

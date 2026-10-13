@@ -109,7 +109,7 @@ describe('analiz hattı', () => {
   it('simetrik normal kesitte gözlem uydurmaz', () => {
     const run = analyzeImage(brainPhoto(false));
     expect(run.result.observations).toHaveLength(0);
-    expect(run.result.summary).toMatch(/kanıtlamaz/);
+    expect(run.result.summary).toMatch(/normal olduğunu göstermez/);
   });
 
   it('belge fotoğrafını görüntü analizine değil OCR yoluna yönlendirir', () => {

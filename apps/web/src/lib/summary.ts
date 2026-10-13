@@ -7,19 +7,20 @@ import { structureById, testByKey } from '@kh/catalog';
 import type { Route } from '../state/router';
 import type { ImagingStudy } from './imagingStudies';
 import { CATEGORY_SHORT, regionByKey } from './imaging';
-import { labTone } from './tone';
-import { GRAPH } from '@kh/analysis';
+import { type Tone, TONE_RANK, labTone } from './tone';
+import { GRAPH, isPositiveReport } from '@kh/analysis';
 
 export interface SummaryItem {
   label: string;
   detail?: string;
-  tone: 'normal' | 'follow' | 'attention' | 'urgent';
+  tone: Tone;
   route: Route;
 }
 
 export interface OrganAttention {
   organ: string;
-  tone: 'follow' | 'attention' | 'urgent';
+  /** uncertain: yalnızca görüntü asimetrisi gözlemi ya da raporda olasılık ifadesi (anormallik değil). */
+  tone: 'uncertain' | 'follow' | 'attention' | 'urgent';
   /** Kısa nedenler (ör. "Kreatinin yüksek", "Böbrek süzme örüntüsü", "1 görüntüleme bulgusu"). */
   reasons: string[];
 }
@@ -43,7 +44,7 @@ export function primaryOrgan(testKey: string): string | undefined {
 
 export const organName = (id: string) => GRAPH.node(id)?.nameTr ?? structureById.get(id)?.nameTr ?? id;
 
-const RANK = { follow: 1, attention: 2, urgent: 3 } as const;
+const RANK = TONE_RANK;
 
 export function bodySummary(model: HealthModel): BodySummary {
   const urgent: SummaryItem[] = [];
@@ -65,8 +66,13 @@ export function bodySummary(model: HealthModel): BodySummary {
     for (const p of st.patterns) add(id, 'attention', p.title);
     const rep = st.reportFindings.filter((f) => !f.negated && f.status === 'abnormal').length;
     if (rep) add(id, 'attention', `${rep} rapor bulgusu`);
+    const repU = st.reportFindings.filter((f) => isPositiveReport(f) && f.status === 'uncertain').length;
+    if (repU) add(id, 'uncertain', `${repU} raporda olasılık ifadesi`);
+    // Sağ-sol farkı bir GÖZLEMDİR, anormallik değildir: belirsizlik tonuyla, "gözlem" diye sayılır.
     const img = st.imageObservations.filter((o) => o.kind === 'asymmetry').length;
-    if (img) add(id, 'attention', `${img} görüntü gözlemi`);
+    if (img) add(id, 'uncertain', `${img} görüntü asimetrisi gözlemi`);
+    // Yerel tıbbi AI modelinin bulgusu: model-derived, tanı değil; hekim değerlendirmesi gerekir.
+    if (st.modelFindings.length) add(id, 'attention', `${st.modelFindings.length} yerel AI modeli bulgusu`);
   }
   for (const l of model.latestLabs) {
     const t = labTone(l);
@@ -78,8 +84,22 @@ export function bodySummary(model: HealthModel): BodySummary {
     urgent,
     follow,
     organs: [...organs.values()].sort((a, b) => RANK[b.tone] - RANK[a.tone] || b.reasons.length - a.reasons.length),
-    hasData: model.latestLabs.length + model.reportFindings.length + model.imageObservations.length > 0,
+    hasData: model.latestLabs.length + model.reportFindings.length + model.imageObservations.length + model.modelFindings.length > 0,
   };
+}
+
+/** Özet cümlesi: organ "hasta" denmez; "ilişkili sonuç referans dışında" ya da "gözlem" denir. */
+export function headlineOf(s: BodySummary): string {
+  if (s.urgent.length) return 'Acil değerlendirme gerektirebilecek bir sonucun var. Doktor değerlendirmesi gerekir.';
+  const abnormal = s.organs.filter((o) => o.tone !== 'uncertain').length;
+  const observed = s.organs.length - abnormal;
+  const parts = [
+    abnormal ? `${abnormal} organla ilişkili sonuç referans dışında` : '',
+    observed ? `${observed} organda görüntü/rapor gözlemi` : '',
+    s.follow.length ? `${s.follow.length} değer takipte` : '',
+  ].filter(Boolean);
+  if (parts.length) return `${parts.join(' · ')}.`;
+  return s.hasData ? 'Bu verilerde belirgin bir anormallik saptanmadı.' : 'Henüz verin yok.';
 }
 
 export interface ChangeItem {

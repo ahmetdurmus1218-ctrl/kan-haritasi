@@ -13,7 +13,14 @@ export const FINDING_TONE: Record<FindingStatus, { label: string; cls: string }>
     cls: 'border-caution/40 bg-caution/10 text-caution-fg',
   },
   normal: { label: 'Olağan', cls: 'border-accent/30 bg-accent/5 text-accent' },
+  'not-assessed': { label: 'Değerlendirilemedi', cls: 'border-dashed border-ink-500 text-fg-muted' },
 };
+
+/** Rapor cümlesinin etiketi: "izlenmedi" (bulgu yok) olağan ifadeden de ayrı gösterilir. */
+export function findingTone(f: Pick<ImagingFinding, 'status' | 'negated'>): { label: string; cls: string } {
+  if (f.negated) return { label: 'Bulunmadı · raporda izlenmedi', cls: 'border-ink-500 text-fg-muted' };
+  return FINDING_TONE[f.status];
+}
 
 const SECTION_LABEL: Partial<Record<ImagingFinding['section'], string>> = { bulgular: 'Bulgular bölümü', sonuc: 'Sonuç bölümü', diger: 'rapor gövdesi' };
 
@@ -23,7 +30,8 @@ const TEMPORAL_TR = { new: 'yeni', stable: 'stabil', increased: 'artmış', decr
 const ORDER: Record<FindingStatus, number> = {
   abnormal: 0,
   uncertain: 1,
-  normal: 2,
+  'not-assessed': 2,
+  normal: 3,
 };
 
 /** Bulgunun gideceği 3B yer: yapı ve (modelde varsa) bölüm. */
@@ -34,7 +42,7 @@ export function openFinding(f: ImagingFinding) {
 
 function FindingItem({ f }: { f: ImagingFinding }) {
   const [open, setOpen] = useState(false);
-  const tone = FINDING_TONE[f.status];
+  const tone = findingTone(f);
   const s = f.structure ? structureById.get(f.structure) : undefined;
   const normal = f.structure ? (normalInfo(f.structure, f.part) ?? ORGANS[f.structure]?.function) : undefined;
   const inside = f.structure ? insidesOf(f.structure)[0] : undefined;
@@ -118,8 +126,8 @@ function FindingItem({ f }: { f: ImagingFinding }) {
 export function FindingList({ findings }: { findings: ImagingFinding[] }) {
   const [showNormal, setShowNormal] = useState(false);
   const sorted = [...findings].sort((a, b) => ORDER[a.status] - ORDER[b.status]);
-  const flagged = sorted.filter((f) => f.status !== 'normal');
-  const normal = sorted.filter((f) => f.status === 'normal');
+  const flagged = sorted.filter((f) => f.status === 'abnormal' || f.status === 'uncertain');
+  const normal = sorted.filter((f) => f.status === 'normal' || f.status === 'not-assessed');
   return (
     <div className="space-y-2">
       {flagged.length === 0 && (
@@ -133,7 +141,7 @@ export function FindingList({ findings }: { findings: ImagingFinding[] }) {
       {normal.length > 0 && (
         <>
           <button type="button" className="text-xs text-accent underline-offset-4 hover:underline" onClick={() => setShowNormal((v) => !v)} aria-expanded={showNormal}>
-            {showNormal ? 'Olağan ifadeleri gizle' : `${normal.length} olağan ifadeyi göster`}
+            {showNormal ? 'Olağan / değerlendirilemedi ifadelerini gizle' : `${normal.length} olağan, “izlenmedi” ya da “değerlendirilemedi” ifadesini göster`}
           </button>
           {showNormal && (
             <ul className="space-y-2">

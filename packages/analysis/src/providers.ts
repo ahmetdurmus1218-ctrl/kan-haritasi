@@ -1,10 +1,9 @@
 /**
  * Yapay zekâ sağlayıcı soyutlaması: uygulama tek bir sağlayıcıya bağlı değildir.
  *
- * Şu an kayıtlı olan TEK sağlayıcı cihaz içi, kural tabanlı `LocalHeuristicVisionProvider`'dır.
- * Harici (bulut) bir sağlayıcı eklenirse `sendsDataOffDevice: true` olur ve arayüz, veri gönderilmeden
- * önce "Bu veri harici bir yapay zekâ servisine gönderilebilir" uyarısını gösterip onay ister. Web
- * sürümünün CSP'si (connect-src 'self') ve Android'in internet izni olmaması bugün bunu zaten engeller.
+ * Kayıtlı sağlayıcı cihaz içi, kural tabanlı `LocalHeuristicVisionProvider`'dır. Harici (bulut)
+ * sağlayıcı DESTEKLENMEZ: `sendsDataOffDevice: true` olan bir sağlayıcı kaydedilmek istenirse hata
+ * verilir. Web sürümünün CSP'si (connect-src 'self') ve Android'de INTERNET izninin olmaması da bunu engeller.
  */
 import type { AdapterRegistry } from './adapters/registry';
 import { defaultRegistry } from './adapters/registry';
@@ -73,21 +72,16 @@ export class LocalHeuristicVisionProvider implements MedicalVisionProvider {
 export class ProviderRegistry {
   private readonly providers: AIProvider[] = [];
   register(p: AIProvider) {
+    if (p.sendsDataOffDevice) throw new Error('Uzak (cihaz dışına veri gönderen) sağlayıcılar desteklenmiyor.');
     this.providers.push(p);
   }
   list(): readonly AIProvider[] {
     return this.providers;
   }
-  /** Veriyi cihaz dışına gönderebilecek sağlayıcılar (bugün: yok). */
-  external(): AIProvider[] {
-    return this.providers.filter((p) => p.sendsDataOffDevice);
-  }
   vision(): MedicalVisionProvider | undefined {
     return this.providers.find((p): p is MedicalVisionProvider => 'analyzeImage' in p && p.available());
   }
 }
-
-export const EXTERNAL_AI_DISCLOSURE = 'Bu veri harici bir yapay zekâ servisine gönderilebilir. Göndermeden önce onayın istenir; onay vermezsen analiz yalnızca cihazında yapılır.';
 
 export function defaultProviders(): ProviderRegistry {
   const r = new ProviderRegistry();

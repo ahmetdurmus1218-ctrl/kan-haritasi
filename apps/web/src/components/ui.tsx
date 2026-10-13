@@ -70,7 +70,7 @@ export function Banner({ tone = 'info', children }: { tone?: 'info' | 'warn' | '
   );
 }
 
-/** Henüz bağlanmamış veya sahte özellikleri açıkça işaretler (NOT CONNECTED / MOCK / PLACEHOLDER). */
+/** Kısa durum etiketi (ör. "ONAY BEKLİYOR"). */
 export function StatusTag({ children }: { children: ReactNode }) {
   return (
     <span className="inline-flex items-center rounded-md border border-high/35 bg-high/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wider text-high">

@@ -155,6 +155,34 @@ export class KnowledgeGraph {
     return items.sort((a, b) => LEVEL[a.node.kind] - LEVEL[b.node.kind]);
   }
 
+  /**
+   * "Organın içine gir" yolu: organdan başlayıp her adımda bir seviye içeri (önce içerdiği doku —
+   * made_of —, sonra bölüm), en derine inen dal seçilerek. `maxLevel`e (varsayılan: hücre) kadar;
+   * süreç ve molekül "Daha derine in"e bırakılır. Ör. İnce bağırsak → Duvar → Mukoza → Villus → Enterosit.
+   */
+  insidePath(id: string, maxLevel: number = LEVEL.cell): KNode[] {
+    const depth = (n: string, seen: ReadonlySet<string>): number => {
+      if (seen.has(n)) return 0;
+      const next = new Set(seen).add(n);
+      const kids = this.drill(n);
+      return kids.length ? 1 + Math.max(...kids.map((k) => depth(k.node.id, next))) : 0;
+    };
+    const path: KNode[] = [];
+    const seen = new Set<string>([id]);
+    let cur = id;
+    for (let guard = 0; guard < 8; guard++) {
+      const kids = this.drill(cur).filter((k) => LEVEL[k.node.kind] <= maxLevel && k.node.kind !== 'function' && !seen.has(k.node.id));
+      if (!kids.length) break;
+      const best = kids
+        .map((k, i) => ({ k, i, inner: k.rel === 'made_of' ? 1 : 0, d: depth(k.node.id, seen) }))
+        .sort((a, b) => b.inner - a.inner || b.d - a.d || a.i - b.i)[0]!;
+      path.push(best.k.node);
+      seen.add(best.k.node.id);
+      cur = best.k.node.id;
+    }
+    return path;
+  }
+
   /** Düğümün (ve alt parçalarının) yürüttüğü süreç/işlevler. */
   functionsOf(id: string, depth = 2): KNode[] {
     const out = new Map<string, KNode>();

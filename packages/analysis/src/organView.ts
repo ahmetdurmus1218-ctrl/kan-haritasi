@@ -6,7 +6,7 @@ import { type KNode, type KnowledgeGraph, GRAPH } from './knowledge';
 import type { HealthModel, OrganState } from './fusion';
 import type { PatternResult } from './patterns';
 import type { Trend } from './trend';
-import { type AnatomicalLocation, type EvidenceSource, type ImageObservation, type LabObservation, type ReportFinding, SOURCE_LABEL } from './types';
+import { type AnatomicalLocation, type EvidenceSource, type ImageObservation, type LabObservation, type MedicalFinding, type ReportFinding, SOURCE_LABEL, isPositiveReport } from './types';
 
 export interface ChainOverlay {
   chain: KNode[];
@@ -26,14 +26,14 @@ export interface OrganView {
   path: KNode[];
   systems: KNode[];
   normal: { summary: string; parts: KNode[]; functions: KNode[]; physiology: KNode[][]; biomarkers: KNode[] };
-  personal: { labs: LabObservation[]; reportFindings: ReportFinding[]; imageObservations: ImageObservation[]; patterns: PatternResult[]; hasData: boolean };
+  personal: { labs: LabObservation[]; reportFindings: ReportFinding[]; imageObservations: ImageObservation[]; modelFindings: MedicalFinding[]; patterns: PatternResult[]; hasData: boolean };
   difference: DiffItem[];
   relations: ChainOverlay[];
   time: Array<{ testKey: string; name: string; trend: Trend }>;
   uncertainty: { certain: string[]; probabilistic: string[]; missing: string[] };
 }
 
-const EMPTY: OrganState = { organ: '', imageObservations: [], reportFindings: [], labs: [], patterns: [], attention: false };
+const EMPTY: OrganState = { organ: '', imageObservations: [], reportFindings: [], modelFindings: [], labs: [], patterns: [], attention: false };
 
 export function buildOrganView(organId: string, model: HealthModel | null, graph: KnowledgeGraph = GRAPH): OrganView | null {
   const node = graph.node(organId);
@@ -57,8 +57,9 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
 
   const difference: DiffItem[] = [
     ...state.labs.filter((l) => l.status === 'high' || l.status === 'low').map((l) => ({ label: `${l.name} ${l.status === 'high' ? 'yüksek' : 'düşük'}`, detail: `${l.value.toLocaleString('tr-TR')} ${l.unit}${l.refMin !== undefined || l.refMax !== undefined ? ` · referans ${l.refMin ?? '…'}–${l.refMax ?? '…'}` : ''} · ${l.date}`, source: 'LAB' as const, direction: l.status as 'high' | 'low' })),
-    ...state.reportFindings.filter((f) => !f.negated && f.status !== 'normal').map((f) => ({ label: f.status === 'uncertain' ? 'Raporda olasılık olarak yazılan' : 'Raporda dikkat çeken bulgu', detail: f.text, source: f.source, direction: f.status === 'uncertain' ? ('uncertain' as const) : ('abnormal' as const) })),
-    ...state.imageObservations.filter((o) => o.kind === 'asymmetry' || o.kind === 'heart-rate' || o.kind === 'rhythm').map((o) => ({ label: 'Görüntü analizinden (doğrulanmamış)', detail: o.text, source: 'IMAGE_ANALYSIS' as const, direction: 'uncertain' as const })),
+    ...state.reportFindings.filter(isPositiveReport).map((f) => ({ label: f.status === 'uncertain' ? 'Raporda olasılık olarak yazılan' : 'Raporda dikkat çeken bulgu', detail: f.text, source: f.source, direction: f.status === 'uncertain' ? ('uncertain' as const) : ('abnormal' as const) })),
+    ...state.imageObservations.filter((o) => o.kind === 'asymmetry' || o.kind === 'heart-rate' || o.kind === 'rhythm').map((o) => ({ label: 'Görüntü asimetrisi gözlemi (doğrulanmamış)', detail: o.text, source: 'IMAGE_ANALYSIS' as const, direction: 'uncertain' as const })),
+    ...state.modelFindings.map((f) => ({ label: `Yerel tıbbi AI modeli: ${f.finding}`, detail: `${f.model?.name ?? 'model'} ${f.model?.version ?? ''} · güven ${f.confidence.kind === 'score' ? f.confidence.value.toFixed(2) : '—'} (tanı değildir)`, source: 'IMAGE_MODEL' as const, direction: 'abnormal' as const })),
   ];
 
   const time = state.labs.flatMap((l) => {
@@ -72,6 +73,7 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
   ];
   const probabilistic = [
     ...state.imageObservations.map((o) => `${o.text} — güven ${o.confidence.kind === 'score' ? o.confidence.value.toFixed(2) : 'ölçüm'} (${o.model.name})`),
+    ...state.modelFindings.map((f) => `Model bulgusu: ${f.finding} — güven ${f.confidence.kind === 'score' ? f.confidence.value.toFixed(2) : '—'} (${f.model?.name ?? 'model'}; tanı değil)`),
     ...state.reportFindings.filter((f) => f.status === 'uncertain').map((f) => `Raporun kendisi olasılık olarak yazıyor: “${f.text}”`),
     ...state.patterns.map((p) => `Örüntü: ${p.title} (kanıt tutarlılığı ${p.confidence.kind === 'score' ? p.confidence.value.toFixed(2) : '—'}; tanı değil)`),
   ];
@@ -87,7 +89,14 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
     path: graph.pathTo(organId),
     systems: graph.systemsOf(organId),
     normal: { summary: node.summary, parts: graph.children(organId), functions: graph.functionsOf(organId), physiology: graph.chains(organId, 6, 6), biomarkers },
-    personal: { labs: state.labs, reportFindings: state.reportFindings, imageObservations: state.imageObservations, patterns: state.patterns, hasData: state.labs.length + state.reportFindings.length + state.imageObservations.length > 0 },
+    personal: {
+      labs: state.labs,
+      reportFindings: state.reportFindings,
+      imageObservations: state.imageObservations,
+      modelFindings: state.modelFindings,
+      patterns: state.patterns,
+      hasData: state.labs.length + state.reportFindings.length + state.imageObservations.length + state.modelFindings.length > 0,
+    },
     difference,
     relations,
     time,
@@ -126,7 +135,7 @@ export function explainWhy(location: AnatomicalLocation | undefined, model: Heal
     const st = model.organs.get(organId);
     const related = [
       ...(st?.labs ?? []).map((l) => `${l.name} ${l.value.toLocaleString('tr-TR')} ${l.unit} (${STATUS_TR[l.status]})`),
-      ...(st?.reportFindings ?? []).filter((f) => !f.negated && f.status !== 'normal').map((f) => `Rapor: ${f.text}`),
+      ...(st?.reportFindings ?? []).filter(isPositiveReport).map((f) => `Rapor: ${f.text}`),
       ...(st?.patterns ?? []).map((p) => `Örüntü: ${p.title}`),
     ];
     steps.push({ title: 'Senin ilişkili verilerin', items: related.length ? related : ['Bu organla ilişkili başka verin yok.'] });

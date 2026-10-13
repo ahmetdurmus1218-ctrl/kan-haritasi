@@ -10,7 +10,66 @@
 import { type AdapterRegistry, defaultRegistry } from './adapters/registry';
 import { type AnatomyEstimate, type ImageFeatures, type ModalityEstimate, classifyModality, estimateAnatomy, imageFeatures } from './modality';
 import { type QualityReport, assessQuality } from './quality';
-import { type AdapterResult, type ImageContext, MODALITY_LABEL, type RasterImage } from './types';
+import { type AdapterResult, type ImageContext, type MedicalFinding, type Modality, MODALITY_LABEL, type RasterImage } from './types';
+
+/**
+ * İnceleme kapsamı: tek bir fotoğraf (birkaç kesit) ile yüzlerce kesitlik DICOM serisi aynı şey
+ * değildir. Fotoğrafta "tüm çalışma değerlendirildi" izlenimi verilmez.
+ */
+export interface StudyCoverage {
+  kind: 'photo' | 'dicom-series' | 'dicom-single';
+  /** Görüntüde ayırt edilen ya da seride bulunan kesit sayısı. */
+  frames: number;
+  /** Kısa etiket: "2 görüntü (fotoğraf)", "DICOM seri · 180 kesit". */
+  label: string;
+  /** Sınırlı kapsam uyarısı (yoksa undefined). */
+  limited?: string;
+}
+
+/** MR sekansı: yalnızca DICOM başlığından (ya da gerçek bir modelden) okunur; dosya adından ya da fotoğraftan ASLA. */
+export interface SequenceInfo {
+  value?: string;
+  source: 'DICOM_METADATA' | 'none';
+  text: string;
+}
+
+const SEQ: Array<[RegExp, string]> = [
+  [/\bflair\b/i, 'FLAIR'],
+  [/\b(dwi|diff|difuzyon|trace)\b/i, 'DWI'],
+  [/\badc\b/i, 'ADC'],
+  [/\b(swi|swan|susc)/i, 'SWI'],
+  [/\bstir\b/i, 'STIR'],
+  [/\bpd\b/i, 'PD'],
+  [/\bt2\b|t2[_\s-]?w|\bt2\*/i, 'T2'],
+  [/\bt1\b|t1[_\s-]?w|mprage|spgr|\bvibe\b/i, 'T1'],
+];
+const CONTRAST = /(\+c\b|\bpost\b|\bgad|kontrast|contrast|\bce\b)/i;
+
+export function sequenceFrom(ctx: ImageContext, modality: Modality): SequenceInfo {
+  if (modality !== 'MRI') return { source: 'none', text: 'Sekans bilgisi yalnızca MR için geçerli.' };
+  const desc = [ctx.dicom?.seriesDescription, ctx.dicom?.studyDescription].filter(Boolean).join(' ');
+  if (!ctx.dicom) return { source: 'none', text: 'Sekans belirlenemedi: fotoğrafta sekans bilgisi yok ve görüntüden sekans tanıyan bir model bu kurulumda yok.' };
+  const found = SEQ.filter(([re]) => re.test(desc)).map(([, v]) => v);
+  if (!found.length) return { source: 'none', text: 'Sekans belirlenemedi: DICOM başlığında sekans adı yok.' };
+  const value = `${found[0]}${CONTRAST.test(desc) ? ' (kontrastlı)' : ''}`;
+  return { value, source: 'DICOM_METADATA', text: `MR sekansı: ${value} (DICOM başlığından: “${desc.trim().slice(0, 60)}”)` };
+}
+
+export function coverageOf(ctx: ImageContext, frames: number | undefined): StudyCoverage {
+  if (ctx.dicom) {
+    const n = Math.max(ctx.dicom.frames ?? 1, ctx.files ?? 1);
+    return n > 1
+      ? { kind: 'dicom-series', frames: n, label: `DICOM seri · ${n} kesit`, ...(n < 20 ? { limited: `Seride ${n} kesit var; tüm çalışmanın değerlendirildiği söylenemez.` } : {}) }
+      : { kind: 'dicom-single', frames: 1, label: 'Tek DICOM kesiti', limited: 'Görüntü kapsamı sınırlı: yalnızca 1 kesit mevcut.' };
+  }
+  const n = Math.max(1, frames ?? 1);
+  return {
+    kind: 'photo',
+    frames: n,
+    label: `${n} görüntü (fotoğraf)`,
+    limited: `Görüntü kapsamı sınırlı: ${n} kesit mevcut. Bu yükleme yalnızca mevcut görüntüleri içeriyor; tüm inceleme değerlendirilmiş sayılmaz.`,
+  };
+}
 
 export interface ImageAnalysisRun {
   id: string;
@@ -22,6 +81,16 @@ export interface ImageAnalysisRun {
   /** image-analysis: görüntü adaptörü çalıştı; ocr-document: belge fotoğrafı, yazı OCR ile okunmalı. */
   route: 'image-analysis' | 'ocr-document' | 'rejected';
   result: AdapterResult;
+  /**
+   * precheck: yalnızca kural tabanlı ön kontrol çalıştı (bugün her zaman); model: gerçek bir tıbbi
+   * görüntü modeli çalıştı. Arayüz "Analiz tamamlandı" yerine "Görüntü ön incelemesi tamamlandı" der.
+   */
+  kind: 'precheck' | 'model';
+  /** Yerel tıbbi model çalıştıysa bulguları (kaynak IMAGE_MODEL, model-derived). Ön kontrol asla buraya yazmaz. */
+  modelFindings?: MedicalFinding[];
+  modelInfo?: { id: string; name: string; version: string; sha256?: string; license?: string; at: string };
+  coverage: StudyCoverage;
+  sequence: SequenceInfo;
   reportAvailable: boolean;
   /** Kullanıcıya gösterilecek açık durum cümleleri ("Rapor yok…"). */
   statements: string[];
@@ -53,6 +122,9 @@ export function analyzeImage(image: RasterImage, ctx: ImageContext = {}, opts: A
       at,
       quality,
       route: 'rejected',
+      kind: 'precheck',
+      coverage: coverageOf(ctx, 1),
+      sequence: { source: 'none', text: 'Sekans belirlenemedi.' },
       reportAvailable,
       result: { ...generic.analyze({ image, modality: 'UNKNOWN', context: ctx, quality, anatomy: { cues: [] } }), summary: quality.issues[0]!.message },
       statements: ['Görüntü: açıldı, ancak analiz için kullanılamaz.', reportLine],
@@ -76,6 +148,9 @@ export function analyzeImage(image: RasterImage, ctx: ImageContext = {}, opts: A
       modality,
       anatomy,
       route: 'ocr-document',
+      kind: 'precheck',
+      coverage: coverageOf(ctx, 1),
+      sequence: { source: 'none', text: 'Belge fotoğrafı.' },
       reportAvailable,
       result: {
         adapterId: 'document-ocr',
@@ -93,8 +168,11 @@ export function analyzeImage(image: RasterImage, ctx: ImageContext = {}, opts: A
 
   const adapter = registry.forModality(m);
   const result = { ...adapter.analyze({ image, modality: m, context: ctx, quality, anatomy, features }), modality: m };
+  // Uyarlayıcılar kural tabanlıdır: "model" durumu YALNIZCA gerçek bir yerel model çalıştığında
+  // (runMedicalImageModel → modelFindings) verilir; burada asla.
+  const kind = 'precheck' as const;
   if (result.status === 'UNAVAILABLE') statements.push(`Otomatik görüntü yorumu: bu modalite (${MODALITY_LABEL[m]}) için bu kurulumda mevcut değil ya da bu görüntüde yapılamadı.`);
-  else statements.push(`Otomatik görüntü analizi: KISMİ — ${result.capabilities.filter((c) => c.status === 'done').length} yetenek çalıştı, ${result.capabilities.filter((c) => c.status === 'not-implemented').length} yetenek bu kurulumda yok.`);
+  else statements.push(`Görüntü ön incelemesi: ${result.capabilities.filter((c) => c.status === 'done').length} kural tabanlı kontrol çalıştı; ${result.capabilities.filter((c) => c.status === 'not-implemented').length} yetenek tıbbi görüntü modeli gerektirdiği için bu kurulumda yok.`);
   if (!reportAvailable && result.observations.length) statements.push('Bu gözlemler bir radyolog raporu değildir; rapor olmadığı için doğrulanamadı.');
-  return { id, at, quality, features, modality, anatomy, route: 'image-analysis', result, reportAvailable, statements };
+  return { id, at, quality, features, modality, anatomy, route: 'image-analysis', result, kind, coverage: coverageOf(ctx, result.frames), sequence: sequenceFrom(ctx, m), reportAvailable, statements };
 }

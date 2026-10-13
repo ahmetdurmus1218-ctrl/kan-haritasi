@@ -4,6 +4,7 @@ import { CONTENT, GROUP_LABEL, MEDICAL_DISCLAIMER, PROCESSES, type ResultStatus,
 import { go } from '../state/router';
 import { type TestSeries, buildSeries, useReports } from '../lib/useReports';
 import { formatDate } from '../lib/format';
+import { labStyle } from '../lib/tone';
 import { Banner } from '../components/ui';
 import { ISSUE_TEXT, RangeBar, STATUS_TEXT, StatusPill } from '../components/results';
 import { markVerified, needsVerification, verificationIssues } from '../lib/reports';
@@ -194,11 +195,16 @@ export function ResultsPage() {
                 <ul className="divide-y divide-ink-700 overflow-hidden rounded-2xl border border-ink-600/60 bg-ink-850/60">
                   {list.map((s) => {
                     const f = findings.get(s.test.key);
+                    // Anormal sonuçta test adı ve değer aynı tonu taşır (yalnızca rozet değil).
+                    const st = labStyle({ status: s.latest.result.status, severity: f?.severity, critical: f?.critical });
+                    const tint = st.direction ? st.text : '';
                     return (
                       <li key={s.test.key} className="flex items-stretch">
                         <button type="button" className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2 text-left transition hover:bg-ink-800/60" onClick={() => go({ name: 'result', key: s.test.key })}>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[15px] font-medium">{s.test.nameTr}</span>
+                            <span className={`block truncate text-[15px] font-medium ${tint}`} data-part="name">
+                              {s.test.nameTr}
+                            </span>
                             <span className="block text-xs text-fg-muted">
                               {formatDate(s.latest.date)}
                               {s.latest.result.refText ? ` · aralık ${s.latest.result.refText}` : ''}
@@ -212,7 +218,7 @@ export function ResultsPage() {
                             )}
                           </span>
                           <span className="flex flex-col items-end gap-1">
-                            <span className={`text-right text-sm font-semibold tabular-nums ${STATUS_TEXT[s.latest.result.status]}`}>
+                            <span className={`text-right text-sm font-semibold tabular-nums ${tint || STATUS_TEXT[s.latest.result.status]}`} data-part="value">
                               {display(s)} <span className="text-fg-faint">{trend(s)}</span>
                             </span>
                             {f ? <SeverityChip finding={f} /> : <StatusPill status={s.latest.result.status} />}
@@ -318,6 +324,7 @@ export function ResultDetail({ testKey }: { testKey: string }) {
   const latest = series?.latest.result;
   const status = latest?.status ?? 'unknown';
   const value = latest ? (latest.canonicalValue ?? latest.value) : null;
+  const st = labStyle({ status, severity: finding?.severity, critical: finding?.critical });
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-5 md:px-8 md:py-8">
@@ -329,7 +336,7 @@ export function ResultDetail({ testKey }: { testKey: string }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="label-caps mb-1">{GROUP_LABEL[test.group]}</p>
-            <h1 className="text-xl font-semibold tracking-tight">{test.nameTr}</h1>
+            <h1 className={`text-xl font-semibold tracking-tight ${st.direction ? st.text : ''}`}>{test.nameTr}</h1>
             <p className="mt-0.5 text-xs text-fg-faint">LOINC {test.loinc}</p>
           </div>
           {latest && <StatusPill status={status} size="md" />}
@@ -337,8 +344,9 @@ export function ResultDetail({ testKey }: { testKey: string }) {
         {latest && value !== null ? (
           <>
             <div className="mt-4 flex items-baseline gap-2">
-              <span className={`text-4xl font-semibold tabular-nums ${STATUS_TEXT[status]}`}>{formatNumber(value, test.decimals)}</span>
-              <span className="text-fg-muted">{latest.canonicalValue !== null ? test.unit : latest.unit}</span>
+              <span className={`text-4xl font-semibold tabular-nums ${st.direction ? st.text : STATUS_TEXT[status]}`}>{formatNumber(value, test.decimals)}</span>
+              <span className={st.direction ? st.text : 'text-fg-muted'}>{latest.canonicalValue !== null ? test.unit : latest.unit}</span>
+              {st.direction && <span className={`text-sm font-medium ${st.text}`}>{st.statusLabel}</span>}
             </div>
             <p className="mt-1 text-sm text-fg-muted">
               {series && formatDate(series.latest.date)} · referans {latest.refText || 'yok'}

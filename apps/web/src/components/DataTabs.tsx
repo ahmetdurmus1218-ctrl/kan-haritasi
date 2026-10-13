@@ -1,6 +1,6 @@
 import { hrefFor } from '../state/router';
 
-/** Verilerim içindeki iki görünüm: belgeler (dosyalar) ve tüm sonuçlar (tablo). */
+/** Sonuçlar bölümündeki iki görünüm: belgeler (dosyalar) ve tüm sonuçlar (tablo). */
 export function DataTabs({ active }: { active: 'documents' | 'results' }) {
   const tab = (key: 'documents' | 'results', label: string) => (
     <a
@@ -12,7 +12,7 @@ export function DataTabs({ active }: { active: 'documents' | 'results' }) {
     </a>
   );
   return (
-    <nav aria-label="Verilerim" className="mb-5 inline-flex rounded-xl border border-ink-600 p-1">
+    <nav aria-label="Sonuçlar ve belgeler" className="mb-5 inline-flex rounded-xl border border-ink-600 p-1">
       {tab('documents', 'Belgeler')}
       {tab('results', 'Sonuçlar')}
     </nav>

@@ -69,6 +69,8 @@ jobs:
         run: python tests/e2e/imaging.py "$RUNNER_TEMP/shots"
       - name: Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası
         run: python tests/e2e/multimodal.py "$RUNNER_TEMP/shots"
+      - name: Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR
+        run: python tests/e2e/localai.py "$RUNNER_TEMP/shots"
       - name: Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon
         run: python tests/e2e/explore.py "$RUNNER_TEMP/shots/explore"
       # Ekran görüntüleri yalnızca test düşerse yüklenir: her çalıştırmada ~40 MB yüklemek

@@ -8,7 +8,8 @@ import { StatusPill } from '../components/results';
 import { BodyIcon, ChartIcon, FileTextIcon, SpinnerIcon, UploadIcon } from '../components/icons';
 import { useImagingStudies } from '../lib/imagingStudies';
 import { CATEGORY_LABEL, CATEGORY_SHORT, regionByKey } from '../lib/imaging';
-import { useHealthModel } from '../lib/analysisBridge';
+import { gradeFields, useHealthModel } from '../lib/analysisBridge';
+import { labColor } from '../lib/tone';
 import { whatChanged } from '../lib/summary';
 
 /**
@@ -16,12 +17,8 @@ import { whatChanged } from '../lib/summary';
  * Her ölçümün kendi raporundaki referans aralığı ayrı gösterilir (laboratuvarlar farklı aralık kullanabilir).
  */
 
-const STATUS_FILL: Record<ResultStatus, string> = {
-  high: 'var(--color-high)',
-  low: 'var(--color-low)',
-  normal: 'var(--color-accent)',
-  unknown: 'var(--color-fg-faint)',
-};
+/** Nokta rengi `tone.ts`'ten (tahlil listesiyle aynı kural); yön ayrıca ▲/▼ ve metinle söylenir. */
+const pointColor = (r: ResultPoint['result']) => labColor({ status: r.status as ResultStatus, ...gradeFields(r) });
 
 const GLYPH: Record<ResultStatus, string> = { high: '▲ ', low: '▼ ', normal: '', unknown: '' };
 
@@ -129,7 +126,7 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
                     active ? 'bg-ink-700 text-fg' : 'text-fg-muted hover:bg-ink-800 hover:text-fg'
                   }`}
                 >
-                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: STATUS_FILL[s.latest.result.status] }} aria-hidden="true" />
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: pointColor(s.latest.result) }} aria-hidden="true" />
                   <span className="flex-1 truncate">{s.test.nameTr}</span>
                   <span className="font-mono text-[11px] text-fg-faint">{s.points.length}</span>
                 </button>
@@ -441,7 +438,7 @@ function Chart({
               cx={x(times[i]!)}
               cy={y(values[i]!)}
               r={i === active ? 6.5 : 5}
-              fill={STATUS_FILL[p.result.status]}
+              fill={pointColor(p.result)}
               stroke="var(--color-ink-850)"
               strokeWidth={2}
               tabIndex={0}

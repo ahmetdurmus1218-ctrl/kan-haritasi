@@ -17,7 +17,7 @@ import { type EvidenceSet, type PatternResult, evaluatePatterns } from './patter
 import type { ImageAnalysisRun } from './pipeline';
 import { type StudyComparison, type StudySnapshot, compareStudies, itemFromObservation, itemFromReport } from './temporal';
 import { type Trend, computeTrend } from './trend';
-import type { Confidence, EvidenceSource, ImageObservation, LabObservation, ReportFinding } from './types';
+import { type AnatomicalLocation, type Confidence, type EvidenceSource, type ImageObservation, type LabObservation, type MedicalFinding, type ReportFinding, isPositiveReport } from './types';
 
 export interface ImageStudyInput {
   run: ImageAnalysisRun;
@@ -53,6 +53,14 @@ export interface Concordance {
   text: string;
 }
 
+/** Model bulgusu ↔ aynı çalışmanın raporu. Çelişki gizlenmez; iki kaynak ayrı kalır. */
+export interface FindingConcordance {
+  finding: MedicalFinding;
+  relation: 'supported-by-report' | 'contradicted-by-report' | 'not-mentioned-in-report' | 'no-report';
+  reportFindings: ReportFinding[];
+  text: string;
+}
+
 export interface TimelineEvent {
   date: string;
   type: 'lab' | 'imaging-report' | 'image-analysis';
@@ -68,6 +76,8 @@ export interface OrganState {
   organ: string;
   imageObservations: ImageObservation[];
   reportFindings: ReportFinding[];
+  /** Yerel tıbbi görüntü modelinin bulguları (model-derived). */
+  modelFindings: MedicalFinding[];
   labs: LabObservation[];
   patterns: PatternResult[];
   /** Dikkat çeken veri var mı (aralık dışı tahlil, rapordaki bulgu, görüntü gözlemi, örüntü). */
@@ -85,6 +95,8 @@ export interface HealthModel {
   steps: MergeStep[];
   imageObservations: ImageObservation[];
   reportFindings: ReportFinding[];
+  modelFindings: MedicalFinding[];
+  modelConcordance: FindingConcordance[];
   latestLabs: LabObservation[];
   trends: Map<string, Trend>;
   concordance: Concordance[];
@@ -102,12 +114,34 @@ export function organsForLab(testKey: string): string[] {
   return [...set];
 }
 
+/**
+ * İki konum aynı bölgeyi mi anlatıyor? Biri diğerinin yolunu içeriyorsa evet ("beyin olağan" sol
+ * frontal lobu da kapsar); kardeş dallar (sol frontal ↔ sağ temporal) ilişkilendirilmez.
+ */
+function sameRegion(a: AnatomicalLocation | undefined, b: AnatomicalLocation | undefined): boolean {
+  if (!a || !b) return false;
+  const la = a.path[a.path.length - 1];
+  const lb = b.path[b.path.length - 1];
+  if (la && lb) return a.path.includes(lb) || b.path.includes(la);
+  return a.structure === b.structure;
+}
+
+function findingConcordance(f: MedicalFinding, reports: ReportFinding[], reportAvailable: boolean): FindingConcordance {
+  if (!reportAvailable) return { finding: f, relation: 'no-report', reportFindings: [], text: 'Rapor yok: model bulgusu bir raporla karşılaştırılamadı.' };
+  const same = reports.filter((r) => sameRegion(f.anatomicalStructure, r.location));
+  const positive = same.filter(isPositiveReport);
+  if (positive.length) return { finding: f, relation: 'supported-by-report', reportFindings: positive, text: 'Rapor aynı yapıda bir bulgu bildiriyor; model bulgusuyla uyumlu olabilir (aynı şey olduğu otomatik doğrulanamaz).' };
+  const negative = same.filter((r) => r.negated || r.status === 'normal');
+  if (negative.length) return { finding: f, relation: 'contradicted-by-report', reportFindings: negative, text: 'ÇELİŞKİ: rapor bu yapıyı olağan / bulgusuz bildiriyor, model ise bir bulgu bildiriyor. İki kaynak ayrı gösterilir; değerlendirme hekime aittir.' };
+  return { finding: f, relation: 'not-mentioned-in-report', reportFindings: [], text: 'Rapor bu yapıdan söz etmiyor; model bulgusu raporla doğrulanmadı.' };
+}
+
 function concordanceFor(o: ImageObservation, reports: ReportFinding[], reportAvailable: boolean): Concordance {
   if (!reportAvailable) return { observation: o, relation: 'no-report', reportFindings: [], text: 'Rapor yok: bu görüntü gözlemi bir rapor ile doğrulanamadı.' };
   const s = o.location?.structure;
   const side = o.location?.side;
   const same = reports.filter((f) => s && f.location?.structure === s && (!side || !f.location.side || f.location.side === side || f.location.side === 'both'));
-  const positive = same.filter((f) => !f.negated && f.status !== 'normal');
+  const positive = same.filter(isPositiveReport);
   if (positive.length)
     return {
       observation: o,
@@ -123,6 +157,7 @@ function concordanceFor(o: ImageObservation, reports: ReportFinding[], reportAva
 export function buildHealthModel(input: HealthInput): HealthModel {
   const steps: MergeStep[] = [];
   const imageObservations = input.images.flatMap((i) => i.run.result.observations);
+  const modelFindings = input.images.flatMap((i) => i.run.modelFindings ?? []);
   const reportFindings = input.reports.flatMap((r) => r.findings);
   const available = {
     image: input.images.length > 0,
@@ -166,21 +201,33 @@ export function buildHealthModel(input: HealthInput): HealthModel {
     return img.run.result.observations.filter((o) => o.kind === 'asymmetry').map((o) => concordanceFor(o, reps.flatMap((r) => r.findings), reps.some((r) => r.findings.length > 0)));
   });
 
+  const modelConcordance = input.images.flatMap((img) => {
+    const reps = input.reports.filter((r) => (img.studyKey && r.studyKey === img.studyKey) || (img.documentId && r.documentId === img.documentId));
+    return (img.run.modelFindings ?? []).map((f) => findingConcordance(f, reps.flatMap((r) => r.findings), reps.some((r) => r.findings.length > 0)));
+  });
+  if (modelFindings.length) steps.push({ step: 'analyze_image', ran: true, detail: `Yerel tıbbi AI modeli: ${modelFindings.length} bulgu (model-derived; kaynak ayrı tutulur).` });
+
   const evidence: EvidenceSet = { labs: latestLabs, reportFindings, imageObservations };
   const patterns = evaluatePatterns(evidence);
 
   // Organ durumları
   const organs = new Map<string, OrganState>();
-  const get = (id: string) => organs.get(id) ?? organs.set(id, { organ: id, imageObservations: [], reportFindings: [], labs: [], patterns: [], attention: false }).get(id)!;
+  const get = (id: string) => organs.get(id) ?? organs.set(id, { organ: id, imageObservations: [], reportFindings: [], modelFindings: [], labs: [], patterns: [], attention: false }).get(id)!;
+  for (const f of modelFindings) if (f.anatomicalStructure?.structure) {
+    const s = get(f.anatomicalStructure.structure);
+    s.modelFindings.push(f);
+    s.attention = true;
+  }
   for (const o of imageObservations) if (o.location?.structure) {
     const s = get(o.location.structure);
     s.imageObservations.push(o);
-    if (o.kind === 'asymmetry' || (o.kind === 'heart-rate' && o.measurement && (o.measurement.value > 100 || o.measurement.value < 50))) s.attention = true;
+    // Görüntü asimetrisi bir gözlemdir, anormallik değildir: organı "dikkat" durumuna geçirmez.
+    if ((o.kind === 'heart-rate' && o.measurement && (o.measurement.value > 100 || o.measurement.value < 50))) s.attention = true;
   }
   for (const f of reportFindings) if (f.location?.structure) {
     const s = get(f.location.structure);
     s.reportFindings.push(f);
-    if (!f.negated && f.status !== 'normal') s.attention = true;
+    if (isPositiveReport(f)) s.attention = true;
   }
   for (const l of latestLabs)
     for (const id of organsForLab(l.testKey)) {
@@ -200,7 +247,7 @@ export function buildHealthModel(input: HealthInput): HealthModel {
   for (const l of input.labs) timeline.push({ date: l.date, type: 'lab', source: 'LAB', label: `${l.name} ${l.value.toLocaleString('tr-TR')} ${l.unit}`, organs: organsForLab(l.testKey), status: l.status === 'unknown' ? undefined : l.status, confidence: l.confidence, ref: l.testKey });
   for (const r of input.reports)
     for (const f of r.findings)
-      if (!f.negated && f.status !== 'normal' && r.date) timeline.push({ date: r.date, type: 'imaging-report', source: f.source, label: f.text, organs: f.location?.structure ? [f.location.structure] : [], status: f.status, confidence: f.confidence, ...(r.documentId ? { ref: r.documentId } : {}) });
+      if (isPositiveReport(f) && r.date) timeline.push({ date: r.date, type: 'imaging-report', source: f.source, label: f.text, organs: f.location?.structure ? [f.location.structure] : [], status: f.status as 'abnormal' | 'uncertain', confidence: f.confidence, ...(r.documentId ? { ref: r.documentId } : {}) });
   for (const i of input.images)
     for (const o of i.run.result.observations)
       if (i.date && o.kind !== 'quality' && o.kind !== 'structure-presence') timeline.push({ date: i.date, type: 'image-analysis', source: 'IMAGE_ANALYSIS', label: o.text, organs: o.location?.structure ? [o.location.structure] : [], status: 'uncertain', confidence: o.confidence, ...(i.documentId ? { ref: i.documentId } : {}) });
@@ -214,5 +261,5 @@ export function buildHealthModel(input: HealthInput): HealthModel {
   if (!available.lab) statements.push('Laboratuvar sonucu yok: organ durumları laboratuvar verisi olmadan değerlendirildi.');
   if (!available.image && !available.report && !available.lab) statements.push('Henüz analiz edilecek veri yok.');
 
-  return { available, steps, imageObservations, reportFindings, latestLabs, trends, concordance, patterns, organs, timeline, comparisons, statements };
+  return { available, steps, imageObservations, reportFindings, modelFindings, modelConcordance, latestLabs, trends, concordance, patterns, organs, timeline, comparisons, statements };
 }

@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { type Route, go } from '../state/router';
 import { useHealthModel } from '../lib/analysisBridge';
-import { bodySummary, organName, whatChanged } from '../lib/summary';
+import { bodySummary, headlineOf, organName, whatChanged } from '../lib/summary';
 import { TONE } from '../lib/tone';
 import { formatDate } from '../lib/format';
 import { Uploader } from '../components/Uploader';
@@ -63,13 +63,7 @@ export function HomePage({ navigate }: { navigate: (r: Route) => void }) {
     );
 
   const organs = summary.organs;
-  const headline = summary.urgent.length
-    ? 'Acil değerlendirme gerektirebilecek bir sonucun var. Doktor değerlendirmesi gerekir.'
-    : organs.length
-      ? `${organs.length} organda dikkat çeken sonuç var${summary.follow.length ? ` · ${summary.follow.length} değer takipte` : ''}.`
-      : summary.follow.length
-        ? `Belirgin bir sorun görünmüyor; ${summary.follow.length} değer hafifçe aralık dışında (takip).`
-        : 'Kayıtlı verilerinde dikkat çeken bir şey görünmüyor.';
+  const headline = headlineOf(summary);
   // En fazla üç kart: en önemli organ, son değişiklik, son eklenen.
   const cards: Array<{ title: string; detail?: string; route: Route; tone?: keyof typeof TONE }> = [];
   const urgent = summary.urgent[0];

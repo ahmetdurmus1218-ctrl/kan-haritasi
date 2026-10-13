@@ -1,23 +1,119 @@
 /**
- * Ham görüntü analizi kartı (rapordan bağımsız). Önce özet ("Analiz tamamlandı · Bu bir MR görüntüsü
- * gibi görünüyor · 1 dikkat çeken alan"), sonra basit bulgu kartları ([İncele] ile güven, konum
- * varsayımları, sınırlar). Kalite, modalite ipuçları, yetenek listesi, model sürümü "Teknik detaylar"da.
- * Model yoksa bunu açıkça söyler; bulgu uydurmaz.
+ * Görüntü kartı (rapordan bağımsız) — tek kart, üç dürüst durum:
+ *   1. Yerel tıbbi AI modeli çalıştı  → "Yerel tıbbi AI modeli ile analiz edildi" (bulgu, güven, kutu/maske,
+ *      anatomi, model kökeni). Model cihazdadır; görüntü hiçbir yere gönderilmez.
+ *   2. Yalnızca kural tabanlı ön inceleme → "Görüntü ön incelemesi yapıldı. Bu sonuç tıbbi AI modeli
+ *      sonucu değildir." Sağ-sol farkı "görüntü asimetrisi gözlemi"dir; lezyon/tanı/anormallik değildir.
+ *   3. Hiçbiri yok → "Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor."
+ * Kesitsel görüntülerde sağ-sol ön kontrolün görüntü üzerindeki gösterimi (SymmetryView) bu kartın
+ * içindedir; ayrı bir kart yoktur. Ayrıntılar "Nasıl analiz edildi?" bölümündedir.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GRAPH, type HealthModel, type ImageAnalysisRun, type ImageObservation, MODALITY_LABEL, type RasterImage, type ReportFinding, SOURCE_LABEL, buildHealthModel } from '@kh/analysis';
+import {
+  ANALYSIS_STATE_TEXT,
+  GRAPH,
+  type HealthModel,
+  type ImageAnalysisRun,
+  type ImageObservation,
+  MODALITY_LABEL,
+  type MedicalFinding,
+  type ModelRun,
+  type PixelBox,
+  type RasterImage,
+  type ReportFinding,
+  SOURCE_LABEL,
+  analysisState,
+  buildHealthModel,
+} from '@kh/analysis';
 import { Sheet } from './Sheet';
 import type { DicomInfo } from '@kh/ingest';
 import type { Bytes, FileInfo } from '@kh/vault';
 import { go } from '../state/router';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
-import { contextFor, toStoredAnalysis, useImageAnalysis } from '../lib/analysisBridge';
-import { type StoredAnalysis, saveAnalysis } from '../lib/imagingRecords';
+import { type ModelProgress, contextFor, runLocalModel, toStoredAnalysis, useImageAnalysis } from '../lib/analysisBridge';
+import { type StoredAnalysis, type StoredReview, saveAnalysis } from '../lib/imagingRecords';
+import { type StoredModel, useLocalModels } from '../lib/localModels/store';
 import { BodyIcon, CheckIcon, SpinnerIcon } from './icons';
 import { ConfidenceNote, LocationPath, SourceBadge, StatusPill, WhyButton } from './evidence';
+import { BOX_COLORS, SymmetryView } from './SymmetryView';
+import { TONE } from '../lib/tone';
 
-const CAP_ICON = { done: '✓', 'not-possible': '—', 'not-implemented': '✗' } as const;
-const CAP_TITLE = { done: 'Bu görüntüde çalıştı', 'not-possible': 'Uygulanmış ama bu görüntüde yapılamadı', 'not-implemented': 'Bu kurulumda yok' } as const;
+const CAP_ICON = { done: '✓', 'not-possible': '—', 'not-implemented': '◻' } as const;
+/** Model bulgularının kutu rengi (ön kontrol kutularından ayrı). */
+const MODEL_COLOR = '#22d3ee';
+
+/** Bilginin nereden geldiği, kullanıcı diliyle ("Kullanıcı seçimi" ≠ "görüntüden"). */
+const ORIGIN: Partial<Record<string, string>> = { USER_INPUT: 'kullanıcı seçimi', DICOM_METADATA: 'DICOM başlığı', IMAGE_ANALYSIS: 'görüntüden', IMAGE_MODEL: 'tıbbi görüntü modeli' };
+
+type ModelState = { status: 'idle' | 'none' } | { status: 'loading' | 'inference'; model: StoredModel } | { status: 'done'; model: StoredModel; result: ModelRun } | { status: 'cancelled'; model: StoredModel };
+
+/**
+ * Yetenek paneli: ✓ yapılanlar, ◻ yapılamayanlar ve nedeni. Yerel model satırı her zaman görünür:
+ * kuruluysa adıyla, değilse "Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor".
+ */
+export function ImageCapabilityPanel({ run, model }: { run: ImageAnalysisRun; model?: { name: string; ran: boolean; task?: string } }) {
+  const caps = run.result.capabilities;
+  const done = caps.filter((c) => c.status === 'done');
+  const notPossible = caps.filter((c) => c.status === 'not-possible');
+  // Gerçek bir model bulgu tespiti/segmentasyon yaptıysa, kural tabanlı yöntemin "yapamıyorum" satırları yerine modelin satırı görünür.
+  const coveredByModel = new Set(model?.ran ? (model.task === 'segmentation' ? ['lesion-detection', 'segmentation'] : model.task === 'detection' ? ['lesion-detection'] : []) : []);
+  const missing = caps.filter((c) => c.status === 'not-implemented' && !coveredByModel.has(c.key) && !(c.key === 'sequence' && run.sequence.source === 'DICOM_METADATA'));
+  const mri = run.result.modality === 'MRI';
+  return (
+    <ul className="space-y-1 text-sm" aria-label="Görüntü ön incelemesi adımları">
+      <li className="flex items-start gap-2">
+        <span className="w-4 shrink-0 text-center text-accent">✓</span>
+        <span className="text-fg">Görüntü okundu</span>
+      </li>
+      <li className="flex items-start gap-2">
+        <span className={`w-4 shrink-0 text-center ${run.quality.issues.length ? 'text-caution-fg' : 'text-accent'}`}>{run.quality.issues.length ? '!' : '✓'}</span>
+        <span className="text-fg">Görüntü kalitesi {run.quality.issues.length ? <span className="text-caution-fg">· {run.quality.issues[0]!.message}</span> : null}</span>
+      </li>
+      {done.map((c) => (
+        <li key={c.key} className="flex items-start gap-2">
+          <span className="w-4 shrink-0 text-center text-accent">{CAP_ICON.done}</span>
+          <span className="text-fg">
+            {c.label}
+            {c.detail ? <span className="text-fg-muted"> · {c.detail}</span> : null}
+          </span>
+        </li>
+      ))}
+      {notPossible.map((c) => (
+        <li key={c.key} className="flex items-start gap-2">
+          <span className="w-4 shrink-0 text-center text-fg-faint">{CAP_ICON['not-possible']}</span>
+          <span className="text-fg-muted">
+            {c.label}
+            {c.detail ? ` · ${c.detail}` : ' · bu görüntüde yapılamadı'}
+          </span>
+        </li>
+      ))}
+      {mri && run.sequence.source === 'DICOM_METADATA' && (
+        <li className="flex items-start gap-2">
+          <span className="w-4 shrink-0 text-center text-accent">✓</span>
+          <span className="text-fg">
+            MR sekansı: {run.sequence.value} <span className="text-fg-muted">· DICOM başlığından</span>
+          </span>
+        </li>
+      )}
+      <li className="flex items-start gap-2" data-testid="local-model-row">
+        <span className={`w-4 shrink-0 text-center ${model ? 'text-accent' : 'text-fg-faint'}`}>{model ? '✓' : CAP_ICON['not-implemented']}</span>
+        <span className={model ? 'text-fg' : 'text-fg-muted'}>
+          Yerel tıbbi AI modeli
+          <span className="block text-xs text-fg-faint">{model ? `${model.name}${model.ran ? ' · bu görüntüde çalıştı (cihazda)' : ''}` : 'Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor.'}</span>
+        </span>
+      </li>
+      {missing.map((c) => (
+        <li key={c.key} className="flex items-start gap-2">
+          <span className="w-4 shrink-0 text-center text-fg-faint">{CAP_ICON['not-implemented']}</span>
+          <span className="text-fg-muted">
+            {c.key === 'sequence' ? 'MR sekansı' : c.label}
+            <span className="block text-xs text-fg-faint">{c.key === 'sequence' ? 'Belirlenemedi.' : c.key === 'lesion-detection' ? 'Bu kurulumda tıbbi AI modeli yok.' : 'Bu kurulumda model yok.'}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function Check({ ok, label, detail }: { ok: boolean; label: string; detail?: string }) {
   return (
@@ -33,10 +129,16 @@ function Check({ ok, label, detail }: { ok: boolean; label: string; detail?: str
   );
 }
 
-/** Piksel konumu olan gözlemleri (ör. EKG ritim şeridi) gerçek görüntü üzerinde çizer. */
-function Overlay({ raster, run }: { raster: RasterImage; run: ImageAnalysisRun }) {
+interface Mark {
+  box: PixelBox;
+  color: string;
+  label?: string;
+  mask?: { width: number; height: number; data: number[] };
+}
+
+/** Gerçek görüntü üzerinde kutular / maskeler (model bulguları ya da ölçüm alanları). */
+function Overlay({ raster, marks, caption, testId }: { raster: RasterImage; marks: Mark[]; caption: string; testId?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const boxes = useMemo(() => run.result.observations.flatMap((o) => (o.localization.kind === 'pixel' ? [o.localization.box] : [])), [run]);
   useEffect(() => {
     const c = ref.current;
     if (!c) return;
@@ -61,16 +163,140 @@ function Overlay({ raster, run }: { raster: RasterImage; run: ImageAnalysisRun }
       }
     }
     ctx.putImageData(img, 0, 0);
-    ctx.lineWidth = Math.max(2, raster.width / 300);
-    ctx.strokeStyle = '#a78bfa';
-    for (const b of boxes) ctx.strokeRect(b.x, b.y, b.w, b.h);
-  }, [raster, boxes]);
-  if (!boxes.length) return null;
+    const lw = Math.max(2, raster.width / 300);
+    ctx.lineWidth = lw;
+    ctx.font = `${Math.max(12, raster.width / 40)}px system-ui, sans-serif`;
+    for (const m of marks) {
+      if (m.mask) {
+        // Maske görüntünün tamamının küçültülmüş hâlidir (modelin çıktı ızgarası): görüntü ölçeğinde çizilir.
+        ctx.fillStyle = `${m.color}55`;
+        const sx = raster.width / m.mask.width;
+        const sy = raster.height / m.mask.height;
+        for (let y = 0; y < m.mask.height; y++) for (let x = 0; x < m.mask.width; x++) if (m.mask.data[y * m.mask.width + x]) ctx.fillRect(x * sx, y * sy, Math.ceil(sx), Math.ceil(sy));
+      }
+      ctx.strokeStyle = m.color;
+      ctx.strokeRect(m.box.x, m.box.y, m.box.w, m.box.h);
+      if (m.label) {
+        ctx.fillStyle = m.color;
+        ctx.fillText(m.label, m.box.x + lw, Math.max(12, m.box.y - lw * 2));
+      }
+    }
+  }, [raster, marks]);
+  if (!marks.length) return null;
   return (
-    <figure className="overflow-hidden rounded-xl border border-ink-600/60 bg-black">
-      <canvas ref={ref} className="block h-auto w-full" aria-label="Gerçek görüntü üzerinde analiz edilen alan" />
-      <figcaption className="px-3 py-1.5 text-[11px] text-fg-faint">Mor kutu: görüntü analizinin ölçüm yaptığı gerçek piksel alanı.</figcaption>
+    <figure className="overflow-hidden rounded-xl border border-ink-600/60 bg-black" data-testid={testId}>
+      <canvas ref={ref} className="block h-auto w-full" aria-label={`Gerçek görüntü üzerinde ${marks.length} işaret`} />
+      <figcaption className="px-3 py-1.5 text-[11px] text-fg-faint">{caption}</figcaption>
     </figure>
+  );
+}
+
+const pct = (c: MedicalFinding['confidence']) => (c.kind === 'score' ? `%${Math.round(c.value * 100)}` : '—');
+
+/** Yerel modelin bulguları: gerçek görüntüde konum, anatomi, rapor uyumu ve model kökeni. */
+function ModelFindings({ result, model, raster, concordance, onRegion }: { result: Extract<ModelRun, { status: 'ran' }>; model: StoredModel; raster: RasterImage | null; concordance: HealthModel['modelConcordance']; onRegion: (id: string) => void }) {
+  const marks: Mark[] = result.findings.flatMap((f, i) =>
+    f.localization.kind === 'pixel'
+      ? [{ box: f.localization.box, color: MODEL_COLOR, label: String(i + 1), ...(f.localization.mask ? { mask: f.localization.mask } : {}) }]
+      : f.localization.kind === 'point'
+        ? [{ box: { x: f.localization.x - 4, y: f.localization.y - 4, w: 8, h: 8 }, color: MODEL_COLOR, label: String(i + 1) }]
+        : [],
+  );
+  const m = model.manifest;
+  return (
+    <section className="space-y-3 rounded-xl border border-[#22d3ee]/40 p-3" aria-label="Yerel tıbbi AI modeli">
+      <div className="flex flex-wrap items-center gap-2">
+        <SourceBadge source="IMAGE_MODEL" />
+        <span className="text-sm text-fg">
+          {m.name} <span className="text-fg-muted">{m.version} · cihazda</span>
+        </span>
+      </div>
+      {raster && <Overlay raster={raster} marks={marks} testId="model-overlay" caption="Turkuaz: yerel tıbbi AI modelinin işaretlediği alan (model kaynaklı konum)." />}
+      {result.findings.length === 0 ? (
+        <p className="text-sm text-fg-muted">Model bu görüntüde eşik üstü bir bulgu bildirmedi. Bu, görüntünün normal olduğunu göstermez.</p>
+      ) : (
+        <ul className="space-y-2" aria-label="Model bulguları">
+          {result.findings.map((f, i) => {
+            const last = f.anatomicalStructure?.path[f.anatomicalStructure.path.length - 1];
+            const organ = f.anatomicalStructure?.path[0];
+            const conc = concordance.find((c) => c.finding.id === f.id);
+            return (
+              <li key={f.id} className="rounded-lg border border-ink-600/60 p-3" data-testid="model-finding">
+                <p className="text-[15px] font-medium text-fg">
+                  <span className="mr-1.5 inline-block rounded px-1 text-xs" style={{ background: `${MODEL_COLOR}33`, color: MODEL_COLOR }}>
+                    {i + 1}
+                  </span>
+                  {f.finding} <span className="text-sm font-normal text-fg-muted">· güven {pct(f.confidence)}</span>
+                </p>
+                <p className="mt-0.5 text-xs text-fg-faint">
+                  Konum: {f.localization.kind === 'pixel' ? `model kaynaklı · kesit/kare ${f.localization.frame + 1} · x ${f.localization.box.x}, y ${f.localization.box.y}, ${f.localization.box.w}×${f.localization.box.h} px${f.localization.mask ? ' · maske' : ''}` : f.localization.kind === 'point' ? 'model kaynaklı · nokta' : 'konum yok (yalnızca sınıf)'}
+                </p>
+                {f.anatomicalStructure && (
+                  <div className="mt-1">
+                    <LocationPath loc={f.anatomicalStructure} onOpen={(id) => go({ name: 'organ', id })} />
+                  </div>
+                )}
+                {conc && conc.relation !== 'no-report' && (
+                  <p className={`mt-1 text-xs ${conc.relation === 'contradicted-by-report' ? `rounded-lg border px-2 py-1 font-medium ${TONE.attention.chip}` : 'text-fg-muted'}`} data-testid={conc.relation === 'contradicted-by-report' ? 'model-conflict' : undefined}>
+                    {conc.relation === 'contradicted-by-report' ? '⚠ ' : ''}
+                    {conc.text}
+                  </p>
+                )}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {organ && GRAPH.node(organ) && (
+                    <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => go({ name: 'organ', id: organ })}>
+                      Organ sayfası · {GRAPH.node(organ)!.nameTr}
+                    </button>
+                  )}
+                  {f.anatomicalStructure?.structure && (
+                    <button
+                      type="button"
+                      className="btn-ghost px-3 py-1.5 text-xs"
+                      onClick={() => go(f.anatomicalStructure?.part ? { name: 'body', structure: f.anatomicalStructure.structure!, part: f.anatomicalStructure.part } : { name: 'body', structure: f.anatomicalStructure!.structure! })}
+                    >
+                      <BodyIcon size={13} /> 3B anatomide göster
+                    </button>
+                  )}
+                  {last && GRAPH.node(last) && (
+                    <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => onRegion(last)}>
+                      Bu bölge ne?
+                    </button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <details className="text-xs text-fg-muted">
+        <summary className="cursor-pointer text-fg">Model kökeni (provenance)</summary>
+        <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5" aria-label="Model kökeni">
+          <dt className="text-fg-faint">Model</dt>
+          <dd>
+            {m.name} · {m.version} ({m.id})
+          </dd>
+          <dt className="text-fg-faint">Görev</dt>
+          <dd>{m.task}</dd>
+          <dt className="text-fg-faint">SHA-256</dt>
+          <dd className="break-all font-mono">{m.sha256}</dd>
+          <dt className="text-fg-faint">Lisans</dt>
+          <dd>{m.license}</dd>
+          <dt className="text-fg-faint">Kaynak</dt>
+          <dd className="break-all">{m.source}</dd>
+          <dt className="text-fg-faint">Kullanım amacı</dt>
+          <dd>{m.intendedUse}</dd>
+          <dt className="text-fg-faint">Çalıştığı yer</dt>
+          <dd>Bu cihaz (ONNX Runtime, WASM); görüntü hiçbir yere gönderilmedi</dd>
+        </dl>
+        {m.limitations.length > 0 && (
+          <ul className="mt-1.5 list-disc pl-4">
+            {m.limitations.map((l, i) => (
+              <li key={i}>{l}</li>
+            ))}
+          </ul>
+        )}
+      </details>
+    </section>
   );
 }
 
@@ -80,47 +306,94 @@ export function AnalysisCard({
   dicom,
   noteFileId,
   stored,
+  storedReview,
   reportFindings,
   labsAvailable,
   previousAvailable,
-  showOverlay,
+  files = 1,
+  onHeadLike,
+  onReview,
 }: {
   info: FileInfo;
   bytes: Bytes;
   dicom: DicomInfo | null;
   noteFileId: string;
   stored?: StoredAnalysis;
+  /** Sağ-sol ön kontrolün kullanıcının sonuçlarına eklenmiş özeti. */
+  storedReview?: StoredReview;
   /** Aynı çalışmanın raporundan okunan bulgular (ayrı kaynak). */
   reportFindings: ReportFinding[];
   labsAvailable: boolean;
   previousAvailable: boolean;
-  /** Piksel konumlarını bu kartta çiz (kesitsel görüntülerde ayrı inceleme kartı çizer). */
-  showOverlay: boolean;
+  /** Aynı seriden yüklenen dosya sayısı (DICOM). */
+  files?: number;
+  /** Kesitler baş kesitine benziyorsa (bölge önerisi için). */
+  onHeadLike?: () => void;
+  /** Ön kontrol özeti (sistematik değerlendirme için). */
+  onReview?: (r: { compared: number; flagged: number; panels: number }) => void;
 }) {
   const vault = useUnlockedVault();
   const { bump } = useVault();
-  const context = useMemo(() => contextFor(info, dicom), [info, dicom]);
+  const context = useMemo(() => contextFor(info, dicom, files), [info, dicom, files]);
   const reportAvailable = reportFindings.length > 0;
   const { run, raster, state } = useImageAnalysis(info, bytes, context, reportAvailable, true);
   const [region, setRegion] = useState<string | null>(null);
+  const models = useLocalModels();
+  const modality = run?.result.modality;
+  const candidate = useMemo(() => (modality && models ? models.find((m) => m.manifest.modalities.includes(modality)) : undefined), [models, modality]);
+  const [modelState, setModelState] = useState<ModelState>({ status: 'idle' });
+  const [runKey, setRunKey] = useState(0);
+  const cancel = useRef<() => void>(() => undefined);
 
-  // Özet kasaya kaydedilir (Vücudum ve organ sayfaları için). Aynı sonuç tekrar yazılmaz.
+  // Kurulu bir yerel model varsa bu görüntüde (işçide, cihazda) çalıştırılır; iptal edilebilir.
+  useEffect(() => {
+    if (!run || !raster || run.route !== 'image-analysis' || models === null) return;
+    if (!candidate) {
+      setModelState({ status: 'none' });
+      return;
+    }
+    const ctrl = new AbortController();
+    cancel.current = () => ctrl.abort();
+    setModelState({ status: 'loading', model: candidate });
+    void runLocalModel(candidate.manifest, raster, run.result.modality, context, {
+      documentId: info.id,
+      signal: ctrl.signal,
+      onProgress: (p: ModelProgress) => !ctrl.signal.aborted && setModelState({ status: p, model: candidate }),
+    }).then((result) => {
+      if (ctrl.signal.aborted) return;
+      setModelState({ status: 'done', model: candidate, result });
+    });
+    return () => ctrl.abort();
+  }, [run, raster, candidate, models, context, info.id, runKey]);
+
+  const modelRan = modelState.status === 'done' && modelState.result.status === 'ran' ? modelState.result : null;
+
+  // Ön inceleme + (varsa) model bulguları tek kayıt: Vücudum, organ sayfaları ve akışlar buradan okur.
+  const fullRun: ImageAnalysisRun | null = useMemo(() => {
+    if (!run) return null;
+    if (!modelRan || modelState.status !== 'done') return run;
+    const m = modelState.model.manifest;
+    return { ...run, kind: 'model', modelFindings: modelRan.findings, modelInfo: { id: m.id, name: m.name, version: m.version, sha256: m.sha256, license: m.license, at: new Date().toISOString() } };
+  }, [run, modelRan, modelState]);
+
   const savedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!run || run.route !== 'image-analysis') return;
-    const next = toStoredAnalysis(run, info.id);
-    const sig = JSON.stringify([next.modality, next.status, next.structure, next.model.version, next.observations.map((o) => o.text)]);
-    const prev = stored ? JSON.stringify([stored.modality, stored.status, stored.structure, stored.model.version, stored.observations.map((o) => o.text)]) : null;
-    if (sig === prev || savedFor.current === sig) return;
+    if (!fullRun || fullRun.route !== 'image-analysis') return;
+    if (modelState.status === 'loading' || modelState.status === 'inference' || modelState.status === 'idle') return;
+    const next = toStoredAnalysis(fullRun, info.id);
+    const key = (a: StoredAnalysis) => JSON.stringify([a.modality, a.status, a.structure, a.model.version, a.observations.map((o) => o.text), a.modelInfo?.sha256, (a.modelFindings ?? []).map((f) => f.finding)]);
+    const sig = key(next);
+    if ((stored && key(stored) === sig) || savedFor.current === sig) return;
     savedFor.current = sig;
     void saveAnalysis(vault, noteFileId, next).then(bump, () => undefined);
-  }, [run, stored, vault, noteFileId, info.id, bump]);
+  }, [fullRun, modelState.status, stored, vault, noteFileId, info.id, bump]);
 
   // Bu çalışmanın görüntü + rapor uyumu (yalnızca bu belge için birleşik model).
   const local: HealthModel | null = useMemo(
-    () => (run ? buildHealthModel({ images: [{ run, documentId: info.id, studyKey: 'this' }], reports: reportAvailable ? [{ findings: reportFindings, studyKey: 'this' }] : [], labs: [] }) : null),
-    [run, reportFindings, reportAvailable, info.id],
+    () => (fullRun ? buildHealthModel({ images: [{ run: fullRun, documentId: info.id, studyKey: 'this' }], reports: reportAvailable ? [{ findings: reportFindings, studyKey: 'this' }] : [], labs: [] }) : null),
+    [fullRun, reportFindings, reportAvailable, info.id],
   );
+  const gray = useMemo(() => (raster ? { width: raster.width, height: raster.height, data: raster.gray } : null), [raster]);
 
   if (state === 'unsupported') return null;
 
@@ -128,20 +401,27 @@ export function AnalysisCard({
   const findings = run ? run.result.observations.filter((o) => o.kind !== 'quality' && o.kind !== 'structure-presence') : [];
   const technical = run ? run.result.observations.filter((o) => o.kind === 'quality' || o.kind === 'structure-presence') : [];
   const anatomyName = run?.anatomy?.location ? GRAPH.node(run.anatomy.location.path[run.anatomy.location.path.length - 1] ?? '')?.nameTr ?? run.anatomy.structure : undefined;
-  const modality = run?.modality ? MODALITY_LABEL[run.modality.primary.modality] : undefined;
+  const modalityLabel = run?.modality ? MODALITY_LABEL[run.modality.primary.modality] : undefined;
   const asym = findings.filter((o) => o.kind === 'asymmetry').length;
   const hr = findings.find((o) => o.kind === 'heart-rate')?.measurement;
+  const symmetry = run?.result.adapterId === 'cross-sectional-symmetry';
+  const precheckRan = Boolean(run && run.result.status !== 'UNAVAILABLE');
+  const st = analysisState({ modelRan: Boolean(modelRan), precheckRan });
   const outcome = !run
     ? ''
-    : run.result.status === 'UNAVAILABLE'
-      ? 'Bu görüntü türü için otomatik yorum bu kurulumda yok. Görüntü saklandı; görüntüleyicide açıp inceleyebilir, ölçebilirsin.'
-      : asym
-        ? `${asym} dikkat çeken alan`
-        : hr
-          ? `Kalp hızı yaklaşık ${hr.value}/dk`
-          : findings.length
-            ? `${findings.length} ölçüm`
-            : 'Belirgin bir fark bulunmadı (bu, görüntünün normal olduğunu kanıtlamaz).';
+    : asym
+      ? `${asym} görüntü asimetrisi gözlemi (tıbbi bulgu değil)`
+      : hr
+        ? `Kalp hızı yaklaşık ${hr.value}/dk`
+        : findings.length
+          ? `${findings.length} ölçüm`
+          : symmetry && precheckRan
+            ? 'Sağ-sol simetri ön kontrolünde belirgin fark görülmedi.'
+            : precheckRan
+              ? 'Görüntüden ölçüm çıkarılamadı.'
+              : 'Görüntü saklandı; görüntüleyicide açıp inceleyebilir, ölçebilirsin.';
+  const obsMarks: Mark[] = run && !symmetry ? run.result.observations.flatMap((o) => (o.localization.kind === 'pixel' ? [{ box: o.localization.box, color: '#a78bfa' }] : [])) : [];
+  const modelBusy = modelState.status === 'loading' || modelState.status === 'inference';
 
   return (
     <section className="space-y-4 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4 md:p-5" aria-label="Ham görüntü analizi">
@@ -169,23 +449,64 @@ export function AnalysisCard({
         <>
           <div>
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[15px] font-medium text-fg">Analiz tamamlandı</p>
-              <StatusPill status={run.result.status} />
+              <p className="text-[15px] font-medium text-fg" data-testid="analysis-state" data-state={st}>
+                {st === 'model' ? 'Yerel tıbbi AI modeli ile analiz edildi' : st === 'precheck' ? 'Görüntü ön incelemesi yapıldı' : 'Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor'}
+              </p>
+              {st === 'none' ? (
+                <StatusPill status="UNAVAILABLE" />
+              ) : st === 'precheck' ? (
+                <span className="rounded-full border border-ink-500 px-2 py-0.5 text-[11px] text-fg-muted">ön inceleme · tıbbi model değil</span>
+              ) : (
+                <span className="rounded-full border border-[#22d3ee]/50 px-2 py-0.5 text-[11px] text-[#22d3ee]">yerel model · cihazda</span>
+              )}
             </div>
             <p className="mt-1 text-[15px] text-fg">
-              {modality ? `Bu bir ${modality} görüntüsü gibi görünüyor` : 'Görüntü türü belirlenemedi'}
+              {modalityLabel ? `Bu bir ${modalityLabel} görüntüsü gibi görünüyor` : 'Görüntü türü belirlenemedi'}
               {anatomyName ? ` · ${anatomyName}` : ''}
             </p>
-            {run.modality?.conflict && <p className="mt-1 text-sm text-caution-fg">{run.modality.conflict}</p>}
-            <p className="mt-2 text-[15px] text-fg">{outcome}</p>
-            <p className="mt-1 text-sm text-fg-muted">
-              {reportAvailable ? 'Rapor da var: rapordaki bulgular ayrıca gösterilir.' : 'Rapor yok: sonuçlar yalnızca görüntünün kendisine dayanıyor.'}
+            <p className="mt-0.5 text-xs text-fg-faint">
+              {run.modality ? `Tür: ${ORIGIN[run.modality.primary.source] ?? SOURCE_LABEL[run.modality.primary.source]}` : ''}
+              {run.anatomy?.source ? ` · Bölge: ${ORIGIN[run.anatomy.source] ?? SOURCE_LABEL[run.anatomy.source]}` : ''}
+              {` · İnceleme kapsamı: ${run.coverage.label}`}
             </p>
-            {run.quality.issues[0] && <p className="mt-2 text-sm text-caution-fg">{run.quality.issues[0].message}</p>}
+            {run.modality?.conflict && <p className="mt-1 text-sm text-caution-fg">{run.modality.conflict}</p>}
+            {run.coverage.limited && <p className="mt-2 text-sm text-fg-muted">{run.coverage.limited}</p>}
+            {modelRan && <p className="mt-2 text-[15px] text-fg">{modelRan.findings.length ? `Model ${modelRan.findings.length} bulgu bildirdi.` : 'Model eşik üstü bulgu bildirmedi.'}</p>}
+            <p className="mt-2 text-[15px] text-fg">{st === 'model' && precheckRan ? `Ön inceleme: ${outcome}` : outcome}</p>
+            {symmetry && !asym && precheckRan && <p className="text-sm text-fg-muted">Bu sonuç görüntünün normal olduğunu göstermez.</p>}
+            <p className="mt-1 text-sm text-fg-muted">
+              {reportAvailable ? 'Rapor da var: rapordaki bulgular ayrı kaynak olarak gösterilir.' : 'Rapor yok: sonuçlar yalnızca görüntünün kendisine dayanıyor.'}
+              {st === 'precheck' ? ` ${ANALYSIS_STATE_TEXT.precheck.split('. ')[1]}` : ''}
+              {st === 'precheck' ? ' Bu bir tıbbi görüntü tanı modeli değildir.' : ''}
+            </p>
+            {modelBusy && (
+              <div className="mt-2 flex items-center gap-2 text-sm text-fg-muted" aria-live="polite" data-testid="model-progress">
+                <SpinnerIcon size={14} /> {modelState.status === 'loading' ? 'Yerel model yükleniyor…' : 'Yerel model görüntüyü inceliyor (cihazda)…'}
+                <button
+                  type="button"
+                  className="btn-ghost px-2.5 py-1 text-xs"
+                  onClick={() => {
+                    cancel.current();
+                    if (modelState.status === 'loading' || modelState.status === 'inference') setModelState({ status: 'cancelled', model: modelState.model });
+                  }}
+                >
+                  İptal
+                </button>
+              </div>
+            )}
+            {modelState.status === 'cancelled' && (
+              <p className="mt-2 text-sm text-fg-muted">
+                Model çalıştırma iptal edildi.{' '}
+                <button type="button" className="text-accent underline" onClick={() => setRunKey((k) => k + 1)}>
+                  Yeniden çalıştır
+                </button>
+              </p>
+            )}
+            {modelState.status === 'done' && modelState.result.status === 'unavailable' && <p className="mt-2 text-sm text-caution-fg">Yerel model çalıştırılamadı: {modelState.result.reason}</p>}
             <div className="mt-3 flex flex-wrap gap-2">
-              {findings.length > 0 && (
+              {(findings.length > 0 || (modelRan?.findings.length ?? 0) > 0) && (
                 <button type="button" className="btn-primary px-3 py-1.5 text-sm" onClick={() => document.getElementById(`bulgular-${info.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                  Bulguları gör
+                  {modelRan?.findings.length ? 'Bulguları gör' : asym ? 'Gözlemleri gör' : 'Ölçümleri gör'}
                 </button>
               )}
               {run.anatomy?.structure && (
@@ -193,7 +514,7 @@ export function AnalysisCard({
                   type="button"
                   className="btn-ghost px-3 py-1.5 text-sm"
                   onClick={() => {
-                    const l = findings[0]?.location ?? run.anatomy?.location;
+                    const l = modelRan?.findings[0]?.anatomicalStructure ?? findings[0]?.location ?? run.anatomy?.location;
                     go(l?.part ? { name: 'body', structure: l.structure ?? run.anatomy!.structure!, part: l.part } : { name: 'body', structure: run.anatomy!.structure! });
                   }}
                 >
@@ -203,18 +524,25 @@ export function AnalysisCard({
             </div>
           </div>
 
-          {showOverlay && raster && <Overlay raster={raster} run={run} />}
-
-          {findings.length > 0 && (
-            <ul id={`bulgular-${info.id}`} className="scroll-mt-4 space-y-2" aria-label="Görüntüden çıkan gözlemler">
-              {findings.map((o) => (
-                <FindingCard key={o.id} o={o} modality={modality} concordance={local?.concordance.find((c) => c.observation.id === o.id)?.text} model={local} onRegion={setRegion} />
-              ))}
-            </ul>
+          {precheckRan && run.result.capabilities.length > 0 && (
+            <ImageCapabilityPanel run={run} {...(candidate ? { model: { name: `${candidate.manifest.name} ${candidate.manifest.version}`, ran: Boolean(modelRan), task: candidate.manifest.task } } : {})} />
           )}
 
+          <div id={`bulgular-${info.id}`} className="scroll-mt-4 space-y-3">
+            {modelRan && modelState.status === 'done' && <ModelFindings result={modelRan} model={modelState.model} raster={raster} concordance={local?.modelConcordance ?? []} onRegion={setRegion} />}
+            {symmetry && gray && <SymmetryView gray={gray} sourceId={info.id} noteFileId={noteFileId} {...(storedReview ? { stored: storedReview } : {})} {...(onHeadLike ? { onHeadLike } : {})} {...(onReview ? { onReview } : {})} />}
+            {!symmetry && raster && <Overlay raster={raster} marks={obsMarks} caption="Mor kutu: ön incelemenin ölçüm yaptığı gerçek piksel alanı." />}
+            {findings.length > 0 && (
+              <ul className="space-y-2" aria-label="Görüntüden çıkan gözlemler">
+                {findings.map((o, i) => (
+                  <FindingCard key={o.id} o={o} swatch={o.kind === 'asymmetry' ? BOX_COLORS[i % BOX_COLORS.length] : undefined} modality={modalityLabel} concordance={local?.concordance.find((c) => c.observation.id === o.id)?.text} model={local} onRegion={setRegion} />
+                ))}
+              </ul>
+            )}
+          </div>
+
           <details className="rounded-xl border border-dashed border-ink-600 p-3">
-            <summary className="cursor-pointer text-sm text-fg-muted">Teknik detaylar</summary>
+            <summary className="cursor-pointer text-sm text-fg-muted">Nasıl analiz edildi?</summary>
             <div className="mt-3 space-y-3 text-[13px]">
               <ul className="grid gap-1 sm:grid-cols-2" aria-label="Kaynaklar">
                 <Check ok label="Görüntü var" detail="Analiz bu görüntüye dayanıyor" />
@@ -250,28 +578,27 @@ export function AnalysisCard({
                   <p className="text-fg-faint">Kaynak: {run.anatomy.source ? SOURCE_LABEL[run.anatomy.source] : '—'} · {run.anatomy.cues.join('; ')}</p>
                 </div>
               )}
-              <div>
-                <p className="font-medium text-fg">
-                  Analiz yetenekleri · {run.result.model.name}
-                  {run.result.model.version !== '—' ? ` · sürüm ${run.result.model.version}` : ''}
-                  {run.result.model.local ? ' · cihazda' : ''}
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5" aria-label="Model durumu">
+                <dt className="text-fg-faint">Model</dt>
+                <dd className="text-fg">{run.result.model.name}</dd>
+                <dt className="text-fg-faint">Tür</dt>
+                <dd className="text-fg-muted">{run.result.model.kind === 'heuristic' ? 'Heuristic (kural tabanlı; tıbbi AI modeli değil)' : 'Öğrenilmiş model'}</dd>
+                <dt className="text-fg-faint">Versiyon</dt>
+                <dd className="text-fg-muted">{run.result.model.version}</dd>
+                <dt className="text-fg-faint">Cihazda</dt>
+                <dd className="text-fg-muted">{run.result.model.local ? 'Evet' : 'Hayır (harici servis)'}</dd>
+                <dt className="text-fg-faint">Yerel tıbbi AI modeli</dt>
+                <dd className="text-fg-muted">{candidate ? `${candidate.manifest.name} ${candidate.manifest.version} (${candidate.manifest.task})` : 'Bu modalite için bu cihazda kurulu değil'}</dd>
+                <dt className="text-fg-faint">Sekans</dt>
+                <dd className="text-fg-muted">{run.sequence.text}</dd>
+              </dl>
+              <p className="text-fg-muted">{run.result.summary}</p>
+              {symmetry && (
+                <p className="text-fg-faint">
+                  Ön kontrol nasıl okunur: işaretli alan yalnızca "iki taraf burada farklı görünüyor" demektir. Sağlıklı kişilerde de hafif farklar olur; baş eğikliği, kesit düzeyi,
+                  sinüsler, fotoğraf açısı ve ekran yansıması farkı büyütebilir. Radyolojik düzende görüntünün solu çoğunlukla hastanın sağıdır.
                 </p>
-                <p className="text-fg-muted">{run.result.summary}</p>
-                {run.result.capabilities.length > 0 && (
-                  <ul className="mt-1 grid gap-x-3 gap-y-0.5 sm:grid-cols-2">
-                    {run.result.capabilities.map((c) => (
-                      <li key={c.key} className="flex items-start gap-1.5" title={CAP_TITLE[c.status]}>
-                        <span className={`w-3 shrink-0 text-center ${c.status === 'done' ? 'text-accent' : 'text-fg-faint'}`}>{CAP_ICON[c.status]}</span>
-                        <span className={c.status === 'done' ? 'text-fg-muted' : 'text-fg-faint'}>
-                          {c.label}
-                          {c.detail && c.status !== 'not-implemented' ? ` (${c.detail})` : ''}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <p className="mt-1 text-[11px] text-fg-faint">✓ çalıştı · — bu görüntüde yapılamadı · ✗ bu kurulumda yok (uydurulmaz)</p>
-              </div>
+              )}
               {technical.map((o) => (
                 <p key={o.id} className="text-fg-muted">
                   {o.text}
@@ -301,20 +628,21 @@ function confidenceWords(c: ImageObservation['confidence']): string {
 }
 
 /** Basit bulgu kartı: yer, ne görüldü, kaynak, [İncele]. Ayrıntılar (güven, konum varsayımları, sınırlar) açılınca. */
-function FindingCard({ o, modality, concordance, model, onRegion }: { o: ImageObservation; modality?: string; concordance?: string; model: HealthModel | null; onRegion: (id: string) => void }) {
+function FindingCard({ o, swatch, modality, concordance, model, onRegion }: { o: ImageObservation; swatch?: string; modality?: string; concordance?: string; model: HealthModel | null; onRegion: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const last = o.location?.path[o.location.path.length - 1];
   const place = o.location ? o.location.path.slice(1).map((id) => GRAPH.node(id)?.nameTr ?? id).join(' · ') || GRAPH.node(o.location.path[0] ?? '')?.nameTr : undefined;
   const title = o.kind === 'asymmetry' ? (place ?? 'Görüntüde bir alan') : o.measurement ? `${o.measurement.name}: ${o.measurement.value}${o.measurement.unit}` : o.text;
-  const what = o.kind === 'asymmetry' ? 'Görüntüde dikkat çeken alan (karşı tarafa göre farklı)' : o.kind === 'rhythm' ? o.text.split('.')[0] : undefined;
+  const what = o.kind === 'asymmetry' ? 'Görüntü asimetrisi gözlemi (karşı tarafa göre farklı parlaklık) · tıbbi bulgu değil' : o.kind === 'rhythm' ? o.text.split('.')[0] : undefined;
   return (
     <li className="rounded-xl border border-ink-600/60 bg-ink-900/30 p-3.5">
       <p className="text-[15px] font-medium text-fg">
+        {swatch && <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: swatch }} aria-hidden="true" />}
         {title}
         {o.kind === 'asymmetry' && o.location?.basis === 'pixel-mapped' ? <span className="font-normal text-fg-faint"> (yaklaşık)</span> : null}
       </p>
       {what && <p className="mt-0.5 text-sm text-fg-muted">{what}</p>}
-      <p className="mt-1 text-xs text-fg-faint">Kaynak: {modality ?? 'görüntü'} görüntüsü (otomatik analiz) · {confidenceWords(o.confidence)}</p>
+      <p className="mt-1 text-xs text-fg-faint">Kaynak: {modality ?? 'görüntü'} görüntüsü (kural tabanlı ön kontrol) · {confidenceWords(o.confidence)}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         <button type="button" className="btn-ghost px-3 py-1.5 text-xs" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           {open ? 'Kapat' : 'İncele'}

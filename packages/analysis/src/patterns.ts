@@ -6,7 +6,7 @@
  * eksik bilgiler, ilgili organ/sistemler, güven (kanıtın tutarlılığı) ve açıklama. Tanı koymaz;
  * başlıklar "örüntü" olarak adlandırılır ve olası açıklamalar listelenir.
  */
-import { type Confidence, type EvidenceSource, type ImageObservation, type LabObservation, type ReportFinding, score } from './types';
+import { type Confidence, type EvidenceSource, type ImageObservation, type LabObservation, type ReportFinding, isPositiveReport, score } from './types';
 
 export type Criterion =
   | { kind: 'lab'; test: string; expect: 'high' | 'low' | 'abnormal' | 'normal'; weight?: number; label: string }
@@ -267,7 +267,7 @@ function check(c: Criterion, ev: EvidenceSet): State {
     const rep = ev.reportFindings.filter((f) => f.location?.structure === c.structure);
     const img = ev.imageObservations.filter((o) => o.location?.structure === c.structure && o.kind === 'asymmetry');
     if (!rep.length && !img.length) return { state: 'missing' };
-    const abn = rep.find((f) => !f.negated && f.status !== 'normal');
+    const abn = rep.find(isPositiveReport);
     if (abn) return { state: 'met', item: { source: abn.source, label: c.label, detail: `Rapor: “${abn.text}”` } };
     if (img.length) return { state: 'met', item: { source: 'IMAGE_ANALYSIS', label: `${c.label} (görüntü analizi, doğrulanmamış)`, detail: img[0]!.text } };
     return { state: 'not-met', item: { source: rep[0]!.source, label: 'Rapor bu yapıyı olağan bildiriyor', detail: `“${rep[0]!.text}”` } };

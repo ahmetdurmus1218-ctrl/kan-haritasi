@@ -691,10 +691,10 @@ export type CheckStatus =
 export const CHECK_STATUS_LABEL: Record<CheckStatus, string> = {
   report: 'Rapor metninden çıkarıldı',
   'report-general': 'Raporda genel ifade',
-  image: 'Görüntüden değerlendirildi (basit)',
+  image: 'Görüntüden: yalnızca sağ-sol simetri ön kontrolü',
   quality: 'Görüntü kalitesi yetersiz',
   'no-sequence': 'Uygun sekans / görüntü eksik',
-  expert: 'Uzman değerlendirmesi gerekli',
+  expert: 'Değerlendirilemedi (otomatik güvenilir görüntü modeli yok)',
   'not-evaluated': 'Değerlendirilemedi',
 };
 
@@ -703,6 +703,19 @@ export interface ImageEvidence {
   compared: number;
   /** Belirgin fark bulunan kesit sayısı. */
   flagged: number;
+  /** Görüntüde ayırt edilen kesit sayısı (fotoğrafta panel). */
+  panels?: number;
+}
+
+/** Görüntü kapsamı: 2 kesitlik fotoğraf ile 180 kesitlik DICOM serisi aynı değerlendirmeyi desteklemez. */
+export interface ReviewCoverage {
+  kind: 'photo' | 'dicom-series' | 'dicom-single' | 'report-only';
+  frames: number;
+}
+
+/** Kapsam tam bir protokol değerlendirmesi için sınırlı mı? (fotoğraf, tek kesit ya da kısa seri) */
+export function limitedCoverage(c: ReviewCoverage): boolean {
+  return c.kind === 'photo' || c.kind === 'dicom-single' || (c.kind === 'dicom-series' && c.frames < 20);
 }
 
 export interface CheckResult {
@@ -716,7 +729,7 @@ export interface CheckResult {
   note: string;
 }
 
-const RANK: Record<FindingStatus, number> = { abnormal: 2, uncertain: 1, normal: 0 };
+const RANK: Record<FindingStatus, number> = { abnormal: 3, uncertain: 2, 'not-assessed': 1, normal: 0 };
 const GENERAL_NORMAL = /(patolojik (bir )?(bulgu|ozellik) (saptanmadi|izlenmedi|gorulmedi)|olagan sinirlarda|normal sinirlarda|ozellik (arz etmemektedir|gostermemektedir)|dogal olarak izlendi|dogal gorunumde|normal (bulgular|inceleme)|olagandir)/;
 
 const matches = (item: CheckItem, f: ImagingFinding) => {

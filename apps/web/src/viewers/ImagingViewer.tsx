@@ -2,8 +2,13 @@ import { type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } 
 import {
   type DecodedFrame,
   type DicomInfo,
+  PLANE_LABEL,
+  type Volume,
   type Window,
   autoWindow,
+  buildVolume,
+  mprGeometry,
+  reslice,
   canDecode,
   decodeFrame,
   isNearlyGray,
@@ -143,6 +148,17 @@ export function ImagingViewer({
   const [marks, setMarks] = useState<Mark[]>([]);
   const [zoom, setZoom] = useState(1);
   const [box, setBox] = useState({ w: 0, h: 0 });
+  // Çok düzlemli yeniden yapılandırma (MPR): yalnızca istenince ve seri güvenilirse.
+  const [mpr, setMpr] = useState<null | { status: 'loading'; done: number; total: number } | { status: 'error'; reason: string } | { status: 'ready'; volume: Volume }>(null);
+  const [plane, setPlane] = useState<'acq' | 'column' | 'row'>('acq');
+  const [mprPos, setMprPos] = useState({ column: 0, row: 0 });
+  const mprCancel = useRef(false);
+  useEffect(
+    () => () => {
+      mprCancel.current = true;
+    },
+    [],
+  );
 
   const toggleFullscreen = useFullscreen(rootRef);
   useElementWidth(areaRef, (w, h) => setBox({ w, h }));
@@ -213,11 +229,32 @@ export function ImagingViewer({
     };
   }, [fileId, frameIndex, multiFile, ids, pos, load]);
 
+  const volume = mpr?.status === 'ready' ? mpr.volume : null;
+  const mprPlane = plane !== 'acq' && volume ? plane : null;
+  const sliceCount = mprPlane ? (mprPlane === 'column' ? volume!.geometry.columns : volume!.geometry.rows) : count;
+  const slicePos = mprPlane ? mprPos[mprPlane] : pos;
+  const setSlice = useCallback(
+    (f: (p: number) => number) => {
+      if (mprPlane) setMprPos((m) => ({ ...m, [mprPlane]: Math.min(sliceCount - 1, Math.max(0, f(m[mprPlane]))) }));
+      else setPos((p) => Math.min(count - 1, Math.max(0, f(p))));
+    },
+    [mprPlane, sliceCount, count],
+  );
+  const step = useCallback((d: number) => setSlice((p) => p + d), [setSlice]);
+
+  /** Görüntülenen kare: çekim düzlemi ya da hacimden yeniden yapılandırılmış düzlem. */
+  const view = useMemo(() => {
+    if (!current || !mprPlane || !volume) return current;
+    const r = reslice(volume, mprPlane, mprPos[mprPlane]);
+    const frame: Gray = { kind: 'gray', width: r.width, height: r.height, data: r.data, min: r.min, max: r.max };
+    return { meta: { ...current.meta, pixelSpacing: r.pixelSpacing, frames: 1 }, frame, plane: r.plane };
+  }, [current, mprPlane, volume, mprPos]);
+
   // Çizim
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !current) return;
-    const { frame, meta } = current;
+    if (!canvas || !view) return;
+    const { frame, meta } = view;
     canvas.width = frame.width;
     canvas.height = frame.height;
     const ctx = canvas.getContext('2d');
@@ -229,14 +266,49 @@ export function ImagingViewer({
       renderRgba(frame.data, win ?? IDENTITY, invert, img.data);
     }
     ctx.putImageData(img, 0, 0);
-  }, [current, win, invert]);
+  }, [view, win, invert]);
 
-  const step = useCallback((d: number) => setPos((p) => Math.min(count - 1, Math.max(0, p + d))), [count]);
+  const startMpr = async () => {
+    mprCancel.current = false;
+    setMpr({ status: 'loading', done: 0, total: ids.length });
+    try {
+      const infos: DicomInfo[] = [];
+      const bytesList: Uint8Array[] = [];
+      for (const [i, id] of ids.entries()) {
+        if (mprCancel.current) return;
+        const l = await load(id);
+        if (l.kind !== 'dicom') return setMpr({ status: 'error', reason: 'Seride DICOM olmayan dosya var.' });
+        infos.push(l.info);
+        bytesList.push(l.bytes);
+        if (i % 8 === 0) setMpr({ status: 'loading', done: i + 1, total: ids.length });
+      }
+      const g = mprGeometry(infos);
+      if (!g.ok) return setMpr({ status: 'error', reason: g.reason });
+      const slices: Float32Array[] = [];
+      for (const [i, info] of infos.entries()) {
+        if (mprCancel.current) return;
+        if (!canDecode(info) || info.samplesPerPixel !== 1) return setMpr({ status: 'error', reason: 'Seride çözülemeyen ya da renkli kesit var.' });
+        const raw = decodeFrame(bytesList[i]!, info, 0);
+        const f = raw.kind === 'encoded' ? await decodeEncoded(raw, info) : raw;
+        if (f.kind !== 'gray') return setMpr({ status: 'error', reason: 'Renkli seride yeniden yapılandırma yapılmaz.' });
+        slices.push(f.data);
+      }
+      if (mprCancel.current) return;
+      const vol = buildVolume(g.geometry, slices);
+      setMpr({ status: 'ready', volume: vol });
+      setMprPos({ column: Math.floor(g.geometry.columns / 2), row: Math.floor(g.geometry.rows / 2) });
+      setTool(null);
+      setMarks([]);
+      setPlane('column');
+    } catch {
+      setMpr({ status: 'error', reason: 'Seri okunamadı.' });
+    }
+  };
 
   // Tekerlek: kesit değiştir (Ctrl/⌘ ile yakınlaştırma usePinchZoom'da).
   useEffect(() => {
     const el = areaRef.current;
-    if (!el || count <= 1) return;
+    if (!el || sliceCount <= 1) return;
     const wheel = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) return;
       e.preventDefault();
@@ -244,7 +316,7 @@ export function ImagingViewer({
     };
     el.addEventListener('wheel', wheel, { passive: false });
     return () => el.removeEventListener('wheel', wheel);
-  }, [count, step]);
+  }, [sliceCount, step]);
 
   // Pencere/seviye sürükleme
   const drag = useRef<{ x: number; y: number; win: Window; id: number } | null>(null);
@@ -281,7 +353,7 @@ export function ImagingViewer({
     }
   };
 
-  const natural = current ? { w: current.frame.width, h: current.frame.height } : null;
+  const natural = view ? { w: view.frame.width, h: view.frame.height } : null;
   const quarter = ((rotation % 360) + 360) % 360;
   const sideways = quarter === 90 || quarter === 270;
   const rw = natural ? (sideways ? natural.h : natural.w) : 0;
@@ -292,13 +364,16 @@ export function ImagingViewer({
   const photo = current?.meta.photo ?? false;
   const isCt = current?.meta.modality === 'CT';
   const title = useMemo(
-    () => (current?.meta.photo ? 'Fotoğraf / taranmış görüntü' : [current?.meta.modality, current?.meta.seriesDescription].filter(Boolean).join(' · ')),
-    [current],
+    () =>
+      current?.meta.photo
+        ? 'Fotoğraf / taranmış görüntü'
+        : [current?.meta.modality, current?.meta.seriesDescription, view && 'plane' in view ? `${PLANE_LABEL[view.plane]} (yeniden yapılandırma)` : ''].filter(Boolean).join(' · '),
+    [current, view],
   );
 
   const measureCtx: MeasureContext = {
-    spacing: current?.meta.pixelSpacing,
-    gray: current?.frame.kind === 'gray' ? current.frame : undefined,
+    spacing: view?.meta.pixelSpacing,
+    gray: view?.frame.kind === 'gray' ? view.frame : undefined,
     isCt,
   };
 
@@ -324,8 +399,8 @@ export function ImagingViewer({
       onKeyDown={(e) => {
         if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') step(-1);
         else if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') step(1);
-        else if (e.key === 'Home') setPos(0);
-        else if (e.key === 'End') setPos(count - 1);
+        else if (e.key === 'Home') setSlice(() => 0);
+        else if (e.key === 'End') setSlice(() => sliceCount - 1);
         else return;
         e.preventDefault();
       }}
@@ -375,7 +450,7 @@ export function ImagingViewer({
             <RotateCwIcon />
           </button>
         </ToolbarGroup>
-        {current && onSaveMeasurement && (
+        {current && onSaveMeasurement && !mprPlane && (
           <ToolbarGroup>
             <button
               type="button"
@@ -401,6 +476,27 @@ export function ImagingViewer({
             )}
           </ToolbarGroup>
         )}
+        {multiFile && current && !current.meta.photo && (
+          <ToolbarGroup>
+            {volume ? (
+              <select className="h-8 rounded-md bg-transparent px-1.5 text-xs text-fg-muted hover:text-fg" value={plane} onChange={(e) => setPlane(e.target.value as typeof plane)} aria-label="Düzlem" data-testid="mpr-plane">
+                <option value="acq">{PLANE_LABEL[volume.geometry.acquired]} (çekim)</option>
+                <option value="column">{PLANE_LABEL[volume.geometry.byColumn]} (MPR)</option>
+                <option value="row">{PLANE_LABEL[volume.geometry.byRow]} (MPR)</option>
+              </select>
+            ) : (
+              <button
+                type="button"
+                className="rounded-md px-2 py-1 text-xs text-fg-muted hover:text-fg disabled:opacity-50"
+                disabled={mpr?.status === 'loading'}
+                onClick={() => void startMpr()}
+                title="Düzenli aralıklı seriden diğer düzlemleri (sagital / koronal / eksenel) yeniden yapılandır"
+              >
+                {mpr?.status === 'loading' ? `Hacim hazırlanıyor ${mpr.done}/${mpr.total}` : 'Diğer düzlemler (MPR)'}
+              </button>
+            )}
+          </ToolbarGroup>
+        )}
         <div className="flex-1" />
         <ToolbarGroup>
           <button type="button" className="icon-btn" onClick={toggleFullscreen} aria-label="Tam ekran">
@@ -412,6 +508,16 @@ export function ImagingViewer({
         </ToolbarGroup>
       </div>
 
+      {mpr?.status === 'error' && (
+        <p className="border-b border-ink-700 bg-ink-900/80 px-3 py-1.5 text-xs text-fg-muted" role="status" data-testid="mpr-unavailable">
+          Diğer düzlemler bu seride yapılamıyor: {mpr.reason}
+        </p>
+      )}
+      {mprPlane && (
+        <p className="border-b border-ink-700 bg-ink-900/80 px-3 py-1.5 text-xs text-caution-fg" role="note">
+          Yeniden yapılandırılmış görüntü: kesitler arası değerler enterpolasyonla doldurulur; ölçüm ve tanı için çekim düzlemini kullan.
+        </p>
+      )}
       <div
         ref={areaRef}
         className={`relative min-h-0 flex-1 overflow-auto ${tool ? 'touch-none cursor-crosshair' : 'touch-pan-x touch-pan-y'}`}
@@ -427,7 +533,7 @@ export function ImagingViewer({
             <canvas
               ref={canvasRef}
               role="img"
-              aria-label={`${title || 'Görüntü'} — kesit ${pos + 1} / ${count}`}
+              aria-label={`${title || 'Görüntü'} — kesit ${slicePos + 1} / ${sliceCount}`}
               className="absolute left-1/2 top-1/2 max-w-none select-none"
               style={{
                 width: natural.w * scale,
@@ -441,7 +547,7 @@ export function ImagingViewer({
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
             />
-            <MarksOverlay
+            {!mprPlane && <MarksOverlay
               marks={marks}
               natural={natural}
               scale={scale}
@@ -450,14 +556,14 @@ export function ImagingViewer({
               tool={tool === 'ruler' || tool === 'roi' ? tool : null}
               slice={pos}
               onAdd={(m) => setMarks((list) => [...list, m])}
-            />
+            />}
           </div>
         )}
         {current && (
           <>
             <p className="pointer-events-none absolute left-3 top-2 max-w-[70%] truncate font-mono text-[11px] text-white/80 drop-shadow">{title}</p>
             <p className="pointer-events-none absolute bottom-2 left-3 font-mono text-[11px] text-white/80 drop-shadow">
-              {count > 1 ? `Kesit ${pos + 1} / ${count}` : photo ? '' : 'Tek kesit'}
+              {sliceCount > 1 ? `Kesit ${slicePos + 1} / ${sliceCount}` : photo ? '' : 'Tek kesit'}
               {loading && ' …'}
             </p>
             {win && (
@@ -470,7 +576,7 @@ export function ImagingViewer({
         )}
       </div>
 
-      {onSaveMeasurement && (
+      {onSaveMeasurement && !mprPlane && (
         <SaveMeasurePanel
           marks={marks}
           ctx={measureCtx}
@@ -480,11 +586,11 @@ export function ImagingViewer({
         />
       )}
 
-      {count > 1 && (
+      {sliceCount > 1 && (
         <div className="flex items-center gap-3 border-t border-ink-700 bg-ink-900/80 px-3 py-2">
-          <span className="text-xs tabular-nums text-fg-muted">{pos + 1}</span>
-          <input type="range" min={0} max={count - 1} value={pos} onChange={(e) => setPos(Number(e.target.value))} className="flex-1 accent-accent" aria-label="Kesit" />
-          <span className="text-xs tabular-nums text-fg-muted">{count}</span>
+          <span className="text-xs tabular-nums text-fg-muted">{slicePos + 1}</span>
+          <input type="range" min={0} max={sliceCount - 1} value={slicePos} onChange={(e) => setSlice(() => Number(e.target.value))} className="flex-1 accent-accent" aria-label="Kesit" />
+          <span className="text-xs tabular-nums text-fg-muted">{sliceCount}</span>
         </div>
       )}
     </div>

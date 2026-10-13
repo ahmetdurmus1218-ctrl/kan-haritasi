@@ -191,6 +191,70 @@ const tg = lab('triglyceride', 'Trigliserid', 'Kandaki yağ (trigliserid) düzey
 edge(energy, 'measured_by', tg);
 edge(tg, 'affects', pancreas, 'Çok yüksek trigliserid düzeyleri pankreası etkileyebilir (pankreatit ile ilişkili olabilir).');
 
+/* ---------------------------------------------------------------- Mide ve bağırsaklar */
+const stomach = node({ id: 'stomach', kind: 'organ', nameTr: 'Mide', structure: 'stomach', summary: 'Yemek borusundan gelen besini asit ve enzimlerle karıştırıp sindirmeye başlayan kas torba; B12 emilimi için gereken iç faktörü üretir.' });
+edge(stomach, 'belongs_to', 'system:digestive');
+const gastricMucosa = node({ id: 'tissue.gastric-mucosa', kind: 'tissue', nameTr: 'Mide mukozası ve bezleri', summary: 'Mide iç yüzeyini döşeyen, asit, pepsin ve koruyucu mukus salgılayan bezlerle dolu katman.' });
+const parietal = node({ id: 'cell.parietal', kind: 'cell', nameTr: 'Parietal hücre', summary: 'Mide asidini (HCl) ve iç faktörü salgılayan bez hücresi.' });
+const gastricDigestion = node({ id: 'proc.gastric-digestion', kind: 'process', nameTr: 'Midede sindirim', summary: 'Asit besini parçalar ve mikropları azaltır; pepsin proteinleri sindirmeye başlar; asit demirin emilebilir hale gelmesine yardım eder.' });
+const intrinsic = node({ id: 'mol.intrinsic-factor', kind: 'molecule', nameTr: 'İç faktör', summary: 'B12 vitaminine bağlanıp ileumda emilmesini sağlayan protein.' });
+edge(stomach, 'made_of', gastricMucosa);
+edge(gastricMucosa, 'made_of', parietal);
+edge(gastricMucosa, 'performs', gastricDigestion);
+edge(parietal, 'produces', intrinsic);
+
+const si = node({ id: 'small-intestine', kind: 'organ', nameTr: 'İnce bağırsak', structure: 'small-intestine', summary: 'Mideden sonra gelen, yaklaşık 6 metrelik kıvrımlı tüp; besinlerin sindirimi burada tamamlanır ve neredeyse tamamı burada kana ve lenfe emilir.' });
+edge(si, 'belongs_to', 'system:digestive');
+const duodenum = node({ id: 'small-intestine.duodenum', kind: 'region', nameTr: 'On iki parmak bağırsağı (duodenum)', structure: 'small-intestine', part: 'duodenum', summary: 'İlk bölüm: mideden gelen içeriğe safra ve pankreas enzimleri katılır; demir en çok burada emilir.' });
+const jejunum = node({ id: 'small-intestine.jejunum', kind: 'region', nameTr: 'Jejunum', structure: 'small-intestine', part: 'jejunum', summary: 'Orta bölüm: şeker, amino asit, yağ ve folatın büyük kısmı burada emilir.' });
+const ileum = node({ id: 'small-intestine.ileum', kind: 'region', nameTr: 'İleum', structure: 'small-intestine', part: 'ileum', summary: 'Son bölüm: B12 vitamini (iç faktörle) ve safra asitleri burada geri emilir.' });
+for (const r of [duodenum, jejunum, ileum]) edge(r, 'part_of', si);
+const wall = node({ id: 'tissue.intestinal-wall', kind: 'tissue', nameTr: 'Bağırsak duvarı', summary: 'İçten dışa dört katman: mukoza, submukoza, kas tabakası ve seroza. Kaslar içeriği dalga dalga ilerletir (peristaltizm).' });
+const mucosa = node({ id: 'tissue.intestinal-mucosa', kind: 'tissue', nameTr: 'Mukozal yüzey', summary: 'Bağırsağın iç yüzeyi; kıvrımlar ve villuslarla emilim alanı bir tenis kortu büyüklüğüne ulaşır.' });
+const villus = node({ id: 'tissue.villus', kind: 'tissue', nameTr: 'Villuslar', summary: 'Mukozadan çıkan parmak biçimli uzantılar; her birinin içinde kılcal damar ağı ve bir lenf kanalı vardır.' });
+const enterocyte = node({ id: 'cell.enterocyte', kind: 'cell', nameTr: 'Enterosit (emici epitel hücresi)', summary: 'Villusu örten hücre; üst yüzündeki mikrovilluslar (fırçamsı kenar) emilim yüzeyini daha da artırır.' });
+const capillary = node({ id: 'tissue.villus-capillary', kind: 'tissue', nameTr: 'Kılcal damarlar (villus içi)', summary: 'Şeker, amino asit, demir ve suda çözünen vitaminleri kana alır; kan portal venle karaciğere gider.' });
+const lacteal = node({ id: 'tissue.lacteal', kind: 'tissue', nameTr: 'Lenf kanalı (lakteal)', summary: 'Yağları (şilomikron olarak) lenf yoluyla taşır; bu yağlar karaciğeri atlayarak dolaşıma katılır.' });
+edge(si, 'made_of', wall);
+edge(wall, 'made_of', mucosa);
+edge(mucosa, 'made_of', villus);
+edge(villus, 'made_of', enterocyte);
+edge(villus, 'made_of', capillary);
+edge(villus, 'made_of', lacteal);
+const absorption = node({ id: 'proc.absorption', kind: 'process', nameTr: 'Besin emilimi', summary: 'Sindirilmiş besinler (şeker, amino asit, yağ asitleri), vitaminler ve mineraller enterositlerden geçip kana ve lenfe geçer.' });
+const ironAbs = node({ id: 'proc.iron-absorption', kind: 'process', nameTr: 'Demir emilimi', summary: 'Duodenumda enterositler demiri DMT1 taşıyıcısıyla içeri alır, ferroportin ile kana verir; vücut ihtiyaca göre miktarı ayarlar.' });
+const b12Abs = node({ id: 'proc.b12-absorption', kind: 'process', nameTr: 'B12 emilimi', summary: 'Mideden gelen iç faktöre bağlı B12, ileumun son kısmında emilir.' });
+const folateAbs = node({ id: 'proc.folate-absorption', kind: 'process', nameTr: 'Folat emilimi', summary: 'Folat (B9) çoğunlukla jejunumda emilir.' });
+const transporters = node({ id: 'mol.nutrient-transporters', kind: 'molecule', nameTr: 'Taşıyıcı proteinler (SGLT1, DMT1, ferroportin)', summary: 'Enterosit zarındaki kapılar: SGLT1 glukozu, DMT1 demiri hücreye alır; ferroportin demiri kana verir.' });
+const nutrients = node({ id: 'mol.nutrients', kind: 'molecule', nameTr: 'Emilen moleküller (glukoz, amino asitler, yağ asitleri)', summary: 'Sindirimin son ürünleri; kanla ve lenfle tüm hücrelere ulaşır.' });
+edge(enterocyte, 'performs', absorption);
+edge(si, 'performs', absorption);
+edge(si, 'performs', 'proc.digestion');
+edge(enterocyte, 'produces', transporters);
+edge(absorption, 'produces', nutrients);
+edge(duodenum, 'performs', ironAbs);
+edge(jejunum, 'performs', folateAbs);
+edge(ileum, 'performs', b12Abs);
+edge(intrinsic, 'leads_to', b12Abs, 'İç faktör olmadan B12 emilemez.');
+edge(gastricDigestion, 'leads_to', ironAbs, 'Mide asidi demiri emilebilir hale getirir.');
+edge(ironAbs, 'leads_to', 'proc.iron-metabolism');
+edge(b12Abs, 'leads_to', 'proc.erythropoiesis', 'B12 alyuvar yapımı ve sinir liflerinin miyelini için gerekir.');
+edge(folateAbs, 'leads_to', 'proc.erythropoiesis', 'Folat alyuvar yapımında DNA sentezi için gerekir.');
+// B12 ve folat önce alyuvar yapımının göstergesidir (birincil organ: kemik iliği); emilim ikincil bağdır.
+const b12 = lab('b12', 'B12 vitamini', 'Alyuvar yapımı ve sinir sistemi için gerekli vitamin.');
+const folate = lab('folate', 'Folat', 'Hücre bölünmesi ve alyuvar yapımı için gerekli vitamin (B9).');
+edge('proc.erythropoiesis', 'measured_by', b12);
+edge('proc.erythropoiesis', 'measured_by', folate);
+edge(b12Abs, 'measured_by', b12);
+edge(folateAbs, 'measured_by', folate);
+
+const li = node({ id: 'large-intestine', kind: 'organ', nameTr: 'Kalın bağırsak', structure: 'large-intestine', summary: 'İnce bağırsaktan gelen içerikten su ve tuzları geri emen, dışkıyı oluşturup depolayan bölüm; yararlı bakterilere ev sahipliği yapar.' });
+edge(li, 'belongs_to', 'system:digestive');
+const colonMucosa = node({ id: 'tissue.colon-mucosa', kind: 'tissue', nameTr: 'Kalın bağırsak mukozası', summary: 'Villus yoktur; derin bezler (kriptler) mukus salgılar ve suyu geri emer.' });
+const waterAbs = node({ id: 'proc.water-absorption', kind: 'process', nameTr: 'Su ve tuz geri emilimi', summary: 'Günde 1–1,5 litre sıvının çoğu geri emilir; içerik katılaşarak dışkıya dönüşür.' });
+edge(li, 'made_of', colonMucosa);
+edge(colonMucosa, 'performs', waterAbs);
+
 /* ---------------------------------------------------------------- Karaciğer */
 const liver = node({ id: 'liver', kind: 'organ', nameTr: 'Karaciğer', structure: 'liver', summary: 'Karın sağ üst kısmında; protein üretimi, safra yapımı, besin depolama, ilaç ve toksinlerin işlenmesi.' });
 edge(liver, 'belongs_to', 'system:digestive');

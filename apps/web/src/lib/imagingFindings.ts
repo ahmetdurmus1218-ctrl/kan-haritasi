@@ -10,7 +10,8 @@
 import { normalizeText, partsOf } from '@kh/catalog';
 import { type GlossaryTerm, type ReportSection, findTerms, regionByKey, splitReport } from './imaging';
 
-export type FindingStatus = 'abnormal' | 'uncertain' | 'normal';
+/** not-assessed: "değerlendirilemedi" — ne normal ne anormal; o konuda bilgi yok. */
+export type FindingStatus = 'abnormal' | 'uncertain' | 'normal' | 'not-assessed';
 export type Side = 'right' | 'left' | 'both';
 
 export interface ImagingFinding {
@@ -253,6 +254,8 @@ const NEGATION =
   /\b(izlenmedi|izlenmemis|izlenmemektedir|saptanmadi|saptanmamis|gorulmedi|gorulmemis|gozlenmedi|rastlanmadi|yoktur|bulunmamaktadir|mevcut degil|dikkati cekmedi|ekarte edildi|yok)\b/;
 /** Olağan ifadeler (ekleriyle: "sağlamdır", "doğaldır", "korunmuştur"). */
 const NORMAL = /\b(olagan|dogal|normal|korunmus|simetri|duzgun|sinirlar|intakt|saglam|mevcut degil)/;
+/** "Değerlendirilemedi", "izlenemedi", "ayırt edilemedi": bilgi yok (normal DEĞİL). */
+const NOT_ASSESSED = /\b(degerlendirilemedi|degerlendirilememistir|degerlendirilemiyor|degerlendirilemez|degerlendirme disi|ayirt edilemedi|ayirt edilememistir|izlenemedi|izlenememistir|secilemedi|gorulemedi|incelenemedi)/;
 const UNCERTAIN = /\b(supheli|olasi|olasilikla|dusundurur|dusundurmektedir|ekarte edilemedi|ayirici tani|lehine|ile uyumlu olabilir|dusunulmustur|belirsiz)\b|\?/;
 const ABNORMAL =
   /\b(genis|genislemis|daralmis|daralma|kalinlasmis|kalinlasma|artmis|artis|azalmis|azalma|buyumus|bozulmus|kayb|duzlesme|egrilik|siddetli|belirgin|hafif|minimal|orta derece|ileri derece|odak|odaklar|alan|alanlar|patolojik|anormal|asimetri|yirtik|kopma|sivi|kist|kitle|nodul|tas)\b/;
@@ -327,7 +330,12 @@ function statusOf(sentence: string): FindingStatus {
     .filter(Boolean);
   let abnormal = false;
   let uncertain = false;
+  let notAssessed = false;
   for (const c of clauses) {
+    if (NOT_ASSESSED.test(c)) {
+      notAssessed = true;
+      continue;
+    }
     const terms = findTerms(c).filter((t) => !NEUTRAL_TERMS.has(t.key));
     const strong = terms.some((t) => !STRUCTURAL_TERMS.has(t.key));
     const neg = NEGATION.test(c);
@@ -337,13 +345,15 @@ function statusOf(sentence: string): FindingStatus {
     if (strong || ((terms.length || ABNORMAL.test(c) || ABNORMAL_STEM.test(c)) && !normal)) abnormal = true;
   }
   if (uncertain) return 'uncertain';
-  return abnormal ? 'abnormal' : 'normal';
+  if (abnormal) return 'abnormal';
+  return notAssessed ? 'not-assessed' : 'normal';
 }
 
 const STATUS_WORD: Record<FindingStatus, string> = {
   abnormal: 'dikkat çeken bulgu',
   uncertain: 'belirsiz / olasılık',
   normal: 'olağan',
+  'not-assessed': 'değerlendirilemedi',
 };
 
 /**
@@ -408,7 +418,7 @@ export function extractFindings(text: string, region?: string): ImagingFinding[]
         key: `${structure ?? '-'}|${part ?? '-'}|${lvl?.level ?? '-'}|${main?.key ?? status}`,
         size: sizeOf(s),
         negated: status === 'normal' && NEGATION.test(norm),
-        severity: status === 'normal' ? undefined : severityOf(norm),
+        severity: status === 'normal' || status === 'not-assessed' ? undefined : severityOf(norm),
         temporal: temporalOf(norm),
         recommendation: RECOMMEND.test(norm),
       });

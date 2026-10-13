@@ -63,7 +63,7 @@ export function ImagingStudyCard({ study, compact = false }: { study: ImagingStu
           )}
           {study.review && study.review.regions.length > 0 && (
             <span className="mt-1.5 inline-block rounded-full border border-caution/40 px-2 py-0.5 text-[11px] text-caution-fg">
-              Otomatik inceleme · {study.review.regions.length} dikkat bölgesi · tanı değildir
+              Sağ-sol ön kontrol · {study.review.regions.length} asimetri gözlemi · tanı değildir
             </span>
           )}
           {!compact && study.terms.length > 0 && (
