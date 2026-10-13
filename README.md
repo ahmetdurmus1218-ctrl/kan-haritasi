@@ -21,7 +21,7 @@ Sunucu yok, hesap yok. Raporlar ve sonuçlar yalnızca cihazda, şifreli durur. 
 ## APK'yı indir (Android 11+)
 
 - **En kolayı:** GitHub'da **Releases → `apk-son`**. Her `main` gönderiminde yenilenir. Telefondan açıp `KanHaritasi-*.apk` dosyasını indirmen yeterli.
-- **Belirli bir derleme:** **Actions → Android APK →** ilgili çalıştırma → **Artifacts** → `KanHaritasi-APK-1.0.N`.
+- **Belirli bir derleme:** **Actions → Android APK →** ilgili çalıştırma → **Artifacts** → `KanHaritasi-APK-1.0.N`. Bu kopya 7 gün saklanır. GitHub'ın Actions depolama kotası dolarsa burada görünmeyebilir; `apk-son` yayını yine de güncellenir.
 
 Kurulumda "bilinmeyen kaynak" izni istenir. APK, derleme sırasında `INTERNET` izni içermediği otomatik olarak doğrulanarak üretilir.
 
