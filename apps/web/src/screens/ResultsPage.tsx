@@ -1,3 +1,4 @@
+import { DataTabs } from '../components/DataTabs';
 import { useMemo, useState, type ReactNode } from 'react';
 import { CONTENT, GROUP_LABEL, MEDICAL_DISCLAIMER, PROCESSES, type ResultStatus, structureById, systemById, formatNumber, testByKey } from '@kh/catalog';
 import { go } from '../state/router';
@@ -63,6 +64,7 @@ export function ResultsPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
+      <DataTabs active="results" />
       <div className="mb-6">
         <p className="label-caps mb-1.5">Sonuçlarım</p>
         <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">{studies?.length ? 'Tahlil ve görüntüleme sonuçların' : 'Tahlil sonuçların'}</h1>
@@ -119,9 +121,9 @@ export function ResultsPage() {
       {series.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
           <p className="font-medium">{studies?.length ? 'Tahlil sonucu yok' : 'Sonuç yok'}</p>
-          <p className="mt-1 text-sm text-fg-muted">Belgelerim ekranından bir tahlil raporu yükle; okunan değerleri onayladığında burada görünür.</p>
-          <button type="button" className="btn-primary mt-5" onClick={() => go({ name: 'documents' })}>
-            <UploadIcon size={16} /> Rapor yükle
+          <p className="mt-1 text-sm text-fg-muted">Bir tahlil raporu ekle; okunan değerleri onayladığında burada görünür.</p>
+          <button type="button" className="btn-primary mt-5" onClick={() => go({ name: 'add' })}>
+            <UploadIcon size={16} /> Veri ekle
           </button>
         </div>
       ) : (

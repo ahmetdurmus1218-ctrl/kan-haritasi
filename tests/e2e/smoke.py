@@ -56,6 +56,13 @@ with sync_playwright() as p:
     page.check("input[type=checkbox]")
     page.get_by_role("button", name="Kasayı oluştur").click()
     page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for(timeout=20000)
+    # Ana sayfa: tek soru ("Vücudum nasıl?"), boş durumda doğrudan veri ekleme alanı
+    check(page.get_by_role("heading", name="Vücudum nasıl?").count() == 1, "ana sayfa açılıyor")
+    check(page.get_by_text("Henüz sağlık verisi eklemedin").count() == 1, "boş durum: veri ekle çağrısı")
+    check(page.get_by_role("link", name="Ekle").count() >= 1, "alt gezinmede tek ekleme düğmesi")
+    page.screenshot(path=SHOTS / "02-ana-sayfa-bos.png")
+    page.goto(URL + "#/belgeler")
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
     page.screenshot(path=SHOTS / "02-belgeler-bos.png")
 
     # Yükleme: PDF + PNG + sahte (.pdf uzantılı HTML)
@@ -177,7 +184,7 @@ with sync_playwright() as p:
 
     # Masaüstü görünüm
     page.set_viewport_size({"width": 1366, "height": 860})
-    page.get_by_role("link", name="Belgeler").first.click()
+    page.get_by_role("link", name="Verilerim").first.click()
     page.wait_for_timeout(500)
     page.screenshot(path=SHOTS / "10-masaustu.png")
     page.locator("ul li").first.locator("button").first.click()

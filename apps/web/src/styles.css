@@ -274,3 +274,23 @@
     animation: none;
   }
 }
+
+/* Alt sayfa / yan panel açılışı */
+@keyframes kh-sheet-in {
+  from {
+    transform: translateY(28px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.kh-sheet[open] {
+  animation: kh-sheet-in 0.22s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .kh-sheet[open] {
+    animation: none;
+  }
+}

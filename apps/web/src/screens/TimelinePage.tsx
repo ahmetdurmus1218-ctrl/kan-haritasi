@@ -7,7 +7,9 @@ import { Banner } from '../components/ui';
 import { StatusPill } from '../components/results';
 import { BodyIcon, ChartIcon, FileTextIcon, SpinnerIcon, UploadIcon } from '../components/icons';
 import { useImagingStudies } from '../lib/imagingStudies';
-import { CATEGORY_LABEL, regionByKey } from '../lib/imaging';
+import { CATEGORY_LABEL, CATEGORY_SHORT, regionByKey } from '../lib/imaging';
+import { useHealthModel } from '../lib/analysisBridge';
+import { whatChanged } from '../lib/summary';
 
 /**
  * Zaman çizelgesi: bir testin raporlar boyunca değişimi ve rapor geçmişi.
@@ -35,7 +37,26 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
     [series],
   );
   const selected = sorted.find((s) => s.test.key === testKey) ?? sorted[0];
-  const studies = useImagingStudies() ?? [];
+  const loadedStudies = useImagingStudies();
+  const studies = useMemo(() => loadedStudies ?? [], [loadedStudies]);
+  const { model } = useHealthModel();
+  const changes = useMemo(() => (model ? whatChanged(model, studies, 5) : []), [model, studies]);
+  const [charts, setCharts] = useState(false);
+  const years = useMemo(() => {
+    const events = [
+      ...(reports ?? []).map((r) => ({ kind: 'lab' as const, date: reportDate(r), r })),
+      ...studies.map((st) => ({ kind: 'imaging' as const, date: st.date, st })),
+    ];
+    const by = new Map<string, typeof events>();
+    for (const e of events) (by.get(e.date.slice(0, 4)) ?? by.set(e.date.slice(0, 4), []).get(e.date.slice(0, 4))!).push(e);
+    return [...by.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([year, items]) => ({
+        year,
+        items: items.sort((a, b) => b.date.localeCompare(a.date)),
+        kinds: [...new Set(items.map((e) => (e.kind === 'lab' ? 'Kan' : CATEGORY_SHORT[e.st.category])))],
+      }));
+  }, [reports, studies]);
 
   if (error) return <div className="p-6"><Banner tone="error">Sonuçlar yüklenemedi.</Banner></div>;
   if (!reports) {
@@ -49,22 +70,51 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-10">
       <div className="mb-6">
-        <p className="label-caps mb-1.5">Zaman</p>
-        <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">Sonuçların zaman içinde</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Zamanım</h1>
         <p className="mt-1.5 text-sm text-fg-muted">
-          {reports.length} rapor · {series.length} test{studies.length ? ` · ${studies.length} görüntüleme` : ''}. Bir noktaya dokunarak o raporu ve ilgili biyolojik sistemi açabilirsin.
+          {reports.length} tahlil raporu{studies.length ? ` · ${studies.length} görüntüleme` : ''}
         </p>
       </div>
 
-      {series.length === 0 ? (
+      {changes.length > 0 && (
+        <section className="mb-8" aria-labelledby="ne-degisti">
+          <h2 id="ne-degisti" className="mb-3 text-sm font-medium text-fg-muted">
+            Ne değişti?
+          </h2>
+          <ul className="divide-y divide-ink-700 rounded-2xl border border-ink-600/60 bg-ink-850/60">
+            {changes.map((c, i) => (
+              <li key={i}>
+                <button type="button" onClick={() => go(c.route)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <span className="w-4 text-center text-fg-muted">{c.icon}</span>
+                  <span className="flex-1 text-[15px] text-fg">{c.label}</span>
+                  <span className="text-xs text-fg-faint">{formatDate(c.date)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-fg-faint">Eğilim tek başına tanı koydurmaz; ölçümler farklı laboratuvarlarda yapılmış olabilir.</p>
+        </section>
+      )}
+
+      {series.length > 0 && !testKey && !charts ? (
+        <button type="button" className="btn-ghost mb-8 w-full justify-center" onClick={() => setCharts(true)}>
+          Değer grafiklerini göster ({series.length} test)
+        </button>
+      ) : null}
+
+      {series.length > 0 && !testKey && !charts ? null : series.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
           <p className="font-medium">Henüz sonuç yok</p>
           <p className="mt-1 text-sm text-fg-muted">Farklı tarihli raporlar yükledikçe değerlerin burada zaman çizgisinde görünür.</p>
-          <button type="button" className="btn-primary mt-5" onClick={() => go({ name: 'documents' })}>
+          <button type="button" className="btn-primary mt-5" onClick={() => go({ name: 'add' })}>
             <UploadIcon size={16} /> Rapor yükle
           </button>
         </div>
       ) : (
+        <section className="mb-2" aria-labelledby="grafikler">
+        <h2 id="grafikler" className="mb-3 text-sm font-medium text-fg-muted">
+          Sonuçların zaman içinde
+        </h2>
         <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
           <nav aria-label="Testler" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 lg:mx-0 lg:block lg:max-h-[70vh] lg:space-y-0.5 lg:overflow-y-auto lg:px-0">
             {sorted.map((s) => {
@@ -88,16 +138,29 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
           </nav>
           <div className="min-w-0 space-y-6">{selected && <SeriesView key={selected.test.key} series={selected} />}</div>
         </div>
+        </section>
       )}
 
       {reports.length + studies.length > 0 && (
-        <section className="mt-10">
-          <p className="label-caps mb-3">Rapor geçmişi</p>
-          <ol className="relative space-y-0 border-l border-ink-600 pl-5">
-            {[
-              ...reports.map((r) => ({ kind: 'lab' as const, date: reportDate(r), r })),
-              ...studies.map((st) => ({ kind: 'imaging' as const, date: st.date, st })),
-            ]
+        <section className="mt-10" aria-labelledby="gecmis">
+          <h2 id="gecmis" className="mb-3 text-sm font-medium text-fg-muted">
+            Rapor geçmişi
+          </h2>
+          {years.map(({ year, items, kinds }, yi) => (
+          <details key={year} open={yi === 0} className="group mb-3 rounded-2xl border border-ink-600/60 bg-ink-850/40 px-4 py-3">
+          <summary className="flex cursor-pointer list-none items-center gap-3">
+            <span className="w-12 text-[15px] font-semibold tabular-nums text-fg">{year}</span>
+            <span className="flex flex-1 flex-wrap gap-1.5">
+              {kinds.map((k) => (
+                <span key={k} className="rounded-full border border-ink-600 px-2 py-0.5 text-xs text-fg-muted">
+                  {k}
+                </span>
+              ))}
+            </span>
+            <span className="text-xs text-fg-faint group-open:hidden">{items.length}</span>
+          </summary>
+          <ol className="relative mt-3 space-y-0 border-l border-ink-600 pl-5">
+            {items
               .sort((a, b) => b.date.localeCompare(a.date))
               .map((e) => {
                 if (e.kind === 'imaging') {
@@ -138,6 +201,8 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
                 );
               })}
           </ol>
+          </details>
+          ))}
         </section>
       )}
 

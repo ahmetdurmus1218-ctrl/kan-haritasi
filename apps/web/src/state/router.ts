@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 
 export type Route =
+  /** Ana sayfa: genel durum, tek "Veri ekle" girişi. */
+  | { name: 'home' }
+  /** Tek yükleme akışı: dosyayı seç / fotoğraf çek → sistem türünü algılar. */
+  | { name: 'add' }
   | { name: 'documents' }
   | { name: 'document'; id: string }
   | { name: 'results' }
@@ -35,6 +39,13 @@ const KEY = /^[a-z0-9-]{1,40}$/;
 export function parseHash(hash: string): Route {
   const [, section, arg, arg2, arg3] = hash.replace(/^#/, '').split('/');
   switch (section) {
+    case '':
+    case 'ana':
+      return { name: 'home' };
+    case 'ekle':
+      return { name: 'add' };
+    case 'belgeler':
+      return { name: 'documents' };
     case 'belge':
       return arg && UUID.test(arg) ? { name: 'document', id: arg } : { name: 'documents' };
     case 'sonuclar':
@@ -64,12 +75,16 @@ export function parseHash(hash: string): Route {
       if (!arg || !NODE.test(arg)) return { name: 'mybody' };
       return arg2 && VIEWS.includes(arg2) ? { name: 'organ', id: arg, view: arg2 as OrganViewMode } : { name: 'organ', id: arg };
     default:
-      return { name: 'documents' };
+      return { name: 'home' };
   }
 }
 
 export function hrefFor(route: Route): string {
   switch (route.name) {
+    case 'home':
+      return '#/';
+    case 'add':
+      return '#/ekle';
     case 'document':
       return `#/belge/${route.id}`;
     case 'results':

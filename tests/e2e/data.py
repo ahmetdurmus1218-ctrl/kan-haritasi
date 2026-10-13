@@ -43,6 +43,9 @@ def create_vault(page, password):
     page.check("input[type=checkbox]")
     page.get_by_role("button", name="Kasayı oluştur").click()
     page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for(timeout=30000)
+    # Yeni bilgi mimarisi: kasa açılınca ana sayfa; belgeler "Verilerim"de
+    page.goto(URL + "#/belgeler")
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
 
 
 def upload_and_confirm(page, path, count, date=None):

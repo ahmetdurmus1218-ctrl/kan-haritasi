@@ -9,3 +9,4 @@ tests/e2e/.shots/
 
 # 3D kaynak modeller (fetch-hra.sh indirir)
 assets-pipeline/.cache/
+__pycache__/

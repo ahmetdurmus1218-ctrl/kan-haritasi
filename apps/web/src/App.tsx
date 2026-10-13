@@ -3,6 +3,8 @@ import { useRoute } from './state/router';
 import { SetupScreen, UnlockScreen } from './screens/AuthScreens';
 import { AppShell } from './screens/AppShell';
 import { DocumentsPage } from './screens/DocumentsPage';
+import { HomePage } from './screens/HomePage';
+import { AddPage } from './screens/AddPage';
 import { DocumentDetail } from './screens/DocumentDetail';
 import { PrivacyPage } from './screens/PrivacyPage';
 import { Suspense, lazy, useSyncExternalStore } from 'react';
@@ -61,7 +63,11 @@ function Gate() {
     case 'unlocked':
       return (
         <AppShell route={route}>
-          {route.name === 'document' ? (
+          {route.name === 'home' ? (
+            <HomePage navigate={navigate} />
+          ) : route.name === 'add' ? (
+            <AddPage navigate={navigate} />
+          ) : route.name === 'document' ? (
             <DocumentDetail key={route.id} id={route.id} navigate={navigate} />
           ) : route.name === 'privacy' ? (
             <PrivacyPage />
