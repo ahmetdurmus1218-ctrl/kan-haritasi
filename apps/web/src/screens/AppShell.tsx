@@ -32,6 +32,8 @@ function activeKey(route: Route): NavKey | 'add' {
     case 'body':
     case 'simulation':
     case 'coverage':
+    case 'flow':
+    case 'system':
       return 'mybody';
     case 'timeline':
       return 'timeline';

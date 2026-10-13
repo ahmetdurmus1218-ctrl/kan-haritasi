@@ -62,13 +62,26 @@ export async function loadRaster(info: Pick<FileInfo, 'kind' | 'mimeType'>, byte
   return { width: frame.width, height: frame.height, gray: frame.data };
 }
 
-export function contextFor(info: FileInfo, dicom: DicomInfo | null): ImageContext {
+export function contextFor(info: FileInfo, dicom: DicomInfo | null, files = 1): ImageContext {
   const region = info.region ? regionByKey.get(info.region) : undefined;
   return {
     fileName: info.displayName,
     declaredCategory: info.category,
     ...(region ? { declaredRegion: region.key, ...(region.structure ? { declaredStructure: region.structure } : {}) } : {}),
-    ...(dicom ? { dicom: { modality: dicom.modality, bodyPart: dicom.bodyPart, pixelSpacing: dicom.pixelSpacing, sliceThickness: dicom.sliceThickness } } : {}),
+    ...(dicom
+      ? {
+          dicom: {
+            modality: dicom.modality,
+            bodyPart: dicom.bodyPart,
+            pixelSpacing: dicom.pixelSpacing,
+            sliceThickness: dicom.sliceThickness,
+            ...(dicom.seriesDescription ? { seriesDescription: dicom.seriesDescription } : {}),
+            ...(dicom.studyDescription ? { studyDescription: dicom.studyDescription } : {}),
+            frames: dicom.frames,
+          },
+        }
+      : {}),
+    files,
   };
 }
 
@@ -128,6 +141,9 @@ export function toStoredAnalysis(run: ImageAnalysisRun, sourceId: string): Store
     summary: run.result.summary,
     observations: run.result.observations.slice(0, 24),
     qualityIssues: run.quality.issues.map((i) => i.code),
+    coverage: run.coverage,
+    sequence: run.sequence,
+    kind: run.kind,
   };
 }
 
@@ -138,6 +154,9 @@ export function runFromStored(a: StoredAnalysis, reportAvailable: boolean): Imag
     at: a.at,
     quality: { usable: true, score: 1, issues: [], metrics: { width: 0, height: 0, edgeWidth: 0, glareFraction: 0, contrast: null, median: null } },
     route: 'image-analysis',
+    kind: a.kind ?? 'precheck',
+    coverage: a.coverage ?? { kind: 'photo', frames: 1, label: '1 görüntü' },
+    sequence: a.sequence ?? { source: 'none', text: 'Sekans belirlenemedi.' },
     reportAvailable,
     statements: [],
     result: { adapterId: a.adapterId, modality: a.modality, status: a.status, model: { ...a.model, kind: 'heuristic', local: true }, capabilities: [], observations: a.observations, limitations: [], summary: a.summary },

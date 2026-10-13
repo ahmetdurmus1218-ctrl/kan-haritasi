@@ -25,9 +25,10 @@ import { reportFindingsFrom } from '../lib/analysisBridge';
 import { useReports } from '../lib/useReports';
 import { FindingList } from '../components/findings';
 import { extractFindings } from '../lib/imagingFindings';
-import { type ImageEvidence, evaluate, protocolFor, techniqueOf } from '../lib/imagingProtocol';
+import { type ImageEvidence, type ReviewCoverage, evaluate, protocolFor, techniqueOf } from '../lib/imagingProtocol';
 import { SystematicReview } from '../components/checklist';
 import { KIND_LABEL } from '../lib/format';
+import { LOCATION_NOTICE } from '../lib/locationNotice';
 
 /** Sağ-sol simetri incelemesinin anlamlı olduğu kesitsel/radyolojik türler (EKG, patoloji, ultrason vb. hariç). */
 const CROSS_SECTIONAL: ReadonlySet<DocCategory> = new Set(['mr', 'ct', 'pet', 'angio', 'xray', 'mammo', 'other']);
@@ -239,11 +240,16 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
         image: !hasImage
           ? 'Bu belgede incelenebilir görüntü yok (rapor belgesi).'
           : imageEvidence && imageEvidence.compared > 0
-            ? `Görüntü açıldı; ${imageEvidence.compared} kesitte basit sağ-sol karşılaştırması yapıldı. Bunun dışında görüntüden otomatik bulgu analizi yapılmıyor.`
+            ? `Görüntü açıldı; ${imageEvidence.compared} kesitte sağ-sol simetri ön kontrolü yapıldı. Tıbbi görüntü modeli yok; görüntüden bulgu analizi yapılmıyor.`
             : 'Görüntü görüntüleyicide açılabiliyor; görüntüden otomatik bulgu analizi yapılmıyor (yalnızca uygun kesitlerde basit sağ-sol karşılaştırması).',
       },
     };
   }, [category, info.region, info.kind, info.displayName, dicom, note, hasReport, hasImage, findings, imageEvidence]);
+  const coverage: ReviewCoverage = !hasImage
+    ? { kind: 'report-only', frames: 0 }
+    : info.kind === 'dicom'
+      ? (Math.max(seriesIds.length, dicom?.frames ?? 1) > 1 ? { kind: 'dicom-series', frames: Math.max(seriesIds.length, dicom?.frames ?? 1) } : { kind: 'dicom-single', frames: 1 })
+      : { kind: 'photo', frames: imageEvidence?.panels ?? 1 };
   // Görüntü analizinin karşılaştırılacağı rapor bulguları: kendi raporu ya da aynı çekime bağlı rapor belgesi (ayrı kaynak).
   const analysisReportFindings = useMemo(() => {
     if (findings.length) return reportFindingsFrom(findings, { documentId: info.id, ocr: note?.method === 'ocr' });
@@ -283,6 +289,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             labsAvailable={Boolean(labReports?.some((r) => r.results.length > 0))}
             previousAvailable={previousAvailable}
             showOverlay={!CROSS_SECTIONAL.has(category)}
+            files={seriesIds.length || 1}
           />
         )}
 
@@ -332,11 +339,11 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
               </select>
             </label>
           )}
-          <p className="text-[11px] leading-relaxed text-fg-faint">3B model, görüntülenen bölgenin vücuttaki genel yerini gösterir; görüntüdeki bir bulgunun yerini göstermez.</p>
+          <p className="text-[11px] leading-relaxed text-fg-faint">{LOCATION_NOTICE.region}</p>
         </div>
 
 
-        {isImaging(category) && note !== undefined && <SystematicReview protocol={review.protocol} results={review.results} steps={review.steps} />}
+        {isImaging(category) && note !== undefined && <SystematicReview protocol={review.protocol} results={review.results} steps={review.steps} coverage={coverage} />}
 
         {/* Bulgular: rapordaki her cümle, konumu ve olağan/dikkat ayrımıyla; tıklayınca 3B'de ilgili yer */}
         {findings.length > 0 && (

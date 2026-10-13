@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { structureById } from '@kh/catalog';
 import { go } from '../state/router';
-import { type CheckResult, type CheckStatus, CHECK_STATUS_LABEL, type Protocol } from '../lib/imagingProtocol';
+import { type CheckResult, type CheckStatus, CHECK_STATUS_LABEL, type Protocol, type ReviewCoverage, limitedCoverage } from '../lib/imagingProtocol';
 import type { FindingStatus } from '../lib/imagingFindings';
 import { BodyIcon } from './icons';
 
@@ -11,14 +11,15 @@ const REPORT_TONE: Record<FindingStatus, Tone> = {
   abnormal: { label: 'Dikkat', cls: 'border-high/40 bg-high/10 text-high' },
   uncertain: { label: 'Belirsiz', cls: 'border-caution/40 bg-caution/10 text-caution-fg' },
   normal: { label: 'Olağan', cls: 'border-accent/30 bg-accent/5 text-accent' },
+  'not-assessed': { label: 'Raporda: değerlendirilemedi', cls: 'border-dashed border-ink-500 text-fg-muted' },
 };
 
 const STATUS_TONE: Record<Exclude<CheckStatus, 'report'>, Tone> = {
   'report-general': { label: 'Genel ifade', cls: 'border-accent/20 text-accent/80' },
-  image: { label: 'Görüntü · basit', cls: 'border-low/35 bg-low/10 text-low' },
+  image: { label: 'Görüntüden · ön kontrol', cls: 'border-low/35 bg-low/10 text-low' },
   quality: { label: 'Kalite sınırlı', cls: 'border-caution/40 bg-caution/10 text-caution-fg' },
   'no-sequence': { label: 'Sekans eksik', cls: 'border-ink-500 text-fg-muted' },
-  expert: { label: 'Uzman gerekli', cls: 'border-ink-500 text-fg-muted' },
+  expert: { label: 'Değerlendirilemedi', cls: 'border-dashed border-ink-500 text-fg-faint' },
   'not-evaluated': { label: 'Değerlendirilemedi', cls: 'border-dashed border-ink-500 text-fg-faint' },
 };
 
@@ -94,29 +95,53 @@ export interface ReviewSteps {
  * kaynağı (rapor, görüntü, değerlendirilemedi). Üç bilgi kaynağı ayrı gösterilir: rapor metni, görüntünün
  * kendisi ve eğitsel 3B model.
  */
-export function SystematicReview({ protocol, results, steps }: { protocol: Protocol; results: CheckResult[]; steps: ReviewSteps }) {
+export function SystematicReview({ protocol, results, steps, coverage }: { protocol: Protocol; results: CheckResult[]; steps: ReviewSteps; coverage: ReviewCoverage }) {
   const [onlyFlagged, setOnlyFlagged] = useState(false);
   const count = (f: (r: CheckResult) => boolean) => results.filter(f).length;
-  const flagged = count((r) => r.status === 'report' && r.tone !== 'normal');
-  const normal = count((r) => r.status === 'report' && r.tone === 'normal');
+  const reported = count((r) => r.status === 'report' && r.tone !== 'uncertain');
+  const uncertain = count((r) => r.status === 'report' && r.tone === 'uncertain');
+  const fromImage = count((r) => r.status === 'image');
   const open = count((r) => r.status !== 'report' && r.status !== 'image');
   const shown = onlyFlagged ? results.filter((r) => r.status === 'report' && r.tone !== 'normal') : results;
   const mapped = count((r) => Boolean(r.item.structure));
+  const hasReport = results.some((r) => r.status === 'report' || r.status === 'report-general');
+  // 2 kesitlik bir fotoğraftan tam protokol değerlendirmesi izlenimi verilmez: başlık listesi katlanır.
+  const limited = limitedCoverage(coverage) && !hasReport;
+  const list = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-fg-muted">Başlığa dokun: neye bakıldığı, rapordaki cümle ve 3B yer.</p>
+        <label className="flex shrink-0 items-center gap-1.5 text-xs text-fg-muted">
+          <input type="checkbox" checked={onlyFlagged} onChange={(e) => setOnlyFlagged(e.target.checked)} className="accent-accent" />
+          Yalnızca raporda dikkat çekenler
+        </label>
+      </div>
+      <ol className="space-y-1.5">
+        {shown.map((r) => (
+          <CheckRow key={r.item.key} r={r} index={results.indexOf(r)} />
+        ))}
+      </ol>
+    </>
+  );
   return (
     <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/40 p-4" aria-label="Sistematik değerlendirme">
       <div>
-        <p className="label-caps">Sistematik değerlendirme</p>
-        <h3 className="mt-0.5 text-base font-semibold">{protocol.title}</h3>
+        <p className="label-caps">{limited ? 'İnceleme kapsamı' : 'Sistematik değerlendirme'}</p>
+        <h3 className="mt-0.5 text-base font-semibold">
+          {limited ? `Görüntü kapsamı sınırlı: ${coverage.frames} ${coverage.kind === 'photo' ? 'kesit' : 'DICOM kesiti'} mevcut` : protocol.title}
+        </h3>
         <p className="mt-1 text-xs leading-relaxed text-fg-muted">
-          Bu inceleme türünde bakılan {results.length} başlık kendiliğinden oluşturuldu. Her başlığın durumu yalnızca elimizdeki kaynaktan belirlenir; raporda geçmeyen
-          bir başlık “yok” sayılmaz.
+          {limited
+            ? `İnceleme kapsamı: ${coverage.frames} görüntü. Bu yükleme yalnızca mevcut görüntüleri içeriyor; tam bir “${protocol.title}” yapılmış gibi gösterilmez. Bu başlıklar için otomatik güvenilir görüntü modeli bulunmuyor.`
+            : `Bu inceleme türünde bakılan ${results.length} başlık kendiliğinden oluşturuldu. Her başlığın durumu yalnızca elimizdeki kaynaktan belirlenir; raporda geçmeyen bir başlık “yok” sayılmaz.`}
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 text-[11px]">
-        <span className="rounded-full border border-high/40 bg-high/10 px-2 py-0.5 text-high">{flagged} dikkat / belirsiz</span>
-        <span className="rounded-full border border-accent/30 bg-accent/5 px-2 py-0.5 text-accent">{normal} olağan</span>
-        <span className="rounded-full border border-dashed border-ink-500 px-2 py-0.5 text-fg-muted">{open} değerlendirilemedi / eksik</span>
+      <div className="flex flex-wrap gap-1.5 text-[11px]" aria-label="Başlık durumları">
+        <span className="rounded-full border border-low/35 bg-low/10 px-2 py-0.5 text-low">✓ Görüntüden (ön kontrol): {fromImage}</span>
+        <span className="rounded-full border border-caution/40 bg-caution/10 px-2 py-0.5 text-caution-fg">? Belirsiz: {uncertain}</span>
+        <span className="rounded-full border border-dashed border-ink-500 px-2 py-0.5 text-fg-muted">— Değerlendirilemedi: {open}</span>
+        <span className="rounded-full border border-ink-500 px-2 py-0.5 text-fg-muted">Raporda belirtilmiş: {reported}</span>
       </div>
 
       {/* Bilgi kaynakları: rapor, görüntü, eğitsel 3B ayrı */}
@@ -147,25 +172,21 @@ export function SystematicReview({ protocol, results, steps }: { protocol: Proto
           <li>Başlıklar: “{protocol.title}” şemasından {results.length} başlık</li>
           <li>Her başlık için rapor cümleleri ve (varsa) görüntü karşılaştırması tarandı</li>
           <li>
-            Sonuç: {flagged} başlıkta dikkat çeken ya da belirsiz ifade, {normal} başlıkta olağan ifade, {open} başlık değerlendirilemedi ya da uygun sekans yok
+            Sonuç: {reported} başlık raporda belirtilmiş, {uncertain} başlıkta belirsiz ifade, {fromImage} başlıkta görüntüden ön kontrol, {open} başlık değerlendirilemedi ya da uygun sekans yok
           </li>
           <li>3B eşleşme: {mapped} başlık modelde yaklaşık yerinde gösterilebilir</li>
-          <li>Sınırlar: sözcük eşleşmesi hatalı olabilir; görüntüden yalnızca basit sağ-sol parlaklık karşılaştırması yapılır. Değerlendirme hekime aittir.</li>
+          <li>Sınırlar: sözcük eşleşmesi hatalı olabilir; görüntüden yalnızca sağ-sol simetri ön kontrolü yapılır (tıbbi görüntü modeli değil). Uzman değerlendirmesi gerekir.</li>
         </ol>
       </details>
 
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-fg-muted">Başlığa dokun: neye bakıldığı, rapordaki cümle ve 3B yer.</p>
-        <label className="flex shrink-0 items-center gap-1.5 text-xs text-fg-muted">
-          <input type="checkbox" checked={onlyFlagged} onChange={(e) => setOnlyFlagged(e.target.checked)} className="accent-accent" />
-          Yalnızca dikkat
-        </label>
-      </div>
-      <ol className="space-y-1.5">
-        {shown.map((r) => (
-          <CheckRow key={r.item.key} r={r} index={results.indexOf(r)} />
-        ))}
-      </ol>
+      {limited ? (
+        <details className="space-y-2 rounded-lg border border-ink-600/60 px-3 py-2">
+          <summary className="cursor-pointer text-xs text-fg">Bu inceleme türünde normalde bakılan başlıklar ({results.length})</summary>
+          <div className="mt-2 space-y-2">{list}</div>
+        </details>
+      ) : (
+        list
+      )}
     </section>
   );
 }

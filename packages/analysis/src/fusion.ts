@@ -17,7 +17,7 @@ import { type EvidenceSet, type PatternResult, evaluatePatterns } from './patter
 import type { ImageAnalysisRun } from './pipeline';
 import { type StudyComparison, type StudySnapshot, compareStudies, itemFromObservation, itemFromReport } from './temporal';
 import { type Trend, computeTrend } from './trend';
-import type { Confidence, EvidenceSource, ImageObservation, LabObservation, ReportFinding } from './types';
+import { type Confidence, type EvidenceSource, type ImageObservation, type LabObservation, type ReportFinding, isPositiveReport } from './types';
 
 export interface ImageStudyInput {
   run: ImageAnalysisRun;
@@ -107,7 +107,7 @@ function concordanceFor(o: ImageObservation, reports: ReportFinding[], reportAva
   const s = o.location?.structure;
   const side = o.location?.side;
   const same = reports.filter((f) => s && f.location?.structure === s && (!side || !f.location.side || f.location.side === side || f.location.side === 'both'));
-  const positive = same.filter((f) => !f.negated && f.status !== 'normal');
+  const positive = same.filter(isPositiveReport);
   if (positive.length)
     return {
       observation: o,
@@ -175,12 +175,13 @@ export function buildHealthModel(input: HealthInput): HealthModel {
   for (const o of imageObservations) if (o.location?.structure) {
     const s = get(o.location.structure);
     s.imageObservations.push(o);
-    if (o.kind === 'asymmetry' || (o.kind === 'heart-rate' && o.measurement && (o.measurement.value > 100 || o.measurement.value < 50))) s.attention = true;
+    // Görüntü asimetrisi bir gözlemdir, anormallik değildir: organı "dikkat" durumuna geçirmez.
+    if ((o.kind === 'heart-rate' && o.measurement && (o.measurement.value > 100 || o.measurement.value < 50))) s.attention = true;
   }
   for (const f of reportFindings) if (f.location?.structure) {
     const s = get(f.location.structure);
     s.reportFindings.push(f);
-    if (!f.negated && f.status !== 'normal') s.attention = true;
+    if (isPositiveReport(f)) s.attention = true;
   }
   for (const l of latestLabs)
     for (const id of organsForLab(l.testKey)) {
@@ -200,7 +201,7 @@ export function buildHealthModel(input: HealthInput): HealthModel {
   for (const l of input.labs) timeline.push({ date: l.date, type: 'lab', source: 'LAB', label: `${l.name} ${l.value.toLocaleString('tr-TR')} ${l.unit}`, organs: organsForLab(l.testKey), status: l.status === 'unknown' ? undefined : l.status, confidence: l.confidence, ref: l.testKey });
   for (const r of input.reports)
     for (const f of r.findings)
-      if (!f.negated && f.status !== 'normal' && r.date) timeline.push({ date: r.date, type: 'imaging-report', source: f.source, label: f.text, organs: f.location?.structure ? [f.location.structure] : [], status: f.status, confidence: f.confidence, ...(r.documentId ? { ref: r.documentId } : {}) });
+      if (isPositiveReport(f) && r.date) timeline.push({ date: r.date, type: 'imaging-report', source: f.source, label: f.text, organs: f.location?.structure ? [f.location.structure] : [], status: f.status as 'abnormal' | 'uncertain', confidence: f.confidence, ...(r.documentId ? { ref: r.documentId } : {}) });
   for (const i of input.images)
     for (const o of i.run.result.observations)
       if (i.date && o.kind !== 'quality' && o.kind !== 'structure-presence') timeline.push({ date: i.date, type: 'image-analysis', source: 'IMAGE_ANALYSIS', label: o.text, organs: o.location?.structure ? [o.location.structure] : [], status: 'uncertain', confidence: o.confidence, ...(i.documentId ? { ref: i.documentId } : {}) });

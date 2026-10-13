@@ -1,9 +1,9 @@
 import type { HealthModel } from '@kh/analysis';
-import { GRAPH } from '@kh/analysis';
+import { GRAPH, isPositiveReport } from '@kh/analysis';
 import { structureById } from '@kh/catalog';
 import { go } from '../state/router';
 import { organName } from '../lib/summary';
-import { TONE, labTone } from '../lib/tone';
+import { labStyle, labTone } from '../lib/tone';
 import { Sheet } from './Sheet';
 import { BodyIcon } from './icons';
 
@@ -16,7 +16,7 @@ export function OrganSheet({ organ, model, onClose }: { organ: string | null; mo
   const node = organ ? GRAPH.node(organ) : undefined;
   const summary = node?.summary ?? (organ ? structureById.get(organ)?.blurb : undefined);
   const off = st?.labs.filter((l) => labTone(l) !== 'normal') ?? [];
-  const imaging = (st?.imageObservations.filter((o) => o.kind === 'asymmetry').length ?? 0) + (st?.reportFindings.filter((f) => !f.negated && f.status !== 'normal').length ?? 0);
+  const imaging = (st?.imageObservations.filter((o) => o.kind === 'asymmetry').length ?? 0) + (st?.reportFindings.filter(isPositiveReport).length ?? 0);
   const goTo = (r: Parameters<typeof go>[0]) => {
     onClose();
     go(r);
@@ -42,12 +42,13 @@ export function OrganSheet({ organ, model, onClose }: { organ: string | null; mo
           {off.length > 0 && (
             <ul className="space-y-1">
               {off.slice(0, 3).map((l) => (
-                <li key={l.testKey} className="flex items-center gap-2 text-sm">
-                  <span className={`h-2 w-2 rounded-full ${TONE[labTone(l)].dot}`} aria-hidden="true" />
-                  <span className="flex-1 text-fg">{l.name}</span>
+                <li key={l.testKey} className={`flex items-center gap-2 text-sm ${labStyle(l).text}`}>
+                  <span className={`h-2 w-2 rounded-full ${labStyle(l).dot}`} aria-hidden="true" />
+                  <span className="flex-1">{l.name}</span>
                   <span className="tabular-nums">
                     {l.value.toLocaleString('tr-TR')} {l.unit}
                   </span>
+                  <span className="text-xs">{labStyle(l).statusLabel}</span>
                 </li>
               ))}
             </ul>

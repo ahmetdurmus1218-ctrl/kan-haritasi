@@ -1,8 +1,10 @@
 /**
- * Ham görüntü analizi kartı (rapordan bağımsız). Önce özet ("Analiz tamamlandı · Bu bir MR görüntüsü
- * gibi görünüyor · 1 dikkat çeken alan"), sonra basit bulgu kartları ([İncele] ile güven, konum
- * varsayımları, sınırlar). Kalite, modalite ipuçları, yetenek listesi, model sürümü "Teknik detaylar"da.
- * Model yoksa bunu açıkça söyler; bulgu uydurmaz.
+ * Ham görüntü kartı (rapordan bağımsız). Yalnızca kural tabanlı ön kontrol çalıştıysa başlık
+ * "Görüntü ön incelemesi tamamlandı"dır (asla "analiz" değil) ve hemen altında neyin yapıldığı (✓) ile
+ * neyin tıbbi görüntü modeli gerektirdiği için yapılamadığı (◻ lezyon analizi, segmentasyon, sekans)
+ * görünür. İnceleme kapsamı (fotoğraf: birkaç kesit · DICOM: seri) ve tür/bölge bilgisinin kaynağı
+ * (kullanıcı seçimi / DICOM başlığı / görüntüden) ayrı yazılır. Sağ-sol farkı "görüntü asimetrisi
+ * gözlemi"dir; bulgu, lezyon ya da anormallik diye gösterilmez.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GRAPH, type HealthModel, type ImageAnalysisRun, type ImageObservation, MODALITY_LABEL, type RasterImage, type ReportFinding, SOURCE_LABEL, buildHealthModel } from '@kh/analysis';
@@ -16,8 +18,69 @@ import { type StoredAnalysis, saveAnalysis } from '../lib/imagingRecords';
 import { BodyIcon, CheckIcon, SpinnerIcon } from './icons';
 import { ConfidenceNote, LocationPath, SourceBadge, StatusPill, WhyButton } from './evidence';
 
-const CAP_ICON = { done: '✓', 'not-possible': '—', 'not-implemented': '✗' } as const;
-const CAP_TITLE = { done: 'Bu görüntüde çalıştı', 'not-possible': 'Uygulanmış ama bu görüntüde yapılamadı', 'not-implemented': 'Bu kurulumda yok' } as const;
+const CAP_ICON = { done: '✓', 'not-possible': '—', 'not-implemented': '◻' } as const;
+
+/** Bilginin nereden geldiği, kullanıcı diliyle (doc: "Kullanıcı seçimi" ≠ "görüntüden"). */
+const ORIGIN: Partial<Record<string, string>> = { USER_INPUT: 'kullanıcı seçimi', DICOM_METADATA: 'DICOM başlığı', IMAGE_ANALYSIS: 'görüntüden', IMAGE_MODEL: 'tıbbi görüntü modeli' };
+
+/**
+ * Görüntü ön incelemesinin yetenek paneli: ✓ yapılanlar, ◻ gerçek tıbbi görüntü modeli gerektirdiği
+ * için bu kurulumda yapılmayanlar. MR'da sekans satırı DICOM başlığından okunur; fotoğrafta "belirlenemedi".
+ */
+export function ImageCapabilityPanel({ run }: { run: ImageAnalysisRun }) {
+  const caps = run.result.capabilities;
+  const done = caps.filter((c) => c.status === 'done');
+  const notPossible = caps.filter((c) => c.status === 'not-possible');
+  const missing = caps.filter((c) => c.status === 'not-implemented' && !(c.key === 'sequence' && run.sequence.source === 'DICOM_METADATA'));
+  const mri = run.result.modality === 'MRI';
+  return (
+    <ul className="space-y-1 text-sm" aria-label="Görüntü ön incelemesi adımları">
+      <li className="flex items-start gap-2">
+        <span className="w-4 shrink-0 text-center text-accent">✓</span>
+        <span className="text-fg">Görüntü okundu</span>
+      </li>
+      <li className="flex items-start gap-2">
+        <span className={`w-4 shrink-0 text-center ${run.quality.issues.length ? 'text-caution-fg' : 'text-accent'}`}>{run.quality.issues.length ? '!' : '✓'}</span>
+        <span className="text-fg">Görüntü kalitesi {run.quality.issues.length ? <span className="text-caution-fg">· {run.quality.issues[0]!.message}</span> : null}</span>
+      </li>
+      {done.map((c) => (
+        <li key={c.key} className="flex items-start gap-2">
+          <span className="w-4 shrink-0 text-center text-accent">{CAP_ICON.done}</span>
+          <span className="text-fg">
+            {c.label}
+            {c.detail ? <span className="text-fg-muted"> · {c.detail}</span> : null}
+          </span>
+        </li>
+      ))}
+      {notPossible.map((c) => (
+        <li key={c.key} className="flex items-start gap-2">
+          <span className="w-4 shrink-0 text-center text-fg-faint">{CAP_ICON['not-possible']}</span>
+          <span className="text-fg-muted">
+            {c.label}
+            {c.detail ? ` · ${c.detail}` : ' · bu görüntüde yapılamadı'}
+          </span>
+        </li>
+      ))}
+      {mri && run.sequence.source === 'DICOM_METADATA' && (
+        <li className="flex items-start gap-2">
+          <span className="w-4 shrink-0 text-center text-accent">✓</span>
+          <span className="text-fg">
+            MR sekansı: {run.sequence.value} <span className="text-fg-muted">· DICOM başlığından</span>
+          </span>
+        </li>
+      )}
+      {missing.map((c) => (
+        <li key={c.key} className="flex items-start gap-2">
+          <span className="w-4 shrink-0 text-center text-fg-faint">{CAP_ICON['not-implemented']}</span>
+          <span className="text-fg-muted">
+            {c.key === 'sequence' ? 'MR sekansı' : c.label}
+            <span className="block text-xs text-fg-faint">{c.key === 'sequence' ? 'Belirlenemedi.' : c.key === 'lesion-detection' ? 'Bu kurulumda tıbbi AI modeli yok.' : 'Bu kurulumda model yok.'}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function Check({ ok, label, detail }: { ok: boolean; label: string; detail?: string }) {
   return (
@@ -84,6 +147,7 @@ export function AnalysisCard({
   labsAvailable,
   previousAvailable,
   showOverlay,
+  files = 1,
 }: {
   info: FileInfo;
   bytes: Bytes;
@@ -96,10 +160,12 @@ export function AnalysisCard({
   previousAvailable: boolean;
   /** Piksel konumlarını bu kartta çiz (kesitsel görüntülerde ayrı inceleme kartı çizer). */
   showOverlay: boolean;
+  /** Aynı seriden yüklenen dosya sayısı (DICOM). */
+  files?: number;
 }) {
   const vault = useUnlockedVault();
   const { bump } = useVault();
-  const context = useMemo(() => contextFor(info, dicom), [info, dicom]);
+  const context = useMemo(() => contextFor(info, dicom, files), [info, dicom, files]);
   const reportAvailable = reportFindings.length > 0;
   const { run, raster, state } = useImageAnalysis(info, bytes, context, reportAvailable, true);
   const [region, setRegion] = useState<string | null>(null);
@@ -136,12 +202,16 @@ export function AnalysisCard({
     : run.result.status === 'UNAVAILABLE'
       ? 'Bu görüntü türü için otomatik yorum bu kurulumda yok. Görüntü saklandı; görüntüleyicide açıp inceleyebilir, ölçebilirsin.'
       : asym
-        ? `${asym} dikkat çeken alan`
+        ? `${asym} görüntü asimetrisi gözlemi (tıbbi bulgu değil)`
         : hr
           ? `Kalp hızı yaklaşık ${hr.value}/dk`
           : findings.length
             ? `${findings.length} ölçüm`
-            : 'Belirgin bir fark bulunmadı (bu, görüntünün normal olduğunu kanıtlamaz).';
+            : run.result.adapterId === 'cross-sectional-symmetry'
+              ? 'Sağ-sol simetri ön kontrolünde belirgin fark görülmedi.'
+              : 'Görüntüden ölçüm çıkarılamadı.';
+  const precheck = run?.kind !== 'model';
+  const symmetry = run?.result.adapterId === 'cross-sectional-symmetry';
 
   return (
     <section className="space-y-4 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4 md:p-5" aria-label="Ham görüntü analizi">
@@ -169,23 +239,34 @@ export function AnalysisCard({
         <>
           <div>
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[15px] font-medium text-fg">Analiz tamamlandı</p>
-              <StatusPill status={run.result.status} />
+              <p className="text-[15px] font-medium text-fg">{precheck ? 'Görüntü ön incelemesi tamamlandı' : 'Görüntü analizi tamamlandı'}</p>
+              {run.result.status === 'UNAVAILABLE' ? (
+                <StatusPill status={run.result.status} />
+              ) : precheck ? (
+                <span className="rounded-full border border-ink-500 px-2 py-0.5 text-[11px] text-fg-muted">ön kontrol · tıbbi model değil</span>
+              ) : null}
             </div>
             <p className="mt-1 text-[15px] text-fg">
               {modality ? `Bu bir ${modality} görüntüsü gibi görünüyor` : 'Görüntü türü belirlenemedi'}
               {anatomyName ? ` · ${anatomyName}` : ''}
             </p>
+            <p className="mt-0.5 text-xs text-fg-faint">
+              {run.modality ? `Tür: ${ORIGIN[run.modality.primary.source] ?? SOURCE_LABEL[run.modality.primary.source]}` : ''}
+              {run.anatomy?.source ? ` · Bölge: ${ORIGIN[run.anatomy.source] ?? SOURCE_LABEL[run.anatomy.source]}` : ''}
+              {` · İnceleme kapsamı: ${run.coverage.label}`}
+            </p>
             {run.modality?.conflict && <p className="mt-1 text-sm text-caution-fg">{run.modality.conflict}</p>}
+            {run.coverage.limited && <p className="mt-2 text-sm text-fg-muted">{run.coverage.limited}</p>}
             <p className="mt-2 text-[15px] text-fg">{outcome}</p>
+            {symmetry && !asym && run.result.status !== 'UNAVAILABLE' && <p className="text-sm text-fg-muted">Bu sonuç görüntünün normal olduğunu göstermez.</p>}
             <p className="mt-1 text-sm text-fg-muted">
               {reportAvailable ? 'Rapor da var: rapordaki bulgular ayrıca gösterilir.' : 'Rapor yok: sonuçlar yalnızca görüntünün kendisine dayanıyor.'}
+              {precheck && run.result.status !== 'UNAVAILABLE' ? ' Bu bir tıbbi görüntü tanı modeli değildir.' : ''}
             </p>
-            {run.quality.issues[0] && <p className="mt-2 text-sm text-caution-fg">{run.quality.issues[0].message}</p>}
             <div className="mt-3 flex flex-wrap gap-2">
               {findings.length > 0 && (
                 <button type="button" className="btn-primary px-3 py-1.5 text-sm" onClick={() => document.getElementById(`bulgular-${info.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                  Bulguları gör
+                  {asym ? 'Gözlemleri gör' : 'Ölçümleri gör'}
                 </button>
               )}
               {run.anatomy?.structure && (
@@ -202,6 +283,8 @@ export function AnalysisCard({
               )}
             </div>
           </div>
+
+          {run.result.status !== 'UNAVAILABLE' && run.result.capabilities.length > 0 && <ImageCapabilityPanel run={run} />}
 
           {showOverlay && raster && <Overlay raster={raster} run={run} />}
 
@@ -250,28 +333,19 @@ export function AnalysisCard({
                   <p className="text-fg-faint">Kaynak: {run.anatomy.source ? SOURCE_LABEL[run.anatomy.source] : '—'} · {run.anatomy.cues.join('; ')}</p>
                 </div>
               )}
-              <div>
-                <p className="font-medium text-fg">
-                  Analiz yetenekleri · {run.result.model.name}
-                  {run.result.model.version !== '—' ? ` · sürüm ${run.result.model.version}` : ''}
-                  {run.result.model.local ? ' · cihazda' : ''}
-                </p>
-                <p className="text-fg-muted">{run.result.summary}</p>
-                {run.result.capabilities.length > 0 && (
-                  <ul className="mt-1 grid gap-x-3 gap-y-0.5 sm:grid-cols-2">
-                    {run.result.capabilities.map((c) => (
-                      <li key={c.key} className="flex items-start gap-1.5" title={CAP_TITLE[c.status]}>
-                        <span className={`w-3 shrink-0 text-center ${c.status === 'done' ? 'text-accent' : 'text-fg-faint'}`}>{CAP_ICON[c.status]}</span>
-                        <span className={c.status === 'done' ? 'text-fg-muted' : 'text-fg-faint'}>
-                          {c.label}
-                          {c.detail && c.status !== 'not-implemented' ? ` (${c.detail})` : ''}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <p className="mt-1 text-[11px] text-fg-faint">✓ çalıştı · — bu görüntüde yapılamadı · ✗ bu kurulumda yok (uydurulmaz)</p>
-              </div>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5" aria-label="Model durumu">
+                <dt className="text-fg-faint">Model</dt>
+                <dd className="text-fg">{run.result.model.name}</dd>
+                <dt className="text-fg-faint">Tür</dt>
+                <dd className="text-fg-muted">{run.result.model.kind === 'heuristic' ? 'Heuristic (kural tabanlı; tıbbi AI modeli değil)' : 'Öğrenilmiş model'}</dd>
+                <dt className="text-fg-faint">Versiyon</dt>
+                <dd className="text-fg-muted">{run.result.model.version}</dd>
+                <dt className="text-fg-faint">Cihazda</dt>
+                <dd className="text-fg-muted">{run.result.model.local ? 'Evet' : 'Hayır (harici servis)'}</dd>
+                <dt className="text-fg-faint">Sekans</dt>
+                <dd className="text-fg-muted">{run.sequence.text}</dd>
+              </dl>
+              <p className="text-fg-muted">{run.result.summary}</p>
               {technical.map((o) => (
                 <p key={o.id} className="text-fg-muted">
                   {o.text}
@@ -306,7 +380,7 @@ function FindingCard({ o, modality, concordance, model, onRegion }: { o: ImageOb
   const last = o.location?.path[o.location.path.length - 1];
   const place = o.location ? o.location.path.slice(1).map((id) => GRAPH.node(id)?.nameTr ?? id).join(' · ') || GRAPH.node(o.location.path[0] ?? '')?.nameTr : undefined;
   const title = o.kind === 'asymmetry' ? (place ?? 'Görüntüde bir alan') : o.measurement ? `${o.measurement.name}: ${o.measurement.value}${o.measurement.unit}` : o.text;
-  const what = o.kind === 'asymmetry' ? 'Görüntüde dikkat çeken alan (karşı tarafa göre farklı)' : o.kind === 'rhythm' ? o.text.split('.')[0] : undefined;
+  const what = o.kind === 'asymmetry' ? 'Görüntü asimetrisi gözlemi (karşı tarafa göre farklı parlaklık) · tıbbi bulgu değil' : o.kind === 'rhythm' ? o.text.split('.')[0] : undefined;
   return (
     <li className="rounded-xl border border-ink-600/60 bg-ink-900/30 p-3.5">
       <p className="text-[15px] font-medium text-fg">
@@ -314,7 +388,7 @@ function FindingCard({ o, modality, concordance, model, onRegion }: { o: ImageOb
         {o.kind === 'asymmetry' && o.location?.basis === 'pixel-mapped' ? <span className="font-normal text-fg-faint"> (yaklaşık)</span> : null}
       </p>
       {what && <p className="mt-0.5 text-sm text-fg-muted">{what}</p>}
-      <p className="mt-1 text-xs text-fg-faint">Kaynak: {modality ?? 'görüntü'} görüntüsü (otomatik analiz) · {confidenceWords(o.confidence)}</p>
+      <p className="mt-1 text-xs text-fg-faint">Kaynak: {modality ?? 'görüntü'} görüntüsü (kural tabanlı ön kontrol) · {confidenceWords(o.confidence)}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         <button type="button" className="btn-ghost px-3 py-1.5 text-xs" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           {open ? 'Kapat' : 'İncele'}

@@ -22,6 +22,8 @@ const Explorer = lazy(() => import('./explore/Explorer').then((m) => ({ default:
 // Vücut merkezli ekranlar (bilgi grafiği ve analiz motoru) da açıldığında yüklenir.
 const MyBodyPage = lazy(() => import('./screens/MyBodyPage').then((m) => ({ default: m.MyBodyPage })));
 const OrganPage = lazy(() => import('./screens/OrganPage').then((m) => ({ default: m.OrganPage })));
+const FlowPage = lazy(() => import('./screens/FlowPage').then((m) => ({ default: m.FlowPage })));
+const SystemPage = lazy(() => import('./screens/SystemPage').then((m) => ({ default: m.SystemPage })));
 
 function ExplorerFallback() {
   return (
@@ -91,7 +93,15 @@ function Gate() {
             </Suspense>
           ) : route.name === 'organ' ? (
             <Suspense fallback={<PageFallback />}>
-              <OrganPage key={route.id} id={route.id} view={route.view} />
+              <OrganPage key={`${route.id}/${route.view ?? ''}`} id={route.id} view={route.view} trail={route.trail} />
+            </Suspense>
+          ) : route.name === 'flow' ? (
+            <Suspense fallback={<PageFallback />}>
+              <FlowPage key={route.id ?? 'list'} id={route.id} step={route.step} personal={route.personal} />
+            </Suspense>
+          ) : route.name === 'system' ? (
+            <Suspense fallback={<PageFallback />}>
+              <SystemPage key={route.id} id={route.id} />
             </Suspense>
           ) : (
             <DocumentsPage navigate={navigate} />

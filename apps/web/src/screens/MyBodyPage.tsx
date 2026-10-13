@@ -8,7 +8,7 @@ import { GRAPH } from '@kh/analysis';
 import { SYSTEMS, structureById } from '@kh/catalog';
 import { go } from '../state/router';
 import { useHealthModel } from '../lib/analysisBridge';
-import { bodySummary, organName, whatChanged } from '../lib/summary';
+import { bodySummary, headlineOf, organName, whatChanged } from '../lib/summary';
 import { TONE } from '../lib/tone';
 import { formatDate } from '../lib/format';
 import { Banner } from '../components/ui';
@@ -16,6 +16,9 @@ import { OrganSheet } from '../components/OrganSheet';
 import { ChevronRightIcon, LayersIcon, SpinnerIcon } from '../components/icons';
 
 export { organName } from '../lib/summary';
+
+/** Organları olan sistemler (sistem sayfası: organlar + akışlar). */
+const SYSTEM_LINKS = SYSTEMS.filter((x) => x.id !== 'integumentary');
 
 function systemsOf(id: string): string[] {
   const g = GRAPH.systemsOf(id).map((n) => n.id.replace('system:', ''));
@@ -56,9 +59,7 @@ export function MyBodyPage() {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Vücudum</h1>
         <p className="mt-2 text-[15px] text-fg-muted">
-          {summary.hasData
-            ? [summary.organs.length ? `${summary.organs.length} organda dikkat çeken sonuç` : 'Dikkat çeken bir sonuç yok', summary.follow.length ? `${summary.follow.length} değer takipte` : ''].filter(Boolean).join(' · ')
-            : 'Henüz verin yok. Organların normalde nasıl çalıştığını keşfedebilirsin.'}
+          {summary.hasData ? headlineOf(summary) : 'Henüz verin yok. Organların normalde nasıl çalıştığını keşfedebilirsin.'}
         </p>
       </div>
 
@@ -68,16 +69,40 @@ export function MyBodyPage() {
         </Banner>
       )}
 
-      <button type="button" onClick={() => go({ name: 'body' })} className="flex w-full items-center gap-4 rounded-3xl border border-accent/30 bg-accent/5 p-5 text-left transition hover:border-accent/60">
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent">
-          <LayersIcon size={26} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-lg font-medium text-fg">3B vücudu aç</span>
-          <span className="block text-sm text-fg-muted">Organlara dokun, döndür, içine gir. Verin olan organlar vurgulu.</span>
-        </span>
-        <ChevronRightIcon size={18} />
-      </button>
+      <div className="grid gap-2.5 sm:grid-cols-2">
+        <button type="button" onClick={() => go({ name: 'body' })} className="flex w-full items-center gap-4 rounded-3xl border border-accent/30 bg-accent/5 p-5 text-left transition hover:border-accent/60">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent">
+            <LayersIcon size={24} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-lg font-medium text-fg">3B vücudu aç</span>
+            <span className="block text-sm text-fg-muted">Organlara dokun, döndür, içine gir.</span>
+          </span>
+          <ChevronRightIcon size={18} />
+        </button>
+        <button type="button" onClick={() => go({ name: 'flow' })} className="flex w-full items-center gap-4 rounded-3xl border border-ink-600/60 bg-ink-850/60 p-5 text-left transition hover:border-ink-500">
+          <span className="min-w-0 flex-1">
+            <span className="block text-lg font-medium text-fg">Vücudun nasıl çalıştığını keşfet</span>
+            <span className="block text-sm text-fg-muted">Sindirim, dolaşım, solunum… adım adım.</span>
+          </span>
+          <ChevronRightIcon size={18} />
+        </button>
+      </div>
+
+      <section aria-labelledby="sistemler">
+        <h2 id="sistemler" className="mb-2 text-sm font-medium text-fg-muted">
+          Sistemlere göre
+        </h2>
+        <ul className="flex flex-wrap gap-1.5">
+          {SYSTEM_LINKS.map((sys) => (
+            <li key={sys.id}>
+              <button type="button" className="min-h-[44px] rounded-full border border-ink-600 px-3.5 text-sm text-fg-muted hover:text-fg" onClick={() => go({ name: 'system', id: sys.id })}>
+                {sys.nameTr}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {organs.length > 0 && (
         <section aria-labelledby="dikkat">

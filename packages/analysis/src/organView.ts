@@ -6,7 +6,7 @@ import { type KNode, type KnowledgeGraph, GRAPH } from './knowledge';
 import type { HealthModel, OrganState } from './fusion';
 import type { PatternResult } from './patterns';
 import type { Trend } from './trend';
-import { type AnatomicalLocation, type EvidenceSource, type ImageObservation, type LabObservation, type ReportFinding, SOURCE_LABEL } from './types';
+import { type AnatomicalLocation, type EvidenceSource, type ImageObservation, type LabObservation, type ReportFinding, SOURCE_LABEL, isPositiveReport } from './types';
 
 export interface ChainOverlay {
   chain: KNode[];
@@ -57,8 +57,8 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
 
   const difference: DiffItem[] = [
     ...state.labs.filter((l) => l.status === 'high' || l.status === 'low').map((l) => ({ label: `${l.name} ${l.status === 'high' ? 'yüksek' : 'düşük'}`, detail: `${l.value.toLocaleString('tr-TR')} ${l.unit}${l.refMin !== undefined || l.refMax !== undefined ? ` · referans ${l.refMin ?? '…'}–${l.refMax ?? '…'}` : ''} · ${l.date}`, source: 'LAB' as const, direction: l.status as 'high' | 'low' })),
-    ...state.reportFindings.filter((f) => !f.negated && f.status !== 'normal').map((f) => ({ label: f.status === 'uncertain' ? 'Raporda olasılık olarak yazılan' : 'Raporda dikkat çeken bulgu', detail: f.text, source: f.source, direction: f.status === 'uncertain' ? ('uncertain' as const) : ('abnormal' as const) })),
-    ...state.imageObservations.filter((o) => o.kind === 'asymmetry' || o.kind === 'heart-rate' || o.kind === 'rhythm').map((o) => ({ label: 'Görüntü analizinden (doğrulanmamış)', detail: o.text, source: 'IMAGE_ANALYSIS' as const, direction: 'uncertain' as const })),
+    ...state.reportFindings.filter(isPositiveReport).map((f) => ({ label: f.status === 'uncertain' ? 'Raporda olasılık olarak yazılan' : 'Raporda dikkat çeken bulgu', detail: f.text, source: f.source, direction: f.status === 'uncertain' ? ('uncertain' as const) : ('abnormal' as const) })),
+    ...state.imageObservations.filter((o) => o.kind === 'asymmetry' || o.kind === 'heart-rate' || o.kind === 'rhythm').map((o) => ({ label: 'Görüntü asimetrisi gözlemi (doğrulanmamış)', detail: o.text, source: 'IMAGE_ANALYSIS' as const, direction: 'uncertain' as const })),
   ];
 
   const time = state.labs.flatMap((l) => {
@@ -126,7 +126,7 @@ export function explainWhy(location: AnatomicalLocation | undefined, model: Heal
     const st = model.organs.get(organId);
     const related = [
       ...(st?.labs ?? []).map((l) => `${l.name} ${l.value.toLocaleString('tr-TR')} ${l.unit} (${STATUS_TR[l.status]})`),
-      ...(st?.reportFindings ?? []).filter((f) => !f.negated && f.status !== 'normal').map((f) => `Rapor: ${f.text}`),
+      ...(st?.reportFindings ?? []).filter(isPositiveReport).map((f) => `Rapor: ${f.text}`),
       ...(st?.patterns ?? []).map((p) => `Örüntü: ${p.title}`),
     ];
     steps.push({ title: 'Senin ilişkili verilerin', items: related.length ? related : ['Bu organla ilişkili başka verin yok.'] });

@@ -117,7 +117,7 @@ export function studiesForStructure(structure: string, all: ImagingStudy[]): Ima
     (s) =>
       (s.region && regionByKey.get(s.region)?.structure === structure) ||
       s.measures.some((m) => m.def.structure === structure) ||
-      s.findings.some((f) => f.structure === structure && f.status !== 'normal'),
+      s.findings.some((f) => f.structure === structure && (f.status === 'abnormal' || f.status === 'uncertain')),
   );
 }
 

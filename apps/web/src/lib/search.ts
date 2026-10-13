@@ -3,7 +3,7 @@
  * Pankreas › Sonuçlar · Görüntüler · Bulgular · Fizyoloji · Zaman çizelgesi bağlantıları çıkar; derin
  * özelliklere ana gezinmeyi büyütmeden ulaşılır. Sağlık verisi aranmaz (yalnızca adlar).
  */
-import { GRAPH } from '@kh/analysis';
+import { FLOWS, GRAPH } from '@kh/analysis';
 import { STRUCTURES, TESTS, normalizeText } from '@kh/catalog';
 import type { Route } from '../state/router';
 
@@ -13,7 +13,7 @@ export interface SearchLink {
 }
 
 export interface SearchHit {
-  kind: 'organ' | 'test';
+  kind: 'organ' | 'test' | 'flow';
   title: string;
   subtitle?: string;
   route: Route;
@@ -42,7 +42,8 @@ function organEntry(id: string, title: string, subtitle: string | undefined, ext
       links: [
         { label: 'Sonuçlar', route: { name: 'organ', id, view: 'benim' } },
         { label: 'Görüntüler ve bulgular', route: { name: 'organ', id, view: 'benim' } },
-        { label: 'Normalde nasıl çalışır?', route: { name: 'organ', id, view: 'normal' } },
+        { label: 'Normalde nasıl çalışır?', route: { name: 'organ', id } },
+        { label: 'İçine gir', route: { name: 'organ', id, view: 'ic' } },
         { label: 'Zaman çizelgesi', route: { name: 'timeline' } },
       ],
     }),
@@ -62,6 +63,14 @@ function buildIndex(): Entry[] {
     if (seen.has(s.id)) continue;
     out.push(organEntry(s.id, s.nameTr, s.latin, s.latin ? [s.latin] : []));
   }
+  for (const f of FLOWS)
+    out.push({
+      kind: 'flow',
+      title: f.title,
+      subtitle: `Vücut akışı · ${f.steps.length} adım`,
+      words: [f.title, ...f.steps.map((x) => x.title)].map(normalizeText),
+      build: () => ({ route: { name: 'flow', id: f.id, step: 1 }, links: [{ label: 'Benim durumuma göre', route: { name: 'flow', id: f.id, step: 1, personal: true } }] }),
+    });
   for (const t of TESTS)
     out.push({
       kind: 'test',

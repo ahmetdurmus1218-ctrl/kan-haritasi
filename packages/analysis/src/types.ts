@@ -15,6 +15,11 @@ export type EvidenceSource =
   | 'DICOM_METADATA'
   /** Radyoloji / patoloji / EKG raporunda yazan ifade. */
   | 'RADIOLOGY_REPORT'
+  /**
+   * Gerçek bir tıbbi görüntü modelinin (MedicalImageAIProvider) çıktısı. Bugün paketlenmiş böyle bir
+   * model YOK; bir sağlayıcı yapılandırılırsa bulguları bu kaynakla ("model-derived") kaydedilir.
+   */
+  | 'IMAGE_MODEL'
   /** Görüntüdeki yazının OCR ile okunması (rapor kâğıdı fotoğrafı, ekran görüntüsü). */
   | 'OCR'
   /** Onaylanmış laboratuvar sonucu. */
@@ -27,8 +32,9 @@ export type EvidenceSource =
   | 'KNOWLEDGE';
 
 export const SOURCE_LABEL: Record<EvidenceSource, string> = {
-  IMAGE_ANALYSIS: 'Görüntü analizi (cihazda)',
+  IMAGE_ANALYSIS: 'Görüntüden kural tabanlı ölçüm (cihazda; tıbbi görüntü modeli değil)',
   DICOM_METADATA: 'DICOM başlığı',
+  IMAGE_MODEL: 'Tıbbi görüntü modeli',
   RADIOLOGY_REPORT: 'Rapor',
   OCR: 'Görüntüden okunan yazı (OCR)',
   LAB: 'Laboratuvar sonucu',
@@ -182,7 +188,16 @@ export interface ImageObservation {
   cues?: Record<string, number | string | boolean>;
 }
 
-export type ReportStatus = 'abnormal' | 'uncertain' | 'normal';
+/**
+ * Rapordaki ifadenin durumu. "Kitle izlenmedi" → normal + negated (bulgu YOK). "Değerlendirilemedi" →
+ * not-assessed: ne normal ne anormaldir; o başlık hakkında bilgi yoktur.
+ */
+export type ReportStatus = 'abnormal' | 'uncertain' | 'normal' | 'not-assessed';
+
+/** Rapor cümlesi gerçekten bir bulgu (dikkat çeken ya da olasılık bildiren) mu? "İzlenmedi" ve "değerlendirilemedi" sayılmaz. */
+export function isPositiveReport(f: Pick<ReportFinding, 'status' | 'negated'>): boolean {
+  return !f.negated && (f.status === 'abnormal' || f.status === 'uncertain');
+}
 
 /** Rapordan okunan bulgu (raporun kendisi bir kaynak; sistem bunu üretmedi). */
 export interface ReportFinding {
@@ -246,6 +261,8 @@ export interface AdapterResult {
   capabilities: Capability[];
   observations: ImageObservation[];
   limitations: string[];
+  /** Görüntüde ayırt edilen kesit/kare sayısı (kolaj fotoğrafında panel sayısı). */
+  frames?: number;
   /** Kullanıcıya gösterilecek tek cümle (ör. "Bu modalite için otomatik yorum bu kurulumda yok."). */
   summary: string;
 }
@@ -269,5 +286,35 @@ export interface ImageContext {
   declaredRegion?: string;
   /** Seçilen bölgenin 3B yapısı (ör. "beyin" → "brain"). */
   declaredStructure?: string;
-  dicom?: { modality?: string; bodyPart?: string; pixelSpacing?: [number, number]; sliceThickness?: number };
+  dicom?: {
+    modality?: string;
+    bodyPart?: string;
+    pixelSpacing?: [number, number];
+    sliceThickness?: number;
+    seriesDescription?: string;
+    studyDescription?: string;
+    /** Bu seride/dosyada kaç kesit (kare) var. */
+    frames?: number;
+  };
+  /** Aynı çekime ait yüklenen dosya (DICOM kesiti ya da fotoğraf) sayısı. */
+  files?: number;
+}
+
+/**
+ * Görüntüden çıkarılan GÖZLEM (ImageObservation) ile tıbbi BULGU (MedicalFinding) ayrı varlıklardır.
+ * "Sağ-sol parlaklık farkı" bir gözlemdir; "lezyon" bir bulgudur. Bulgu yalnızca (a) gerçek bir tıbbi
+ * görüntü modelinden ya da (b) rapordan gelebilir; kural tabanlı ön kontrol asla bulgu üretmez.
+ */
+export interface MedicalFinding {
+  id: string;
+  source: 'IMAGE_MODEL' | 'RADIOLOGY_REPORT';
+  /** Bulgunun adı (ör. "Lezyon adayı"). */
+  finding: string;
+  /** Modelin kimliği ve sürümü (rapor bulgusunda yok). */
+  model?: ModelVersion;
+  confidence: Confidence;
+  localization: Localization;
+  /** Konumun anatomik karşılığı (piksel/voksel → bilgi grafiği düğümü). */
+  anatomicalStructure?: AnatomicalLocation;
+  limitations: string[];
 }

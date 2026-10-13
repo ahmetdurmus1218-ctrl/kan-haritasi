@@ -12,7 +12,8 @@ const BOX = ['#f472b6', '#fbbf24', '#38bdf8', '#a78bfa'];
 const VERDICT_TONE = {
   calm: 'border-accent/30 bg-accent/5 text-fg',
   mild: 'border-caution/40 bg-caution/[0.07] text-caution-fg',
-  strong: 'border-high/40 bg-high/[0.08] text-high',
+  // Görüntü asimetrisi bir gözlemdir, anormallik değildir: "dikkat/kırmızı" değil, belirsizlik tonu.
+  strong: 'border-caution/50 bg-caution/[0.09] text-caution-fg',
   none: 'border-ink-600 bg-ink-850/60 text-fg-muted',
 } as const;
 
@@ -33,8 +34,8 @@ function verdictOf(
   if (!regions.length)
     return {
       tone: 'calm',
-      title: `Belirgin sağ-sol farkı görülmedi (${review.compared} kesit)`,
-      text: 'Karşılaştırılan kesitlerde iki taraf birbirine benziyor. Bu, görüntünün normal olduğunu kanıtlamaz: iki tarafı eşit etkileyen ve küçük değişiklikler bu yöntemle görülmez. Kesin değerlendirme radyoloji raporundadır.',
+      title: 'Sağ-sol simetri ön kontrolünde belirgin fark görülmedi.',
+      text: `Bu sonuç görüntünün normal olduğunu göstermez (${review.compared} kesit karşılaştırıldı). İki tarafı eşit etkileyen ve küçük değişiklikler bu yöntemle görülmez; kesin değerlendirme radyoloji raporundadır.`,
     };
   const strong = regions.filter((g) => g.strength >= 3 || g.areaPct >= 3);
   const panels = [...new Set((strong.length ? strong : regions).map((g) => g.panel))];
@@ -42,12 +43,12 @@ function verdictOf(
   return strong.length
     ? {
         tone: 'strong',
-        title: `${where}: belirgin sağ-sol farkı var`,
-        text: 'Bir tarafta karşı tarafta olmayan belirgin bir parlaklık farkı işaretlendi. Bu bir tanı değildir (normal yapılar da farklı görünebilir), ama görüntüyü ve bu işareti hekimine göstermen iyi olur.',
+        title: `Görüntü asimetrisi gözlemi · ${where}`,
+        text: 'Bir tarafta karşı tarafta olmayan belirgin bir parlaklık farkı işaretlendi. Bu bir lezyon tespiti ya da tanı değildir (normal yapılar da farklı görünebilir); görüntüyü ve bu işareti hekimine gösterebilirsin.',
       }
     : {
         tone: 'mild',
-        title: `${where}: hafif sağ-sol farkı var`,
+        title: `Hafif görüntü asimetrisi gözlemi · ${where}`,
         text: 'Küçük ya da zayıf bir fark işaretlendi. Sağlıklı kişilerde de sık görülür (baş eğikliği, kesit düzeyi, sinüsler). Önemini ancak hekim değerlendirebilir.',
       };
 }
@@ -117,7 +118,7 @@ function draw(canvas: HTMLCanvasElement, source: GrayImage, r: ImageReview, heat
 }
 
 /**
- * Otomatik görüntü incelemesi kartı: kesitleri ayırır, sağ-sol farkını gösterir. Kullanıcı
+ * Görüntü geometrisi / sağ-sol simetri ön kontrolü kartı: kesitleri ayırır, sağ-sol farkını gösterir. Kullanıcı
  * isterse özeti "sonuçlarına" ekler (3B'de ilgili yapı vurgulanır). Tanı koymaz.
  */
 export function ImageReviewCard({
@@ -135,7 +136,7 @@ export function ImageReviewCard({
   /** Kesitler baş kesitine benziyorsa (bölge önerisi için). */
   onHeadLike?: () => void;
   /** İnceleme bitince özeti (karşılaştırılan ve fark bulunan kesit sayısı). */
-  onReview?: (r: { compared: number; flagged: number }) => void;
+  onReview?: (r: { compared: number; flagged: number; panels: number }) => void;
 }) {
   const vault = useUnlockedVault();
   const { bump } = useVault();
@@ -157,7 +158,7 @@ export function ImageReviewCard({
           const review = runReview(img);
           setState({ img, review });
           if (review.headLike) onHeadLike?.();
-          onReview?.({ compared: review.compared, flagged: review.flagged });
+          onReview?.({ compared: review.compared, flagged: review.flagged, panels: review.panels.length });
         })
         .catch(() => !cancelled && setState('unsupported'));
     }, 30);
@@ -193,13 +194,13 @@ export function ImageReviewCard({
   };
 
   return (
-    <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Otomatik görüntü incelemesi">
+    <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Sağ-sol simetri ön kontrolü">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="label-caps">Otomatik görüntü incelemesi · deneysel</p>
+          <p className="label-caps">Görüntü geometrisi / sağ-sol simetri ön kontrolü</p>
           <p className="mt-1 text-xs leading-relaxed text-fg-muted">
-            Görüntü cihazında incelenir: kesitler ayrılır, her kesitte orta hat bulunur ve sağ yarı sol yarının ayna görüntüsüyle karşılaştırılır. Karşı tarafa göre
-            belirgin biçimde farklı kalan alanlar işaretlenir. <strong>Tanı değildir.</strong>
+            <strong>Bu bir tıbbi görüntü tanı modeli değildir.</strong> Kesitler ayrılır, her kesitte orta hat bulunur ve sağ yarı sol yarının ayna görüntüsüyle
+            karşılaştırılır; karşı tarafa göre belirgin biçimde farklı kalan alanlar “görüntü asimetrisi gözlemi” olarak işaretlenir.
           </p>
         </div>
       </div>
@@ -213,12 +214,12 @@ export function ImageReviewCard({
           <>
             {verdict && (
               <div className={`rounded-xl border p-3 ${VERDICT_TONE[verdict.tone]}`} role="status">
-                <p className="text-[11px] font-medium uppercase tracking-wider opacity-80">Ön değerlendirme · otomatik, kesin değil</p>
+                <p className="text-[11px] font-medium uppercase tracking-wider opacity-80">Ön kontrol · kural tabanlı, kesin değil</p>
                 <p className="mt-1 text-base font-semibold leading-snug">{verdict.title}</p>
                 <p className="mt-1 text-xs leading-relaxed opacity-90">{verdict.text}</p>
               </div>
             )}
-            <figure className="overflow-hidden rounded-xl border border-ink-600/60 bg-black" aria-label={`İnceleme görüntüsü: ${review.panels.length} kesit, ${regions.length} dikkat bölgesi`}>
+            <figure className="overflow-hidden rounded-xl border border-ink-600/60 bg-black" aria-label={`Ön kontrol görüntüsü: ${review.panels.length} kesit, ${regions.length} asimetri gözlemi`}>
               <canvas ref={canvas} className="block h-auto w-full" aria-hidden="true" />
             </figure>
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-fg-muted">
@@ -238,8 +239,8 @@ export function ImageReviewCard({
               </p>
             ) : regions.length === 0 ? (
               <p className="rounded-xl border border-accent/25 bg-accent/5 p-3 text-sm text-fg-muted">
-                Karşılaştırılan kesitlerde eşiği aşan belirgin bir sağ-sol farkı bulunmadı. Bu, görüntünün normal olduğu anlamına gelmez: iki tarafı eşit etkileyen
-                değişiklikler ve küçük ayrıntılar bu yöntemle görülmez.
+                Sağ-sol simetri ön kontrolünde belirgin fark görülmedi. Bu sonuç görüntünün normal olduğunu göstermez: iki tarafı eşit etkileyen değişiklikler ve
+                küçük ayrıntılar bu yöntemle görülmez.
               </p>
             ) : (
               <ul className="space-y-1.5">
@@ -271,7 +272,7 @@ export function ImageReviewCard({
                   </>
                 ) : (
                   <button type="button" className="btn-primary px-3 py-1.5 text-xs" disabled={busy} onClick={() => void save(toStored(review, info.id, true))}>
-                    Sonuçlarıma ekle ({regions.length} dikkat bölgesi)
+                    Sonuçlarıma ekle ({regions.length} asimetri gözlemi)
                   </button>
                 )}
               </div>

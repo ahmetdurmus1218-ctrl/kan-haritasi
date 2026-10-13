@@ -49,10 +49,10 @@ export function parseSizeMm(text: string | undefined): number | undefined {
 }
 
 export function itemFromReport(f: ReportFinding): StudyItem | null {
-  if (f.negated || !f.location?.structure) return null;
+  if (f.negated || f.status === 'not-assessed' || !f.location?.structure) return null;
   const key = [f.location.structure, f.location.part ?? '-', f.location.side ?? '-'].join('|');
   const size = parseSizeMm(f.size ?? f.text);
-  return { key, label: f.text, source: f.source, status: f.status, ...(size !== undefined ? { sizeMm: size } : {}), ...(f.temporal ? { temporal: f.temporal } : {}) };
+  return { key, label: f.text, source: f.source, status: f.status as StudyItem['status'], ...(size !== undefined ? { sizeMm: size } : {}), ...(f.temporal ? { temporal: f.temporal } : {}) };
 }
 
 export function itemFromObservation(o: ImageObservation): StudyItem | null {

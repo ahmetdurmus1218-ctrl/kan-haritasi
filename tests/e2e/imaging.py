@@ -110,13 +110,14 @@ with sync_playwright() as p:
     page.wait_for_timeout(200)
     check(abs(canvas_brightness(page) - before) > 1 and page.get_by_text("WL 600 · WW 1200").count() == 0, "sağ tıkla sürükleme kontrastı değiştiriyor")
     page.screenshot(path=SHOTS / "62-mr-goruntuleyici.png")
-    # Yalnızca görüntü (rapor yok): başlıklar "uzman gerekli"; görüntüden yapılan tek şey açıkça yazılır
+    # Yalnızca görüntü (rapor yok): 8 kesitlik seri sınırlı kapsam; görüntüden yapılan tek şey açıkça yazılır
     dsys = page.get_by_role("region", name="Sistematik değerlendirme")
     dsys.wait_for(timeout=20000)
     dtext = dsys.inner_text()
-    check("Beyin MR sistematik değerlendirmesi" in dtext, "DICOM serisi → beyin MR şeması")
-    check("Uzman gerekli" in dtext, "rapor yok: başlıklar uzman değerlendirmesi gerektiriyor")
-    check("otomatik bulgu analizi yapılmıyor" in dtext, "görüntüden analiz yapılamadığı açıkça yazıyor")
+    check("Görüntü kapsamı sınırlı: 8 DICOM kesiti mevcut" in dtext and "Beyin MR sistematik değerlendirmesi" in dtext, "8 kesitlik seri: tam beyin MR değerlendirmesi izlenimi verilmiyor")
+    check("otomatik güvenilir görüntü modeli bulunmuyor" in dtext, "rapor yok: başlıklar için güvenilir görüntü modeli olmadığı yazıyor")
+    check("bulgu analizi yapılmıyor" in dtext, "görüntüden analiz yapılamadığı açıkça yazıyor")
+    check("Değerlendirilemedi:" in dtext and "Raporda belirtilmiş: 0" in dtext, "başlık durumları: görüntüden / belirsiz / değerlendirilemedi / raporda")
     check(dsys.get_by_text("Dikkat", exact=True).count() == 0, "rapor yokken hiçbir başlık 'dikkat' gösterilmiyor")
     page.get_by_role("button", name="Vücutta göster · Beyin / kafa").click()
     page.wait_for_timeout(500)
@@ -161,7 +162,7 @@ with sync_playwright() as p:
     ftext = findings.inner_text()
     check("Frontal lob (iki taraf) · Hiperintens / hipointens" in ftext, "bulgu: iki taraflı frontal lob, hiperintens")
     check("Sağ paranazal sinüsler" in ftext, "bulgu: sağ maksiller sinüs")
-    check("olağan ifadeyi göster" in ftext, "olağan ifadeler ayrı (difüzyon, ventriküller)")
+    check("olağan, “izlenmedi” ya da “değerlendirilemedi” ifadesini göster" in ftext, "olağan / izlenmedi ifadeler ayrı (difüzyon, ventriküller)")
     findings.get_by_role("button", name="Normal ile karşılaştır").first.click()
     check(findings.get_by_text("Normalde", exact=True).count() >= 1 and findings.get_by_text("Raporunda", exact=True).count() >= 1, "normal ile karşılaştırma açılıyor")
     page.screenshot(path=SHOTS / "75-rapor-bulgulari.png", full_page=True)
@@ -344,7 +345,7 @@ with sync_playwright() as p:
     kolaj = {"name": "IMG_3002.jpg", "mimeType": "image/jpeg", "buffer": (IMG / "mr-kolaj-foto.jpg").read_bytes()}
     page.set_input_files("input[type=file][multiple]", [kolaj])
     page.get_by_role("button", name="Aç ve oku").click()
-    card = page.get_by_role("region", name="Otomatik görüntü incelemesi")
+    card = page.get_by_role("region", name="Sağ-sol simetri ön kontrolü")
     card.get_by_text("kesit bulundu", exact=False).wait_for(timeout=30000)
     text = card.inner_text()
     check("3 kesit bulundu · 2 tanesinde" in text, "kolaj 3 kesite ayrıldı, 2'si karşılaştırıldı (sagital hariç)")
@@ -352,8 +353,9 @@ with sync_playwright() as p:
         "Kesit 2 · görüntünün sol üst kısmı · karşı tarafa göre daha parlak" in text and "Kesit 1 ·" not in text and "Kesit 3 ·" not in text,
         "tek taraflı odak doğru kesitte ve yarıda",
     )
-    check("Tanı değildir" in text, "inceleme tanı olmadığını söylüyor")
-    check("Kesit 2: belirgin sağ-sol farkı var" in text, "ön değerlendirme satırı farkı ve kesiti söylüyor")
+    check("tıbbi görüntü tanı modeli değildir" in text, "ön kontrol tıbbi model olmadığını söylüyor")
+    check("Görüntü asimetrisi gözlemi · Kesit 2" in text, "ön kontrol satırı gözlemi ve kesiti söylüyor (lezyon demiyor)")
+    check("lezyon" not in text.lower().replace("lezyon tespiti ya da tanı değildir", ""), "asimetri lezyon diye yorumlanmıyor")
     # Yazısız görüntüde OCR anlamsız harf üretir: rapor diye kaydedilmemeli
     if page.get_by_role("button", name="Rapor metnini oku").count():
         page.get_by_role("button", name="Rapor metnini oku").click()
@@ -366,14 +368,14 @@ with sync_playwright() as p:
     page.get_by_text("Kesitlerin şeklinden önerilen (kesin değil):").wait_for()
     page.get_by_role("button", name="Uygula ve vücutta göster").click()
     page.wait_for_url("**#/vucut/yapi/brain", timeout=30000)
-    page.get_by_text("Görüntü incelemesi (1 dikkat bölgesi)", exact=False).first.wait_for(timeout=120000)
+    page.get_by_text("Görüntü ön kontrolü (1 asimetri gözlemi)", exact=False).first.wait_for(timeout=120000)
     mine = page.get_by_role("button", name="Sonucuma göre", exact=False).first
     check(mine.is_enabled() and "görüntünle" in mine.inner_text(), "beyin: Sonucuma göre görüntülemeye bağlı")
     page.screenshot(path=SHOTS / "74-beyin-inceleme-vurgusu.png")
     mine.click()
     page.wait_for_url("**#/belge/**", timeout=20000)
     page.get_by_text("Sonuçlarına eklendi", exact=False).wait_for(timeout=30000)
-    check(page.get_by_role("region", name="Otomatik görüntü incelemesi").count() == 1, "Sonucuma göre → incelemesi kaydedilen görüntü açıldı")
+    check(page.get_by_role("region", name="Sağ-sol simetri ön kontrolü").count() == 1, "Sonucuma göre → ön kontrolü kaydedilen görüntü açıldı")
 
     # --- Otomatik tür: ZIP içindeki DICOM serisi (aynı kesitler zaten yüklü → çift kayıt sayılır)
     page.goto(URL + "#/belgeler")

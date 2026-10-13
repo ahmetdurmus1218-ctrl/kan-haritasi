@@ -6,7 +6,8 @@ import { useState } from 'react';
 import { type AnatomicalLocation, type Confidence, type EvidenceSource, GRAPH, type HealthModel, explainWhy } from '@kh/analysis';
 
 const SOURCE_STYLE: Record<EvidenceSource, { label: string; cls: string }> = {
-  IMAGE_ANALYSIS: { label: 'GÖRÜNTÜ ANALİZİ', cls: 'border-[#a78bfa]/50 bg-[#a78bfa]/10 text-[#a78bfa]' },
+  IMAGE_ANALYSIS: { label: 'GÖRÜNTÜ · KURAL TABANLI', cls: 'border-[#a78bfa]/50 bg-[#a78bfa]/10 text-[#a78bfa]' },
+  IMAGE_MODEL: { label: 'TIBBİ GÖRÜNTÜ MODELİ', cls: 'border-[#a78bfa]/60 bg-[#a78bfa]/15 text-[#a78bfa]' },
   DICOM_METADATA: { label: 'DICOM BAŞLIĞI', cls: 'border-ink-500 bg-ink-800 text-fg-muted' },
   RADIOLOGY_REPORT: { label: 'RAPOR', cls: 'border-low/40 bg-low/10 text-low' },
   OCR: { label: 'RAPOR (OCR)', cls: 'border-low/40 bg-low/10 text-low' },

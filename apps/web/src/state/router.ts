@@ -22,11 +22,19 @@ export type Route =
   | { name: 'about' }
   /** Vücut merkezli ana ekran: organlar, bulgular, zaman. */
   | { name: 'mybody' }
-  /** Organ / bölge / doku sayfası (bilgi grafiği düğümü, ör. "pancreas", "brain.frontal"). view: normal | benim | fark */
-  | { name: 'organ'; id: string; view?: OrganViewMode };
+  /**
+   * Organ sayfası (bilgi grafiği düğümü, ör. "pancreas", "small-intestine"). view yoksa genel bakış
+   * (Ne? Nasıl çalışır? Bende ne var?). benim: kişisel ayrıntı; ic: organın içi (adım adım);
+   * derin: doku → hücre → süreç → molekül (trail: organdan itibaren seçilen düğümler).
+   */
+  | { name: 'organ'; id: string; view?: OrganViewMode; trail?: string[] }
+  /** Vücut akışları: liste (#/akis) ya da bir akışın adımı; personal: "Benim durumuma göre göster". */
+  | { name: 'flow'; id?: string; step?: number; personal?: boolean }
+  /** Sistem sayfası: organları ve akışları. */
+  | { name: 'system'; id: string };
 
-export type OrganViewMode = 'normal' | 'benim' | 'fark';
-const VIEWS: readonly string[] = ['normal', 'benim', 'fark'];
+export type OrganViewMode = 'normal' | 'benim' | 'fark' | 'ic' | 'derin';
+const VIEWS: readonly string[] = ['normal', 'benim', 'fark', 'ic', 'derin'];
 /** Bilgi grafiği düğüm kimliği: küçük harf, rakam, tire ve nokta. */
 const NODE = /^[a-z0-9][a-z0-9.-]{0,59}$/;
 
@@ -37,7 +45,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const KEY = /^[a-z0-9-]{1,40}$/;
 
 export function parseHash(hash: string): Route {
-  const [, section, arg, arg2, arg3] = hash.replace(/^#/, '').split('/');
+  const [, section, arg, arg2, arg3, ...rest] = hash.replace(/^#/, '').split('/');
   switch (section) {
     case '':
     case 'ana':
@@ -71,9 +79,21 @@ export function parseHash(hash: string): Route {
       return { name: 'about' };
     case 'vucudum':
       return { name: 'mybody' };
-    case 'organ':
+    case 'organ': {
       if (!arg || !NODE.test(arg)) return { name: 'mybody' };
+      if (arg2 === 'derin') {
+        const trail = [arg3, ...rest].filter((x): x is string => Boolean(x));
+        return trail.length <= 8 && trail.every((t) => NODE.test(t)) ? { name: 'organ', id: arg, view: 'derin', trail } : { name: 'organ', id: arg, view: 'derin', trail: [] };
+      }
       return arg2 && VIEWS.includes(arg2) ? { name: 'organ', id: arg, view: arg2 as OrganViewMode } : { name: 'organ', id: arg };
+    }
+    case 'akis': {
+      if (!arg || !KEY.test(arg)) return { name: 'flow' };
+      const n = arg2 && /^\d{1,2}$/.test(arg2) ? Number(arg2) : 1;
+      return { name: 'flow', id: arg, step: Math.max(1, n), ...(arg3 === 'benim' ? { personal: true } : {}) };
+    }
+    case 'sistem':
+      return arg && KEY.test(arg) ? { name: 'system', id: arg } : { name: 'mybody' };
     default:
       return { name: 'home' };
   }
@@ -108,7 +128,12 @@ export function hrefFor(route: Route): string {
     case 'mybody':
       return '#/vucudum';
     case 'organ':
+      if (route.view === 'derin') return `#/organ/${route.id}/derin${(route.trail ?? []).map((t) => `/${t}`).join('')}`;
       return `#/organ/${route.id}${route.view ? `/${route.view}` : ''}`;
+    case 'flow':
+      return route.id ? `#/akis/${route.id}/${route.step ?? 1}${route.personal ? '/benim' : ''}` : '#/akis';
+    case 'system':
+      return `#/sistem/${route.id}`;
     default:
       return '#/belgeler';
   }

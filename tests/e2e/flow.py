@@ -95,6 +95,32 @@ with sync_playwright() as p:
     check(page.get_by_text("Genel durum").count() == 1, "kişisel genel değerlendirme")
     check(page.get_by_text("Karaciğer hücre enzimlerinde artış").count() == 1, "karaciğer paterni (ALT yüksek)")
     check(page.get_by_text("Birden fazla lipid değeri istenmeyen yönde").count() == 1, "lipid paterni")
+    # Kabul 90/91: anormal sonuçta test adı ve değer aynı tonu taşır; normal sonuç nötr
+    def row_classes(name):
+        row = page.locator("li", has=page.locator("[data-part=name]", has_text=name)).first
+        return row.locator("[data-part=name]").get_attribute("class") or "", row.locator("[data-part=value]").get_attribute("class") or ""
+    n, v = row_classes("LDL kolesterol")
+    check(("text-high" in n or "text-caution-fg" in n) and ("text-high" in v or "text-caution-fg" in v), f"90: LDL yüksek → ad ve değer yüksek tonunda ({n} | {v})")
+    n, v = row_classes("Ferritin")
+    check("text-low" in n and "text-low" in v, f"90: ferritin düşük → ad ve değer düşük (mavi) tonunda ({n})")
+    n, v = row_classes("Glukoz")
+    check(not any(t in n for t in ("text-high", "text-low", "text-caution-fg", "text-danger")), f"91: normal glukoz nötr ({n})")
+    page.goto(URL + "#/organ/pancreas")
+    page.get_by_text("Normalde ne işe yarar?").first.wait_for()
+    tg = page.locator("[data-testid=lab-triglyceride]").first
+    parts = [tg.locator(f"[data-part={x}]").get_attribute("class") or "" for x in ("name", "value", "status")]
+    tone = tg.get_attribute("data-tone")
+    check(tone in ("follow", "attention") and all(("text-caution-fg" in c or "text-high" in c) for c in parts), f"90: pankreas sayfasında trigliserid adı/değeri/durumu aynı tonda ({tone})")
+    check("▲ Yüksek" in tg.inner_text(), "90: ▲ Yüksek etiketi")
+    gl = page.locator("[data-testid^=lab-glucose]").first
+    check(gl.count() == 0 or gl.get_attribute("data-tone") == "normal", "91: normal glukoz pankreas sayfasında nötr")
+    check("referans dışında" in page.locator("[data-testid=organ-status]").inner_text(), "28: organ özeti 'ilişkili N sonuç referans dışında' (organ hasta denmiyor)")
+    page.get_by_role("button", name="Benim durumuma göre göster").click()
+    page.get_by_text("Benim verilerimde").wait_for()
+    check(page.get_by_text("“sorunlu” sayılmaz", exact=False).count() + page.get_by_text("olası ilişki", exact=False).count() >= 1, "46/84: fizyoloji akışında kişisel katman 'olası ilişki'")
+    page.screenshot(path=SHOTS / "24b-pankreas-renkler.png", full_page=True)
+    page.goto(URL + "#/sonuclar")
+    page.get_by_text("Tahlil sonuçların").wait_for()
     page.locator("li button:has-text('LDL kolesterol')").first.click()
     page.get_by_text("Bu test neyi ölçer?").wait_for()
     page.screenshot(path=SHOTS / "25-ldl-detay.png", full_page=True)

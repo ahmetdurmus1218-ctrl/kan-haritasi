@@ -1,5 +1,5 @@
 import { type Vault, randomId } from '@kh/vault';
-import type { AnalysisStatus, ImageObservation, Modality } from '@kh/analysis';
+import type { AnalysisStatus, ImageObservation, Modality, SequenceInfo, StudyCoverage } from '@kh/analysis';
 
 /** Kullanıcının görüntü üzerinde yaptığı ölçüm (cetvel, yoğunluk, oran). */
 export interface ManualMeasurement {
@@ -15,7 +15,7 @@ export interface ManualMeasurement {
 }
 
 /**
- * Otomatik görüntü incelemesinin (sağ-sol karşılaştırması) kaydedilen özeti. Yalnızca kullanıcı
+ * Sağ-sol simetri ön kontrolünün kaydedilen özeti. Yalnızca kullanıcı
  * "sonuçlarıma ekle" dediğinde `confirmed` olur ve 3B vurgulara katılır. Tanı değildir.
  */
 export interface StoredReview {
@@ -46,6 +46,10 @@ export interface StoredAnalysis {
   summary: string;
   observations: ImageObservation[];
   qualityIssues: string[];
+  /** İnceleme kapsamı ve sekans (eski kayıtlarda yok). */
+  coverage?: StudyCoverage;
+  sequence?: SequenceInfo;
+  kind?: 'precheck' | 'model';
 }
 
 function isAnalysis(v: unknown): v is StoredAnalysis {
