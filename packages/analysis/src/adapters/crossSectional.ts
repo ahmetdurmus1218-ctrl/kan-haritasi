@@ -56,7 +56,7 @@ export const crossSectionalAdapter: ImageAnalysisAdapter = {
             'Bu bir tıbbi bulgu değil, görüntü asimetrisi gözlemidir: yalnızca "bu iki taraf farklı görünüyor" demektir; farkın nedeni (normal varyant, eğiklik, lezyon) bilinmez.',
             'Sağlıklı kişilerde de hafif asimetri olur; fotoğraf açısı ve yansıma yanlış işarete yol açabilir.',
           ],
-          cues: { strength: g.strength, areaPct: g.areaPct, brighter: g.brighter, panelSymmetry: p.symmetry, angle: r.angle },
+          cues: { strength: g.strength, areaPct: g.areaPct, brighter: g.brighter, panelSymmetry: p.symmetry, angle: r.angle, panel: pi + 1, side: g.side, vertical: g.vertical, headLike: r.headLike },
         });
       }
     });
@@ -74,6 +74,7 @@ export const crossSectionalAdapter: ImageAnalysisAdapter = {
       }),
       observations,
       frames: r.panels.length,
+      extent: { panels: r.panels.length, compared: r.compared, headLike: r.headLike },
       limitations: [
         'Bu bir tıbbi görüntü tanı modeli değildir. Lezyon tespit eden, organ bölen ya da sekans tanıyan bir model bu kurulumda YOK; görüntüden yalnızca sağ-sol simetri ön kontrolü yapılır.',
         'İki tarafı eşit etkileyen ve çok küçük değişiklikler bu yöntemle görülmez (yanlış negatif).',

@@ -49,6 +49,12 @@ export interface DicomInfo {
   instanceNumber?: number;
   sliceLocation?: number;
   imagePosition?: [number, number, number];
+  /** (0020,0037) satır ve sütun yön kosinüsleri. */
+  imageOrientation?: [number, number, number, number, number, number];
+  /** (0008,0008) ör. ORIGINAL\PRIMARY\AXIAL ya da DERIVED\SECONDARY. */
+  imageType?: string;
+  /** (0028,0301) Burned In Annotation: görüntünün içine yazı yakılmış mı? */
+  burnedInAnnotation?: 'YES' | 'NO';
   rows: number;
   columns: number;
   frames: number;
@@ -96,6 +102,7 @@ const T = {
   mediaSop: tag(0x0002, 0x0002),
   transferSyntax: tag(0x0002, 0x0010),
   charset: tag(0x0008, 0x0005),
+  imageType: tag(0x0008, 0x0008),
   sopClass: tag(0x0008, 0x0016),
   studyDate: tag(0x0008, 0x0020),
   seriesDate: tag(0x0008, 0x0021),
@@ -111,6 +118,7 @@ const T = {
   seriesNumber: tag(0x0020, 0x0011),
   instanceNumber: tag(0x0020, 0x0013),
   imagePosition: tag(0x0020, 0x0032),
+  imageOrientation: tag(0x0020, 0x0037),
   sliceLocation: tag(0x0020, 0x1041),
   samplesPerPixel: tag(0x0028, 0x0002),
   photometric: tag(0x0028, 0x0004),
@@ -126,6 +134,7 @@ const T = {
   windowWidth: tag(0x0028, 0x1051),
   rescaleIntercept: tag(0x0028, 0x1052),
   rescaleSlope: tag(0x0028, 0x1053),
+  burnedIn: tag(0x0028, 0x0301),
   pixelData: tag(0x7fe0, 0x0010),
   item: tag(0xfffe, 0xe000),
   itemEnd: tag(0xfffe, 0xe00d),
@@ -328,6 +337,8 @@ export function parseDicom(bytes: Uint8Array): DicomInfo {
   const spacing = numbers(strings.get(T.pixelSpacing));
   const position = numbers(strings.get(T.imagePosition));
   const slope = firstNumber(strings.get(T.rescaleSlope));
+  const orientation = numbers(strings.get(T.imageOrientation));
+  const burned = str(T.burnedIn)?.trim().toUpperCase();
 
   return {
     transferSyntax,
@@ -345,6 +356,9 @@ export function parseDicom(bytes: Uint8Array): DicomInfo {
     instanceNumber: firstNumber(strings.get(T.instanceNumber)),
     sliceLocation: firstNumber(strings.get(T.sliceLocation)),
     imagePosition: position.length === 3 ? [position[0]!, position[1]!, position[2]!] : undefined,
+    imageOrientation: orientation.length === 6 ? (orientation as [number, number, number, number, number, number]) : undefined,
+    imageType: str(T.imageType)?.toUpperCase(),
+    burnedInAnnotation: burned === 'YES' || burned === 'NO' ? burned : undefined,
     rows,
     columns,
     frames: Math.max(1, Math.floor(firstNumber(strings.get(T.frames)) ?? 1)),
@@ -767,6 +781,30 @@ export function summarizeDicom(info: DicomInfo): DicomSummary {
     frames: info.frames,
     decodable: canDecode(info),
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Görüntüye yakılmış yazı (burned-in annotation)
+
+export const SECONDARY_CAPTURE_SOP = '1.2.840.10008.5.1.4.1.1.7';
+
+export interface BurnedInRisk {
+  /** yes: başlık "var" diyor · possible: ikincil yakalama / ekran görüntüsü · no: başlık "yok" diyor · unknown: bilgi yok */
+  level: 'yes' | 'possible' | 'no' | 'unknown';
+  reason: string;
+}
+
+/**
+ * Görüntünün piksellerine yazı (ad, tarih, kurum) yakılmış olabilir mi? Başlık temizliği bunu
+ * SİLEMEZ. (0028,0301) "YES" ise kesin; ikincil yakalama (SC) ya da DERIVED\SECONDARY görüntülerde
+ * olasıdır (ekran görüntüsü, rapor sayfası). Bu bilgiye göre arayüz ve dışa aktarma uyarır.
+ */
+export function burnedInRisk(info: Pick<DicomInfo, 'burnedInAnnotation' | 'sopClassUid' | 'imageType'>): BurnedInRisk {
+  if (info.burnedInAnnotation === 'YES') return { level: 'yes', reason: 'DICOM başlığı (0028,0301) görüntünün içine yazı yakıldığını bildiriyor; bu yazılar başlık temizliğiyle silinemez.' };
+  const secondary = info.sopClassUid?.startsWith(SECONDARY_CAPTURE_SOP) || /\bSECONDARY\b/.test(info.imageType ?? '');
+  if (secondary) return { level: 'possible', reason: 'İkincil yakalama (ekran görüntüsü / türetilmiş görüntü): görüntünün içinde hasta adı, tarih ya da kurum yazısı olabilir.' };
+  if (info.burnedInAnnotation === 'NO') return { level: 'no', reason: 'DICOM başlığı (0028,0301) görüntüye yazı yakılmadığını bildiriyor.' };
+  return { level: 'unknown', reason: 'Başlıkta bilgi yok; görüntünün köşelerinde yazı olup olmadığını kendin kontrol et.' };
 }
 
 // ---------------------------------------------------------------------------------------------

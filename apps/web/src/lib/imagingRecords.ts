@@ -1,5 +1,5 @@
 import { type Vault, randomId } from '@kh/vault';
-import type { AnalysisStatus, ImageObservation, Modality, SequenceInfo, StudyCoverage } from '@kh/analysis';
+import type { AnalysisStatus, ImageObservation, MedicalFinding, Modality, SequenceInfo, StudyCoverage } from '@kh/analysis';
 
 /** Kullanıcının görüntü üzerinde yaptığı ölçüm (cetvel, yoğunluk, oran). */
 export interface ManualMeasurement {
@@ -50,6 +50,9 @@ export interface StoredAnalysis {
   coverage?: StudyCoverage;
   sequence?: SequenceInfo;
   kind?: 'precheck' | 'model';
+  /** Yerel tıbbi modelin bulguları ve kimliği (model çalıştıysa). */
+  modelFindings?: MedicalFinding[];
+  modelInfo?: { id: string; name: string; version: string; sha256?: string; license?: string; at: string };
 }
 
 function isAnalysis(v: unknown): v is StoredAnalysis {

@@ -1,7 +1,7 @@
 /**
  * Tek veri ekleme akışı: dosyayı seç / fotoğraf çek / sürükle → sistem türünü kendisi algılar
  * (DICOM başlığı, dosya adı, görüntünün kendisi) → kasaya şifreli kaydedilir → "Aç ve oku".
- * Ana sayfa (boş durum), "+ Veri ekle" ve Verilerim aynı bileşeni kullanır.
+ * Özet (boş durum), "+ Veri ekle" ve Belgelerim aynı bileşeni kullanır.
  */
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react';
 import { ACCEPT_ATTRIBUTE, DEFAULT_LIMITS, type ZipItem, isDicom, isZip, openZip, sanitizeFileName } from '@kh/ingest';

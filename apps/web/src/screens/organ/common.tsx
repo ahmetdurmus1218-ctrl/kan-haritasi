@@ -194,7 +194,13 @@ export function organStatus(v: OrganView): { label: string; sentence: string; to
   if (!v.personal.hasData) return { label: 'Veri yok', sentence: 'Bu organla ilişkili verin yok.', tone: 'not-assessed' };
   const offText = off.length ? `Bu organla ilişkili ${off.length} sonuç referans dışında.` : '';
   if (off.some((l) => l.critical)) return { label: 'İlişkili anormallik var', sentence: `${offText} Biri kritik düzeyde; doktor değerlendirmesi gerekir.`, tone: 'urgent' };
-  if (strong.length || reportAbn) return { label: 'İlişkili anormallik var', sentence: [offText, reportAbn ? `Raporda ${reportAbn} dikkat çeken bulgu yazıyor.` : ''].filter(Boolean).join(' '), tone: 'attention' };
+  const modelN = v.personal.modelFindings.length;
+  if (strong.length || reportAbn || modelN)
+    return {
+      label: strong.length || reportAbn ? 'İlişkili anormallik var' : 'Model bulgusu var',
+      sentence: [offText, reportAbn ? `Raporda ${reportAbn} dikkat çeken bulgu yazıyor.` : '', modelN ? `Yerel tıbbi AI modeli ${modelN} bulgu bildirdi (tanı değildir; hekim değerlendirmesi gerekir).` : ''].filter(Boolean).join(' '),
+      tone: 'attention',
+    };
   if (off.length) return { label: 'Takipte', sentence: `${offText} Sapma hafif (takip).`, tone: 'follow' };
   if (uncertain) return { label: 'Belirsiz', sentence: `${uncertain} görüntü/rapor gözlemi var; bir bulgu ya da anormallik olduğu doğrulanmadı.`, tone: 'uncertain' };
   return { label: 'Veri mevcut', sentence: 'Bu verilerde bu organla ilişkili belirgin bir anormallik saptanmadı.', tone: 'normal' };

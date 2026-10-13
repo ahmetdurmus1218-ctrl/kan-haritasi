@@ -16,7 +16,7 @@ export function OrganSheet({ organ, model, onClose }: { organ: string | null; mo
   const node = organ ? GRAPH.node(organ) : undefined;
   const summary = node?.summary ?? (organ ? structureById.get(organ)?.blurb : undefined);
   const off = st?.labs.filter((l) => labTone(l) !== 'normal') ?? [];
-  const imaging = (st?.imageObservations.filter((o) => o.kind === 'asymmetry').length ?? 0) + (st?.reportFindings.filter(isPositiveReport).length ?? 0);
+  const imaging = (st?.imageObservations.filter((o) => o.kind === 'asymmetry').length ?? 0) + (st?.reportFindings.filter(isPositiveReport).length ?? 0) + (st?.modelFindings.length ?? 0);
   const goTo = (r: Parameters<typeof go>[0]) => {
     onClose();
     go(r);

@@ -1,0 +1,48 @@
+{
+  "schema": "kh-model-manifest/1",
+  "id": "kh-test-mock-detector",
+  "name": "TEST — sahte bulgu modeli (tıbbi değil)",
+  "version": "0.0.1-test",
+  "modalities": [
+    "MRI",
+    "CT"
+  ],
+  "task": "detection",
+  "format": "onnx",
+  "file": "model.onnx",
+  "sha256": "57dbc4462314f2ec3bc804fc7fd6a553658e831039c22255c45bef33c7083b2d",
+  "license": "Test verisi (CC0)",
+  "source": "tests/fixtures/models/make_mock_model.py",
+  "intendedUse": "Yalnızca yazılım testi. Tıbbi kullanım için DEĞİLDİR; çıktısı sabit bir kutudur.",
+  "input": {
+    "name": "image",
+    "layout": "NCHW",
+    "channels": 1,
+    "width": 64,
+    "height": 64,
+    "scale": 255,
+    "mean": [
+      0
+    ],
+    "std": [
+      1
+    ]
+  },
+  "output": {
+    "boxes": "boxes",
+    "scores": "scores",
+    "labels": "labels",
+    "boxFormat": "xywh-normalized"
+  },
+  "labels": [
+    {
+      "id": 0,
+      "finding": "Test bulgusu (sahte model)",
+      "structure": "brain.frontal"
+    }
+  ],
+  "scoreThreshold": 0.5,
+  "limitations": [
+    "Sahte test modelidir; hiçbir tıbbi anlamı yoktur."
+  ]
+}

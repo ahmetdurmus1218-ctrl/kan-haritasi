@@ -9,13 +9,16 @@
  * tabanlı sağ-sol simetri ön kontrolü (adapters/crossSectional) bir sağlayıcı DEĞİLDİR ve buradan
  * bulgu üretmez.
  *
- * Gerçek bir model eklemek: `MedicalImageAIProvider`'ı uygulayan bir sınıf yazıp
- * `MedicalImageProviderRegistry.register()` ile kaydetmek. `runMedicalImageModel` sağlayıcının
+ * Gerçek bir model eklemek: kullanıcı cihazına ONNX modeli + manifest kurar (localModel.ts,
+ * `LocalModelProvider`) ve `MedicalImageProviderRegistry.register()` ile kaydedilir. `runMedicalImageModel` sağlayıcının
  * bulgularını kaynağı "IMAGE_MODEL" (model-derived) olarak kaydeder, konumunu anatomiye bağlar.
- * Veri cihaz dışına gidecekse (`sendsDataOffDevice`) arayüz önce kullanıcı onayı ister.
+ * Veriyi cihaz dışına gönderen (`sendsDataOffDevice`) sağlayıcı kaydedilmez ve çalıştırılmaz — onayla bile.
  */
 import { GRAPH } from './knowledge';
 import type { AnatomicalLocation, Confidence, ImageContext, Localization, MedicalFinding, Modality, ModelVersion, RasterImage } from './types';
+
+/** Modelin dosya düzeyindeki kimliği (yerel modellerde manifestten). */
+export type ModelIdentity = ModelVersion & { sha256?: string; license?: string };
 
 /** Sağlayıcının bir çıktısı: her sonuç kaynağını, modelini, güvenini ve sınırlarını taşır. */
 export type ProviderOutput<T> =
@@ -71,7 +74,7 @@ export interface MedicalImageAIProvider {
   id: string;
   label: string;
   modalities: readonly Modality[];
-  /** Veri cihaz dışına gidiyor mu? true ise arayüz önce onay ister. */
+  /** Veri cihaz dışına gidiyor mu? Her zaman false olmalı; true olan sağlayıcı reddedilir. */
   sendsDataOffDevice: boolean;
   /** Yapılandırılmış ve kullanılabilir mi? */
   available(): boolean;
@@ -168,54 +171,20 @@ export type PathologyAnalysisProvider = MedicalImageAIProvider;
 export type ECGAnalysisProvider = MedicalImageAIProvider;
 export type EndoscopyAnalysisProvider = MedicalImageAIProvider;
 
-/**
- * Sağlayıcı yapılandırması. Anahtarlar bir sunucu/yerel servis tarafında okunur; API anahtarı
- * ön yüze GÖMÜLMEZ: `readMedicalAIConfig` yalnızca anahtarın tanımlı olup olmadığını döndürür.
- */
-export const MEDICAL_AI_CONFIG_KEYS = ['MEDICAL_AI_PROVIDER', 'MEDICAL_AI_BASE_URL', 'MEDICAL_AI_API_KEY', 'MRI_MODEL', 'CT_MODEL', 'XRAY_MODEL', 'PATHOLOGY_MODEL'] as const;
-
-export interface MedicalAIConfig {
-  provider?: string;
-  baseUrl?: string;
-  /** Anahtarın kendisi değil; yalnızca tanımlı olup olmadığı. */
-  hasApiKey: boolean;
-  models: Partial<Record<ProviderGroup, string>>;
-}
-
-export function readMedicalAIConfig(env: Readonly<Record<string, string | undefined>>): MedicalAIConfig {
-  const v = (k: (typeof MEDICAL_AI_CONFIG_KEYS)[number]) => env[k]?.trim() || undefined;
-  const models: MedicalAIConfig['models'] = {};
-  if (v('MRI_MODEL')) models.mri = v('MRI_MODEL');
-  if (v('CT_MODEL')) models.ct = v('CT_MODEL');
-  if (v('XRAY_MODEL')) models.xray = v('XRAY_MODEL');
-  if (v('PATHOLOGY_MODEL')) models.pathology = v('PATHOLOGY_MODEL');
-  return { provider: v('MEDICAL_AI_PROVIDER'), baseUrl: v('MEDICAL_AI_BASE_URL'), hasApiKey: Boolean(v('MEDICAL_AI_API_KEY')), models };
-}
-
-/** Bir sağlayıcı kimliği için istemci üreten fabrika (gerçek bir entegrasyon eklendiğinde kaydedilir). */
-export type ProviderFactory = (config: MedicalAIConfig, group: ProviderGroup) => MedicalImageAIProvider;
-
 export class MedicalImageProviderRegistry {
   private readonly providers: MedicalImageAIProvider[] = [];
 
-  constructor(
-    private readonly config: MedicalAIConfig = { hasApiKey: false, models: {} },
-    private readonly factories: Readonly<Record<string, ProviderFactory>> = {},
-  ) {
-    for (const g of Object.keys(GROUP_MODALITIES) as ProviderGroup[]) this.providers.push(this.build(g));
+  /** Varsayılan: her modalite grubu için "model yok" (uzak sağlayıcı, API anahtarı, yapılandırma yok). */
+  constructor() {
+    for (const g of Object.keys(GROUP_MODALITIES) as ProviderGroup[]) this.providers.push(new UnavailableImageProvider(`none-${g}`, g));
   }
 
-  private build(group: ProviderGroup): MedicalImageAIProvider {
-    const { provider } = this.config;
-    if (!provider) return new UnavailableImageProvider(`none-${group}`, group);
-    const factory = this.factories[provider];
-    if (!factory) return new UnavailableImageProvider(`none-${group}`, group, `“${provider}” sağlayıcısı için bu sürümde istemci yok; tıbbi görüntü modeli çalıştırılmadı.`);
-    if (!this.config.models[group]) return new UnavailableImageProvider(`none-${group}`, group, `${GROUP_LABEL[group]} için model tanımlı değil.`);
-    return factory(this.config, group);
-  }
-
-  /** Gerçek bir sağlayıcıyı kaydeder; aynı modaliteyi destekleyen önceki kaydın yerine geçer. */
+  /**
+   * Cihazda çalışan bir sağlayıcıyı kaydeder; aynı modaliteyi destekleyen önceki kaydın yerine geçer.
+   * Veriyi cihaz dışına gönderen sağlayıcı KAYDEDİLMEZ (güvenlik gereksinimi: uzak tıbbi AI yok).
+   */
   register(provider: MedicalImageAIProvider): void {
+    if (provider.sendsDataOffDevice) throw new Error('Uzak (cihaz dışına veri gönderen) sağlayıcılar desteklenmiyor.');
     for (let i = this.providers.length - 1; i >= 0; i--) if (this.providers[i]!.modalities.some((m) => provider.modalities.includes(m))) this.providers.splice(i, 1);
     this.providers.push(provider);
   }
@@ -235,7 +204,7 @@ export const defaultMedicalImageProviders = (): MedicalImageProviderRegistry => 
 let fseq = 0;
 
 /** Modelin verdiği yapı adını bilgi grafiğindeki yola bağlar (yoksa 3B yapı kimliği olarak). */
-function anatomyFor(structure: string | undefined, localization: Localization, confidence: Confidence): AnatomicalLocation | undefined {
+export function anatomyFor(structure: string | undefined, localization: Localization, confidence: Confidence): AnatomicalLocation | undefined {
   if (!structure) return undefined;
   const node = GRAPH.node(structure) ?? GRAPH.nodeForStructure(structure);
   const path = node ? GRAPH.pathTo(node.id).map((n) => n.id) : [structure];
@@ -243,9 +212,9 @@ function anatomyFor(structure: string | undefined, localization: Localization, c
     path,
     structure: node?.structure ?? structure,
     ...(node?.part ? { part: node.part } : {}),
-    basis: localization.kind === 'pixel' ? 'pixel-mapped' : 'region',
+    basis: localization.kind === 'pixel' || localization.kind === 'point' ? 'pixel-mapped' : 'region',
     confidence,
-    note: localization.kind === 'pixel' ? 'Konum, modelin görüntü üzerindeki koordinatından eşleştirildi.' : 'Model konum vermedi; yalnızca yapı adı.',
+    note: localization.kind === 'pixel' || localization.kind === 'point' ? 'Konum, modelin görüntü üzerindeki koordinatından eşleştirildi.' : 'Model konum vermedi; yalnızca yapı adı.',
   };
 }
 
@@ -256,13 +225,18 @@ export type ModelRun = { status: 'ran'; provider: string; model: ModelVersion; f
  * hiçbir bulgu üretmez ve nedenini döndürür. Varsa: bulgu → konum → anatomi zinciri kurulur ve her
  * bulgu "IMAGE_MODEL" (model-derived) kaynağıyla, modelin adı/sürümü ve güveniyle kaydedilir.
  */
-export async function runMedicalImageModel(input: StudyInput, registry: MedicalImageProviderRegistry = defaultMedicalImageProviders(), opts: { timeoutMs?: number; consentToSendOffDevice?: boolean } = {}): Promise<ModelRun> {
+export async function runMedicalImageModel(
+  input: StudyInput,
+  registry: MedicalImageProviderRegistry = defaultMedicalImageProviders(),
+  opts: { timeoutMs?: number; documentId?: string; identity?: ModelIdentity; now?: () => Date } = {},
+): Promise<ModelRun> {
   const provider = registry.forModality(input.modality);
   if (!provider || !provider.available()) {
     const reason = provider ? ((await provider.detectFindings(input)) as Extract<ProviderOutput<unknown>, { status: 'unavailable' }>).reason : undefined;
     return { status: 'unavailable', reason: reason ?? 'Bu modalite için tıbbi görüntü modeli yok.' };
   }
-  if (provider.sendsDataOffDevice && !opts.consentToSendOffDevice) return { status: 'unavailable', reason: 'Bu sağlayıcı veriyi cihaz dışına gönderir; onay verilmediği için çalıştırılmadı.' };
+  // İkinci savunma hattı: kayıt dışı yollarla gelse bile uzak sağlayıcı asla çalıştırılmaz.
+  if (provider.sendsDataOffDevice) return { status: 'unavailable', reason: 'Uzak sağlayıcılar desteklenmiyor: hasta verisi cihaz dışına gönderilmez.' };
   const timeout = opts.timeoutMs ?? 30000;
   const withTimeout = <T>(p: Promise<T>): Promise<T> => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -275,9 +249,18 @@ export async function runMedicalImageModel(input: StudyInput, registry: MedicalI
     const list = localized.status === 'ok' ? localized.value : detected.value;
     const findings: MedicalFinding[] = list.map((f) => {
       const anatomicalStructure = anatomyFor(f.structure, f.localization, f.confidence);
+      const frame = f.localization.kind === 'pixel' || f.localization.kind === 'point' ? f.localization.frame : undefined;
       return {
         id: `mf-${(fseq++).toString(36)}`,
         source: 'IMAGE_MODEL',
+        provenance: {
+          derivation: 'model-derived',
+          source: 'IMAGE_MODEL',
+          model: { ...detected.model, ...(opts.identity?.sha256 ? { sha256: opts.identity.sha256 } : {}), ...(opts.identity?.license ? { license: opts.identity.license } : {}) },
+          ...(opts.documentId ? { documentId: opts.documentId } : {}),
+          ...(frame !== undefined ? { frame } : {}),
+          at: (opts.now?.() ?? new Date()).toISOString(),
+        },
         finding: f.finding,
         model: detected.model,
         confidence: f.confidence,

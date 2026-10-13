@@ -21,3 +21,4 @@ export * from './temporal';
 export * from './fusion';
 export * from './organView';
 export * from './flows';
+export * from './localModel';

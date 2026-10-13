@@ -9,6 +9,9 @@ import {
   type HealthModel,
   type ImageAnalysisRun,
   type ImageContext,
+  type Modality,
+  type ModelManifest,
+  type ModelRun,
   type LabObservation,
   type RasterImage,
   type ReportFinding,
@@ -21,6 +24,7 @@ import { gradeResult } from '@kh/catalog';
 import { type DicomInfo, canDecode, decodeFrame, parseDicom } from '@kh/ingest';
 import type { Bytes, FileInfo } from '@kh/vault';
 import { regionByKey } from './imaging';
+import { modelBytes } from './localModels/store';
 import type { ImagingFinding } from './imagingFindings';
 import type { StoredAnalysis } from './imagingRecords';
 import type { ImagingStudy } from './imagingStudies';
@@ -87,44 +91,99 @@ export function contextFor(info: FileInfo, dicom: DicomInfo | null, files = 1): 
 
 let worker: Worker | null | undefined;
 let seq = 0;
-const pending = new Map<number, { resolve: (r: ImageAnalysisRun) => void; reject: (e: Error) => void }>();
+type WorkerReply = { id: number; run?: ImageAnalysisRun; model?: ModelRun; progress?: 'inference'; needBytes?: boolean; error?: string };
+const pending = new Map<number, { resolve: (r: WorkerReply) => void; reject: (e: Error) => void; onProgress?: (p: 'inference') => void }>();
+/** Bu işçide oturumu açılmış modeller (SHA-256): model baytları yalnızca ilk kullanımda gönderilir. */
+let loadedModels = new Set<string>();
 
 function getWorker(): Worker | null {
   if (worker !== undefined) return worker;
   try {
     worker = new Worker(new URL('./analysis.worker.ts', import.meta.url), { type: 'module' });
-    worker.onmessage = (e: MessageEvent<{ id: number; run?: ImageAnalysisRun; error?: string }>) => {
+    worker.onmessage = (e: MessageEvent<WorkerReply>) => {
       const p = pending.get(e.data.id);
       if (!p) return;
+      if (e.data.progress) {
+        p.onProgress?.(e.data.progress);
+        return;
+      }
       pending.delete(e.data.id);
-      if (e.data.run) p.resolve(e.data.run);
-      else p.reject(new Error(e.data.error ?? 'analysis failed'));
+      if (e.data.error) p.reject(new Error(e.data.error));
+      else p.resolve(e.data);
     };
-    worker.onerror = () => {
-      for (const p of pending.values()) p.reject(new Error('worker failed'));
-      pending.clear();
-      worker?.terminate();
-      worker = null;
-    };
+    worker.onerror = () => resetWorker('worker failed');
   } catch {
     worker = null;
   }
   return worker;
 }
 
+function resetWorker(reason: string) {
+  for (const p of pending.values()) p.reject(new Error(reason));
+  pending.clear();
+  worker?.terminate();
+  worker = undefined;
+  loadedModels = new Set();
+}
+
+function ask(w: Worker, msg: Record<string, unknown>, transfer: Transferable[] = [], onProgress?: (p: 'inference') => void): Promise<WorkerReply> {
+  const id = ++seq;
+  return new Promise<WorkerReply>((resolve, reject) => {
+    pending.set(id, { resolve, reject, ...(onProgress ? { onProgress } : {}) });
+    w.postMessage({ ...msg, id }, transfer);
+  });
+}
+
 /** Analizi Web Worker'da çalıştırır; worker yoksa ana iş parçacığında. */
 export async function runImageAnalysis(image: RasterImage, context: ImageContext, reportAvailable: boolean): Promise<ImageAnalysisRun> {
   const w = getWorker();
   if (!w) return analyzeImage(image, context, { reportAvailable });
-  const id = ++seq;
   try {
-    return await new Promise<ImageAnalysisRun>((resolve, reject) => {
-      pending.set(id, { resolve, reject });
-      // Pikseller kopyalanır (görüntüleyici aynı diziyi çizmeye devam eder).
-      w.postMessage({ id, image, context, reportAvailable });
-    });
+    // Pikseller kopyalanır (görüntüleyici aynı diziyi çizmeye devam eder).
+    const r = await ask(w, { kind: 'analyze', image, context, reportAvailable });
+    if (!r.run) throw new Error('no run');
+    return r.run;
   } catch {
     return analyzeImage(image, context, { reportAvailable });
+  }
+}
+
+export type ModelProgress = 'loading' | 'inference';
+
+/**
+ * Cihazda kurulu modeli bu görüntüde çalıştırır (işçide). Model dosyası ilk kullanımda okunur ve
+ * işçiye bir kez aktarılır (lazy loading + önbellek). `signal` iptal edince işçi sonlandırılır.
+ */
+export async function runLocalModel(
+  manifest: ModelManifest,
+  image: RasterImage,
+  modality: Modality,
+  context: ImageContext,
+  opts: { documentId?: string; signal?: AbortSignal; onProgress?: (p: ModelProgress) => void } = {},
+): Promise<ModelRun> {
+  const w = getWorker();
+  if (!w) return { status: 'unavailable', reason: 'Bu tarayıcıda arka plan işçisi (Web Worker) yok; model çalıştırılamadı.' };
+  const abort = () => resetWorker('cancelled');
+  opts.signal?.addEventListener('abort', abort, { once: true });
+  try {
+    const base = { kind: 'model', manifest, image, modality, context, ...(opts.documentId ? { documentId: opts.documentId } : {}) };
+    let r: WorkerReply;
+    if (loadedModels.has(manifest.sha256)) r = await ask(w, base, [], opts.onProgress);
+    else r = { id: 0, needBytes: true };
+    if (r.needBytes) {
+      opts.onProgress?.('loading');
+      const bytes = await modelBytes(manifest.id);
+      if (!bytes) return { status: 'unavailable', reason: 'Model dosyası cihazda bulunamadı.' };
+      const copy = bytes.slice(0);
+      r = await ask(w, { ...base, bytes: copy }, [copy], opts.onProgress);
+      loadedModels.add(manifest.sha256);
+    }
+    return r.model ?? { status: 'unavailable', reason: 'Model sonuç döndürmedi.' };
+  } catch (e) {
+    loadedModels.delete(manifest.sha256);
+    return { status: 'unavailable', reason: e instanceof Error && e.message === 'cancelled' ? 'İptal edildi.' : `Model çalıştırılamadı: ${e instanceof Error ? e.message : 'bilinmeyen hata'}` };
+  } finally {
+    opts.signal?.removeEventListener('abort', abort);
   }
 }
 
@@ -144,6 +203,8 @@ export function toStoredAnalysis(run: ImageAnalysisRun, sourceId: string): Store
     coverage: run.coverage,
     sequence: run.sequence,
     kind: run.kind,
+    ...(run.modelFindings ? { modelFindings: run.modelFindings.slice(0, 32) } : {}),
+    ...(run.modelInfo ? { modelInfo: run.modelInfo } : {}),
   };
 }
 
@@ -155,6 +216,8 @@ export function runFromStored(a: StoredAnalysis, reportAvailable: boolean): Imag
     quality: { usable: true, score: 1, issues: [], metrics: { width: 0, height: 0, edgeWidth: 0, glareFraction: 0, contrast: null, median: null } },
     route: 'image-analysis',
     kind: a.kind ?? 'precheck',
+    ...(a.modelFindings ? { modelFindings: a.modelFindings } : {}),
+    ...(a.modelInfo ? { modelInfo: a.modelInfo } : {}),
     coverage: a.coverage ?? { kind: 'photo', frames: 1, label: '1 görüntü' },
     sequence: a.sequence ?? { source: 'none', text: 'Sekans belirlenemedi.' },
     reportAvailable,
@@ -222,7 +285,7 @@ export function labObservationsFrom(reports: StoredReport[]): LabObservation[] {
 }
 
 /** Katalog yorum motorundan sapma derecesi ve kritik düzey. */
-function gradeFields(res: StoredReport['results'][number]): Pick<LabObservation, 'critical' | 'severity'> {
+export function gradeFields(res: StoredReport['results'][number]): Pick<LabObservation, 'critical' | 'severity'> {
   const g = gradeResult({
     testKey: res.testKey,
     value: res.canonicalValue ?? res.value,

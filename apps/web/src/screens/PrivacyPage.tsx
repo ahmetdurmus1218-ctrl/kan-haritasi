@@ -12,6 +12,7 @@ import { loadSex, saveSex } from '../lib/reports';
 import { buildExport } from '../lib/exportData';
 import { Banner, Dialog } from '../components/ui';
 import { ThemePicker } from '../components/ThemeToggle';
+import { LocalModels } from '../components/LocalModels';
 import { useSetting } from '../state/settings';
 import { CheckIcon, DownloadIcon, FingerprintIcon, LockIcon, ShieldIcon, SpinnerIcon, TrashIcon, UploadIcon } from '../components/icons';
 
@@ -144,11 +145,12 @@ export function PrivacyPage() {
 
   const doExport = () =>
     run(async () => {
-      const { bytes, files, results } = await buildExport(vault, (d, t) => setProgress(`Hazırlanıyor… ${d}/${t}`), { anonymizeDicom: anonymize });
+      const { bytes, files, results, burnedIn } = await buildExport(vault, (d, t) => setProgress(`Hazırlanıyor… ${d}/${t}`), { anonymizeDicom: anonymize });
       setProgress('Kaydediliyor…');
       const saved = await platform.files.save(`kan-haritasi-verilerim-${stamp()}.zip`, bytes, 'application/zip');
       bytes.fill(0);
-      return saved ? `ZIP kaydedildi: ${files} belge, ${results} sonuç. Bu dosya şifresizdir.` : 'Dışa aktarma kaydedilmedi.';
+      const warn = burnedIn.length ? ` Dikkat: ${burnedIn.length} DICOM görüntüsünün içinde yakılmış yazı olabilir; başlık temizliği bunları silmez (OKUBENI.txt).` : '';
+      return saved ? `ZIP kaydedildi: ${files} belge, ${results} sonuç. Bu dosya şifresizdir.${warn}` : 'Dışa aktarma kaydedilmedi.';
     });
 
   const doChangePassphrase = () =>
@@ -347,6 +349,10 @@ export function PrivacyPage() {
             }}
           />
         </div>
+      </Section>
+
+      <Section title="Yerel tıbbi görüntü modelleri">
+        <LocalModels />
       </Section>
 
       <Section title="Hakkında ve lisanslar">

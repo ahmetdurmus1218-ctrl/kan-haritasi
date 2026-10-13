@@ -1,5 +1,5 @@
 import type { Vault } from '@kh/vault';
-import { anonymizeDicom } from '@kh/ingest';
+import { anonymizeDicom, burnedInRisk, parseDicom } from '@kh/ingest';
 import { STATUS_LABEL, testByKey } from '@kh/catalog';
 import { listReports, loadSex } from './reports';
 import { listImagingNotes } from './imagingRecords';
@@ -18,9 +18,11 @@ export async function buildExport(
   vault: Vault,
   onProgress?: (done: number, total: number) => void,
   options: { anonymizeDicom?: boolean } = {},
-): Promise<{ bytes: Uint8Array<ArrayBuffer>; files: number; results: number; anonymized: number }> {
+): Promise<{ bytes: Uint8Array<ArrayBuffer>; files: number; results: number; anonymized: number; burnedIn: string[] }> {
   const anonymize = options.anonymizeDicom ?? true;
   let anonymized = 0;
+  /** Görüntüsüne yazı yakılmış (ya da olası) DICOM dosyaları: başlık temizliği bunları silemez. */
+  const burnedIn: string[] = [];
   const { files } = await vault.listFiles();
   const reports = await listReports(vault);
   const entries: ZipEntry[] = [];
@@ -36,6 +38,14 @@ export async function buildExport(
     used.add(name);
     fileNames.set(info.id, name);
     let data = bytes;
+    if (info.kind === 'dicom') {
+      try {
+        const risk = burnedInRisk(parseDicom(bytes));
+        if (risk.level === 'yes' || risk.level === 'possible') burnedIn.push(name);
+      } catch {
+        // okunamayan başlık: aşağıda olduğu gibi eklenir
+      }
+    }
     if (anonymize && info.kind === 'dicom') {
       try {
         const a = anonymizeDicom(bytes);
@@ -143,6 +153,9 @@ export async function buildExport(
         anonymize
           ? 'belgeler/      Yüklediğin orijinal dosyalar. DICOM (.dcm) dosyalarında hasta adı, kimlik no, doğum tarihi, erişim no, kurum ve hekim adları boşlukla değiştirildi; görüntünün içine yazılmış yazılar temizlenemez.'
           : 'belgeler/      Yüklediğin orijinal dosyalar: tahlil raporları, MR/BT/röntgen görüntüleri (.dcm) ve raporları (değiştirilmedi; DICOM kimlik alanları DAHİL)',
+        ...(burnedIn.length
+          ? ['', `DİKKAT: ${burnedIn.length} DICOM dosyasının görüntüsüne yazı yakılmış ya da yakılmış olabilir (ad, tarih, kurum). Bu yazılar başlık temizliğiyle SİLİNMEZ:`, ...burnedIn.map((n) => `  - ${n}`), '']
+          : []),
         'sonuclar.json  Onayladığın tüm sonuçlar ve görüntüleme belgelerinin türü, bölgesi, tarihi, rapor metni',
         'sonuclar.csv   Aynı sonuçlar; Excel/LibreOffice ile açılabilir (ayraç: ;)',
         '',
@@ -155,5 +168,5 @@ export async function buildExport(
   const bytes = makeZip(entries);
   for (const e of entries) if (e.name.startsWith('belgeler/')) e.data.fill(0);
   onProgress?.(files.length + 1, files.length + 1);
-  return { bytes, files: files.length, results: rows.length, anonymized };
+  return { bytes, files: files.length, results: rows.length, anonymized, burnedIn };
 }

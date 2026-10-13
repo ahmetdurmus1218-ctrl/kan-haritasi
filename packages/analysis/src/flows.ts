@@ -14,7 +14,7 @@
  */
 import type { HealthModel } from './fusion';
 import { GRAPH } from './knowledge';
-import type { LabObservation } from './types';
+import { type LabObservation, type MedicalFinding, type ReportFinding, isPositiveReport } from './types';
 
 export type FlowSystem = 'digestive' | 'cardiovascular' | 'respiratory' | 'urinary' | 'endocrine' | 'nervous' | 'immune' | 'hematologic' | 'musculoskeletal' | 'reproductive';
 
@@ -59,9 +59,22 @@ export interface FlowRelation {
   text: string;
 }
 
+/**
+ * Bir görüntü/rapor/model bulgusunun bir basamakla ilişkisi (anatomik konum üzerinden). Örn. ileum
+ * mukozasında model bulgusu → "İleum: B12 emilimi" basamağı. İlişki olasıdır; işlevin bozulduğu söylenmez.
+ */
+export interface FlowFindingRelation {
+  stepId: string;
+  source: 'IMAGE_MODEL' | 'RADIOLOGY_REPORT' | 'OCR';
+  derivation: 'model-derived' | 'report-derived';
+  text: string;
+  relation: 'POSSIBLE_RELATION';
+}
+
 export interface PersonalOverlay {
   flowId: string;
   relations: FlowRelation[];
+  findings: FlowFindingRelation[];
   /** Aralık dışı sonuç bağlanan basamaklar. */
   flaggedSteps: string[];
   /** Hiç verisi olmayan basamaklar ("veri yok" — bozuk DEĞİL). */
@@ -371,7 +384,15 @@ const STATUS_TR: Record<LabObservation['status'], string> = { low: 'düşük', h
  * Akışın üzerine kişinin son sonuçları. Yalnızca VERİ olan basamaklar işaretlenir; ilişki her zaman
  * "olası" (POSSIBLE_RELATION) — bir sonucun bir basamağı "bozduğu" söylenmez.
  */
-export function personalOverlay(flow: PhysiologyFlow, model: Pick<HealthModel, 'latestLabs'> | null): PersonalOverlay {
+/** Bulgunun anatomik yolu basamağın anatomisine denk geliyor mu? (tam yapı ya da organın kendisi) */
+function findingMatchesStep(path: readonly string[], step: FlowStep): boolean {
+  if (!step.anatomyId || !path.length) return false;
+  if (path.includes(step.anatomyId)) return true;
+  const n = GRAPH.node(step.anatomyId);
+  return Boolean(n && n.kind === 'organ' && rootOf(path[path.length - 1]!) === step.anatomyId);
+}
+
+export function personalOverlay(flow: PhysiologyFlow, model: (Pick<HealthModel, 'latestLabs'> & Partial<Pick<HealthModel, 'reportFindings' | 'modelFindings'>>) | null): PersonalOverlay {
   const labs = new Map((model?.latestLabs ?? []).map((l) => [l.testKey, l]));
   const relations: FlowRelation[] = [];
   for (const s of flow.steps)
@@ -393,12 +414,30 @@ export function personalOverlay(flow: PhysiologyFlow, model: Pick<HealthModel, '
         text: off ? `${l.name} ${STATUS_TR[l.status]}: bu basamağı etkileyebilir (olası ilişki; kanıtlanmış değil).` : `${l.name} aralıkta.`,
       });
     }
-  const flaggedSteps = [...new Set(relations.filter((r) => r.status === 'high' || r.status === 'low').map((r) => r.stepId))];
-  const noDataSteps = flow.steps.filter((s) => !relations.some((r) => r.stepId === s.id)).map((s) => s.id);
-  const hasData = relations.length > 0;
+  const findings: FlowFindingRelation[] = [];
+  const located: Array<{ path: string[]; f: MedicalFinding | ReportFinding }> = [
+    ...(model?.modelFindings ?? []).filter((f) => f.anatomicalStructure?.path.length).map((f) => ({ path: f.anatomicalStructure!.path, f })),
+    ...(model?.reportFindings ?? []).filter((f) => isPositiveReport(f) && f.location?.path.length).map((f) => ({ path: f.location!.path, f })),
+  ];
+  for (const s of flow.steps)
+    for (const { path, f } of located) {
+      if (!findingMatchesStep(path, s)) continue;
+      const fromModel = 'finding' in f;
+      findings.push({
+        stepId: s.id,
+        source: fromModel ? 'IMAGE_MODEL' : f.source,
+        derivation: fromModel ? 'model-derived' : 'report-derived',
+        text: fromModel ? `Yerel tıbbi AI modeli: ${f.finding} — bu basamakla ilişkili olabilir (tanı değildir).` : `Rapor: “${f.text}” — bu basamakla ilişkili olabilir.`,
+        relation: 'POSSIBLE_RELATION',
+      });
+    }
+  const flaggedSteps = [...new Set([...relations.filter((r) => r.status === 'high' || r.status === 'low').map((r) => r.stepId), ...findings.map((f) => f.stepId)])];
+  const noDataSteps = flow.steps.filter((s) => !relations.some((r) => r.stepId === s.id) && !findings.some((r) => r.stepId === s.id)).map((s) => s.id);
+  const hasData = relations.length + findings.length > 0;
   return {
     flowId: flow.id,
     relations,
+    findings,
     flaggedSteps,
     noDataSteps,
     statement: !hasData

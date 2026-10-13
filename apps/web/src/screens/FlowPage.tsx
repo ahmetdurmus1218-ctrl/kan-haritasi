@@ -11,6 +11,7 @@ import { useHealthModel } from '../lib/analysisBridge';
 import { TONE, labStyle } from '../lib/tone';
 import { INSIDE, type InsideId } from '../explore/inside/registry';
 import { BodyIcon, ChevronLeftIcon, ChevronRightIcon, LayersIcon } from '../components/icons';
+import { SourceBadge } from '../components/evidence';
 import { LabRow } from './organ/common';
 
 const nameOf = (id: string) => GRAPH.node(id)?.nameTr ?? structureById.get(id)?.nameTr ?? id;
@@ -80,6 +81,7 @@ export function FlowPage({ id, step = 1, personal = false }: { id?: string; step
   if (!flow) return <FlowList />;
   const s = flow.steps[index]!;
   const rel = overlay?.relations.filter((r) => r.stepId === s.id) ?? [];
+  const stepFindings = overlay?.findings.filter((f) => f.stepId === s.id) ?? [];
   const labs = rel.map((r) => model?.latestLabs.find((l) => l.testKey === r.testKey)).filter((l): l is NonNullable<typeof l> => Boolean(l));
   const anatomy = s.anatomyId ? anatomyRoute(s.anatomyId) : undefined;
   const scene = s.inside && s.inside in INSIDE ? (s.inside as InsideId) : undefined;
@@ -120,6 +122,7 @@ export function FlowPage({ id, step = 1, personal = false }: { id?: string; step
       <ol className="flex flex-wrap items-center gap-1 text-xs" aria-label="Akışın basamakları">
         {flow.steps.map((x, k) => {
           const flagged = overlay?.relations.filter((r) => r.stepId === x.id && (r.status === 'high' || r.status === 'low')) ?? [];
+          const found = overlay?.findings.some((f) => f.stepId === x.id) ?? false;
           const worst = flagged.map((r) => labStyle(r)).sort((a, b) => (b.tone === 'urgent' ? 3 : b.tone === 'attention' ? 2 : 1) - (a.tone === 'urgent' ? 3 : a.tone === 'attention' ? 2 : 1))[0];
           return (
             <li key={x.id} className="flex items-center gap-1">
@@ -127,11 +130,12 @@ export function FlowPage({ id, step = 1, personal = false }: { id?: string; step
               <button
                 type="button"
                 aria-current={k === index ? 'step' : undefined}
-                className={`min-h-[32px] rounded-full border px-2.5 ${k === index ? 'border-accent/60 bg-accent/10 text-accent' : worst ? `${worst.chip}` : 'border-ink-600 text-fg-muted hover:text-fg'}`}
+                className={`min-h-[32px] rounded-full border px-2.5 ${k === index ? 'border-accent/60 bg-accent/10 text-accent' : worst ? `${worst.chip}` : found ? TONE.uncertain.chip : 'border-ink-600 text-fg-muted hover:text-fg'}`}
                 onClick={() => go({ name: 'flow', id: flow.id, step: k + 1, personal })}
               >
                 {x.title}
                 {worst ? ` ${worst.direction === 'high' ? '▲' : '▼'}` : ''}
+                {found ? ' ◆' : ''}
               </button>
             </li>
           );
@@ -185,13 +189,24 @@ export function FlowPage({ id, step = 1, personal = false }: { id?: string; step
         {personal && (
           <div className="space-y-2 border-t border-ink-700 pt-3" aria-label="Benim verilerim">
             <p className="text-xs font-medium text-fg-muted">Benim verilerimde</p>
-            {labs.length ? (
+            {labs.length > 0 && (
               <ul className="space-y-1.5">
                 {labs.map((l) => (
                   <LabRow key={l.testKey} l={l} compact />
                 ))}
               </ul>
-            ) : (
+            )}
+            {stepFindings.length > 0 && (
+              <ul className="space-y-1.5" aria-label="Bu basamakla ilişkili görüntü/rapor bulguları">
+                {stepFindings.map((f, k) => (
+                  <li key={k} className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 text-[13px] ${f.source === 'IMAGE_MODEL' ? 'border-[#a78bfa]/40' : TONE['report-derived'].border}`} data-testid="flow-finding">
+                    <SourceBadge source={f.source} />
+                    <span className="text-fg">{f.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {!labs.length && !stepFindings.length && (
               <p className="text-sm text-fg-muted">Bu basamakla ilişkili bir sonucun yok. Verisi olmayan basamak “sorunlu” sayılmaz.</p>
             )}
             {rel.some((r) => r.status === 'high' || r.status === 'low') && <p className={`text-[13px] ${TONE.uncertain.text}`}>Bu sonuç bu basamağı etkileyebilir (olası ilişki); basamağın bozulduğunu göstermez.</p>}

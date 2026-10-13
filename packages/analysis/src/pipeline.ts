@@ -10,7 +10,7 @@
 import { type AdapterRegistry, defaultRegistry } from './adapters/registry';
 import { type AnatomyEstimate, type ImageFeatures, type ModalityEstimate, classifyModality, estimateAnatomy, imageFeatures } from './modality';
 import { type QualityReport, assessQuality } from './quality';
-import { type AdapterResult, type ImageContext, type Modality, MODALITY_LABEL, type RasterImage } from './types';
+import { type AdapterResult, type ImageContext, type MedicalFinding, type Modality, MODALITY_LABEL, type RasterImage } from './types';
 
 /**
  * İnceleme kapsamı: tek bir fotoğraf (birkaç kesit) ile yüzlerce kesitlik DICOM serisi aynı şey
@@ -86,6 +86,9 @@ export interface ImageAnalysisRun {
    * görüntü modeli çalıştı. Arayüz "Analiz tamamlandı" yerine "Görüntü ön incelemesi tamamlandı" der.
    */
   kind: 'precheck' | 'model';
+  /** Yerel tıbbi model çalıştıysa bulguları (kaynak IMAGE_MODEL, model-derived). Ön kontrol asla buraya yazmaz. */
+  modelFindings?: MedicalFinding[];
+  modelInfo?: { id: string; name: string; version: string; sha256?: string; license?: string; at: string };
   coverage: StudyCoverage;
   sequence: SequenceInfo;
   reportAvailable: boolean;
@@ -165,7 +168,9 @@ export function analyzeImage(image: RasterImage, ctx: ImageContext = {}, opts: A
 
   const adapter = registry.forModality(m);
   const result = { ...adapter.analyze({ image, modality: m, context: ctx, quality, anatomy, features }), modality: m };
-  const kind = result.model.kind === 'learned' ? 'model' : 'precheck';
+  // Uyarlayıcılar kural tabanlıdır: "model" durumu YALNIZCA gerçek bir yerel model çalıştığında
+  // (runMedicalImageModel → modelFindings) verilir; burada asla.
+  const kind = 'precheck' as const;
   if (result.status === 'UNAVAILABLE') statements.push(`Otomatik görüntü yorumu: bu modalite (${MODALITY_LABEL[m]}) için bu kurulumda mevcut değil ya da bu görüntüde yapılamadı.`);
   else statements.push(`Görüntü ön incelemesi: ${result.capabilities.filter((c) => c.status === 'done').length} kural tabanlı kontrol çalıştı; ${result.capabilities.filter((c) => c.status === 'not-implemented').length} yetenek tıbbi görüntü modeli gerektirdiği için bu kurulumda yok.`);
   if (!reportAvailable && result.observations.length) statements.push('Bu gözlemler bir radyolog raporu değildir; rapor olmadığı için doğrulanamadı.');

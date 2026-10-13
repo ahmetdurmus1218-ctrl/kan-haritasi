@@ -103,7 +103,7 @@ export function relatedStudies(study: Pick<ImagingStudy, 'key' | 'category' | 'r
   );
 }
 
-/** Sonuçlara eklenmiş, dikkat bölgesi içeren incelemeler ve ilgili 3B yapıları. */
+/** Sonuçlara eklenmiş, asimetri gözlemi içeren ön incelemeler ve ilgili 3B yapıları. */
 export function reviewFlags(all: ImagingStudy[]): Array<{ structure: string; fileId: string; count: number }> {
   return all.flatMap((st) => {
     const structure = st.region ? regionByKey.get(st.region)?.structure : undefined;

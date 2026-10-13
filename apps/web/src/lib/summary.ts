@@ -71,6 +71,8 @@ export function bodySummary(model: HealthModel): BodySummary {
     // Sağ-sol farkı bir GÖZLEMDİR, anormallik değildir: belirsizlik tonuyla, "gözlem" diye sayılır.
     const img = st.imageObservations.filter((o) => o.kind === 'asymmetry').length;
     if (img) add(id, 'uncertain', `${img} görüntü asimetrisi gözlemi`);
+    // Yerel tıbbi AI modelinin bulgusu: model-derived, tanı değil; hekim değerlendirmesi gerekir.
+    if (st.modelFindings.length) add(id, 'attention', `${st.modelFindings.length} yerel AI modeli bulgusu`);
   }
   for (const l of model.latestLabs) {
     const t = labTone(l);
@@ -82,7 +84,7 @@ export function bodySummary(model: HealthModel): BodySummary {
     urgent,
     follow,
     organs: [...organs.values()].sort((a, b) => RANK[b.tone] - RANK[a.tone] || b.reasons.length - a.reasons.length),
-    hasData: model.latestLabs.length + model.reportFindings.length + model.imageObservations.length > 0,
+    hasData: model.latestLabs.length + model.reportFindings.length + model.imageObservations.length + model.modelFindings.length > 0,
   };
 }
 

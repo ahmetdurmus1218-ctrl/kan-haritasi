@@ -125,7 +125,16 @@ export interface PixelBox {
  *  - region-only: yalnızca belgenin bölgesi biliniyor.
  */
 export type Localization =
-  | { kind: 'pixel'; frame: number; box: PixelBox; imageSize: { width: number; height: number } }
+  | {
+      kind: 'pixel';
+      frame: number;
+      box: PixelBox;
+      imageSize: { width: number; height: number };
+      /** Segmentasyon maskesi (modelin çıktısı; en fazla 64×64'e küçültülmüş, 0/1). */
+      mask?: { width: number; height: number; data: number[] };
+    }
+  /** Tek nokta (ör. bir anahtar nokta modeli). */
+  | { kind: 'point'; frame: number; x: number; y: number; imageSize: { width: number; height: number } }
   | { kind: 'report-approximate'; text: string }
   | { kind: 'region-only' }
   | { kind: 'none' };
@@ -263,6 +272,8 @@ export interface AdapterResult {
   limitations: string[];
   /** Görüntüde ayırt edilen kesit/kare sayısı (kolaj fotoğrafında panel sayısı). */
   frames?: number;
+  /** Kesitsel ön kontrolün kapsamı: ayrılan ve karşılaştırılan kesit sayısı, baş kesiti benzerliği. */
+  extent?: { panels: number; compared: number; headLike: boolean };
   /** Kullanıcıya gösterilecek tek cümle (ör. "Bu modalite için otomatik yorum bu kurulumda yok."). */
   summary: string;
 }
@@ -305,9 +316,23 @@ export interface ImageContext {
  * "Sağ-sol parlaklık farkı" bir gözlemdir; "lezyon" bir bulgudur. Bulgu yalnızca (a) gerçek bir tıbbi
  * görüntü modelinden ya da (b) rapordan gelebilir; kural tabanlı ön kontrol asla bulgu üretmez.
  */
+/**
+ * Köken (provenance): bir bilgi NASIL üretildi? model-derived (gerçek tıbbi görüntü modeli),
+ * heuristic-derived (kural tabanlı ön kontrol), report-derived (rapor metni), lab, user.
+ */
+export interface Provenance {
+  derivation: 'model-derived' | 'heuristic-derived' | 'report-derived' | 'lab' | 'user';
+  source: EvidenceSource;
+  model?: ModelVersion & { sha256?: string; license?: string };
+  documentId?: string;
+  frame?: number;
+  at: string;
+}
+
 export interface MedicalFinding {
   id: string;
   source: 'IMAGE_MODEL' | 'RADIOLOGY_REPORT';
+  provenance: Provenance;
   /** Bulgunun adı (ör. "Lezyon adayı"). */
   finding: string;
   /** Modelin kimliği ve sürümü (rapor bulgusunda yok). */
@@ -317,4 +342,24 @@ export interface MedicalFinding {
   /** Konumun anatomik karşılığı (piksel/voksel → bilgi grafiği düğümü). */
   anatomicalStructure?: AnatomicalLocation;
   limitations: string[];
+}
+
+export const DERIVATION_LABEL: Record<Provenance['derivation'], string> = {
+  'model-derived': 'Yerel tıbbi AI modeli',
+  'heuristic-derived': 'Kural tabanlı ön inceleme (tıbbi model değil)',
+  'report-derived': 'Rapor metni',
+  lab: 'Laboratuvar sonucu',
+  user: 'Kullanıcı girişi',
+};
+
+/**
+ * Her kanıtın kökeni tek bir kurala göre çıkarılır: model bulgusu kendi kaydını taşır; görüntü
+ * gözlemi modelin türüne göre (öğrenilmiş → model-derived, kural → heuristic-derived); rapor
+ * cümlesi report-derived; laboratuvar lab. Hiçbir kaynak başka bir kaynak gibi gösterilmez.
+ */
+export function provenanceOf(item: MedicalFinding | ImageObservation | ReportFinding | LabObservation, at = ''): Provenance {
+  if ('provenance' in item) return item.provenance;
+  if (item.source === 'IMAGE_ANALYSIS') return { derivation: item.model.kind === 'learned' ? 'model-derived' : 'heuristic-derived', source: item.source, model: item.model, at };
+  if (item.source === 'LAB') return { derivation: 'lab', source: 'LAB', at: item.date || at };
+  return { derivation: 'report-derived', source: item.source, ...(item.documentId ? { documentId: item.documentId } : {}), at: item.date ?? at };
 }

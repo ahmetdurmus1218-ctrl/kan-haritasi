@@ -47,7 +47,7 @@ export function withImagingHighlights(
 }
 
 /**
- * Kullanıcının sonuçlarına eklediği otomatik görüntü incelemeleri: dikkat bölgesi olan kesitin
+ * Kullanıcının sonuçlarına eklediği otomatik görüntü incelemeleri: asimetri gözlemi olan kesitin
  * bölgesi (ör. beyin) hafif derecede vurgulanır. Yön (yüksek/düşük) yoktur; "karışık" gösterilir.
  */
 export function withReviewHighlights(base: Map<string, StructureHighlight>, flags: Array<{ structure: string; fileId: string; count: number }>): Map<string, StructureHighlight> {

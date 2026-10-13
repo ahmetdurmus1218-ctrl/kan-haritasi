@@ -13,6 +13,7 @@ import { TimelinePage } from './screens/TimelinePage';
 import { AboutPage } from './screens/AboutPage';
 import { CoveragePage } from './screens/CoveragePage';
 import { ResultDetail, ResultsPage } from './screens/ResultsPage';
+import { ImagesPage } from './screens/ImagesPage';
 
 import { Banner } from './components/ui';
 import { SpinnerIcon } from './components/icons';
@@ -77,6 +78,8 @@ function Gate() {
             <AboutPage />
           ) : route.name === 'coverage' ? (
             <CoveragePage />
+          ) : route.name === 'images' ? (
+            <ImagesPage />
           ) : route.name === 'results' ? (
             <ResultsPage />
           ) : route.name === 'result' ? (

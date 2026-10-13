@@ -5,20 +5,21 @@ import { type Route, go, hrefFor } from '../state/router';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Sheet } from '../components/Sheet';
 import { SearchSheet } from '../components/SearchSheet';
-import { BodyIcon, ChartIcon, DropIcon, FolderIcon, HomeIcon, LayersIcon, ListIcon, LockIcon, MoreIcon, PlusIcon, SearchIcon, ShieldIcon, UserIcon } from '../components/icons';
+import { BodyIcon, ChartIcon, DropIcon, FolderIcon, HomeIcon, LayersIcon, ListIcon, LockIcon, MoreIcon, PlusIcon, ScanIcon, SearchIcon, ShieldIcon, UserIcon } from '../components/icons';
 
 /**
- * Sade bilgi mimarisi: dört ana yer (Ana sayfa, Vücudum, Zamanım, Verilerim) ve tek giriş noktası
+ * Sade bilgi mimarisi: beş ana yer (Özet, Vücudum, Sonuçlar, Görüntüler, Zamanım) ve tek giriş noktası
  * "+ Veri ekle". Ayarlar/gizlilik profil simgesinde; teknik araçlar ana gezinmede yok. Derin sayfalara
  * arama (Ctrl+K) ve sayfa içi "Daha fazla / İncele / Neden?" bağlantılarıyla ulaşılır.
  */
-type NavKey = 'home' | 'mybody' | 'timeline' | 'documents' | 'more' | 'settings';
+type NavKey = 'home' | 'mybody' | 'results' | 'images' | 'timeline' | 'more' | 'settings';
 
 const NAV: Array<{ key: Exclude<NavKey, 'more' | 'settings'>; label: string; icon: (p: { size?: number }) => ReactNode; route: Route }> = [
-  { key: 'home', label: 'Ana sayfa', icon: HomeIcon, route: { name: 'home' } },
+  { key: 'home', label: 'Özet', icon: HomeIcon, route: { name: 'home' } },
   { key: 'mybody', label: 'Vücudum', icon: BodyIcon, route: { name: 'mybody' } },
+  { key: 'results', label: 'Sonuçlar', icon: ListIcon, route: { name: 'results' } },
+  { key: 'images', label: 'Görüntüler', icon: ScanIcon, route: { name: 'images' } },
   { key: 'timeline', label: 'Zamanım', icon: ChartIcon, route: { name: 'timeline' } },
-  { key: 'documents', label: 'Verilerim', icon: FolderIcon, route: { name: 'documents' } },
 ];
 
 function activeKey(route: Route): NavKey | 'add' {
@@ -41,7 +42,9 @@ function activeKey(route: Route): NavKey | 'add' {
     case 'document':
     case 'results':
     case 'result':
-      return 'documents';
+      return 'results';
+    case 'images':
+      return 'images';
     case 'privacy':
     case 'about':
       return 'settings';
@@ -157,7 +160,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
 
       <main className={`min-h-0 flex-1 overflow-y-auto transition ${hidden ? 'privacy-veil' : ''}`}>{children}</main>
 
-      {/* Mobil alt gezinme: 4 yer + ortada tek ekleme düğmesi */}
+      {/* Mobil alt gezinme: Özet · Vücudum · (+) · Sonuçlar · Daha (Görüntüler, Zamanım, Belgeler…) */}
       <nav className={`safe-bottom grid-cols-5 border-t border-ink-700 bg-ink-900/95 backdrop-blur md:hidden ${immersive ? 'hidden' : 'grid'}`} aria-label="Ana gezinme">
         {[NAV[0]!, NAV[1]!].map(({ key, label, icon: Icon, route: r }) => (
           <a
@@ -178,17 +181,17 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         </a>
         <a
           href={hrefFor(NAV[2]!.route)}
-          aria-current={active === 'timeline' ? 'page' : undefined}
-          className={`flex min-h-[56px] flex-col items-center justify-center gap-1 text-[11px] ${active === 'timeline' ? 'text-accent' : 'text-fg-muted'}`}
+          aria-current={active === 'results' ? 'page' : undefined}
+          className={`flex min-h-[56px] flex-col items-center justify-center gap-1 text-[11px] ${active === 'results' ? 'text-accent' : 'text-fg-muted'}`}
         >
-          <ChartIcon size={21} />
-          Zamanım
+          <ListIcon size={21} />
+          Sonuçlar
         </a>
         <button
           type="button"
           onClick={() => setMore(true)}
           aria-haspopup="dialog"
-          className={`flex min-h-[56px] flex-col items-center justify-center gap-1 text-[11px] ${active === 'documents' || active === 'settings' ? 'text-accent' : 'text-fg-muted'}`}
+          className={`flex min-h-[56px] flex-col items-center justify-center gap-1 text-[11px] ${active === 'images' || active === 'timeline' || active === 'settings' ? 'text-accent' : 'text-fg-muted'}`}
         >
           <MoreIcon size={21} />
           Daha
@@ -199,8 +202,9 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         <ul className="-mx-2 space-y-0.5">
           {(
             [
-              ['Verilerim', 'Yüklediğin belgeler ve görüntüler', FolderIcon, { name: 'documents' }],
-              ['Tüm sonuçlarım', 'Tahlil değerleri tablo hâlinde', ListIcon, { name: 'results' }],
+              ['Görüntüler', 'MR, BT, röntgen, ultrason, EKG…', ScanIcon, { name: 'images' }],
+              ['Zamanım', 'Sonuçların zaman içinde', ChartIcon, { name: 'timeline' }],
+              ['Belgelerim', 'Yüklediğin tüm dosyalar', FolderIcon, { name: 'documents' }],
               ['3B vücut', 'Organları döndür, içine gir', LayersIcon, { name: 'body' }],
               ['Ayarlar ve gizlilik', 'Kilit, yedek, verilerimi indir', ShieldIcon, { name: 'privacy' }],
             ] as const

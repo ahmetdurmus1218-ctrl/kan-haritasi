@@ -42,6 +42,7 @@ function EvidenceWhy({ v, model }: { v: OrganView; model: HealthModel | null }) 
     ...(v.time.length ? ['Önceki sonuç (zaman içindeki değişim)'] : []),
     ...(v.personal.imageObservations.some((o) => o.kind === 'asymmetry') ? ['Görüntü ön kontrolü gözlemi'] : []),
     ...(v.personal.reportFindings.some(isPositiveReport) ? ['Rapor cümlesi'] : []),
+    ...(v.personal.modelFindings.length ? ['Yerel tıbbi AI modeli bulgusu'] : []),
     ...(v.personal.patterns.length ? [`Örüntü: ${v.personal.patterns[0]!.title}`] : []),
   ];
   const missing = [
@@ -93,6 +94,7 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
   const critical = labs.filter((l) => l.critical);
   const imgN = v.personal.imageObservations.filter((o) => o.kind === 'asymmetry').length;
   const repN = v.personal.reportFindings.filter((f) => !f.negated && (f.status === 'abnormal' || f.status === 'uncertain')).length;
+  const modelN = v.personal.modelFindings.length;
   const inside = GRAPH.insidePath(v.node.id);
 
   return (
@@ -171,10 +173,18 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
             </p>
             {labs.length > 0 && (
               <ul className="space-y-1.5" aria-label="İlişkili sonuçlar">
-                {labs.slice(0, imgN || repN ? 3 : 4).map((l) => (
+                {labs.slice(0, imgN || repN || modelN ? 3 : 4).map((l) => (
                   <LabRow key={l.testKey} l={l} compact />
                 ))}
               </ul>
+            )}
+            {modelN > 0 && (
+              <p className="flex items-start gap-2 rounded-xl border border-high/40 bg-high/[0.06] px-3 py-2 text-sm text-high" data-testid="organ-model-summary">
+                <span aria-hidden="true">◆</span>
+                <span>
+                  Yerel tıbbi AI modeli: {v.personal.modelFindings.map((f) => f.finding).join(', ')} <span className="text-fg-muted">(model-derived; tanı değildir)</span>
+                </span>
+              </p>
             )}
             {(imgN > 0 || repN > 0) && (
               <p className="rounded-xl border border-dashed border-caution/45 px-3 py-2 text-sm text-caution-fg">

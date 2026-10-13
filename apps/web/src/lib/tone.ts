@@ -87,3 +87,45 @@ export function reportTone(f: { status: 'abnormal' | 'uncertain' | 'normal' | 'n
 }
 
 export const TONE_RANK: Record<Tone, number> = { normal: 0, 'not-assessed': 0, reported: 1, 'report-derived': 1, 'image-derived': 1, uncertain: 1, follow: 2, attention: 3, urgent: 4 };
+
+/**
+ * Aynı tonların CSS değişkeni karşılığı (SVG grafikler, zaman çizelgesi noktaları). Tema (açık/koyu)
+ * değişkenlerden gelir; renk her zaman metin/simgeyle birlikte kullanılır.
+ */
+export const TONE_VAR: Record<Tone, string> = {
+  normal: 'var(--color-fg-muted)',
+  follow: 'var(--color-caution)',
+  attention: 'var(--color-high)',
+  urgent: 'var(--color-danger)',
+  uncertain: 'var(--color-caution)',
+  'not-assessed': 'var(--color-ink-500)',
+  reported: 'var(--color-fg-faint)',
+  'image-derived': '#a78bfa',
+  'report-derived': 'var(--color-low)',
+};
+
+/** Bir laboratuvar sonucunun grafik rengi: `labStyle` ile aynı kural (düşük mavi, yüksek amber/turuncu, kritik kırmızı). */
+export function labColor(l: Pick<LabObservation, 'status' | 'severity' | 'critical'>): string {
+  const tone = labTone(l);
+  if (l.status === 'unknown') return 'var(--color-fg-faint)';
+  if (l.status === 'low' && (tone === 'follow' || tone === 'attention')) return 'var(--color-low)';
+  return TONE_VAR[tone];
+}
+
+/**
+ * 3B sahne (three.js) CSS değişkeni okuyamaz: aynı tonların onaltılık karşılıkları. Yön (yüksek /
+ * düşük / karışık) × derece (hafif / orta / belirgin); belirgin yükseklik kırmızıya kayar. Model
+ * bulgusu mor (TIBBİ GÖRÜNTÜ MODELİ rozetiyle aynı).
+ */
+export const TONE_HEX = {
+  high: '#f5b14c',
+  low: '#6aa8ff',
+  mixed: '#c58cff',
+  urgent: '#ef5a4c',
+  model: '#a78bfa',
+  scale: {
+    high: ['#f5c96a', '#f59a3c', '#ef5a4c'],
+    low: ['#9cc6ff', '#6aa8ff', '#6275ff'],
+    mixed: ['#d4b0ff', '#c58cff', '#a66bff'],
+  },
+} as const;

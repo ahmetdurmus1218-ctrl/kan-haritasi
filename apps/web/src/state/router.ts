@@ -6,6 +6,8 @@ export type Route =
   /** Tek yükleme akışı: dosyayı seç / fotoğraf çek → sistem türünü algılar. */
   | { name: 'add' }
   | { name: 'documents' }
+  /** Görüntüleme çalışmaları (model / ön inceleme / rapor durumu ile). */
+  | { name: 'images' }
   | { name: 'document'; id: string }
   | { name: 'results' }
   | { name: 'result'; key: string }
@@ -54,6 +56,8 @@ export function parseHash(hash: string): Route {
       return { name: 'add' };
     case 'belgeler':
       return { name: 'documents' };
+    case 'goruntuler':
+      return { name: 'images' };
     case 'belge':
       return arg && UUID.test(arg) ? { name: 'document', id: arg } : { name: 'documents' };
     case 'sonuclar':
@@ -105,6 +109,8 @@ export function hrefFor(route: Route): string {
       return '#/';
     case 'add':
       return '#/ekle';
+    case 'images':
+      return '#/goruntuler';
     case 'document':
       return `#/belge/${route.id}`;
     case 'results':

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type DicomInfo, parseDicom } from '@kh/ingest';
+import { type DicomInfo, burnedInRisk, parseDicom } from '@kh/ingest';
 import { type Bytes, DOC_CATEGORIES, type DocCategory, type FileInfo } from '@kh/vault';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { go } from '../state/router';
@@ -19,7 +19,6 @@ import { ExtractingView, ocrMessage } from './ReportPanel';
 import { relatedStudies, useImagingStudies } from '../lib/imagingStudies';
 import { classifyPhoto } from '../lib/photo';
 import { ImagingStudyList } from '../components/imaging';
-import { ImageReviewCard } from '../components/ImageReviewCard';
 import { AnalysisCard } from '../components/AnalysisCard';
 import { reportFindingsFrom } from '../lib/analysisBridge';
 import { useReports } from '../lib/useReports';
@@ -30,8 +29,6 @@ import { SystematicReview } from '../components/checklist';
 import { KIND_LABEL } from '../lib/format';
 import { LOCATION_NOTICE } from '../lib/locationNotice';
 
-/** Sağ-sol simetri incelemesinin anlamlı olduğu kesitsel/radyolojik türler (EKG, patoloji, ultrason vb. hariç). */
-const CROSS_SECTIONAL: ReadonlySet<DocCategory> = new Set(['mr', 'ct', 'pet', 'angio', 'xray', 'mammo', 'other']);
 
 const METHOD_TEXT: Record<ImagingNote['method'], string> = {
   text: 'PDF metninden okundu',
@@ -95,6 +92,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
       return null;
     }
   }, [info.kind, bytes]);
+  const burned = useMemo(() => (dicom ? burnedInRisk(dicom) : null), [dicom]);
 
   useEffect(() => {
     let cancelled = false;
@@ -285,20 +283,11 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             dicom={dicom}
             noteFileId={noteFileId}
             stored={note?.analysis}
+            {...(note?.review ? { storedReview: note.review } : {})}
             reportFindings={analysisReportFindings}
             labsAvailable={Boolean(labReports?.some((r) => r.results.length > 0))}
             previousAvailable={previousAvailable}
-            showOverlay={!CROSS_SECTIONAL.has(category)}
             files={seriesIds.length || 1}
-          />
-        )}
-
-        {isImaging(category) && CROSS_SECTIONAL.has(category) && (info.kind === 'dicom' || ((info.kind === 'jpeg' || info.kind === 'png') && photoKind !== null && photoKind !== 'document')) && (
-          <ImageReviewCard
-            info={info}
-            bytes={bytes}
-            noteFileId={noteFileId}
-            stored={note?.review}
             onHeadLike={() => {
               if (!info.region) setSuggested((s) => s ?? { region: 'beyin', from: 'shape' });
             }}
@@ -642,6 +631,15 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           </section>
         )}
 
+        {burned && (burned.level === 'yes' || burned.level === 'possible') && (
+          <p className="flex items-start gap-2 rounded-xl border border-high/45 bg-high/[0.07] px-3 py-2 text-sm text-high" role="note" data-testid="burned-in-warning">
+            <span aria-hidden="true">⚠</span>
+            <span>
+              <strong>{burned.level === 'yes' ? 'Görüntünün içine yazı yakılmış.' : 'Görüntünün içinde yazı olabilir.'}</strong> {burned.reason} Paylaşmadan önce görüntüyü kontrol et.
+            </span>
+          </p>
+        )}
+
         <details className="rounded-2xl border border-ink-600/60 bg-ink-850/40 p-4">
           <summary className="cursor-pointer text-sm font-medium text-fg">Daha fazla bilgi · yöntem, doktora sorular{dicom ? ', DICOM bilgileri' : ''}</summary>
           <div className="mt-4 space-y-4">
@@ -660,6 +658,8 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
                   ['Boyut', `${dicom.columns} × ${dicom.rows} piksel`],
                   ['Piksel aralığı', dicom.pixelSpacing ? `${dicom.pixelSpacing.map((v) => v.toLocaleString('tr-TR', { maximumFractionDigits: 3 })).join(' × ')} mm` : undefined],
                   ['Kesit kalınlığı', dicom.sliceThickness ? `${dicom.sliceThickness.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} mm` : undefined],
+                  ['Yakılmış yazı', burned ? (burned.level === 'yes' ? 'Var (başlık bildiriyor)' : burned.level === 'possible' ? 'Olabilir (ikincil yakalama)' : burned.level === 'no' ? 'Yok (başlık bildiriyor)' : 'Bilinmiyor') : undefined],
+                  ['Yönelim', dicom.imageOrientation ? dicom.imageOrientation.map((v) => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 })).join(' ') : undefined],
                   ['Kodlama', dicom.codec === 'native' ? 'Sıkıştırmasız' : dicom.codec === 'rle' ? 'RLE (kayıpsız)' : dicom.codec === 'jpeg-baseline' ? 'JPEG' : 'Desteklenmeyen sıkıştırma'],
                 ] as Array<[string, string | undefined]>
               )

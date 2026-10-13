@@ -7,7 +7,6 @@ import {
   type ProviderOutput,
   UnavailableImageProvider,
   defaultMedicalImageProviders,
-  readMedicalAIConfig,
   runMedicalImageModel,
 } from '../medicalAI';
 import { analyzeImage, coverageOf, sequenceFrom } from '../pipeline';
@@ -31,13 +30,9 @@ describe('tıbbi görüntü modeli sağlayıcıları (gerçek model yok)', () =>
     expect(run).toEqual({ status: 'unavailable', reason: 'Bu kurulumda tıbbi görüntü modeli yok.' });
   });
 
-  it('yapılandırma API anahtarını ön yüze vermez; tanımsız istemci için bulgu üretmez', async () => {
-    const cfg = readMedicalAIConfig({ MEDICAL_AI_PROVIDER: 'acme', MEDICAL_AI_API_KEY: 'gizli-anahtar', MRI_MODEL: 'brain-v2' });
-    expect(cfg).toEqual({ provider: 'acme', baseUrl: undefined, hasApiKey: true, models: { mri: 'brain-v2' } });
-    expect(JSON.stringify(cfg)).not.toContain('gizli-anahtar');
-    const run = await runMedicalImageModel(input, new MedicalImageProviderRegistry(cfg));
+  it('uzak sağlayıcı yapılandırması yok: varsayılan kayıt her modalitede "model yok" der', async () => {
+    const run = await runMedicalImageModel(input, new MedicalImageProviderRegistry());
     expect(run.status).toBe('unavailable');
-    expect(run.status === 'unavailable' && run.reason).toMatch(/istemci yok/);
   });
 
   it('gerçek bir model eklenirse: bulgu → konum → anatomi zinciri çalışır ve "model-derived" kaydedilir', async () => {
@@ -60,10 +55,10 @@ describe('tıbbi görüntü modeli sağlayıcıları (gerçek model yok)', () =>
     expect(f.limitations).toContain('Test modeli.');
   });
 
-  it('veriyi cihaz dışına gönderen sağlayıcı onaysız çalışmaz; zaman aşımında bulgu üretmez', async () => {
+  it('veriyi cihaz dışına gönderen sağlayıcı kaydedilemez ve hiçbir koşulda çalışmaz; zaman aşımında bulgu üretmez', async () => {
     const remote: MedicalImageAIProvider = Object.assign(new UnavailableImageProvider('remote', 'mri'), { id: 'remote', sendsDataOffDevice: true, available: () => true });
     const reg = defaultMedicalImageProviders();
-    reg.register(remote);
+    expect(() => reg.register(remote)).toThrow(/Uzak/);
     expect((await runMedicalImageModel(input, reg)).status).toBe('unavailable');
     const slow: MedicalImageAIProvider = Object.assign(new UnavailableImageProvider('slow', 'mri'), { id: 'slow', available: () => true, detectFindings: () => new Promise<never>(() => undefined) });
     const reg2 = defaultMedicalImageProviders();

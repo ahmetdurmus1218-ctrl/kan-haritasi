@@ -5,6 +5,7 @@ import { insidesOf } from '../anatomy/organs';
 import { INSIDE, type InsideId } from '../explore/inside/registry';
 import { LEVEL_COLOR, LEVEL_LABEL, SEVERITY_COLOR, severityPhrase, sortPatterns } from '../lib/interpretation';
 import { AlertIcon, BodyIcon, ChevronRightIcon } from './icons';
+import { TONE } from '../lib/tone';
 
 /** Kritik düzeydeki sonuçlar: her ekranda en üstte ve açıkça. */
 export function CriticalBanner({ critical }: { critical: Finding[] }) {
@@ -220,7 +221,7 @@ export function FindingBlock({ finding: f, showName = false }: { finding: Findin
           </button>
         )}
         <SeverityChip finding={f} />
-        {f.critical && <span className="rounded-full bg-[#ff5d5d]/15 px-2 py-0.5 text-[11px] font-medium text-[#ff7a7a]">Kritik düzey</span>}
+        {f.critical && <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${TONE.urgent.chip}`}>{TONE.urgent.icon} Kritik düzey</span>}
       </div>
       <dl className="mt-2 space-y-2">
         <div>

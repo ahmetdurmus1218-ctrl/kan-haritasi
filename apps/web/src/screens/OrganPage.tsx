@@ -69,6 +69,42 @@ function PersonalView({ v, model, studies }: { v: OrganView; model: ReturnType<t
           </ul>
         </Section>
       )}
+      {v.personal.modelFindings.length > 0 && (
+        <Section title="Yerel tıbbi AI modelinin bulguları" hint="Cihazında kurulu bir tıbbi görüntü modeli bu bulguları görüntünün üzerinde konumlandırdı (model-derived). Tanı değildir; hekim değerlendirmesi gerekir.">
+          <ul className="space-y-2" aria-label="Model bulguları">
+            {v.personal.modelFindings.map((f) => {
+              const c = model?.modelConcordance.find((x) => x.finding.id === f.id);
+              const doc = f.provenance.documentId;
+              return (
+                <li key={f.id} className="space-y-1 rounded-lg border border-[#a78bfa]/40 p-2.5" data-testid="organ-model-finding">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SourceBadge source="IMAGE_MODEL" />
+                    <ConfidenceNote c={f.confidence} />
+                    {f.provenance.model && (
+                      <span className="text-[11px] text-fg-faint">
+                        {f.provenance.model.name} {f.provenance.model.version}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-fg">{f.finding}</p>
+                  {f.anatomicalStructure && <LocationPath loc={f.anatomicalStructure} onOpen={(id) => go({ name: 'organ', id })} />}
+                  {c && c.relation !== 'no-report' && (
+                    <p className={`text-[12.5px] ${c.relation === 'contradicted-by-report' ? 'font-medium text-high' : 'text-fg-muted'}`}>
+                      {c.relation === 'contradicted-by-report' ? '⚠ ' : ''}
+                      {c.text}
+                    </p>
+                  )}
+                  {doc && (
+                    <button type="button" className="text-[12.5px] text-accent hover:underline" onClick={() => go({ name: 'document', id: doc })}>
+                      Görüntüyü aç
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      )}
       {v.personal.imageObservations.length > 0 && (
         <Section title="Görüntülerimden çıkan gözlemler" hint="Görüntünün kendisinden cihazda, kural tabanlı ön kontrolle çıkarıldı (tıbbi görüntü modeli değil); bir radyolog raporu değildir ve doğrulanmamıştır. Sağ-sol farkı bir görüntü asimetrisi gözlemidir, tıbbi bulgu değildir.">
           <ul className="space-y-2">

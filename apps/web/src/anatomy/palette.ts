@@ -1,5 +1,6 @@
 import { type SystemId, structureById } from '@kh/catalog';
 import { isVein } from './names';
+import { TONE_HEX } from '../lib/tone';
 
 /** Yapı renkleri: gerçekçi olmaktan çok ayırt edilebilir ve koyu zeminde okunur. */
 const COLORS: Record<string, string> = {
@@ -190,23 +191,12 @@ export function colorFor(structure: string, label: string | null): string {
   return COLORS[structure] ?? '#b0a8a0';
 }
 
-/** Vurgu renkleri (sonuç durumuna göre). */
-export const HIGHLIGHT = {
-  high: '#f5b14c',
-  low: '#6aa8ff',
-  mixed: '#c58cff',
-} as const;
-
-/** Yön (renk tonu) × derece (hafif / orta / belirgin). Belirgin yükseklik kırmızıya kayar. */
-const HIGHLIGHT_SCALE: Record<keyof typeof HIGHLIGHT, [string, string, string]> = {
-  high: ['#f5c96a', '#f59a3c', '#ef5a4c'],
-  low: ['#9cc6ff', '#6aa8ff', '#6275ff'],
-  mixed: ['#d4b0ff', '#c58cff', '#a66bff'],
-};
+/** Vurgu renkleri (sonuç durumuna göre) — tek kaynak `lib/tone.ts` (TONE_HEX). */
+export const HIGHLIGHT = { high: TONE_HEX.high, low: TONE_HEX.low, mixed: TONE_HEX.mixed } as const;
 
 /** score: 0–3 (yorum motorunun derece ağırlığı). */
 export function highlightColor(status: keyof typeof HIGHLIGHT, score: number): string {
-  return HIGHLIGHT_SCALE[status][score >= 3 ? 2 : score >= 2 ? 1 : 0];
+  return TONE_HEX.scale[status][score >= 3 ? 2 : score >= 2 ? 1 : 0];
 }
 
 /**
