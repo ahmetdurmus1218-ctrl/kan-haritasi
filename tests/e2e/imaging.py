@@ -345,16 +345,20 @@ with sync_playwright() as p:
     kolaj = {"name": "IMG_3002.jpg", "mimeType": "image/jpeg", "buffer": (IMG / "mr-kolaj-foto.jpg").read_bytes()}
     page.set_input_files("input[type=file][multiple]", [kolaj])
     page.get_by_role("button", name="Aç ve oku").click()
-    card = page.get_by_role("region", name="Sağ-sol simetri ön kontrolü")
+    # Simetri ön kontrolü artık tek analiz kartının içinde (ayrı/çift kart yok)
+    analysis = page.get_by_role("region", name="Ham görüntü analizi")
+    card = page.locator("[aria-label='Sağ-sol simetri ön kontrolü']").first
     card.get_by_text("kesit bulundu", exact=False).wait_for(timeout=30000)
     text = card.inner_text()
+    check(page.locator("[aria-label='Sağ-sol simetri ön kontrolü']").count() == 1, "tek simetri ön kontrolü (eski/yeni kart çiftlenmiyor)")
     check("3 kesit bulundu · 2 tanesinde" in text, "kolaj 3 kesite ayrıldı, 2'si karşılaştırıldı (sagital hariç)")
     check(
         "Kesit 2 · görüntünün sol üst kısmı · karşı tarafa göre daha parlak" in text and "Kesit 1 ·" not in text and "Kesit 3 ·" not in text,
         "tek taraflı odak doğru kesitte ve yarıda",
     )
-    check("tıbbi görüntü tanı modeli değildir" in text, "ön kontrol tıbbi model olmadığını söylüyor")
-    check("Görüntü asimetrisi gözlemi · Kesit 2" in text, "ön kontrol satırı gözlemi ve kesiti söylüyor (lezyon demiyor)")
+    check("tıbbi görüntü tanı modeli değildir" in analysis.inner_text() and "Bu sonuç tıbbi AI modeli sonucu değildir" in analysis.inner_text(), "ön kontrol tıbbi model olmadığını söylüyor")
+    full = analysis.evaluate("e => e.textContent")
+    check("Görüntü asimetrisi gözlemi" in full and "Kesit 2" in full and "tıbbi bulgu değil" in full, "ön kontrol satırı gözlemi ve kesiti söylüyor (lezyon demiyor)")
     check("lezyon" not in text.lower().replace("lezyon tespiti ya da tanı değildir", ""), "asimetri lezyon diye yorumlanmıyor")
     # Yazısız görüntüde OCR anlamsız harf üretir: rapor diye kaydedilmemeli
     if page.get_by_role("button", name="Rapor metnini oku").count():
@@ -362,7 +366,7 @@ with sync_playwright() as p:
         # Anlamsız harf okunursa ya da hiç yazı bulunmazsa: ikisinde de rapor kaydedilmez
         page.get_by_text(re.compile("okunabilir bir rapor metni yok|okunabilir metin bulunamadı")).first.wait_for(timeout=120000)
         check(page.get_by_text("Görüntüden okundu (OCR)", exact=False).count() == 0, "anlamsız OCR metni rapor diye kaydedilmedi")
-    card.screenshot(path=SHOTS / "73-mr-otomatik-inceleme.png")
+    analysis.screenshot(path=SHOTS / "73-mr-otomatik-inceleme.png")
     card.get_by_role("button", name="Sonuçlarıma ekle", exact=False).click()
     card.get_by_text("Sonuçlarına eklendi", exact=False).wait_for()
     page.get_by_text("Kesitlerin şeklinden önerilen (kesin değil):").wait_for()
@@ -375,7 +379,7 @@ with sync_playwright() as p:
     mine.click()
     page.wait_for_url("**#/belge/**", timeout=20000)
     page.get_by_text("Sonuçlarına eklendi", exact=False).wait_for(timeout=30000)
-    check(page.get_by_role("region", name="Sağ-sol simetri ön kontrolü").count() == 1, "Sonucuma göre → ön kontrolü kaydedilen görüntü açıldı")
+    check(page.locator("[aria-label='Sağ-sol simetri ön kontrolü']").count() == 1, "Sonucuma göre → ön kontrolü kaydedilen görüntü açıldı")
 
     # --- Otomatik tür: ZIP içindeki DICOM serisi (aynı kesitler zaten yüklü → çift kayıt sayılır)
     page.goto(URL + "#/belgeler")

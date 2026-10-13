@@ -119,6 +119,13 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         </nav>
         <div className="space-y-2 border-t border-ink-700 p-3">
           <a
+            href={hrefFor({ name: 'documents' })}
+            aria-current={route.name === 'documents' || route.name === 'document' ? 'page' : undefined}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${route.name === 'documents' || route.name === 'document' ? 'bg-ink-700 text-fg' : 'text-fg-muted hover:bg-ink-800 hover:text-fg'}`}
+          >
+            <FolderIcon size={17} /> Belgelerim
+          </a>
+          <a
             href={hrefFor({ name: 'privacy' })}
             aria-current={active === 'settings' ? 'page' : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${active === 'settings' ? 'bg-ink-700 text-fg' : 'text-fg-muted hover:bg-ink-800 hover:text-fg'}`}

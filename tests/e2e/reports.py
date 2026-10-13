@@ -95,8 +95,8 @@ with sync_playwright() as p:
         page.get_by_role("heading", name="Sonuçlar").wait_for(timeout=15000)
 
     # --- Sonuçlarım: en güncel değerler (çoklu anormallik raporu en yeni tarihli)
-    page.get_by_role("link", name="Verilerim").first.click()
-    page.get_by_role("link", name="Sonuçlar").click()
+    page.get_by_role("link", name="Belgelerim").first.click()
+    page.get_by_role("navigation", name="Ana gezinme").first.get_by_role("link", name="Sonuçlar").click()
     page.get_by_text("Tahlil sonuçların").wait_for()
     page.wait_for_timeout(1500)
     page.screenshot(path=SHOTS / "41-sonuclar.png", full_page=True)

@@ -36,6 +36,7 @@ import { type StoredModel, useLocalModels } from '../lib/localModels/store';
 import { BodyIcon, CheckIcon, SpinnerIcon } from './icons';
 import { ConfidenceNote, LocationPath, SourceBadge, StatusPill, WhyButton } from './evidence';
 import { BOX_COLORS, SymmetryView } from './SymmetryView';
+import { TONE } from '../lib/tone';
 
 const CAP_ICON = { done: '✓', 'not-possible': '—', 'not-implemented': '◻' } as const;
 /** Model bulgularının kutu rengi (ön kontrol kutularından ayrı). */
@@ -235,7 +236,12 @@ function ModelFindings({ result, model, raster, concordance, onRegion }: { resul
                     <LocationPath loc={f.anatomicalStructure} onOpen={(id) => go({ name: 'organ', id })} />
                   </div>
                 )}
-                {conc && conc.relation !== 'no-report' && <p className={`mt-1 text-xs ${conc.relation === 'contradicted-by-report' ? 'text-caution-fg' : 'text-fg-muted'}`}>{conc.text}</p>}
+                {conc && conc.relation !== 'no-report' && (
+                  <p className={`mt-1 text-xs ${conc.relation === 'contradicted-by-report' ? `rounded-lg border px-2 py-1 font-medium ${TONE.attention.chip}` : 'text-fg-muted'}`} data-testid={conc.relation === 'contradicted-by-report' ? 'model-conflict' : undefined}>
+                    {conc.relation === 'contradicted-by-report' ? '⚠ ' : ''}
+                    {conc.text}
+                  </p>
+                )}
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {organ && GRAPH.node(organ) && (
                     <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => go({ name: 'organ', id: organ })}>

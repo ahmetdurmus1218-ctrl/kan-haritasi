@@ -27,21 +27,25 @@ Kurulumda "bilinmeyen kaynak" izni istenir. APK, derleme sırasında `INTERNET` 
 
 ## Arayüz: önce "Vücudum nasıl?", ayrıntı istenince
 
-Özellikler silinmedi; sadece ilk bakışta görünmüyorlar. Her ekran tek bir soruyu yanıtlar ve en fazla 3–5 kart gösterir. Teknik bilgiler kapalı "Teknik detaylar" ya da "Daha fazla göster" bölümlerinde durur.
+Özellikler silinmedi; sadece ilk bakışta görünmüyorlar. Her ekran tek bir soruyu yanıtlar ve en fazla 3–5 kart gösterir. Teknik bilgiler kapalı "Nasıl analiz edildi?" ya da "Daha fazla göster" bölümlerinde durur.
 
 - **Gezinme:**
-  - Masaüstünde solda: Ana sayfa · Vücudum · Zamanım · Verilerim, üstte belirgin **+ Veri ekle**, altta Ara (Ctrl/⌘+K) ve "Ayarlar ve gizlilik".
-  - Telefonda alttaki çubukta en fazla 5 öğe var: Ana sayfa · Vücudum · **+ Ekle** (ortada) · Zamanım · Daha. "Daha" bir alt sayfa açar: Verilerim, tüm sonuçlar, 3B vücut, ayarlar.
+  - Masaüstünde solda: **Özet · Vücudum · Sonuçlar · Görüntüler · Zamanım**, üstte belirgin **+ Veri ekle**, altta Ara (Ctrl/⌘+K), Belgelerim ve "Ayarlar ve gizlilik".
+  - Telefonda alttaki çubukta 5 öğe var: **Özet · Vücudum · (+) Ekle · Sonuçlar · Daha**. "Daha" bir alt sayfa açar: Görüntüler, Zamanım, Belgelerim, 3B vücut, ayarlar.
   - Kapsam raporu, simülasyonlar ve "Hakkında" ana gezinmede yok; arama ve sayfa içi bağlantılarla açılır.
-- **Ana sayfa** (`#/`): "Vücudum nasıl?" sorusuna tek cümlelik özet verir (ör. "2 organla ilişkili sonuç referans dışında · 1 organda görüntü/rapor gözlemi · 3 değer takipte"). Organ "hasta" denmez; hiçbir şey yoksa "Bu verilerde belirgin bir anormallik saptanmadı" yazar ("normal" değil). İki eylemi var: Veri ekle ve Vücudumu gör. Altında en fazla üç "Son durum" kartı (acil değer, en çok dikkat isteyen organ, ne değişti, son görüntü) yer alır. Veri yoksa boş durum gösterilir ve yükleme alanı doğrudan oradadır.
-- **Tek yükleme akışı** (`#/ekle`, ayrıca Ana sayfa ve Verilerim): kan tahlili, rapor, MR/BT/röntgen/ultrason, EKG, DICOM klasörü ya da ZIP aynı alana bırakılır ve türünü sistem kendisi anlar. Türü elle seçmek isteğe bağlıdır ("Türünü kendim seçeyim"), bu yüzden MR yüklerken 20 seçenek görünmez.
+- **Özet** (`#/`): "Vücudum nasıl?" sorusuna tek cümlelik özet verir (ör. "2 organla ilişkili sonuç referans dışında · 1 organda görüntü/rapor gözlemi · 3 değer takipte"). Organ "hasta" denmez; hiçbir şey yoksa "Bu verilerde belirgin bir anormallik saptanmadı" yazar ("normal" değil). İki eylemi var: Veri ekle ve Vücudumu gör. Altında en fazla üç "Son durum" kartı (acil değer, en çok dikkat isteyen organ, ne değişti, son görüntü) yer alır. Veri yoksa boş durum gösterilir ve yükleme alanı doğrudan oradadır.
+- **Tek yükleme akışı** (`#/ekle`, ayrıca Özet ve Belgelerim): kan tahlili, rapor, MR/BT/röntgen/ultrason, EKG, DICOM klasörü ya da ZIP aynı alana bırakılır ve türünü sistem kendisi anlar. Türü elle seçmek isteğe bağlıdır ("Türünü kendim seçeyim"), bu yüzden MR yüklerken 20 seçenek görünmez.
 - **Görüntü sonucu:**
   - Gerçek ilerleme adımları gösterilir: Dosya okundu → Görüntü türü ve bölge belirleniyor → Görüntü analiz ediliyor.
-  - Yalnızca kural tabanlı ön kontrol çalıştıysa başlık **"Görüntü ön incelemesi tamamlandı"** olur ("Analiz tamamlandı" değil) ve yanında "ön kontrol · tıbbi model değil" yazar. Altında: "Bu bir MR görüntüsü gibi görünüyor · Beyin", türün ve bölgenin kaynağı (**kullanıcı seçimi** / DICOM başlığı / görüntüden), **inceleme kapsamı** ("2 görüntü (fotoğraf)" ya da "DICOM seri · 180 kesit") ve fotoğrafta "Görüntü kapsamı sınırlı: 2 kesit mevcut".
+  - Her görüntü **üç durumdan biriyle** gösterilir, karıştırılmaz (`data-state`):
+    - **"Yerel tıbbi AI modeli ile analiz edildi."** — yalnızca cihazda kurulu gerçek bir model bu görüntüde çalıştıysa ("yerel model · cihazda").
+    - **"Görüntü ön incelemesi yapıldı. Bu sonuç tıbbi AI modeli sonucu değildir."** — yalnızca kural tabanlı ön kontrol çalıştıysa ("ön inceleme · tıbbi model değil").
+    - **"Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor."** — ne model ne ön inceleme varsa (ör. röntgen, endoskopi). Altında: "Bu bir MR görüntüsü gibi görünüyor · Beyin", türün ve bölgenin kaynağı (**kullanıcı seçimi** / DICOM başlığı / görüntüden), **inceleme kapsamı** ("2 görüntü (fotoğraf)" ya da "DICOM seri · 180 kesit") ve fotoğrafta "Görüntü kapsamı sınırlı: 2 kesit mevcut".
   - Hemen altında yetenek paneli: ✓ Görüntü okundu · ✓ Görüntü kalitesi · ✓ Kesitleri ayırma · ✓ Orta hat · ✓ Sağ-sol simetri ön kontrolü · ◻ Lezyon analizi (bu kurulumda tıbbi AI modeli yok) · ◻ Organ segmentasyonu · ◻ MR sekansı (belirlenemedi; DICOM başlığında varsa "MR sekansı: FLAIR · DICOM başlığından").
   - Sağ-sol farkı **"görüntü asimetrisi gözlemi"** olarak gösterilir; bulgu, lezyon ya da anormallik değildir. Fark yoksa: "Sağ-sol simetri ön kontrolünde belirgin fark görülmedi. Bu sonuç görüntünün normal olduğunu göstermez."
   - Düğmeler: **Gözlemleri gör** ve **Vücudumda göster**. Gözlem kartı: yer, ne görüldüğü, kaynak (kural tabanlı ön kontrol) ve [İncele].
-  - "Teknik detaylar": Model: Sağ-sol ayna karşılaştırması · Tür: Heuristic · Versiyon: 1.0.0 · Cihazda: Evet · sekans durumu, kalite ve sınırlar.
+  - Model çalıştıysa: görüntü üzerinde modelin kutusu/maskesi, "Model bulguları" (güven %, piksel konumu, anatomi yolu, rapor ile uyum/**ÇELİŞKİ**), Organ sayfası · 3B anatomide göster · Bu bölge ne?, ve "Model kökeni (provenance)": model adı/sürümü/kimliği, SHA-256, lisans, kaynak, kullanım amacı, sınırlar. İlerleme ("Yerel model yükleniyor… / inceliyor…") ve **İptal** vardır.
+  - "Nasıl analiz edildi?": Model: Sağ-sol ayna karşılaştırması · Tür: Heuristic · Versiyon: 1.0.0 · Cihazda: Evet · sekans durumu, kalite ve sınırlar.
   - Sistematik değerlendirme kapsama göre kurulur: 2 kesitlik fotoğrafta "Görüntü kapsamı sınırlı" başlığı çıkar, protokol başlıkları kapalı listede durur; başlık durumları ✓ görüntüden (ön kontrol) · ? belirsiz · — değerlendirilemedi · raporda belirtilmiş diye ayrılır.
 - **Vücudum** (`#/vucudum`):
   - Özet satırı, "3B vücudu aç" ve **"Vücudun nasıl çalıştığını keşfet"** girişleri, **sistemlere göre** gezinme (Sindirim → İnce bağırsak…).
@@ -60,13 +64,15 @@ Kurulumda "bilinmeyen kaynak" izni istenir. APK, derleme sırasında `INTERNET` 
   - Önce "Ne değişti?": "↑ HbA1c 5,4 → 6,3", "+ Yeni MR · Beyin" gibi en fazla beş satır.
   - Değer grafikleri tek düğmeyle açılır.
   - Rapor geçmişi yıllara göre gruplanır; en yeni yıl açık gelir.
-- **Verilerim** (`#/belgeler`, `#/sonuclar`): Belgeler | Sonuçlar sekmeleri.
+- **Sonuçlar** (`#/sonuclar`) ve **Belgelerim** (`#/belgeler`): Belgeler | Sonuçlar sekmeleri.
+- **Görüntüler** (`#/goruntuler`): tüm görüntüleme çalışmaları; her satırda durum rozeti (◆ Yerel AI modeli · N bulgu / ◇ Ön inceleme · tıbbi model değil / ○ Görüntü analizi yok), rapor ayrı rozet (Rapor · N cümle / Rapor yok) ve varsa **⚠ Rapor ↔ model çelişkisi**.
 - **Arama** (Ctrl/⌘+K ya da büyüteç): organ, bölge ve test adlarında arar. Örneğin "pankreas" için Sonuçlar · Görüntüler ve bulgular · Normalde nasıl çalışır? · Zaman çizelgesi bağlantıları çıkar; "alın lobu" beynin frontal lobunu bulur. Sağlık verisinin içeriği aranmaz.
 - **Renkler** tek kaynaktan gelir (`apps/web/src/lib/tone.ts`; her durum için metin, kenar, arka plan, simge):
   - Aralıkta: nötr. Hafif yüksek: amber (Takip) · belirgin yüksek: turuncu (Dikkat) · düşük: mavi · kritik: kırmızı (yalnızca bu).
   - Anormal sonuçta yalnızca küçük rozet değil; **test adı, değer, birim ve ▲ Yüksek / ▼ Düşük** aynı tonu taşır (sonuç listesi, sonuç ayrıntısı, organ sayfası, organ alt sayfası, akışlar). Referans metni sakin kalır.
   - Rapor: "Kitle izlenmedi" → "Bulunmadı · raporda izlenmedi" (nötr, kırmızı değil); "şüpheli görünüm" → belirsiz; "değerlendirilemedi" → değerlendirilemedi (normal de anormal de değil); "lezyon izlendi" → dikkat (kesin tanı anlamı taşımaz).
   - Ek durumlar: belirsiz, değerlendirilemedi, raporda belirtilmiş, görüntüden (kural tabanlı), rapordan.
+  - Aynı kaynak zaman çizelgesi noktalarını (`TONE_VAR`, `labColor`) ve 3B organ vurgularını (`TONE_HEX`, three.js CSS değişkeni okuyamadığı için onaltılık) da besler. Renk hiçbir yerde tek başına anlam taşımaz: ▲/▼, ⚠, ◆, ◇ simgesi ve metin her zaman eşlik eder.
 - **Alt sayfalar** (`Sheet`): telefonda alttan açılır, masaüstünde sağ panel olur. Yerel `<dialog>` kullanılır, bu yüzden odak tuzağı, Esc ve arka plana dokununca kapanma çalışır. Telefonda gezinme, üst simgeler, sekmeler, organ çipleri ve açılır bölümlerin dokunma alanı en az 44 px; odak halkası görünür.
 
 ## Ham veriden dijital vücut haritasına (çok kipli analiz)
@@ -83,15 +89,38 @@ HAM VERİ (görüntü · DICOM · fotoğraf · PDF · tahlil · rapor)
 - **Kaynaklar asla karışmaz.** Her gözlem ve bulgu kaynağını taşır: `IMAGE_ANALYSIS` (görüntünün piksellerinden), `RADIOLOGY_REPORT` / `OCR` (rapordan), `LAB`, `DICOM_METADATA`, `USER_INPUT`, `DERIVED`, `KNOWLEDGE`. Rapordaki "sol frontal lezyon" ifadesi görüntü üzerinde piksel konumu gibi gösterilmez ("yaklaşık anatomik konum — rapor/metin tabanlı"); görüntü gözlemi rapor bulgusu gibi gösterilmez ("radyolog raporu değildir, doğrulanmamış").
 - **Güven** = "algoritma bu gözlemi ne kadar güvenilir buluyor"; hastalık olasılığı değildir.
 - **Rapor yoksa:** `analyze_image()`, rapor varsa `analyze_report()`, tahlil varsa `analyze_labs()`, önceki çalışma varsa `compare_temporally()`, sonra `merge_available_evidence()` (`packages/analysis/src/fusion.ts`). "Rapor yoksa analiz yok" mantığı yoktur.
-- **Model yoksa:** durum `MEVCUT DEĞİL` (IMAGE_ANALYSIS_STATUS: UNAVAILABLE) ve "Bu modalite için otomatik görüntü yorumu bu kurulumda yok" yazılır; her adaptör yapabildiği ve yapamadığı yetenekleri tek tek listeler.
+- **Model yoksa:** "Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor." yazılır; her adaptör yapabildiği ve yapamadığı yetenekleri tek tek listeler.
+- **Köken (provenance)** her kanıtta tek kurala göre çıkarılır (`provenanceOf`): `model-derived` (yerel tıbbi model; model kimliği, sürüm, SHA-256, lisans, belge, kare), `heuristic-derived` (kural tabanlı ön inceleme), `report-derived` (rapor metni), `lab`, `user`.
+
+## Çevrimdışı mimari ve yerel tıbbi AI
+
+**Uygulama internet gerektirmez; bu bir güvenlik gereksinimidir.** Hasta verisi (MR, BT, röntgen, ultrason, Doppler, EKO, mamografi, patoloji, EKG, endoskopi, DICOM, PDF, laboratuvar sonuçları) cihazdan dışarı gönderilmez. Uzak tıbbi AI, OpenAI/Gemini/Claude API'leri, bulut çıkarımı, analitik, telemetri, reklam ve çökme raporlama **yoktur**: veriyi cihaz dışına gönderen bir sağlayıcı kaydedilmek istenirse hata verilir ve hiçbir koşulda (onayla bile) çalıştırılmaz. Web'de CSP `connect-src 'self'`, Android'de `INTERNET` izni manifestten **kaldırılır** (`tools:node="remove"`, CI derlenen APK'yı ayrıca denetler).
+
+```
+Görüntü (fotoğraf / DICOM kesiti)                 Manifest (kh-model-manifest/1) + model.onnx
+  → modalite + bölge tahmini                        → doğrulama + SHA-256 → IndexedDB (kh-local-models)
+  → Preprocessor (çift doğrusal boyutlandırma, NCHW, ölçek, mean/std)
+  → InferenceEngine (ONNX Runtime Web, WASM, tek iş parçacığı, analiz işçisinde; uygulamayla paketli)
+  → Postprocessor: detection (kutu) · segmentation (maske + kutu) · classification (yalnızca bölge)
+  → MedicalFinding (IMAGE_MODEL, güven, konum, provenance: model-derived + SHA-256 + lisans)
+  → anatomi (bilgi grafiği: Beyin › Sol yarıküre › Alın lobu) → organ → sistem → 3B
+  → fizyoloji akışları (olası ilişki) + rapor ile uyum / ÇELİŞKİ
+```
+
+- **Gerçek model yoksa sahte sonuç yoktur.** Uygulama kendi içinde tıbbi model ağırlığı **içermez**. Model kurulmadıkça her modalite "bu cihazda tıbbi AI modeli bulunmuyor" der; sağ-sol simetri ön kontrolü hiçbir zaman AI modeli gibi gösterilmez, rastgele sonuç üretilmez.
+- **Model kurmak:** Ayarlar ve gizlilik → **Yerel tıbbi görüntü modelleri** → "Model kur (.onnx + .json)". Manifest alanları: `id, name, version, modalities, task (detection|segmentation|classification), format: onnx, file, sha256, license, source, intendedUse, input {name, layout NCHW, channels 1|3, width, height, scale, mean, std}, output {boxes, scores, labels, boxFormat | mask | logits}, labels [{id, finding, structure}], scoreThreshold, limitations`. Eksik/yanlış alanlar tek tek listelenir; SHA-256 uyuşmazsa model kabul edilmez; en fazla 600 MB.
+- **Performans:** motor ve model ilk kullanımda yüklenir (lazy), oturum SHA-256 ile önbellekte tutulur, model baytları işçiye bir kez gönderilir; ilerleme gösterilir; **İptal** işçiyi sonlandırıp belleği bırakır; model kaldırılınca oturum atılır.
+- **Yetenek kaydı** (`capabilitiesFor`, Ayarlar → "Bu cihazda neler yapılabiliyor?"): 12 modalite (MR, BT, röntgen, ultrason, Doppler, EKO, mamografi, patoloji, EKG, endoskopi, fundus, diş) için DICOM okuma, ön işleme, MR sekansı, kural tabanlı ön inceleme, yerel model, görüntü üzerinde konum, anatomi eşlemesi ve MPR; desteklenmeyen her biri `supported: false` ve **nedeniyle**.
+- **Rapor + görüntü ayrı kaynaktır.** Aynı çalışmanın raporu model bulgusuyla anatomik yol üzerinden karşılaştırılır: aynı yapıda olumlu ifade → "uyumlu olabilir"; "olağan / izlenmedi" → **"ÇELİŞKİ: … İki kaynak ayrı gösterilir; değerlendirme hekime aittir."**; kardeş bölge (sol frontal ↔ sağ temporal) ilişkilendirilmez. Çelişki analiz kartında, Görüntüler listesinde ve organ sayfasında gösterilir.
+- **Test modeli:** `tests/fixtures/models/mock-detector` — `make_mock_model.py` ile üretilen 447 baytlık, **TEST AMAÇLI SAHTE** bir ONNX modeli ("TEST — sahte bulgu modeli (tıbbi değil)"); sabit bir kutu ve görüntü parlaklığından türeyen bir skor verir. Yalnızca testlerde zinciri (kurulum → çıkarım → kutu → anatomi → organ sayfası → akış → köken) doğrulamak için kullanılır; uygulamaya paketlenmez.
 
 ### Modalite desteği — dürüst tablo
 
-Bu kurulumda **öğrenilmiş (yapay zekâ) görüntü modeli yoktur.** Görüntü analizleri cihazda çalışan, açıklanabilir sinyal işleme/kural algoritmalarıdır; harici yapay zekâ servisi **bağlı değildir**.
+Uygulamayla birlikte **öğrenilmiş (yapay zekâ) görüntü modeli gelmez.** Aşağıdaki "gerçekten yapılan" sütunu cihazda çalışan, açıklanabilir sinyal işleme/kural algoritmalarıdır. Kullanıcı kendi cihazına bir ONNX modeli kurarsa yalnızca o modelin modalitelerinde "yerel tıbbi AI modeli" durumu açılır. Harici yapay zekâ servisi **desteklenmez**.
 
 | Modalite | Gerçekten yapılan (görüntünün kendisinden) | Yapılmayan (mimari hazır, model yok) |
 | --- | --- | --- |
-| **MR / BT / PET-BT** (fotoğraf, ekran görüntüsü, DICOM) | **Görüntü geometrisi / sağ-sol simetri ön kontrolü** (tıbbi görüntü tanı modeli DEĞİL): kesitlere ayırma, orta hat ve eğiklik, iki yarının ayna karşılaştırması → "görüntü asimetrisi gözlemi" (gerçek görüntü üzerinde kutu + fark haritası), gözlem alanının yaklaşık beyin konumu, baş kesiti şeklinden bölge önerisi. MR sekansı yalnızca **DICOM başlığından** okunur | Lezyon analizi, organ segmentasyonu, görüntüden sekans/kontrast tanıma, iki tarafı eşit etkileyen değişiklikler — gerçek model gerekir (`medicalAI.ts`) |
+| **MR / BT / PET-BT** (fotoğraf, ekran görüntüsü, DICOM) | **Görüntü geometrisi / sağ-sol simetri ön kontrolü** (tıbbi görüntü tanı modeli DEĞİL): kesitlere ayırma, orta hat ve eğiklik, iki yarının ayna karşılaştırması → "görüntü asimetrisi gözlemi" (gerçek görüntü üzerinde kutu + fark haritası), gözlem alanının yaklaşık beyin konumu, baş kesiti şeklinden bölge önerisi. MR sekansı yalnızca **DICOM başlığından** okunur | Lezyon analizi, organ segmentasyonu, görüntüden sekans/kontrast tanıma, iki tarafı eşit etkileyen değişiklikler — cihaza kurulu gerçek bir model gerekir (`localModel.ts`) |
 | **EKG** (kâğıt fotoğrafı/taraması) | Milimetrik ızgaradan kalibrasyon (alt piksel), şerit (derivasyon sırası) sayısı, R tepeleri → **RR aralığı, kalp hızı, RR düzenliliği** | PR, QRS, QT/QTc, ST/T, aks, derivasyon adları — **ölçülmez, uydurulmaz** |
 | **Ultrason / Doppler / EKO** | Ultrason görüntü alanının (yelpaze) tanınması; bölge seçimden/dosya adından (kaynağıyla) | Organ tanıma, otomatik ölçüm, kist/kitle/taş adayı, Doppler akım |
 | **Patoloji / mikroskopi** | Boyalı doku alanı, çekirdek sayımı, yoğunluk ve ortalama büyüklük | Doku tipi, hücre morfolojisi, normal histolojiyle karşılaştırma, tanı |
@@ -102,16 +131,16 @@ Her görüntüde **kalite kontrolü** yapılır: düşük çözünürlük, bulan
 
 **Gözlem ≠ bulgu.** `ImageObservation` (ör. "sağ-sol parlaklık farkı") ile `MedicalFinding` (ör. "lezyon") ayrı varlıklardır. Bulgu yalnızca gerçek bir tıbbi görüntü modelinden (`IMAGE_MODEL`, "model-derived") ya da rapordan gelebilir; kural tabanlı ön kontrol asla bulgu üretmez.
 
-**Tıbbi görüntü modeli sağlayıcıları** (`packages/analysis/src/medicalAI.ts`): `MedicalImageAIProvider` — `analyzeStudy`, `classifyModality`, `classifySequence`, `detectStructures`, `segmentStructures`, `detectFindings`, `localizeFindings`, `measureStructures`, `compareStudies`; her çıktı kaynak, model, model sürümü, güven, konum, anatomik yapı ve sınırlarını taşır. MR, BT, röntgen, ultrason, mamografi, patoloji, EKG ve endoskopi için sağlayıcı yeri vardır; **bugün hepsi `unavailable`** döner (depoda gerçek model yok, hiçbir şey uydurulmaz). Gerçek bir sağlayıcı `MedicalImageProviderRegistry.register()` ile eklendiğinde `runMedicalImageModel` bulgu → konum (piksel/voksel) → anatomi (bilgi grafiği yolu) → 3B zincirini otomatik kurar, zaman aşımı ve hata yönetimi yapar, cihaz dışına veri gönderecekse önce onay ister. Yapılandırma anahtarları (sunucu/yerel servis tarafında okunur; API anahtarı ön yüze gömülmez): `MEDICAL_AI_PROVIDER`, `MEDICAL_AI_BASE_URL`, `MEDICAL_AI_API_KEY`, `MRI_MODEL`, `CT_MODEL`, `XRAY_MODEL`, `PATHOLOGY_MODEL`. Web sürümünün CSP'si (`connect-src 'self'`) ve APK'nın internet izni olmaması nedeniyle uzak bir model bu sürümde zaten çağrılamaz.
+**Tıbbi görüntü modeli sağlayıcıları** (`packages/analysis/src/medicalAI.ts`, `localModel.ts`): `MedicalImageAIProvider` — `analyzeStudy`, `classifyModality`, `classifySequence`, `detectStructures`, `segmentStructures`, `detectFindings`, `localizeFindings`, `measureStructures`, `compareStudies`; her çıktı kaynak, model, model sürümü, güven, konum, anatomik yapı ve sınırlarını taşır. Varsayılan kayıtta her modalite grubu `unavailable` döner; kurulu bir ONNX modeli `LocalModelProvider` olarak kaydedilince `runMedicalImageModel` bulgu → konum (piksel kutusu/maske/nokta) → anatomi (bilgi grafiği yolu) → 3B zincirini kurar, zaman aşımı ve hata yönetimi yapar. Uzak sağlayıcı, API anahtarı ya da sunucu adresi yapılandırması **yoktur**.
 
 **"Vücutta göster" açıklaması konuma göre değişir:** gerçek model konumu varsa "Bulgu, görüntü analizinden elde edilen konum bilgisiyle 3B anatomide gösteriliyor"; yalnızca bölge biliniyorsa "Bu gösterim görüntünün ait olduğu organı/bölgeyi gösterir; belirli bir bulgunun kesin konumu değildir"; rapordan ise "Konum rapordaki anatomik ifadeden eşleştirildi; gerçek piksel koordinatı değildir".
 
-Yeni bir modalite modeli eklemek mevcut sistemi bozmaz: `ImageAnalysisAdapter` arayüzünü uygulayan adaptör `AdapterRegistry.register()` ile kaydedilir (ör. `FundusAnalysisAdapter`). Sağlayıcı soyutlaması (`AIProvider`, `MedicalVisionProvider`: `analyzeImage`, `detectFindings`, `localizeFinding`, `segmentStructure`, `classifyModality`, `estimateAnatomy`) desteklenmeyen yöntemlerde `unavailable` ve nedenini döndürür. Veriyi cihaz dışına gönderecek bir sağlayıcı eklenirse önce "Bu veri harici bir yapay zekâ servisine gönderilebilir" onayı istenir (bugün CSP ve Android'in internet izni olmaması bunu zaten engeller).
+Yeni bir modalite modeli eklemek mevcut sistemi bozmaz: `ImageAnalysisAdapter` arayüzünü uygulayan adaptör `AdapterRegistry.register()` ile kaydedilir (ör. `FundusAnalysisAdapter`). Sağlayıcı soyutlaması (`AIProvider`, `MedicalVisionProvider`: `analyzeImage`, `detectFindings`, `localizeFinding`, `segmentStructure`, `classifyModality`, `estimateAnatomy`) desteklenmeyen yöntemlerde `unavailable` ve nedenini döndürür. Veriyi cihaz dışına gönderecek bir sağlayıcı kaydedilemez.
 
 ### Vücudum ve organ sayfaları
 
 - **Vücudum** (`#/vucudum`): dikkat çeken organlar ve her birinde tahlil / rapor bulgusu / görüntü gözlemi sayısı. Tüm organlar sistemlere göre listelenir. Kritik değerlerde "acil değerlendirme gerekebilir — doktor değerlendirmesi gerekir" uyarısı çıkar (tanı iddiası olmadan).
-- **Organ sayfası** (`#/organ/<düğüm>`, `/benim`, `/ic`, `/derin/<düğüm>/…`): genel bakış · kişisel ayrıntı · iç yapı · derinlemesine inceleme (yukarıdaki "Arayüz" bölümü).
+- **Organ sayfası** (`#/organ/<düğüm>`, `/benim`, `/ic`, `/derin/<düğüm>/…`): genel bakış · kişisel ayrıntı · iç yapı · derinlemesine inceleme (yukarıdaki "Arayüz" bölümü). Yerel model bulgusu varsa "Benim durumum"da ◆ ile özetlenir, ayrıntıda "Yerel tıbbi AI modelinin bulguları" (TIBBİ GÖRÜNTÜ MODELİ rozeti, model adı, güven, anatomi yolu, rapor ile çelişki, "Görüntüyü aç") gösterilir; organ alt sayfası ve Vücudum özeti de bunu sayar ("1 yerel AI modeli bulgusu", tanı değildir).
   - **Benim durumum (ayrıntı):** tahliller (referans kaynağıyla, renkli), görüntü gözlemleri (güvenle), rapor cümleleri (izlenmedi / belirsiz / değerlendirilemedi ayrı), örüntülerin kanıt paneli (✓ destekleyen, ✗ çelişen, ? eksik), görüntülemeler, "Fizyolojide nerede?", normal ↔ ben farkı, zaman içindeki eğilim, eski ↔ yeni görüntüleme ve **belirsizlik** (ölçülmüş / olasılıksal / eksik).
   - Bilgi grafiğine mide, ince bağırsak (duodenum, jejunum, ileum; duvar → mukoza → villus → enterosit, kılcal damar ve lenf kanalı; besin, demir, B12 ve folat emilimi) ve kalın bağırsak eklendi.
 - **"Neden? / Neyi etkiler?"**: Bulgu → etkilenen anatomi → normal işlevi → olası etkilenen süreçler → ilişkili verilerin → sınırlar.
@@ -124,7 +153,7 @@ Yeni bir modalite modeli eklemek mevcut sistemi bozmaz: `ImageAnalysisAdapter` a
 
 | Alan | İçerik |
 | --- | --- |
-| **Verilerim** | Tek alana PDF/JPG/PNG/DICOM/ZIP yükleme (tür otomatik), tahlil/görüntüleme filtresi (imza, boyut, piksel ve sayfa sınırları), şifreli saklama, PDF ve görsel görüntüleyici (yakınlaştır, sayfa, döndür, tam ekran), orijinali bayt bayt indirme, yeniden adlandırma, silme |
+| **Belgelerim** | Tek alana PDF/JPG/PNG/DICOM/ZIP yükleme (tür otomatik), tahlil/görüntüleme filtresi (imza, boyut, piksel ve sayfa sınırları), şifreli saklama, PDF ve görsel görüntüleyici (yakınlaştır, sayfa, döndür, tam ekran), orijinali bayt bayt indirme, yeniden adlandırma, silme |
 | **Okuma** | PDF metin katmanı; taranmış sayfa, fotoğraf ve ekran görüntüsü (ör. e-Nabız) için cihazda OCR (Tesseract, Türkçe). Görüntüler iki farklı sayfa bölütlemesiyle okunur; iki okumanın uyuşmadığı değerler doğrulamaya düşer. 81 testlik LOINC kataloğu (hemogram ve akyuvar alt türleri, biyokimya, lipid, tiroid, cinsiyet hormonları, kortizol, prolaktin, vitamin-mineral, demir, pıhtılaşma), Türkçe ondalık, birim dönüşümü, farklı sütun düzenleri, rapordaki referans aralığı (etiketli, cinsiyete ya da döngü evresine göre verilen aralıklar dahil), düşük güvenli satırlar işaretli |
 | **Görüntüleme (MR, BT, röntgen, ultrason)** | Belge türünü sistem kendisi anlar; istenirse yüklerken elle seçilir (Tahlil / MR / Tomografi (BT) / Röntgen / Ultrason / Diğer). **DICOM** dosyaları (CD/USB'deki `.dcm` veya uzantısız `IM000001` gibi dosyalar) cihazda okunur: masaüstünde **klasör seçerek** içe aktarma (DICOMDIR ve görüntüleyici programları atlanır), aynı seriye ait kesitler listede tek satır ve tek görüntüleyicide. Görüntüleyici: kesit kaydırma (tekerlek, ok tuşları, kaydırıcı), pencere/seviye (sağ tıkla sürükle ya da kontrast aracı), BT ön ayarları (yumuşak doku, akciğer, kemik, beyin, karaciğer; Hounsfield), negatif, yakınlaştırma, tam ekran. Sıkıştırmasız, RLE ve JPEG Baseline çözülür; JPEG 2000 / JPEG-LS tanınır ama çözülmez (dosya saklanır, açıkça söylenir). Tür, bölge (beyin, bel omurgası, diz, toraks…), çekim tarihi ve seri başlıktan otomatik gelir; **hasta adı ve kimlik numarası okunmaz, gösterilmez**. Radyoloji raporu (PDF/fotoğraf) okunur, Klinik bilgi / Teknik / Bulgular / Sonuç bölümlerine ayrılır, elle düzeltilebilir; raporda geçen ~45 terimin (hiperintens, protrüzyon, stenoz, konsolidasyon, BI-RADS…) genel anlamı gösterilir, bölge 3B vücutta açılır. **Fotoğrafı çekilmiş film veya ekran görüntüsü** (JPG/PNG) de aynı görüntüleyicide açılır: otomatik kontrast, pencere/seviye, negatif, döndürme. Kâğıt rapor fotoğrafı kendiliğinden okunur; film fotoğrafında okuma yapılmaz. Tahlil diye yüklenen film fotoğrafında OCR'dan önce "görüntüleme mi?" diye sorulur; değer bulunamayan belgede de aynı seçenek çıkar. Görüntüleme raporları **Sonuçlar** ekranında (raporun kendi "Sonuç" bölümü ve terimleriyle), **Zaman** ekranının rapor geçmişinde ve **Keşfet**'te ilgili organın bulutunda ("Görüntülemem") ve organ panelinde ("Görüntülemelerin", raporun sonucuyla) görünür. **Ölçümler tahlil gibi:** raporda yazan ölçümler (dalak/karaciğer/böbrek boyu, koledok, portal ven, aort çapı, prostat ve tiroid hacmi, kardiyotorasik oran, Evans indeksi, orta hat kayması, bel/boyun kanalı çapı, akciğer nodülü, EF, sol karıncık ve kulakçık, pulmoner basınç, karotis IMT, kemik yoğunluğu T-skoru — 25 ölçüm) otomatik okunur ve genel referans aralığına göre Normal / Yüksek / Düşük gösterilir; açınca ne ölçtüğü, olası nedenler (kesin değil), doktora sorulabilecekler, vücutta göster ve içeri gir. Görüntü üzerinde **cetvel** (DICOM'da mm), **iki çizgiden oran** (fotoğrafta da) ve BT'de **yoğunluk (HU)** ölçülüp aynı şekilde kaydedilir. Referans dışı ölçümler 3B vücutta ilgili organı tahliller gibi renklendirir. **Görüntü geometrisi / sağ-sol simetri ön kontrolü** (tıbbi görüntü tanı modeli değildir): yazısı ve raporu olmayan MR/BT fotoğrafı ya da DICOM kesiti cihazda incelenir: kolaj kesitlere ayrılır, her kesitte orta hat (eğiklik dahil) bulunur, sağ yarı sol yarının ayna görüntüsüyle karşılaştırılır ve karşı tarafa göre belirgin daha parlak/koyu kalan alanlar "görüntü asimetrisi gözlemi" olarak fark haritası ve kutuyla işaretlenir ("Kesit 2 · görüntünün sol üst kısmı · daha parlak"). Yandan (sagital) ve simetrik olmayan kesitler karşılaştırılmaz ve bu açıkça yazılır; kesitlerin şekli baş kesitine benziyorsa bölge olarak "Beyin" önerilir (onay ister). Kullanıcı "Sonuçlarıma ekle" derse 3B'de ilgili organ işaretlenir ve organ panelindeki "Sonucuma göre" bu görüntüyü açar. Bu bir sağ-sol fark ölçümüdür, tanı değildir: normal asimetriler, sinüsler, baş eğikliği ve fotoğraf açısı yanlış işarete; iki tarafı eşit etkileyen değişiklikler kaçırılmaya yol açabilir. Uygulama görüntüye bakıp teşhis koymaz. Her görüntüleme belgesinde **Vücutta göster** vardır; bölge bilinmiyorsa önce bölge sorulur, seçilen bölge belgeye kaydedilir. Aynı çekime ait görüntü ve rapor (aynı tür ve tarih ya da aynı bölge, 7 güne kadar arayla) birbirine bağlanır: MR kesitleri raporun sonucunu da gösterir. Uygulama görüntüyü veya raporu **yorumlamaz**; ön kontrol yalnızca sağ-sol farkını gösterir |
 | **Onay** | Okunan her değer onaydan geçer: düzeltme, tanınmayan satırı bir teste bağlama (kalıcı takma ad), elle ekleme, kaynağı belgede vurgulama |
@@ -134,22 +163,24 @@ Yeni bir modalite modeli eklemek mevcut sistemi bozmaz: `ImageAnalysisAdapter` a
 | **Vücutta göster** | Tahlilden keşif yolu: LDL → koroner arterler → damar içi → simülasyon; hemogram → kan hücreleri; ALT → karaciğer → lobül; kreatinin → böbrek → nefron; glukoz → pankreas → adacık; CK → iskelet kasları. Aralık dışı bulgular arasında ileri/geri gezinme. CRP, lökosit, ferritin gibi tek bir organa özgü olmayan testler bunu açıkça belirtir |
 | **Zaman** | Test başına eğilim grafiği (her ölçümün kendi raporundaki referans bandıyla), noktadan rapora ve vücuda gidiş, tablo görünümü, rapor geçmişi |
 | **Yedek** | `.khyedek` şifreli yedek (ayrı yedek parolası), başka cihaza geri yükleme, tekrarları atlama |
-| **Verilerimi indir** | Şifresiz ZIP: orijinaller + `sonuclar.json` + `sonuclar.csv` (açık uyarıyla). DICOM dosyalarında kimlik alanları (hasta adı, kimlik no, doğum tarihi, erişim no, kurum ve hekim adları, iç içe diziler dahil) varsayılan olarak temizlenir; kasadaki özgün dosya değişmez |
+| **Verilerimi indir** | Şifresiz ZIP: orijinaller + `sonuclar.json` + `sonuclar.csv` (açık uyarıyla). DICOM dosyalarında kimlik alanları (hasta adı, kimlik no, doğum tarihi, erişim no, kurum ve hekim adları, iç içe diziler dahil) varsayılan olarak temizlenir; kasadaki özgün dosya değişmez. Görüntüsüne yazı yakılmış (ya da olası) DICOM dosyaları `OKUBENI.txt`'de ve ekranda ayrıca listelenir (pikseldeki yazı silinmez) |
 | **Gizlilik** | Veri akışı, depolama, açma yöntemleri (parola, Android'de parmak izi/yüz/PIN), otomatik kilit, profil, tüm verileri sil |
 
-Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zekâ **BAĞLI DEĞİL**; tiroid, kulak, kol-bacak damarları ve periferik sinirler **şematik**. Uygulamadaki **Kapsam raporu** (`#/kapsam`) her yapı için iki vücutta dış görünüm, bölüm sayısı, iç keşif derinliği (simülasyon / şematik doku atlası / yalnızca ilişkili doku), sahne ve süreç durumunu model dosyalarından ve uygulama verisinden okuyarak gösterir.
+Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zekâ **YOK (desteklenmez)**, yerel model kurulu değilse "bu cihazda tıbbi AI modeli bulunmuyor"; tiroid, kulak, kol-bacak damarları ve periferik sinirler **şematik**. Uygulamadaki **Kapsam raporu** (`#/kapsam`) her yapı için iki vücutta dış görünüm, bölüm sayısı, iç keşif derinliği (simülasyon / şematik doku atlası / yalnızca ilişkili doku), sahne ve süreç durumunu model dosyalarından ve uygulama verisinden okuyarak gösterir.
 
 ## Güvenlik modeli (kısa)
 
 - **Kasa:** parola → Argon2id (64 MiB, 3 tur) → 256 bit ana anahtar sarılır. Her belge kendi anahtarıyla, 1 MiB'lık parçalar halinde AES-256-GCM ile şifrelenir. Parça AAD'si dosya kimliği, parça no ve son-parça bayrağını içerir: sıra değişirse, dosya kesilirse ya da taşınırsa açılmaz. Rapor ve sonuç kayıtları da ana anahtarla şifrelidir; depoda açık duran tek şey rastgele UUID'lerdir.
 - **Android:** Kotlin/Compose kabuğu içinde WebView (yalnızca `appassets.androidplatform.net`). Cihaz kilidi anahtarı Android Keystore'da durur ve her kullanımda biyometri/PIN ister. `FLAG_SECURE`, `allowBackup=false`, internet izni yok, köprü yalnızca ana çerçeve ve kendi kökeni için.
-- **Web:** CSP `connect-src 'self'` (veri gönderilebilecek hedef yok), Trusted Types, satır içi script yok. PDF.js, OCR ve 3D dosyalarının hepsi uygulamayla paketlenir; CDN yok. Lint kuralları `fetch`, `innerHTML`, `eval`, `console` ve serbest `localStorage` kullanımında derlemeyi durdurur.
+- **Web:** CSP `connect-src 'self'` (veri gönderilebilecek hedef yok), `script-src 'self' 'wasm-unsafe-eval'` (yalnızca paketli WASM: OCR, ONNX), Trusted Types, satır içi script yok. PDF.js, OCR, ONNX Runtime ve 3D dosyalarının hepsi uygulamayla paketlenir; CDN yok. Service worker yalnızca aynı kökenden GET ile uygulama dosyalarını önbelleğe alır.
+- **Çevrimdışı denetim:** `tests/security/offline.test.ts` kaynakta `fetch`/XHR/WebSocket/EventSource/sendBeacon ve uzak adres, uzak AI yapılandırması ve analitik/telemetri/reklam/çökme raporlama paketleri olmadığını, Android manifestinde INTERNET izninin kaldırıldığını ve CSP'yi her test koşusunda denetler. Lint kuralları `fetch`, `innerHTML`, `eval`, `console` ve serbest `localStorage` kullanımında derlemeyi durdurur.
 - **Yedek:** `KHYEDEK1` başlığı + Argon2id + parçalı AES-256-GCM. Başlığın tamamı AAD'ye girer, kurcalanan yedek açılmaz.
 - **Sunucu tarafı konular:** Oturum, IDOR/BOLA, CSRF ve hız sınırı gibi başlıklar bu mimaride geçerli değil, çünkü sunucu yok. Bunların karşılığı cihazdaki şifreli kasadır.
 
 ## Testler
 
 - **Çok kipli analiz ve kabul senaryoları (Vitest):** `packages/analysis/src/__tests__` (kalite, modalite, EKG ölçümü — alt piksel ızgara dahil, adaptör kaydı, bilgi grafiği bütünlüğü ve zincirleri, örüntü motoru, eğilim, eski↔yeni karşılaştırma, referans önceliği) ve `apps/web/src/__tests__/acceptance.test.ts`: **A** yalnızca MR (gerçek fikstür fotoğrafı, rapor yok — 20 adım), **B** MR + rapor, **C** MR + kan, **D** eski + yeni MR, **E** yalnızca EKG, **F** yalnızca pankreas ultrasonu, **G** yalnızca patoloji, **H** yalnızca tahlil fotoğrafı ve **MR + rapor + kan + önceki MR** birleşik modeli. DICOM anonimleştirme (açık/örtük VR, iç içe diziler).
+- **Yerel AI ve dürüstlük (Vitest):** `localModel.test.ts` (manifest doğrulama, ön işleme, tespit/segmentasyon/sınıflandırma son işleme, sahte motorla `LocalModelProvider` — tembel yükleme, tek yükleme, modalite reddi, dispose —, model → kutu → anatomi → köken, 12 modalite yetenekleri, üç durum, köken türetimi, rapor ↔ model uyumu/ÇELİŞKİ/kardeş bölge, akış basamağına bağlama), `modalities.test.ts` (MR, BT, röntgen, ultrason, patoloji, EKG, endoskopi: model yokken asla "model" durumu yok, lezyon üretilmez), `apps/web/src/__tests__/localModels.test.ts` (kurulum + SHA-256 uyuşmazlığı; **gerçek ONNX Runtime ile** test modeli: bulgu → kutu → beyin › frontal → köken), `packages/ingest/src/__tests__/mpr.test.ts` (yakılmış yazı (0028,0301), ikincil yakalama, yönelim; MPR geometrisi, düzlem adları, voksel doğruluğu ve mm oranı, güvenilmez seride ret nedenleri), `tests/security/offline.test.ts` (kaynakta ağ API'si ve uzak adres yok, yasaklı paket yok, uzak AI yapılandırması yok, ORT yalnızca yerel WASM, Android INTERNET izni kaldırılmış, CSP).
 - **Birim/güvenlik testleri (Vitest):** kripto ve kurcalama, sızıntı (depoda açık metin yok), silme, yükleme saldırıları (sahte uzantı, dev PNG başlığı, path traversal), ayrıştırıcı, katalog bütünlüğü, yorum motoru, yedek (yanlış parola, kurcalanmış gövde/başlık, sürüm), ZIP, XSS.
 - **Sentetik rapor seti (`fixtures/`):** 7 PDF (hemogram, biyokimya, kadın hormon, vitamin-mineral, lipid, çoklu anormallik, genel) ve 4 görüntü (eğik telefon fotoğrafı, gürültülü tarama, e-Nabız benzeri ekran görüntüsü, düz tarama); her biri farklı bir laboratuvar düzeni. PDF'lerde her satırın değeri, durumu ve beklenen yorum örüntüleri; görüntülerde gerçek Tesseract ile okuma ve **yanlış okunan hiçbir değerin doğrulama işareti olmadan geçmemesi** test edilir.
 - **Uçtan uca (gerçek Chromium, CI'da her gönderimde):**
@@ -158,10 +189,12 @@ Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zek
   - `tests/e2e/data.py`: zaman çizelgesi, şifreli yedek → yeni kasaya geri yükleme, ZIP doğrulaması.
   - `tests/e2e/multimodal.py`: rapor olmadan MR fotoğrafı, EKG, ultrason ve patoloji görüntüsünün ön incelemesi; Vücudum → organ alt sayfası → organ sayfası, "Neden?" zinciri; kabul senaryoları 87 (Vücudum → Sindirim → İnce bağırsak: nasıl çalışır → içini göster → fizyoloji adım adım → benim durumum → derinleş), 88 (beyin MR fotoğrafı: ✓ kesit/orta hat/simetri, ◻ lezyon/segmentasyon/sekans, vücutta göster → beyin), 95 (2 kesit: tam MR değerlendirmesi denmez), keşif modu (10 sistem), breadcrumb ve geri dönüş. Ayrıca:
     - "Veri ekle" ve "Vücudum" ilk ekranda görünür; gezinmede teknik öğe yoktur.
-    - MR sonucunda en fazla 8 görünür düğme bulunur; model ayrıntıları "Teknik detaylar"da.
+    - MR sonucunda en fazla 8 görünür düğme bulunur; model ayrıntıları "Nasıl analiz edildi?" bölümünde.
     - Beyaz cevher için seviye seviye iniş (doku → oligodendrosit → miyelin oluşumu → miyelin) çalışır.
     - "pankreas" araması doğru sonucu verir.
     - Telefonda alt gezinme en fazla 5 öğedir, "Daha" alt sayfası açılır, yatay taşma yoktur.
+  - `tests/e2e/localai.py`: model yokken beyin MR (ön inceleme, model bulgusu yok, 12 modalitede "model yok"); test modelini kur (bozuk SHA-256 reddi) → aynı görüntüde **yerel model** durumu, gerçek görüntü üzerinde kutu, güven, beyin › frontal lob, köken (SHA-256) → Görüntüler rozeti → organ sayfası → sinir sistemi akışında "İşleme" basamağı → Vücudum özeti; aynı görüntüye "beyin olağan" raporu → **ÇELİŞKİ** gösterilir, kaynaklar ayrı; model kaldırılınca yeniden ön inceleme; 8 kesitlik DICOM'da MPR yapılmaz ve nedeni yazılır; yakılmış yazı bilgisi.
+  - `tests/e2e/explore.py`: 3B keşif ekranı, 22 sahne, iç yapı, kişisel mod.
   - `tests/e2e/reports.py`: 9 farklı raporun uygulamada okunması, onayı, özet sayıları, çoklu bulgu örüntüleri, doğrulama listesi, tek organa özgü olmayan test, 3B'ye geçiş ve bulgular arası gezinme.
   - Hepsinde: CSP ihlali yok, konsol hatası yok, uygulama dışına istek yok.
 - **Derleme kapıları:** CSP meta, izleme alan adı taraması, test verisinde TC kimlik no taraması, OSV bağımlılık açıkları, APK'da `INTERNET` izni kontrolü.
@@ -176,7 +209,13 @@ pnpm dev          # http://localhost:5173
 pnpm verify       # lint + tip denetimi + test + derleme + güvenlik kapıları
 ```
 
-Uçtan uca testler için önce `pnpm build`, sonra `apps/web` içinde `npx vite preview --port 4173` çalıştır. Ardından `python3 tests/e2e/flow.py` (Playwright gerekir).
+Uçtan uca testler için önce `pnpm build`, sonra `pnpm preview --port 4173` çalıştır. Ardından her betik ayrı çalıştırılır (Playwright gerekir; `CHROME_PATH` ile tarayıcı seçilebilir):
+
+```bash
+for s in smoke flow data reports imaging multimodal localai explore; do python3 tests/e2e/$s.py; done
+```
+
+Her derlemeden sonra önizleme sunucusunu yeniden başlat (eski sunucu yeni dosya adlarını görmez).
 
 **Telefonda web sürümü:** WebCrypto yalnızca güvenli bağlamda çalışır. `adb reverse tcp:5173 tcp:5173` ile `http://localhost:5173` adresini kullan ya da GitHub Pages sürümünü aç (her `main` gönderiminde `pages.yml` ile yayımlanır).
 
@@ -208,9 +247,10 @@ pnpm --filter @kh/assets-pipeline build   # sadeleştir, nicemle, meshopt ile s�
 packages/
   analysis/   Çok kipli analiz çekirdeği: kaynaklı tipler, kalite, modalite/bölge tahmini, görüntü adaptörleri
               (kesitsel simetri, EKG, ultrason, patoloji, "model yok" adaptörleri), sağlayıcı soyutlaması,
-              bilgi grafiği, örüntü motoru, eğilim, eski↔yeni karşılaştırma, birleşik sağlık modeli, organ görünümü
+              bilgi grafiği, örüntü motoru, eğilim, eski↔yeni karşılaştırma, birleşik sağlık modeli, organ görünümü,
+              yerel model altyapısı (localModel.ts: manifest, ön/son işleme, sağlayıcı, yetenekler, üç durum)
   vault/      Şifreli kasa + şifreli yedek (Argon2id, parçalı AES-256-GCM, kripto-imha)
-  ingest/     Yükleme doğrulaması, DICOM okuma ve anonimleştirme, sağ-sol görüntü incelemesi
+  ingest/     Yükleme doğrulaması, DICOM okuma ve anonimleştirme, yakılmış yazı riski, MPR (mpr.ts), sağ-sol görüntü incelemesi
   catalog/    74 test (LOINC), birimler, aralıklar, anatomi yapıları, süreçler, açıklama metinleri
   parser/     PDF metin katmanı / OCR satırlarından sonuç çıkarma
   platform/   PlatformAdapter (web, Android köprüsü)
@@ -218,17 +258,19 @@ apps/web/     Vite + React + Tailwind; three.js / React Three Fiber
   src/anatomy/   model yükleme, malzemeler, yapı eşlemesi, şematik tiroid
   src/explore/   Keşfet ekranı, sinematik kamera, gürültü geçişi, paneller
   src/explore/inside/   içeri-gir sahneleri, aşama/nesne içerikleri
+  src/lib/localModels/  ONNX Runtime Web motoru (engine.ts) ve model deposu (store.ts, SHA-256, IndexedDB)
+  src/lib/analysis.worker.ts  görüntü analizi ve yerel model çıkarımı (ana iş parçacığı dışında)
 apps/android/ Kotlin + Compose kabuğu (WebView, Keystore, SAF)
 assets-pipeline/  HRA + BodyParts3D → uygulama GLB dönüşümü
-tests/        güvenlik testleri ve uçtan uca betikler
+tests/        güvenlik/çevrimdışı testleri, uçtan uca betikler, TEST AMAÇLI sahte ONNX modeli (tests/fixtures/models)
 fixtures/     yalnızca sentetik raporlar
 ```
 
 ## Bilinen sınırlar
 
-- **Görüntü analizi:** Öğrenilmiş bir tıbbi görüntü modeli paketlenmiyor; `MedicalImageAIProvider` sağlayıcılarının hepsi `unavailable` döner. Lezyon analizi, organ segmentasyonu ve görüntüden sekans tanıma gerçek bir model gerektirir. MR/BT'de yalnızca sağ-sol simetri ön kontrolü yapılır (lezyon tespiti değildir; normal varyantlar yanlış işarete, iki tarafı eşit etkileyen değişiklikler kaçırılmaya yol açar). Beyin konumu radyolojik düzen ve "ön taraf yukarıda" varsayımıyla tahmin edilir; kesit düzeyi bilinmediği için alternatif loblar listelenir. MR ile BT fotoğraftan güvenilir ayırt edilemez. EKG'de kâğıt hızı 25 mm/sn varsayılır; DICOM dalga formu EKG okunmaz. Ultrasonda organ görüntüden tanınmaz. Patolojide büyütme bilinmediği için ölçümler mikrometreye çevrilmez.
-- **Görüntüleyici:** DICOM serisinde kesit kaydırma ve pencere/seviye var; eksenel seriden sagital/koronal yeniden yapılandırma (MPR) yok.
-- **Vücut akışları** genel fizyoloji bilgisidir ve sabit 14 akışla sınırlıdır; kişisel katman yalnızca laboratuvar sonuçlarını basamaklara bağlar (görüntü/rapor bulguları organ sayfasında gösterilir).
+- **Görüntü analizi:** Öğrenilmiş bir tıbbi görüntü modeli paketlenmiyor; model kurulmadıkça `MedicalImageAIProvider` sağlayıcılarının hepsi `unavailable` döner. Lezyon analizi, organ segmentasyonu ve görüntüden sekans tanıma, kullanıcının cihaza kurduğu gerçek bir model gerektirir; uygulama bir modelin klinik doğruluğunu doğrulamaz (yalnızca dosya bütünlüğünü, SHA-256). Yerel model şu an tek kare/kesit üzerinde çalışır (3B hacim modeli yok); yalnızca ONNX ve WASM (WebGPU yok). MR/BT'de yalnızca sağ-sol simetri ön kontrolü yapılır (lezyon tespiti değildir; normal varyantlar yanlış işarete, iki tarafı eşit etkileyen değişiklikler kaçırılmaya yol açar). Beyin konumu radyolojik düzen ve "ön taraf yukarıda" varsayımıyla tahmin edilir; kesit düzeyi bilinmediği için alternatif loblar listelenir. MR ile BT fotoğraftan güvenilir ayırt edilemez. EKG'de kâğıt hızı 25 mm/sn varsayılır; DICOM dalga formu EKG okunmaz. Ultrasonda organ görüntüden tanınmaz. Patolojide büyütme bilinmediği için ölçümler mikrometreye çevrilmez.
+- **Görüntüleyici:** DICOM serisinde kesit kaydırma, pencere/seviye, ölçüm ve **MPR** var. MPR yalnızca ≥ 10 kesitlik, aynı yönelimli, düzenli aralıklı, tek kareli ve bellek sınırını aşmayan seride yapılır; aksi hâlde nedeni yazılır. MPR görüntüsünde ölçüm kapalıdır (enterpolasyon). Görüntüye yakılmış yazı başlıktan/SOP sınıfından tahmin edilir; pikseldeki yazı otomatik **silinmez** (görüntü ekranında ve dışa aktarmada uyarılır).
+- **Vücut akışları** genel fizyoloji bilgisidir ve sabit 14 akışla sınırlıdır; kişisel katman laboratuvar sonuçlarını ve konumlu rapor/model bulgularını basamaklara **olası ilişki** olarak bağlar.
 - **Eski ↔ yeni karşılaştırma** görüntü çakıştırması yapmaz; eşleştirme anatomik konum etiketiyle, boyut değişimi rapordaki ölçülerle yapılır.
 - **Bilgi grafiği** şimdilik beyin, kalp, pankreas, karaciğer, böbrek, akciğer, tiroid, kemik iliği, mide, ince ve kalın bağırsağı ayrıntılı kapsar; diğer yapılar 3B kataloğundaki kısa açıklamayla gösterilir. C-peptid gibi bazı belirteçler grafikte var ama laboratuvar kataloğunda henüz yok (organ sayfasında "eksik" olarak yazar).
 
@@ -245,4 +287,4 @@ fixtures/     yalnızca sentetik raporlar
 ## Lisanslar
 
 - **3D anatomi modelleri:** HuBMAP Human Reference Atlas, 3D Reference Object Library, CC BY 4.0 (organlar, damarlar); BodyParts3D, © The Database Center for Life Science, CC BY-SA 2.1 JP (erkek derisi, iskelet, kaslar ve bazı organlar — bu parçaları içeren model dosyaları aynı lisansla dağıtılır). Ayrıntı ve yapılan değişiklikler `apps/web/public/models/ATTRIBUTION.txt` dosyasında ve uygulamadaki Hakkında ekranında.
-- **Açık kaynak bileşenler:** React, three.js, React Three Fiber, drei, camera-controls ve hash-wasm MIT lisanslıdır. PDF.js, Tesseract.js ve Tesseract dil modelleri Apache-2.0 lisanslıdır. Tam liste uygulamadaki Hakkında ekranında.
+- **Açık kaynak bileşenler:** React, three.js, React Three Fiber, drei, camera-controls, hash-wasm ve ONNX Runtime Web MIT lisanslıdır. PDF.js, Tesseract.js ve Tesseract dil modelleri Apache-2.0 lisanslıdır. Tam liste uygulamadaki Hakkında ekranında.

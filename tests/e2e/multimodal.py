@@ -124,12 +124,12 @@ def expand(page):
 
 
 def card_text(card) -> str:
-    """Kartın tamamı (kapalı "Teknik detaylar" dahil)."""
+    """Kartın tamamı (kapalı "Nasıl analiz edildi?" dahil)."""
     return card.evaluate("e => e.textContent")
 
 
 def open_technical(card):
-    det = card.locator("details", has_text="Teknik detaylar").first
+    det = card.locator("details", has_text="Nasıl analiz edildi?").first
     if det.count() and not det.evaluate("d => d.open"):
         det.locator("summary").first.click()
 
@@ -162,11 +162,11 @@ with sync_playwright() as p:
     # --- A / kabul 88: yalnızca MR fotoğrafı, rapor yok → görüntü ÖN İNCELEMESİ (tıbbi model değil)
     upload(page, "MR", "brain_mri.jpg", "image/jpeg", (IMG / "mr-kolaj-foto.jpg").read_bytes())
     card = page.get_by_role("region", name="Ham görüntü analizi")
-    card.get_by_text("Görüntü ön incelemesi tamamlandı").wait_for(timeout=60000)
+    card.get_by_text("Görüntü ön incelemesi yapıldı").wait_for(timeout=60000)
     card.get_by_role("list", name="Görüntüden çıkan gözlemler").wait_for()
     vis = card.inner_text()
     check("Analiz tamamlandı" not in vis, "88: yalnızca simetri çalıştıysa 'Analiz tamamlandı' denmiyor")
-    check("ön kontrol · tıbbi model değil" in vis and "Bu bir tıbbi görüntü tanı modeli değildir" in vis, "88: ön kontrolün tıbbi model olmadığı açık")
+    check("ön inceleme · tıbbi model değil" in vis and "Bu bir tıbbi görüntü tanı modeli değildir" in vis, "88: ön kontrolün tıbbi model olmadığı açık")
     check("Rapor yok" in vis and "yalnızca görüntünün kendisine dayanıyor" in vis, "A: rapor olmadığı ve analizin yalnızca görüntüye dayandığı özette")
     check("Bu bir MR görüntüsü gibi görünüyor" in vis and "Beyin" in vis, "A: modalite ve bölge (beyin) tahmini sade cümleyle")
     check("Tür: kullanıcı seçimi" in vis, "35: MR türü kullanıcı seçimi olarak işaretli (görüntüden doğrulanmış gibi değil)")
@@ -339,7 +339,7 @@ with sync_playwright() as p:
     # --- F: yalnızca pankreas ultrasonu
     upload(page, "Ultrason", "pancreas_ultrasound.png", "image/png", ultrasound_png())
     card = page.get_by_role("region", name="Ham görüntü analizi")
-    card.get_by_text("Görüntü ön incelemesi tamamlandı").wait_for(timeout=60000)
+    card.get_by_text("Görüntü ön incelemesi yapıldı").wait_for(timeout=60000)
     t = card_text(card)
     check("Ultrason" in t, "F: ultrason tanındı")
     check("Organı görüntüden tanıma (ör. pankreas)" in t, "F: organ tanıma modeli olmadığı açık")
@@ -350,7 +350,7 @@ with sync_playwright() as p:
     # --- G: yalnızca patoloji görüntüsü
     upload(page, "Patoloji / biyopsi", "pathology_slide.png", "image/png", pathology_png())
     card = page.get_by_role("region", name="Ham görüntü analizi")
-    card.get_by_text("Görüntü ön incelemesi tamamlandı").wait_for(timeout=60000)
+    card.get_by_text("Görüntü ön incelemesi yapıldı").wait_for(timeout=60000)
     t = card_text(card)
     check("çekirdek" in t, "G: çekirdek ölçümü yapıldı")
     check("Patolojik tanı" in t and "tanı üretilmedi" in t, "G: tanı üretilmedi")
@@ -365,9 +365,11 @@ with sync_playwright() as p:
     n_items = bottom.locator("a:visible, button:visible").count()
     check(1 <= n_items <= 5, f"telefon: alt gezinmede en fazla 5 öğe ({n_items})")
     check(bottom.get_by_role("link", name="Ekle").is_visible(), "telefon: ortada 'Ekle'")
+    check(bottom.get_by_role("link", name="Sonuçlar").is_visible(), "telefon: alt gezinmede 'Sonuçlar'")
     bottom.get_by_role("button", name="Daha").click()
-    page.locator("dialog[open]").get_by_text("Tüm sonuçlarım").wait_for()
-    check(True, "telefon: 'Daha' alt sayfasından tüm sonuçlara erişim")
+    more = page.locator("dialog[open]")
+    more.get_by_text("Görüntüler", exact=True).wait_for()
+    check(more.get_by_text("Zamanım", exact=True).count() == 1 and more.get_by_text("Belgelerim", exact=True).count() == 1, "telefon: 'Daha' alt sayfasında Görüntüler, Zamanım, Belgelerim")
     page.keyboard.press("Escape")
     page.goto(URL + "#/vucudum")
     page.get_by_role("heading", name="Vücudum", exact=True).wait_for()
