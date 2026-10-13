@@ -1,0 +1,8 @@
+{
+ "schema": "kh-model-index/1",
+ "models": [
+  "totalseg-ct-total-3mm",
+  "totalseg-mr-total-3mm",
+  "xrv-densenet121-nih"
+ ]
+}

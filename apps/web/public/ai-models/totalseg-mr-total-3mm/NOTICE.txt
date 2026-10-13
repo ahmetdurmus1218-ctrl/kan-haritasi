@@ -1,0 +1,6 @@
+TotalSegmentator MRI — MR anatomi (50 yapı)
+Kaynak: https://github.com/wasserth/TotalSegmentator
+Ağırlıklar: https://github.com/wasserth/TotalSegmentator/releases/download/v2.5.0-weights/Dataset852_TotalSegMRI_total_3mm_1088subj.zip (SHA-256 6d0d0691e5b09c9faf3a70198ce0d0ccbb8ee1271a72af8f9452565c8df6461b)
+Lisans: Apache-2.0 (TotalSegmentator kodu ve 'total_mr' görevinin ağırlıkları)
+Atıf: Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.
+Değişiklik: PyTorch → ONNX (opset 17), ağırlıklar float16 saklanır, çıktıya TopK(4) eklendi.

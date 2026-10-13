@@ -61,6 +61,13 @@ export interface ModelFinding {
   confidence: Confidence;
   /** Model bir anatomik yapı adı verdiyse (bilgi grafiği düğümü ya da 3B yapı kimliği). */
   structure?: string;
+  /** Modelin sınıf anahtarı; anatomy = normal yapı bölütlemesi (bulgu değil). */
+  key?: string;
+  kind?: 'anatomy' | 'finding';
+  part?: string;
+  node?: string;
+  /** 2B bölütlemede maskenin görüntüye oranı. */
+  areaFraction?: number;
   limitations?: string[];
 }
 
@@ -208,13 +215,33 @@ export function anatomyFor(structure: string | undefined, localization: Localiza
   if (!structure) return undefined;
   const node = GRAPH.node(structure) ?? GRAPH.nodeForStructure(structure);
   const path = node ? GRAPH.pathTo(node.id).map((n) => n.id) : [structure];
+  const located = localization.kind === 'pixel' || localization.kind === 'point' || localization.kind === 'volume';
   return {
     path,
     structure: node?.structure ?? structure,
     ...(node?.part ? { part: node.part } : {}),
-    basis: localization.kind === 'pixel' || localization.kind === 'point' ? 'pixel-mapped' : 'region',
+    basis: located ? 'pixel-mapped' : 'region',
     confidence,
-    note: localization.kind === 'pixel' || localization.kind === 'point' ? 'Konum, modelin görüntü üzerindeki koordinatından eşleştirildi.' : 'Model konum vermedi; yalnızca yapı adı.',
+    note:
+      localization.kind === 'volume'
+        ? 'Konum, modelin hacimdeki voksel bölütlemesinden (gerçek voksel kümesi) eşleştirildi.'
+        : located
+          ? 'Konum, modelin görüntü üzerindeki koordinatından eşleştirildi.'
+          : 'Model konum vermedi; yalnızca yapı adı.',
+  };
+}
+
+/** Model etiketinin (manifest) anatomik karşılığı: bilgi grafiği düğümü + 3B yapı/bölüm + taraf. */
+export function anatomyForLabel(label: { key?: string; structure?: string; part?: string; node?: string }, localization: Localization, confidence: Confidence): AnatomicalLocation | undefined {
+  const base = anatomyFor(label.node ?? label.structure, localization, confidence);
+  if (!base) return undefined;
+  const k = (label.key ?? '').toLowerCase();
+  const side = /(^|[_\s])left([_\s]|$)/.test(k) ? 'left' : /(^|[_\s])right([_\s]|$)/.test(k) ? 'right' : undefined;
+  return {
+    ...base,
+    ...(label.structure ? { structure: label.structure } : {}),
+    ...(label.part ? { part: label.part } : {}),
+    ...(side ? { side } : {}),
   };
 }
 

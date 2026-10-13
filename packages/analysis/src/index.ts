@@ -22,3 +22,4 @@ export * from './fusion';
 export * from './organView';
 export * from './flows';
 export * from './localModel';
+export * from './volumeModel';
