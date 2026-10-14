@@ -1,13 +1,33 @@
 workflow: CI
-run: 38525391458
-sha: 8b30d3431981083673a779457c7aed8494fc36d0
-conclusion: success
+run: 38573521813
+sha: 2af34dffa8525bd102d1f4fa458f9f173e5881f0
+conclusion: failure
 
-dependencies: success
+e2e: failure
   - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
   - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Run pnpm build: success
+  - Run actions/setup-python@v5: success
+  - Playwright (Chromium): success
+  - Önizleme sunucusu: success
+  - Belgeler ve kasa (smoke): success
+  - Okuma → sonuçlar → vücutta göster → simülasyon: success
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
+  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
+  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
+  - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: failure
+  - Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR: skipped
+  - İçine gir — anatomi grafiği derinliği, komşuluk (pelvis, yumurtalık, kulak, böbrek, kalp), model deposu: skipped
+  - İçine gir motoru — bağırsak kabulü (lümen → … → moleküler taşıma), B12 → fizyoloji → ileum, model yok, katmanlar: skipped
+  - Gerçek yerel modeller — röntgen skoru, BT/MR 3B anatomi bölütleme, BT patoloji (basamaklı), köken: skipped
+  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: skipped
+  - Run actions/upload-artifact@v4: success
+  - Post Run actions/setup-python@v5: skipped
+  - Post Run actions/setup-node@v4: skipped
+  - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 web: success
@@ -25,30 +45,107 @@ web: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-e2e: success
+dependencies: success
   - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
   - Run actions/checkout@v4: success
-  - Run pnpm/action-setup@v4: success
-  - Run actions/setup-node@v4: success
-  - Run pnpm install --frozen-lockfile: success
-  - Run pnpm build: success
-  - Run actions/setup-python@v5: success
-  - Playwright (Chromium): success
-  - Önizleme sunucusu: success
-  - Belgeler ve kasa (smoke): success
-  - Okuma → sonuçlar → vücutta göster → simülasyon: success
-  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
-  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
-  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
-  - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: success
-  - Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR: success
-  - İçine gir — anatomi grafiği derinliği, komşuluk (pelvis, yumurtalık, kulak, böbrek, kalp), model deposu: success
-  - Gerçek yerel modeller — röntgen skoru, BT/MR 3B anatomi bölütleme, BT patoloji (basamaklı), köken: success
-  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
-  - Run actions/upload-artifact@v4: skipped
-  - Post Run actions/setup-python@v5: success
-  - Post Run actions/setup-node@v4: success
-  - Post Run pnpm/action-setup@v4: success
+  - Bağımlılık açıkları (OSV): success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	﻿2026-10-14T13:47:15.9245896Z ##[group]Run python tests/e2e/multimodal.py "$RUNNER_TEMP/shots"
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9246786Z ^[[36;1mpython tests/e2e/multimodal.py "$RUNNER_TEMP/shots"^[[0m
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9282043Z shell: /usr/bin/bash -e {0}
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9282372Z env:
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9282662Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9282983Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9283387Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9283746Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9284117Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9284438Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9284959Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:15.9285309Z ##[endgroup]
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0432545Z PASS UI: 'Veri ekle' ilk ekranda görünür
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0434003Z PASS UI: ana gezinmede 'Vücudum' görünür
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0435783Z PASS UI: gezinmede teknik öğe yok ['Özet', 'Vücudum', 'Sonuçlar', 'Görüntüler', 'Zamanım', 'Ara\nCtrl K', 'Özet', 'Vücudum', 'Ekle', 'Sonuçlar', 'Daha']
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0437344Z PASS 88: yalnızca simetri çalıştıysa 'Analiz tamamlandı' denmiyor
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0438338Z PASS 88: ön kontrolün tıbbi model olmadığı açık
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0439376Z PASS A: rapor olmadığı ve analizin yalnızca görüntüye dayandığı özette
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0440375Z PASS A: modalite ve bölge (beyin) tahmini sade cümleyle
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0441551Z PASS 35: MR türü kullanıcı seçimi olarak işaretli (görüntüden doğrulanmış gibi değil)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0442722Z PASS 95: fotoğrafta kapsam sınırlı ve kesit sayısı yazılı
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0443528Z PASS 88: ✓ Görüntü okundu
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0444213Z PASS 88: ✓ Kesitleri ayırma
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0444794Z PASS 88: ✓ Orta hat
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0449451Z PASS 88: ✓ Sağ-sol simetri ön kontrolü
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0450757Z PASS 88: ◻ lezyon analizi — tıbbi AI modeli yok
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0451610Z PASS 88/34: ◻ segmentasyon, MR sekansı belirlenemedi
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0452244Z PASS A: gözlem kartı konumu (beyin → yarıküre → lob)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0452849Z PASS 56: sağ-sol farkı 'görüntü asimetrisi gözlemi', bulgu değil
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0453454Z PASS 110: asimetri lezyon/tümör diye yorumlanmıyor
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0454043Z PASS UI: MR sonucunda az sayıda seçenek (6 düğme)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0454614Z PASS UI: sonuç ekranında 'Gözlemleri gör' / 'Vücudumda göster'
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0455238Z PASS 60: teknik detaylarda model / tür / versiyon / cihazda
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0455733Z PASS A: kalite kontrolü yapıldı
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0456435Z PASS A: gözlem kaynaklı (kural tabanlı) ve güvenli (İncele)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0457043Z PASS A: gerçek görüntüde konum var
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0457568Z PASS A: 'Neden?' zinciri açılıyor (normal işlev)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0458168Z PASS 33/95: 2 kesitten tam beyin MR protokolü izlenimi verilmiyor
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0458799Z PASS 95: 'tüm beyin MR değerlendirildi' denmiyor
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0459336Z PASS 88: Vücutta göster → beyin açılır
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0459803Z PASS UI: ana sayfada 'Son durum' özeti
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0460377Z PASS UI: asimetri anormallik değil 'gözlem' olarak sayılıyor
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0460935Z PASS Vücudum: beyinde görüntü asimetrisi gözlemi sayılıyor
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0461528Z PASS UI: organa dokununca alt sayfa (özet + yollar)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0462114Z FAIL 78: organ ilk ekranı: önce nasıl çalışır, sonra benim durumum
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0462697Z PASS 48/76: ilk ekranda hücre/molekül ağacı açık değil
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0463307Z PASS 69: organ durumu 'Belirsiz' (gözlem, anormallik değil)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0463894Z PASS Organ sayfası: görüntü gözlemi rapor değil diye işaretli
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0464781Z PASS Benim durumum: fark kaynağıyla
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0465237Z PASS Normal: beyin işlevleri
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0465864Z PASS UI: anatomi → doku → hücre → süreç → molekül iniş (Oligodendrosit → Miyelin)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0467691Z PASS 14/15: her derinlikte breadcrumb ('Vücut\n›\nBaş\n›\nSinir sistemi\n›\nBeyin\n›\nBeyaz cevher\n›\nBeyaz cevher dokusu\n›\nOligodendrosit\n›\nMiyelin oluşumu ve korunması\n›\nMiyelin (lipid–protein katmanı)')
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0468652Z PASS 101: geri tuşu bir seviye yukarı döndürüyor
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0469200Z PASS 87: önce bağırsağın ne olduğu / nasıl çalıştığı
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0469680Z PASS 87: ilk ekranda hücreye atlanmıyor
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0470866Z PASS 87: organ sayfası sırası Genel → Normal → İçine gir → Benim durumum → Değişim → Derin (['1. Genel görünüm', '2. Normalde nasıl çalışır?', '3. İçine gir', '4. Benim durumum', '5. Bende ne değişmiş olabilir?', '6. Daha derine in'])
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0471871Z PASS 87: ana 'İçine gir' düğmesi
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0473042Z PASS 87/39: içini göster: duvar → mukoza → villus → epitel → hücre → mikrovillus (['Bağırsak duvarı', 'Mukozal yüzey', 'Villuslar', 'Bağırsak epiteli', 'Enterosit (emici epitel hücresi)', 'Mikrovilluslar (fırçamsı kenar)'])
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0474040Z PASS 38: mevcut VillusScene bu akışa bağlı
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0474615Z PASS 87: derinleş: hücre içi yapı → molekül → süreç (besin emilimi)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0475736Z PASS 87/9: normal fizyoloji adım adım (['Besin', 'Mide', 'Duodenum', 'Safra + pankreas enzimleri', 'Sindirim', 'Villus', 'Emilim (enterosit)', 'Kılcal damar / lenf', 'Portal ven', 'Karaciğer', 'Dolaşım'])
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0476857Z PASS 44: ← Önceki · 10 / 11
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0477390Z PASS 12/83: verisi olmayan basamak sorunlu gösterilmiyor
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0477900Z PASS 11: keşif modunda sistem: Sindirim
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0478387Z PASS 11: keşif modunda sistem: Dolaşım
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0478865Z PASS 11: keşif modunda sistem: Solunum
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0479389Z PASS 11: keşif modunda sistem: Sinir sistemi
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0479874Z PASS 11: keşif modunda sistem: Hormonlar
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0480335Z PASS 11: keşif modunda sistem: Böbrek / idrar
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0480884Z PASS 11: keşif modunda sistem: Bağışıklık
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0481350Z PASS 11: keşif modunda sistem: Kan
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0481782Z PASS 11: keşif modunda sistem: Kas
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0482368Z PASS 11: keşif modunda sistem: Üreme
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0482767Z PASS 10: kalp akışı 8 adım
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0483338Z FAIL 10: pankreas: enzim ve kan şekeri akışları ([])
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0483882Z PASS UI: arama 'pankreas' → organ ve alt bağlantılar
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0484383Z PASS E: kalp hızı ölçüldü (~75/dk)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0484856Z PASS E: QT ölçülmedi, uydurulmadı
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0485274Z PASS E: bölge kalp
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0485680Z PASS F: ultrason tanındı
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0486141Z PASS F: organ tanıma modeli olmadığı açık
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0486935Z PASS F: pankreas bağlamı (dosya adı) gösteriliyor
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0487433Z PASS G: çekirdek ölçümü yapıldı
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0487889Z PASS G: tanı üretilmedi
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0488428Z PASS telefon: alt gezinmede en fazla 5 öğe (5)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0488863Z PASS telefon: ortada 'Ekle'
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0489397Z PASS telefon: alt gezinmede 'Sonuçlar'
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0489976Z PASS telefon: 'Daha' alt sayfasında Görüntüler, Zamanım, Belgelerim
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0490634Z PASS telefon: Vücudum yatay taşma yok (0, 0)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0491203Z PASS telefon: organ sayfası yatay taşma yok (0)
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0491647Z PASS CSP ihlali yok []
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0492067Z PASS konsol hatası yok []
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0492480Z PASS dışarıya istek yok []
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0492784Z 
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0492966Z 2 sorun
+e2e	Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası	2026-10-14T13:47:49.0723153Z ##[error]Process completed with exit code 1.
