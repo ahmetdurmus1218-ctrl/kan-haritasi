@@ -461,14 +461,14 @@ def main() -> None:
     ap.add_argument("--bundle", help="uygulamaya gömülecek modellerin klasörü (apps/web/public/ai-models)")
     ap.add_argument("--packs", help="isteğe bağlı model paketlerinin yazılacağı klasör")
     ap.add_argument("--xray-sample", required=True, help="doğrulama için örnek göğüs röntgeni (PNG)")
-    ap.add_argument("--only", help="yalnızca bu modeller (virgülle: totalseg-ct, totalseg-mr, xrv, kidney-cysts, effusion; paketler: liver-lesions, liver-segments, xrv-seg)")
+    ap.add_argument("--only", help="yalnızca bu modeller (virgülle: totalseg-ct, totalseg-mr, xrv, kidney-cysts, effusion, liver-segments; paketler: liver-lesions, xrv-seg)")
     ap.add_argument("--validation", help="patoloji modellerinin ölçülmüş doğrulama sonuçları (JSON: kidney_real, effusion_real)")
     a = ap.parse_args()
     work = Path(a.work)
     work.mkdir(parents=True, exist_ok=True)
     if a.bundle:
         b = Path(a.bundle)
-        want = set(a.only.split(",")) if a.only else {"totalseg-ct", "totalseg-mr", "xrv", "kidney-cysts", "effusion"}
+        want = set(a.only.split(",")) if a.only else {"totalseg-ct", "totalseg-mr", "xrv", "kidney-cysts", "effusion", "liver-segments"}
         if "totalseg-ct" in want:
             build_totalseg(work, "totalseg-ct", b / "totalseg-ct-total-3mm")
         if "totalseg-mr" in want:
@@ -482,6 +482,8 @@ def main() -> None:
             build_pathology(work, "kidney-cysts", b / "totalseg-ct-kidney-cysts", validation)
         if "effusion" in want:
             build_pathology(work, "effusion", b / "totalseg-ct-effusion", validation)
+        if "liver-segments" in want:
+            build_pathology(work, "liver-segments", b / "totalseg-ct-liver-segments", validation)
         index = sorted(x.name for x in b.iterdir() if (x / "manifest.json").exists())
         (b / "index.json").write_text(json.dumps({"schema": "kh-model-index/1", "models": index}, indent=1))
     if a.packs:
@@ -491,11 +493,9 @@ def main() -> None:
             validation.update(json.loads(Path(a.validation).read_text()))
         # liver-lesions varsayılan pakette YOK: gerçek LiTS vakasında sonucu kırpma/karo yerleşimine aşırı duyarlı çıktı
         # (uzman etiketine göre Dice 0,14–0,71 arasında değişti); güvenilir bulgu üretmediği için dağıtılmıyor.
-        want = set(a.only.split(",")) if a.only else {"liver-segments", "xrv-seg"}
+        want = set(a.only.split(",")) if a.only else {"xrv-seg"}
         if "liver-lesions" in want:
             build_pathology(work, "liver-lesions", p / "totalseg-ct-liver-lesions", validation)
-        if "liver-segments" in want:
-            build_pathology(work, "liver-segments", p / "totalseg-ct-liver-segments", validation)
         if "xrv-seg" in want:
             build_xrv(work, Path(a.xray_sample), None, p / "xrv-pspnet-chestxdet")
         # Uygulama isteğe bağlı paketleri tanısın diye: yalnızca manifestler (model dosyası değil)
