@@ -200,7 +200,7 @@ with sync_playwright() as p:
     check(n >= 6 and "segment VII" in seg.inner_text(), f"F: karaciğer segmentleri (anizotropik ızgara) bölütlendi ({n})")
     seg.locator("details").first.locator("summary").click()
     check("0,805 × 0,805 × 1,5 mm" in seg.inner_text(), "F: köken: anizotropik ızgara (0,8 × 0,8 × 1,5 mm)")
-    seg.get_by_test_id("cascade-structure").filter(has_text="segment VII").get_by_role("button", name="İçine gir").click()
+    seg.get_by_test_id("cascade-structure").filter(has_text=re.compile(r"segment VII(?!I)")).get_by_role("button", name="İçine gir").click()
     page.locator("[data-testid=deep-dive][data-node='liver.segment-7']").wait_for()
     check("Sağ lob" in page.locator("nav[aria-label='Şu anda neredeyim?']").inner_text(), "F: İçine gir → Karaciğer › Sağ lob › Segment VII")
     page.screenshot(path=SHOTS / "r7-karaciger-segmentleri.png", full_page=True)
