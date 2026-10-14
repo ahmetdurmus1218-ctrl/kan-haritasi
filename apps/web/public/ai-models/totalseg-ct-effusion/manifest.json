@@ -16,7 +16,7 @@
   "Önce BT anatomi modeli çalışmalıdır; akciğerler bölütlenemediyse model çalıştırılmaz.",
   "Klinik kullanım için onaylı tıbbi cihaz değildir."
  ],
- "validation": "Gerçek göğüs BT'sinde (MSD Task06 lung_053, TCIA, CC BY-SA 4.0) resmi TotalSegmentator pleural_pericard_effusion çıktısıyla karşılaştırma (aynı ağırlıklar): akciğer (yardımcı sınıf) Dice 0,988; perikard sıvısı resmi 3,1 mL ↔ bu hat 2,8 mL (Dice 0,85); plevral efüzyon resmi 0 ↔ bu hat 0,26 mL (1 mL gösterim eşiğinin altında, bulgu olarak gösterilmez); voksel uyumu %99,74. Belirgin efüzyonlu bir vaka üzerinde ayrıca doğrulanmadı.",
+ "validation": "Karo adımı 0,5 (resmi TotalSegmentator ile aynı). Gerçek göğüs BT'sinde (MSD Task06 lung_053, TCIA, CC BY-SA 4.0) resmi pleural_pericard_effusion çıktısıyla (aynı ağırlıklar): akciğer (yardımcı sınıf) Dice 0,988; perikard sıvısı resmi 3,09 mL ↔ bu hat 3,14 mL (Dice 0,81); plevral efüzyon resmi 0 ↔ bu hat 0,19 mL (1 mL gösterim eşiğinin altında, bulgu olarak gösterilmez). Belirgin efüzyonlu bir vaka üzerinde ayrıca doğrulanmadı.",
  "task": "segmentation-3d",
  "format": "onnx",
  "citation": "Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.",
@@ -55,7 +55,7 @@
    "mean": -721.3034057617188,
    "std": 262.6121826171875
   },
-  "tileStep": 0.8,
+  "tileStep": 0.5,
   "topK": 4,
   "cropNonzero": true,
   "minSlices": 10,

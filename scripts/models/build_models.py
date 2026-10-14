@@ -364,7 +364,9 @@ def build_pathology(work: Path, key: str, out_dir: Path, validation: dict) -> No
             "patch": cfg["patch_size"],
             "axisOrder": "SAR",
             "normalization": {"scheme": "ct", "clip": [fp["percentile_00_5"], fp["percentile_99_5"]], "mean": fp["mean"], "std": fp["std"]},
-            "tileStep": 0.8,
+            # Patoloji/basamaklı modellerde resmi TotalSegmentator ile aynı karo adımı (0,5). 0,8 ile karaciğer lezyonu
+            # modelinde büyük tümör kaçtı (resmi 9,8 mL ↔ 1,7 mL): hız uğruna doğruluk bozulmaz.
+            "tileStep": 0.5,
             "topK": k,
             "cropNonzero": True,
             "minSlices": 10,
@@ -487,7 +489,9 @@ def main() -> None:
         validation = {"kidney_real": "ölçülmedi", "effusion_real": "ölçülmedi", "liver_lesions_real": "ölçülmedi", "liver_segments_real": "ölçülmedi"}
         if a.validation:
             validation.update(json.loads(Path(a.validation).read_text()))
-        want = set(a.only.split(",")) if a.only else {"liver-lesions", "liver-segments", "xrv-seg"}
+        # liver-lesions varsayılan pakette YOK: gerçek LiTS vakasında sonucu kırpma/karo yerleşimine aşırı duyarlı çıktı
+        # (uzman etiketine göre Dice 0,14–0,71 arasında değişti); güvenilir bulgu üretmediği için dağıtılmıyor.
+        want = set(a.only.split(",")) if a.only else {"liver-segments", "xrv-seg"}
         if "liver-lesions" in want:
             build_pathology(work, "liver-lesions", p / "totalseg-ct-liver-lesions", validation)
         if "liver-segments" in want:

@@ -8,6 +8,7 @@
   D — BT patoloji (basamaklı): böbrek kisti modeli anatomi sonucuna göre kırpılan bölgede çalışır → sonuç ve
       köken; resmi çıktıda olduğu gibi kist yok (uydurma bulgu yok).
   E — MR serisi → TotalSegmentator MRI anatomi bölütleme.
+  F — İsteğe bağlı paket dosyadan kurulur (SHA-256) → BT serisinde karaciğer segmentleri (anizotropik, basamaklı) → İçine gir.
   + Ağ isteği yok, CSP ihlali yok, konsol hatası yok.
 
 Kullanım: pnpm build && pnpm preview (ayrı terminal), sonra
@@ -180,6 +181,29 @@ with sync_playwright() as p:
     kt = kc.inner_text()
     check(manifest("totalseg-ct-kidney-cysts")["sha256"] in kt and "anatomi sonucuna" in kt and "1,5 mm" in kt, "D: köken: patoloji modeli SHA-256, 1,5 mm ızgara, anatomiye göre kırpılmış bölge")
     kc.screenshot(path=SHOTS / "r5-bt-patoloji.png")
+
+    # ------------------------------------------------------------ F: isteğe bağlı paket (dosyadan kur) → karaciğer segmentleri
+    pack = ROOT / "model-packs/totalseg-ct-liver-segments"
+    page.goto(URL + "#/gizlilik")
+    page.get_by_test_id("model-card").first.wait_for()
+    page.set_input_files("[data-testid=model-input]", [str(pack / "manifest.json"), str(pack / "model.onnx")])
+    page.get_by_text("kuruldu (SHA-256 doğrulandı)", exact=False).wait_for(timeout=120000)
+    check(page.locator("[data-testid=model-card][data-model=totalseg-ct-liver-segments]").count() == 1, "F: isteğe bağlı paket dosyadan kuruldu (SHA-256 doğrulandı)")
+    page.goto(ct_url)
+    panel = page.get_by_test_id("series-model-panel")
+    seg = panel.locator("[data-testid=pathology-model][data-model=totalseg-ct-liver-segments]")
+    seg.wait_for(timeout=60000)
+    seg.get_by_test_id("run-pathology-model").click()
+    panel.locator("[data-testid=pathology-model][data-model=totalseg-ct-liver-segments][data-state=done]").wait_for(timeout=1800000)
+    seg = panel.locator("[data-testid=pathology-model][data-model=totalseg-ct-liver-segments]")
+    n = seg.get_by_test_id("cascade-structure").count()
+    check(n >= 6 and "Segment VII" in seg.inner_text(), f"F: karaciğer segmentleri (anizotropik ızgara) bölütlendi ({n})")
+    seg.locator("details").first.locator("summary").click()
+    check("0,805 × 0,805 × 1,5 mm" in seg.inner_text(), "F: köken: anizotropik ızgara (0,8 × 0,8 × 1,5 mm)")
+    seg.get_by_test_id("cascade-structure").filter(has_text="Segment VII").get_by_role("button", name="İçine gir").click()
+    page.locator("[data-testid=deep-dive][data-node='liver.segment-7']").wait_for()
+    check("Sağ lob" in page.locator("nav[aria-label='Şu anda neredeyim?']").inner_text(), "F: İçine gir → Karaciğer › Sağ lob › Segment VII")
+    page.screenshot(path=SHOTS / "r7-karaciger-segmentleri.png", full_page=True)
 
     # ------------------------------------------------------------ E: MR serisi → 3B anatomi
     upload_series(page, "MR", "totalseg-mr-sm", 20)

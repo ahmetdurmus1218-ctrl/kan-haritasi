@@ -6,7 +6,7 @@
  *    `TotalSegmentator --fast --ml` etiket haritası (fixtures/*.reference.json) — voksel uyumu ve Dice.
  *  - Röntgen: NIH ChestX-ray14 örneği ↔ TorchXRayVision'ın kendi (Python) skorları.
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { appendFileSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
@@ -18,11 +18,22 @@ const ROOT = resolve(__dirname, '../../../..');
 const MODELS = resolve(ROOT, 'apps/web/public/ai-models');
 const IMG = resolve(ROOT, 'fixtures/imaging');
 
-function model(id: string): { manifest: ModelManifest; bytes: Uint8Array } {
-  const v = validateManifest(JSON.parse(readFileSync(resolve(MODELS, id, 'manifest.json'), 'utf8')));
+const PACKS = resolve(ROOT, 'model-packs');
+/** KH_MODEL_REPORT=<dosya> verilirse ölçülen doğrulama sayıları oraya da yazılır (manifest doğrulama metni için). */
+const report = (o: unknown) => {
+  console.log(JSON.stringify(o));
+  if (process.env.KH_MODEL_REPORT) appendFileSync(process.env.KH_MODEL_REPORT, `${JSON.stringify(o)}\n`);
+};
+
+function model(id: string, dir = MODELS): { manifest: ModelManifest; bytes: Uint8Array } {
+  const v = validateManifest(JSON.parse(readFileSync(resolve(dir, id, 'manifest.json'), 'utf8')));
   if (!v.ok) throw new Error(v.errors.join('; '));
-  return { manifest: v.manifest, bytes: new Uint8Array(readFileSync(resolve(MODELS, id, v.manifest.file))) };
+  return { manifest: v.manifest, bytes: new Uint8Array(readFileSync(resolve(dir, id, v.manifest.file))) };
 }
+
+/** Aynı dosyadaki testler BT anatomi sonucunu paylaşır (bir kez çalıştırılır). */
+let ctAnatomy: ReturnType<typeof compareVolume> | null = null;
+const anatomyCT = () => (ctAnatomy ??= compareVolume('totalseg-ct-total-3mm', 'totalseg-ct-sm'));
 
 function series(dir: string): Uint8Array[] {
   return readdirSync(resolve(IMG, dir))
@@ -61,7 +72,7 @@ async function compareVolume(modelId: string, dir: string) {
 
 describe('gerçek yerel modeller (cihaz içi motor) — resmi çıktıyla karşılaştırma', () => {
   it('BT: TotalSegmentator total (3 mm) — resmi --fast çıktısıyla aynı', async () => {
-    const r = await compareVolume('totalseg-ct-total-3mm', 'totalseg-ct-sm');
+    const r = await anatomyCT();
     expect(r.classes).toBeGreaterThan(30);
     expect(r.agreement).toBeGreaterThan(0.995);
     expect(r.meanDice).toBeGreaterThan(0.98);
@@ -74,11 +85,11 @@ describe('gerçek yerel modeller (cihaz içi motor) — resmi çıktıyla karş�
     // Karaciğer hastanın sağında (LPS'de x < 0), dalak solunda (x > 0)
     const spleen = r.seg.structures.find((s) => s.key === 'spleen')!;
     expect(liver.centroid[0]).toBeLessThan(spleen.centroid[0]);
-    console.log(JSON.stringify({ ct: { agreement: r.agreement, meanDice: r.meanDice, minDice: r.minDice, classes: r.classes, tiles: r.seg.tiles } }));
+    report({ ct: { agreement: r.agreement, meanDice: r.meanDice, minDice: r.minDice, classes: r.classes, tiles: r.seg.tiles } });
   }, 600_000);
 
   it('BT patoloji (basamaklı): böbrek kisti modeli anatomi sonucuna göre kırpılan bölgede çalışır; yardımcı böbrek maskesi anatomiyle örtüşür', async () => {
-    const anatomy = await compareVolume('totalseg-ct-total-3mm', 'totalseg-ct-sm');
+    const anatomy = await anatomyCT();
     const cyst = model('totalseg-ct-kidney-cysts');
     expect(cyst.manifest.volume?.cascade?.model).toBe('totalseg-ct-total-3mm');
     const prior = { manifest: anatomy.manifest, seg: anatomy.seg };
@@ -117,7 +128,38 @@ describe('gerçek yerel modeller (cihaz içi motor) — resmi çıktıyla karş�
     expect(seg.structures.filter((s) => findingClass(s) === 'finding')).toHaveLength(0);
     // Kesit aralıkları özgün seriye göre (kırpılmış hacme göre değil)
     for (const s of seg.structures) expect(s.sliceRange[1]).toBeLessThan(anatomy.vol.slices);
-    console.log(JSON.stringify({ kidneyCystCascade: { box, tiles: seg.tiles, diceLeft: dl, diceRight: dr } }));
+    report({ kidneyCystCascade: { box, tiles: seg.tiles, diceLeft: dl, diceRight: dr } });
+  }, 900_000);
+
+  it('Anizotropik ızgara + basamaklı: karaciğer segmentleri (0,8 × 0,8 × 1,5 mm, isteğe bağlı paket) — resmi çıktıyla', async () => {
+    const anatomy = await anatomyCT();
+    const segs = model('totalseg-ct-liver-segments', PACKS);
+    expect(Array.isArray(segs.manifest.volume?.spacing)).toBe(true);
+    const seg = await runVolumeModel(anatomy.vol, segs.manifest, segs.bytes, ortEngineFactory(), { prior: { manifest: anatomy.manifest, seg: anatomy.seg } });
+    const ref = JSON.parse(readFileSync(resolve(IMG, 'totalseg-ct-sm.liver-segments.reference.json'), 'utf8')) as { shape: [number, number, number]; rle: number[] };
+    const [K, J, I] = ref.shape;
+    const refLabels = decodeRle(ref.rle, K * J * I);
+    const ours = new Uint8Array(K * J * I);
+    for (const [kk, fileIdx] of anatomy.vol.order.entries()) ours.set(sliceLabels(seg, anatomy.vol, kk), fileIdx * J * I);
+    const dice: number[] = [];
+    for (let l = 1; l <= 8; l++) {
+      let a = 0, b = 0, both = 0;
+      for (let i = 0; i < ours.length; i++) {
+        const x = ours[i] === l, y = refLabels[i] === l;
+        if (x) a++;
+        if (y) b++;
+        if (x && y) both++;
+      }
+      if (b > 200) dice.push((2 * both) / (a + b));
+    }
+    const mean = dice.reduce((x, y) => x + y, 0) / dice.length;
+    expect(dice.length).toBeGreaterThanOrEqual(6);
+    expect(mean).toBeGreaterThan(0.85);
+    // Segment adları ve grafik düğümleri (Karaciğer → lob → segment)
+    const s7 = seg.structures.find((x) => x.key === 'liver_segment_7');
+    expect(s7?.node).toBe('liver.segment-7');
+    expect(s7?.part).toBe('right-lobe');
+    report({ liverSegments: { dice: dice.map((d) => Math.round(d * 1000) / 1000), mean, tiles: seg.tiles } });
   }, 900_000);
 
   it('Basamaklı model anatomi sonucu olmadan çalışmaz (tahminle kırpılmaz)', async () => {
@@ -132,7 +174,7 @@ describe('gerçek yerel modeller (cihaz içi motor) — resmi çıktıyla karş�
     expect(r.classes).toBeGreaterThan(15);
     expect(r.agreement).toBeGreaterThan(0.995);
     expect(r.meanDice).toBeGreaterThan(0.98);
-    console.log(JSON.stringify({ mr: { agreement: r.agreement, meanDice: r.meanDice, minDice: r.minDice, classes: r.classes } }));
+    report({ mr: { agreement: r.agreement, meanDice: r.meanDice, minDice: r.minDice, classes: r.classes } });
   }, 600_000);
 
   it('Röntgen: TorchXRayVision NIH sınıflandırıcı — kütüphanenin kendi skorlarıyla aynı', async () => {

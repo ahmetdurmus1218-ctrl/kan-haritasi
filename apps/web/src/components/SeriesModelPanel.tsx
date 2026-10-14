@@ -60,7 +60,8 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
     const fovX = (dicom.columns * (dicom.pixelSpacing?.[1] ?? 1)) / sp;
     const fovY = (dicom.rows * (dicom.pixelSpacing?.[0] ?? 1)) / sp;
     const fovZ = (seriesIds.length * (dicom.sliceThickness ?? sp)) / sp;
-    const n = (size: number, p: number) => (size <= p ? 1 : Math.ceil((size - p) / (p * 0.8)) + 1);
+    const step = model?.manifest.volume?.tileStep ?? 0.8;
+    const n = (size: number, p: number) => (size <= p ? 1 : Math.ceil((size - p) / (p * step)) + 1);
     return n(fovZ, patch[0]) * n(fovY, patch[1]) * n(fovX, patch[2]);
   })();
   const minutes = Math.max(1, Math.round((tilesEstimate * (SECONDS_PER_TILE[modality] ?? 45)) / 60));
