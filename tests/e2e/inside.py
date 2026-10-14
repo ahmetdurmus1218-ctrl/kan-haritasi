@@ -129,7 +129,7 @@ with sync_playwright() as p:
     check(True, "model devre dışı bırakıldı")
     caps = page.locator("details", has_text="Bu cihazda neler yapılabiliyor?")
     caps.locator("summary").click()
-    check(caps.inner_text().count("Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor.") == 10, "devre dışı röntgen modeli: röntgen artık 'model yok'")
+    check(caps.inner_text().count("Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor.") == 16, "devre dışı röntgen modeli: röntgen artık 'model yok'")
     page.locator("[data-testid=model-card][data-model=xrv-densenet121-nih]").get_by_test_id("model-toggle").click()
     page.locator("[data-testid=model-card][data-model=xrv-densenet121-nih][data-enabled=true]").wait_for()
     check(True, "model yeniden etkinleştirildi")

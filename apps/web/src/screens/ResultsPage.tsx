@@ -13,6 +13,8 @@ import { CriticalBanner, FindingBlock, PatternList, SeverityBar, SeverityChip, S
 import { findingMap, useInterpretation, useSex } from '../lib/interpretation';
 import { useImagingStudies } from '../lib/imagingStudies';
 import { ImagingStudyList } from '../components/imaging';
+import { ResultPhysiology } from '../components/physiology';
+import { useHealthModel } from '../lib/analysisBridge';
 import { AlertIcon, BodyIcon, ChartIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileTextIcon, SpinnerIcon, UploadIcon } from '../components/icons';
 
 const ORDER: Record<ResultStatus, number> = { high: 0, low: 1, unknown: 2, normal: 3 };
@@ -319,6 +321,7 @@ export function ResultDetail({ testKey }: { testKey: string }) {
   const finding = interp.findings.find((f) => f.testKey === testKey);
   const related = interp.patterns.filter((p) => p.tests.includes(testKey));
   const content = CONTENT[testKey];
+  const { model } = useHealthModel();
 
   if (!test) return <div className="p-6"><Banner tone="error">Bilinmeyen test.</Banner></div>;
   const latest = series?.latest.result;
@@ -419,6 +422,7 @@ export function ResultDetail({ testKey }: { testKey: string }) {
               </LearnSection>
             )
           )}
+          <ResultPhysiology testKey={testKey} model={model} />
           <LearnSection title="Sonucu etkileyebilenler">
             <Bullets items={content.factors} />
           </LearnSection>

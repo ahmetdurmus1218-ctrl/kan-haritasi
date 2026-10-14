@@ -4,12 +4,12 @@
  * bilgisi kapalı bölümlerde. Organa dokununca kısa özet alt sayfada açılır.
  */
 import { useMemo, useState } from 'react';
-import { GRAPH } from '@kh/analysis';
+import { GRAPH, type HealthModel, chainsForPlace, interiorFor, interiorProvenance, physioOverlay } from '@kh/analysis';
 import { SYSTEMS, structureById } from '@kh/catalog';
 import { go } from '../state/router';
 import { useHealthModel } from '../lib/analysisBridge';
 import { bodySummary, headlineOf, organName, whatChanged } from '../lib/summary';
-import { TONE } from '../lib/tone';
+import { TONE, labStyle, labTone } from '../lib/tone';
 import { formatDate } from '../lib/format';
 import { Banner } from '../components/ui';
 import { OrganSheet } from '../components/OrganSheet';
@@ -27,6 +27,110 @@ function systemsOf(id: string): string[] {
 
 /** Her zaman listelenen temel organlar (veri olmasa da "normalde" sayfası açılır). */
 const CORE = ['brain', 'heart', 'lungs', 'liver', 'pancreas', 'kidneys', 'thyroid', 'bones'];
+
+type Layer = 'normal' | 'labs' | 'imaging' | 'physiology';
+const LAYER_TR: Record<Layer, string> = { normal: 'Normal insan', labs: 'Laboratuvar sonuçlarım', imaging: 'Görüntüleme bulgularım', physiology: 'İlişkili fizyoloji' };
+const TYPE_SHORT = { hollow: 'içi boş (lümenli)', tubular: 'tüp (lümenli)', vascular: 'damar', solid: 'dolu (parankim)', compound: 'bileşik' } as const;
+const LAYER_ORGANS = ['brain', 'heart', 'lungs', 'stomach', 'small-intestine', 'large-intestine', 'liver', 'pancreas', 'kidneys', 'thyroid', 'bones'];
+
+/**
+ * BENİM VÜCUDUM — aynı vücut üzerinde katmanlar: normal anatomi (her zaman) + benim laboratuvar
+ * sonuçlarım + benim görüntüleme bulgularım + ilişkili fizyoloji. Katmanlar ayrı kalır, karışmaz;
+ * kişisel katmanı olmayan organ "veri yok" der, "normal" demez.
+ */
+function BodyLayers({ model, onOrgan }: { model: HealthModel; onOrgan: (id: string) => void }) {
+  const [on, setOn] = useState<Record<Layer, boolean>>({ normal: true, labs: true, imaging: true, physiology: true });
+  const ids = useMemo(() => {
+    const set = new Set(LAYER_ORGANS);
+    for (const [id, st] of model.organs) if ((st.labs.length || st.reportFindings.length || st.modelFindings.length || st.modelStructures.length) && GRAPH.node(id)?.kind === 'organ') set.add(id);
+    return [...set].filter((id) => GRAPH.node(id));
+  }, [model]);
+  return (
+    <section aria-labelledby="katmanlar" className="space-y-3" data-testid="mybody-layers">
+      <div>
+        <h2 id="katmanlar" className="text-sm font-medium text-fg-muted">
+          Benim vücudum · katmanlar
+        </h2>
+        <p className="text-[12px] text-fg-faint">Normal insan anatomisi her zaman görünür; kendi verilerin ayrı katmanlar olarak üstüne eklenir.</p>
+      </div>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Katmanlar">
+        {(Object.keys(LAYER_TR) as Layer[]).map((k) => (
+          <button key={k} type="button" aria-pressed={on[k]} className={`min-h-[40px] rounded-full border px-3 text-[13px] ${on[k] ? 'border-accent/60 bg-accent/10 text-accent' : 'border-ink-600 text-fg-muted'}`} onClick={() => setOn((x) => ({ ...x, [k]: !x[k] }))} data-layer={k}>
+            {on[k] ? '✓ ' : ''}
+            {LAYER_TR[k]}
+          </button>
+        ))}
+      </div>
+      <ul className="divide-y divide-ink-700 rounded-2xl border border-ink-600/60 bg-ink-850/60">
+        {ids.map((id) => {
+          const st = model.organs.get(GRAPH.node(id)?.structure ?? id) ?? model.organs.get(id);
+          const def = interiorFor(id);
+          const labs = st?.labs ?? [];
+          const off = labs.filter((l) => labTone(l) !== 'normal');
+          const prov = def ? interiorProvenance(def, model) : null;
+          const imaging = (st?.modelFindings.length ?? 0) + (st?.reportFindings.filter((f) => !f.negated && (f.status === 'abnormal' || f.status === 'uncertain')).length ?? 0);
+          const chains = chainsForPlace(def?.organId ?? id)
+            .map((c) => ({ c, ov: physioOverlay(c, model) }))
+            .filter((x) => x.ov.hasData)
+            .slice(0, 2);
+          return (
+            <li key={id} className="space-y-1.5 px-4 py-3" data-testid="layer-row" data-organ={id}>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="text-[15px] font-medium text-fg hover:text-accent" onClick={() => onOrgan(id)}>
+                  {organName(id)}
+                </button>
+                {on.normal && def && (
+                  <>
+                    <span className="text-[11px] text-fg-faint">{TYPE_SHORT[def.type]}</span>
+                    <button type="button" className="ml-auto text-[12.5px] text-accent hover:underline" onClick={() => go({ name: 'interior', id: def.organId })}>
+                      İçine gir ›
+                    </button>
+                  </>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5 text-[12px]">
+                {on.labs &&
+                  (labs.length ? (
+                    (off.length ? off : labs).slice(0, 3).map((l) => {
+                      const s = labStyle(l);
+                      return (
+                        <span key={l.testKey} className={`rounded-md border px-1.5 py-0.5 ${s.direction ? `${s.border} ${s.bg} ${s.text}` : 'border-ink-600 text-fg-muted'}`} data-layer-item="labs">
+                          {l.name} {s.statusLabel}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <span className="text-fg-faint" data-layer-item="labs-none">Tahlil yok</span>
+                  ))}
+                {on.imaging &&
+                  (prov?.personal3D ? (
+                    <span className="rounded-md border border-[#a78bfa]/40 px-1.5 py-0.5 text-fg" data-layer-item="imaging">
+                      ◆ Senin görüntünden 3B (bölütleme)
+                    </span>
+                  ) : imaging ? (
+                    <span className="rounded-md border border-caution/40 px-1.5 py-0.5 text-caution-fg" data-layer-item="imaging">
+                      {imaging} görüntü/rapor bulgusu
+                    </span>
+                  ) : (
+                    <span className="text-fg-faint">Görüntüleme yok</span>
+                  ))}
+                {on.physiology &&
+                  chains.map(({ c, ov }) => (
+                    <button key={c.id} type="button" className="rounded-md border border-ink-600 px-1.5 py-0.5 text-fg-muted hover:text-fg" onClick={() => go({ name: 'physiology', id: c.id })} data-layer-item="physiology">
+                      {c.title.split(':')[0]}: {ov.markers.map((m) => `${m.name}${m.latest.status === 'high' ? ' ▲' : m.latest.status === 'low' ? ' ▼' : ''}`).join(', ')}
+                    </button>
+                  ))}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <button type="button" className="text-sm text-accent hover:underline" onClick={() => go({ name: 'physiology' })}>
+        Vücudun süreçleri (organlar arası zincirler) →
+      </button>
+    </section>
+  );
+}
 
 export function MyBodyPage() {
   const { model, studies } = useHealthModel();
@@ -88,6 +192,8 @@ export function MyBodyPage() {
           <ChevronRightIcon size={18} />
         </button>
       </div>
+
+      <BodyLayers model={model} onOrgan={setSheet} />
 
       <section aria-labelledby="sistemler">
         <h2 id="sistemler" className="mb-2 text-sm font-medium text-fg-muted">

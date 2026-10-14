@@ -71,6 +71,9 @@ export type Modality =
   | 'PET_CT'
   | 'SPECT'
   | 'FLUOROSCOPY'
+  | 'ANGIOGRAPHY'
+  | 'DEXA'
+  | 'OCT'
   | 'ECHOCARDIOGRAPHY'
   | 'ENDOSCOPY'
   | 'COLONOSCOPY'
@@ -95,6 +98,9 @@ export const MODALITY_LABEL: Record<Modality, string> = {
   PET_CT: 'PET/BT',
   SPECT: 'SPECT',
   FLUOROSCOPY: 'Floroskopi',
+  ANGIOGRAPHY: 'Anjiyografi',
+  DEXA: 'Kemik yoğunluğu (DEXA)',
+  OCT: 'Optik koherens tomografi (OCT)',
   ECHOCARDIOGRAPHY: 'Ekokardiyografi (EKO)',
   ENDOSCOPY: 'Endoskopi',
   COLONOSCOPY: 'Kolonoskopi',

@@ -1,5 +1,5 @@
 import type { Vault } from '@kh/vault';
-import { anonymizeDicom, burnedInRisk, parseDicom } from '@kh/ingest';
+import { anonymizeDicom, burnedInRisk, parseDicom, scanDicomPixels } from '@kh/ingest';
 import { STATUS_LABEL, testByKey } from '@kh/catalog';
 import { listReports, loadSex } from './reports';
 import { listImagingNotes } from './imagingRecords';
@@ -40,7 +40,8 @@ export async function buildExport(
     let data = bytes;
     if (info.kind === 'dicom') {
       try {
-        const risk = burnedInRisk(parseDicom(bytes));
+        const di = parseDicom(bytes);
+        const risk = burnedInRisk(di, scanDicomPixels(bytes, di));
         if (risk.level === 'yes' || risk.level === 'possible') burnedIn.push(name);
       } catch {
         // okunamayan başlık: aşağıda olduğu gibi eklenir

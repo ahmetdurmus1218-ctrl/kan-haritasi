@@ -7,7 +7,7 @@
  * Organın ilk ekranında hiçbir zaman doğrudan hücre/molekül ağacı açılmaz.
  */
 import { useMemo } from 'react';
-import { type KNode, type OrganView, buildOrganView, flowsForOrgan } from '@kh/analysis';
+import { type KNode, type OrganView, buildOrganView, flowsForOrgan, interiorFor } from '@kh/analysis';
 import { structureById } from '@kh/catalog';
 import { type OrganViewMode, go } from '../state/router';
 import { useHealthModel } from '../lib/analysisBridge';
@@ -23,6 +23,7 @@ import { LabRow, Breadcrumb, Section } from './organ/common';
 import { OrganOverview } from './organ/OrganOverview';
 import { OrganInside } from './organ/OrganInside';
 import { DeepDive } from './organ/DeepDive';
+import { InteriorPage } from './InteriorPage';
 
 function Chain({ nodes, overlay }: { nodes: KNode[]; overlay?: OrganView['relations'][number]['overlay'] }) {
   return (
@@ -356,6 +357,7 @@ function StructureFallback({ id }: { id: string }) {
   const s = structureById.get(id);
   const flows = flowsForOrgan(id);
   const scenes = s ? insideLinks(id).filter((l) => l.id !== 'hucre') : [];
+  const interior = interiorFor(id);
   return (
     <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 md:px-8">
       <Breadcrumb organId={id} />
@@ -371,8 +373,13 @@ function StructureFallback({ id }: { id: string }) {
         </Section>
       )}
       <div className="flex flex-wrap gap-2">
+        {interior && (
+          <button type="button" className="btn-primary" onClick={() => go({ name: 'interior', id: interior.organId })}>
+            İçine gir · {interior.name}
+          </button>
+        )}
         {s && (
-          <button type="button" className="btn-primary" onClick={() => go({ name: 'body', structure: id })}>
+          <button type="button" className={interior ? 'btn-ghost' : 'btn-primary'} onClick={() => go({ name: 'body', structure: id })}>
             <BodyIcon size={16} /> 3B'de göster
           </button>
         )}
@@ -398,7 +405,11 @@ export function OrganPage({ id, view, trail }: { id: string; view?: OrganViewMod
     );
   if (!v) return <StructureFallback id={id} />;
   if (view === 'benim' || view === 'fark') return <PersonalDetail v={v} model={model} studies={studies} />;
-  if (view === 'ic') return <OrganInside v={v} model={model} />;
+  if (view === 'ic') {
+    const def = interiorFor(v.node.id);
+    return def ? <InteriorPage id={def.organId} /> : <OrganInside v={v} model={model} />;
+  }
+  if (view === 'doku') return <OrganInside v={v} model={model} />;
   if (view === 'derin') return <DeepDive v={v} model={model} trail={trail ?? []} />;
   return <OrganOverview v={v} model={model} />;
 }

@@ -26,3 +26,5 @@ export * from './volumeModel';
 export * from './modelAgreement';
 export * from './inside';
 export * from './volumeSurface';
+export * from './physiology';
+export * from './interior';

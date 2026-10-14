@@ -16,7 +16,7 @@ import { grayToRgba, headSlice } from './synthetic';
 
 const input = { images: [], modality: 'MRI' as const, context: {} };
 
-describe('tıbbi görüntü modeli sağlayıcıları (gerçek model yok)', () => {
+describe('tıbbi görüntü modeli sağlayıcıları (kayıtlı model yokken)', () => {
   it('her modalite grubu için sağlayıcı var ve hepsi dürüstçe "yok" der', async () => {
     const r = defaultMedicalImageProviders();
     for (const ms of Object.values(GROUP_MODALITIES))
@@ -27,7 +27,7 @@ describe('tıbbi görüntü modeli sağlayıcıları (gerçek model yok)', () =>
         expect(out.status).toBe('unavailable');
       }
     const run = await runMedicalImageModel(input, r);
-    expect(run).toEqual({ status: 'unavailable', reason: 'Bu kurulumda tıbbi görüntü modeli yok.' });
+    expect(run).toEqual({ status: 'unavailable', reason: 'Bu modalite için kurulu doğrulanmış model yok.' });
   });
 
   it('uzak sağlayıcı yapılandırması yok: varsayılan kayıt her modalitede "model yok" der', async () => {
