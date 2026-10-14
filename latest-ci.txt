@@ -1,30 +1,13 @@
 workflow: CI
-run: 38433265325
-sha: 31a846342708f94cae3f8d06fdf9f0d9e00a96a8
-conclusion: failure
+run: 38519210374
+sha: 4bb3f937c938a8e0ff164e664eca6201e2846abd
+conclusion: success
 
-e2e: failure
+dependencies: success
   - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
   - Run actions/checkout@v4: success
-  - Run pnpm/action-setup@v4: success
-  - Run actions/setup-node@v4: success
-  - Run pnpm install --frozen-lockfile: success
-  - Run pnpm build: success
-  - Run actions/setup-python@v5: success
-  - Playwright (Chromium): success
-  - Önizleme sunucusu: success
-  - Belgeler ve kasa (smoke): success
-  - Okuma → sonuçlar → vücutta göster → simülasyon: success
-  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
-  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
-  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
-  - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: success
-  - Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR: failure
-  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: skipped
-  - Run actions/upload-artifact@v4: success
-  - Post Run actions/setup-python@v5: skipped
-  - Post Run actions/setup-node@v4: skipped
-  - Post Run pnpm/action-setup@v4: success
+  - Bağımlılık açıkları (OSV): success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 web: success
@@ -42,61 +25,30 @@ web: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-dependencies: success
+e2e: success
   - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
   - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Run pnpm build: success
+  - Run actions/setup-python@v5: success
+  - Playwright (Chromium): success
+  - Önizleme sunucusu: success
+  - Belgeler ve kasa (smoke): success
+  - Okuma → sonuçlar → vücutta göster → simülasyon: success
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
+  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
+  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
+  - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: success
+  - Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR: success
+  - İçine gir — anatomi grafiği derinliği, komşuluk (pelvis, yumurtalık, kulak, böbrek, kalp), model deposu: success
+  - Gerçek yerel modeller — röntgen skoru, BT/MR 3B anatomi bölütleme, BT patoloji (basamaklı), köken: success
+  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
+  - Run actions/upload-artifact@v4: skipped
+  - Post Run actions/setup-python@v5: success
+  - Post Run actions/setup-node@v4: success
+  - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	﻿2026-10-13T17:00:25.9746602Z ##[group]Run python tests/e2e/localai.py "$RUNNER_TEMP/shots"
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9747106Z ^[[36;1mpython tests/e2e/localai.py "$RUNNER_TEMP/shots"^[[0m
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9810585Z shell: /usr/bin/bash -e {0}
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9810855Z env:
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9811315Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9811728Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9812183Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9812651Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9813058Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9813469Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9813878Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:25.9814220Z ##[endgroup]
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6934087Z PASS 12 modalitenin hepsinde 'bu cihazda tıbbi AI modeli bulunmuyor' (desteklenmiyor + neden)
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6937056Z PASS yetenek listesi: 12 modalite
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6937667Z PASS S2: model yokken durum 'precheck' (precheck)
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6938725Z PASS S2: 'ön inceleme — tıbbi AI modeli sonucu değildir' açıkça yazıyor
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6940709Z PASS S2: model bulgusu yok (uydurma sonuç yok)
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6941465Z PASS S2: yetenek satırı: yerel model bu cihazda yok
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6942102Z PASS S2: görüntü belgesi açıldı
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6942701Z PASS S3: SHA-256 uyuşmayan model kurulmadı
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6943535Z PASS S3: test modeli kuruldu; adı 'TEST — tıbbi değil', SHA-256 görünür
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6944599Z PASS S3: yalnızca modelin modaliteleri (MR, BT) desteklenir; diğer 10'u hâlâ 'yok'
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6945682Z PASS S3: durum 'Yerel tıbbi AI modeli ile analiz edildi'
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6955185Z PASS S3: model bulgusu ve güveni ('1Test bulgusu (sahte model) · güven %85\n\nKonum: model kaynak')
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6970558Z PASS S3: gerçek görüntü üzerinde kutu (piksel konumu)
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6971610Z PASS S3: konum → anatomi (beyin › frontal lob)
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6972507Z PASS S3: model kutusu görüntü üzerine çizildi
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6973401Z PASS S3: köken: model kimliği ve SHA-256
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6974425Z PASS S3: yetenek satırı: model bu görüntüde cihazda çalıştı
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6975395Z PASS S3: Görüntüler: 'Yerel AI modeli · 1 bulgu'
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6976445Z PASS S3: organ sayfası (Benim durumum): model bulgusu, model-derived
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6977536Z PASS S3: organ durumu model bulgusunu sayıyor (tanı değil)
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6978501Z PASS S3: organ ayrıntısı: kaynak rozeti ve model adı
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6979901Z PASS S3: akış basamağı (İşleme · frontal lob) model bulgusuyla 'olası ilişki'
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6981091Z PASS S3: bulgulu basamak simgeyle işaretli (yalnızca renk değil)
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6982154Z PASS S3: Vücudum: beyinde 'yerel AI modeli bulgusu' nedeni
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6983273Z PASS S4: rapor 'olağan' ↔ model bulgusu çelişkisi gizlenmiyor (simge + metin)
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6984363Z PASS S4: rapor ayrı kaynak olarak belirtilmiş
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6985207Z FAIL S4: model bulgusu raporla silinmedi/ezilmedi
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6986121Z PASS S4: Görüntüler listesinde çelişki rozeti
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6986939Z PASS S4: rapor ayrı rozet (kaynak ayrı)
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6987782Z PASS model kaldırılınca durum yeniden 'ön inceleme'
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6988915Z PASS MPR: 8 kesitlik seride yapılmıyor, nedeni gösteriliyor (uydurma görüntü yok)
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6990443Z PASS DICOM bilgileri: görüntüye yakılmış yazı durumu gösteriliyor
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6991289Z PASS harici ağ isteği yok []
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6991876Z PASS CSP ihlali yok
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6992462Z PASS konsol hatası yok []
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6993254Z {"problems": ["S4: model bulgusu raporla silinmedi/ezilmedi"]}
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.6994138Z 1 sorun: S4: model bulgusu raporla silinmedi/ezilmedi
-e2e	Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR	2026-10-13T17:00:49.7188871Z ##[error]Process completed with exit code 1.
