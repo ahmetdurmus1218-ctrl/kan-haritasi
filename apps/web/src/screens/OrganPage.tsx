@@ -105,6 +105,32 @@ function PersonalView({ v, model, studies }: { v: OrganView; model: ReturnType<t
           </ul>
         </Section>
       )}
+      {v.personal.modelStructures.length > 0 && (
+        <Section title="Yerel modelin bölütlediği yapılar" hint="Cihazındaki gerçek bir bölütleme modeli bu yapıyı görüntünde buldu ve ölçtü. Bu normal anatomi bölütlemesidir; bir bulgu ya da hastalık göstergesi değildir. Hacim bir referans aralığıyla karşılaştırılmadı.">
+          <ul className="space-y-1.5" aria-label="Model bölütlemeleri">
+            {v.personal.modelStructures.map((s) => {
+              const doc = s.provenance.documentId;
+              return (
+                <li key={s.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-ink-600/60 p-2.5 text-sm" data-testid="organ-model-structure">
+                  <SourceBadge source="IMAGE_MODEL" />
+                  <span className="text-fg">{s.name}</span>
+                  {s.measurements.map((m) => (
+                    <span key={m.name} className="text-xs text-fg-muted">
+                      {m.name}: {m.value.toLocaleString('tr-TR')} {m.unit}
+                    </span>
+                  ))}
+                  <span className="text-[11px] text-fg-faint">{s.provenance.model?.name}</span>
+                  {doc && (
+                    <button type="button" className="ml-auto text-[12.5px] text-accent hover:underline" onClick={() => go({ name: 'document', id: doc })}>
+                      Görüntüyü aç
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      )}
       {v.personal.imageObservations.length > 0 && (
         <Section title="Görüntülerimden çıkan gözlemler" hint="Görüntünün kendisinden cihazda, kural tabanlı ön kontrolle çıkarıldı (tıbbi görüntü modeli değil); bir radyolog raporu değildir ve doğrulanmamıştır. Sağ-sol farkı bir görüntü asimetrisi gözlemidir, tıbbi bulgu değildir.">
           <ul className="space-y-2">

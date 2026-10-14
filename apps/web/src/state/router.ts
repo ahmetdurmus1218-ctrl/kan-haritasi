@@ -38,7 +38,7 @@ export type Route =
 export type OrganViewMode = 'normal' | 'benim' | 'fark' | 'ic' | 'derin';
 const VIEWS: readonly string[] = ['normal', 'benim', 'fark', 'ic', 'derin'];
 /** Bilgi grafiği düğüm kimliği: küçük harf, rakam, tire ve nokta. */
-const NODE = /^[a-z0-9][a-z0-9.-]{0,59}$/;
+const NODE = /^[a-z0-9][a-z0-9.:-]{0,59}$/;
 
 export type SimulationMode = 'temel' | 'benim';
 const MODES: readonly string[] = ['temel', 'benim'];

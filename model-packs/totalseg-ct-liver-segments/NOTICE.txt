@@ -1,0 +1,6 @@
+TotalSegmentator — karaciğer segmentleri (Couinaud I–VIII)
+Kaynak: https://github.com/wasserth/TotalSegmentator
+Ağırlıklar: https://github.com/wasserth/TotalSegmentator/releases/download/v2.5.0-weights/Dataset570_ct_liver_segments.zip (SHA-256 76f3bf368cbae7756729bf2971cb1b25a1ee8993a18495f2d563d5edfead8aac)
+Lisans: Apache-2.0 (TotalSegmentator 'liver_segments' görevi; açık görevler listesinde)
+Atıf: Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.
+Değişiklik: PyTorch → ONNX (opset 17), ağırlıklar float16 saklanır, çıktıya TopK(4) eklendi.

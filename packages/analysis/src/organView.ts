@@ -6,7 +6,7 @@ import { type KNode, type KnowledgeGraph, GRAPH } from './knowledge';
 import type { HealthModel, OrganState } from './fusion';
 import type { PatternResult } from './patterns';
 import type { Trend } from './trend';
-import { type AnatomicalLocation, type EvidenceSource, type ImageObservation, type LabObservation, type MedicalFinding, type ReportFinding, SOURCE_LABEL, isPositiveReport } from './types';
+import { type AnatomicalLocation, type EvidenceSource, type ImageObservation, type LabObservation, type MedicalFinding, type ModelStructure, type ReportFinding, SOURCE_LABEL, isPositiveReport } from './types';
 
 export interface ChainOverlay {
   chain: KNode[];
@@ -26,14 +26,14 @@ export interface OrganView {
   path: KNode[];
   systems: KNode[];
   normal: { summary: string; parts: KNode[]; functions: KNode[]; physiology: KNode[][]; biomarkers: KNode[] };
-  personal: { labs: LabObservation[]; reportFindings: ReportFinding[]; imageObservations: ImageObservation[]; modelFindings: MedicalFinding[]; patterns: PatternResult[]; hasData: boolean };
+  personal: { labs: LabObservation[]; reportFindings: ReportFinding[]; imageObservations: ImageObservation[]; modelFindings: MedicalFinding[]; modelStructures: ModelStructure[]; patterns: PatternResult[]; hasData: boolean };
   difference: DiffItem[];
   relations: ChainOverlay[];
   time: Array<{ testKey: string; name: string; trend: Trend }>;
   uncertainty: { certain: string[]; probabilistic: string[]; missing: string[] };
 }
 
-const EMPTY: OrganState = { organ: '', imageObservations: [], reportFindings: [], modelFindings: [], labs: [], patterns: [], attention: false };
+const EMPTY: OrganState = { organ: '', imageObservations: [], reportFindings: [], modelFindings: [], modelStructures: [], labs: [], patterns: [], attention: false };
 
 export function buildOrganView(organId: string, model: HealthModel | null, graph: KnowledgeGraph = GRAPH): OrganView | null {
   const node = graph.node(organId);
@@ -41,7 +41,8 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
   const state = model?.organs.get(node.structure ?? organId) ?? model?.organs.get(organId) ?? EMPTY;
   const biomarkers = graph.biomarkersFor(organId, 5);
   const labByKey = new Map(state.labs.map((l) => [l.testKey, l]));
-  const relations: ChainOverlay[] = graph.chains(organId, 6, 10).map((chain) => ({
+  // Çok sayıda zincirden: önce kişinin verisine bağlananlar, sonra farklı dallardan olanlar (ilk adım çeşitliliği).
+  const allRelations: ChainOverlay[] = graph.chains(organId, 6, 80).map((chain) => ({
     chain,
     overlay: chain
       .map((n) => {
@@ -54,6 +55,16 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
       })
       .flat(),
   }));
+  const relations: ChainOverlay[] = [];
+  const seenBranch = new Map<string, number>();
+  for (const r of [...allRelations].sort((x, y) => Number(y.overlay.length > 0) - Number(x.overlay.length > 0))) {
+    if (relations.length >= 10) break;
+    const branch = r.chain[1]?.id ?? '';
+    const n = seenBranch.get(branch) ?? 0;
+    if (r.overlay.length === 0 && n >= 3) continue;
+    seenBranch.set(branch, n + 1);
+    relations.push(r);
+  }
 
   const difference: DiffItem[] = [
     ...state.labs.filter((l) => l.status === 'high' || l.status === 'low').map((l) => ({ label: `${l.name} ${l.status === 'high' ? 'yüksek' : 'düşük'}`, detail: `${l.value.toLocaleString('tr-TR')} ${l.unit}${l.refMin !== undefined || l.refMax !== undefined ? ` · referans ${l.refMin ?? '…'}–${l.refMax ?? '…'}` : ''} · ${l.date}`, source: 'LAB' as const, direction: l.status as 'high' | 'low' })),
@@ -94,8 +105,9 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
       reportFindings: state.reportFindings,
       imageObservations: state.imageObservations,
       modelFindings: state.modelFindings,
+      modelStructures: state.modelStructures ?? [],
       patterns: state.patterns,
-      hasData: state.labs.length + state.reportFindings.length + state.imageObservations.length + state.modelFindings.length > 0,
+      hasData: state.labs.length + state.reportFindings.length + state.imageObservations.length + state.modelFindings.length + (state.modelStructures?.length ?? 0) > 0,
     },
     difference,
     relations,

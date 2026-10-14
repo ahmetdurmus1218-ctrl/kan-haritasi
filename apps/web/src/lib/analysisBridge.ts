@@ -11,7 +11,10 @@ import {
   type ImageContext,
   type Modality,
   type ModelManifest,
+  type ModelExtras,
   type ModelRun,
+  type RasGrid,
+  type VolumeStructure,
   type LabObservation,
   type RasterImage,
   type ReportFinding,
@@ -21,9 +24,10 @@ import {
   score,
 } from '@kh/analysis';
 import { gradeResult } from '@kh/catalog';
-import { type DicomInfo, canDecode, decodeFrame, parseDicom } from '@kh/ingest';
+import { type DicomInfo, type DicomVolume, canDecode, decodeFrame, parseDicom } from '@kh/ingest';
 import type { Bytes, FileInfo } from '@kh/vault';
 import { regionByKey } from './imaging';
+import { volumeRun } from './volumeResults';
 import { modelBytes } from './localModels/store';
 import type { ImagingFinding } from './imagingFindings';
 import type { StoredAnalysis } from './imagingRecords';
@@ -66,6 +70,34 @@ export async function loadRaster(info: Pick<FileInfo, 'kind' | 'mimeType'>, byte
   return { width: frame.width, height: frame.height, gray: frame.data };
 }
 
+/**
+ * Model girdisi: 8 bit görüntü bekleyen modeller (ör. TorchXRayVision) için DICOM ham değerleri
+ * dosyadaki pencereyle (yoksa en küçük–en büyük) 0–255'e eşlenir; MONOCHROME1 tersine çevrilir.
+ * Fotoğraflar zaten 0–255'tir ve olduğu gibi kalır.
+ */
+export function modelRaster(raster: RasterImage, dicom: DicomInfo | null): RasterImage {
+  if (!dicom) return raster;
+  let min = Infinity;
+  let max = -Infinity;
+  for (let i = 0; i < raster.gray.length; i++) {
+    const v = raster.gray[i]!;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  const inBytes = min >= 0 && max <= 255 && dicom.photometric !== 'MONOCHROME1';
+  if (inBytes) return raster;
+  const lo = dicom.windowWidth ? (dicom.windowCenter ?? 0) - dicom.windowWidth / 2 : min;
+  const hi = dicom.windowWidth ? (dicom.windowCenter ?? 0) + dicom.windowWidth / 2 : max;
+  const k = 255 / Math.max(1e-6, hi - lo);
+  const gray = new Float32Array(raster.gray.length);
+  const inv = dicom.photometric === 'MONOCHROME1';
+  for (let i = 0; i < gray.length; i++) {
+    const v = Math.min(255, Math.max(0, (raster.gray[i]! - lo) * k));
+    gray[i] = inv ? 255 - v : v;
+  }
+  return { width: raster.width, height: raster.height, gray };
+}
+
 export function contextFor(info: FileInfo, dicom: DicomInfo | null, files = 1): ImageContext {
   const region = info.region ? regionByKey.get(info.region) : undefined;
   return {
@@ -91,8 +123,21 @@ export function contextFor(info: FileInfo, dicom: DicomInfo | null, files = 1): 
 
 let worker: Worker | null | undefined;
 let seq = 0;
-type WorkerReply = { id: number; run?: ImageAnalysisRun; model?: ModelRun; progress?: 'inference'; needBytes?: boolean; error?: string };
-const pending = new Map<number, { resolve: (r: WorkerReply) => void; reject: (e: Error) => void; onProgress?: (p: 'inference') => void }>();
+export type VolumeJobProgress = { stage: 'loading' | 'resample' | 'inference' | 'merge'; done: number; total: number };
+export type VolumeResult =
+  | { ok: false; reason: string }
+  | {
+      ok: true;
+      grid: RasGrid;
+      labels: Uint8Array;
+      structures: VolumeStructure[];
+      tiles: number;
+      seconds: number;
+      geometry: Omit<DicomVolume, 'data'>;
+    };
+type Progress = 'inference' | VolumeJobProgress;
+type WorkerReply = { id: number; run?: ImageAnalysisRun; model?: ModelRun; extras?: ModelExtras; volume?: VolumeResult; progress?: Progress; needBytes?: boolean; error?: string };
+const pending = new Map<number, { resolve: (r: WorkerReply) => void; reject: (e: Error) => void; onProgress?: (p: Progress) => void }>();
 /** Bu işçide oturumu açılmış modeller (SHA-256): model baytları yalnızca ilk kullanımda gönderilir. */
 let loadedModels = new Set<string>();
 
@@ -126,7 +171,7 @@ function resetWorker(reason: string) {
   loadedModels = new Set();
 }
 
-function ask(w: Worker, msg: Record<string, unknown>, transfer: Transferable[] = [], onProgress?: (p: 'inference') => void): Promise<WorkerReply> {
+function ask(w: Worker, msg: Record<string, unknown>, transfer: Transferable[] = [], onProgress?: (p: Progress) => void): Promise<WorkerReply> {
   const id = ++seq;
   return new Promise<WorkerReply>((resolve, reject) => {
     pending.set(id, { resolve, reject, ...(onProgress ? { onProgress } : {}) });
@@ -160,28 +205,68 @@ export async function runLocalModel(
   modality: Modality,
   context: ImageContext,
   opts: { documentId?: string; signal?: AbortSignal; onProgress?: (p: ModelProgress) => void } = {},
-): Promise<ModelRun> {
+): Promise<ModelRun & { extras?: ModelExtras }> {
   const w = getWorker();
   if (!w) return { status: 'unavailable', reason: 'Bu tarayıcıda arka plan işçisi (Web Worker) yok; model çalıştırılamadı.' };
   const abort = () => resetWorker('cancelled');
   opts.signal?.addEventListener('abort', abort, { once: true });
   try {
     const base = { kind: 'model', manifest, image, modality, context, ...(opts.documentId ? { documentId: opts.documentId } : {}) };
+    const onP = (p: Progress) => p === 'inference' && opts.onProgress?.('inference');
     let r: WorkerReply;
-    if (loadedModels.has(manifest.sha256)) r = await ask(w, base, [], opts.onProgress);
+    if (loadedModels.has(manifest.sha256)) r = await ask(w, base, [], onP);
     else r = { id: 0, needBytes: true };
     if (r.needBytes) {
       opts.onProgress?.('loading');
       const bytes = await modelBytes(manifest.id);
       if (!bytes) return { status: 'unavailable', reason: 'Model dosyası cihazda bulunamadı.' };
       const copy = bytes.slice(0);
-      r = await ask(w, { ...base, bytes: copy }, [copy], opts.onProgress);
+      r = await ask(w, { ...base, bytes: copy }, [copy], onP);
       loadedModels.add(manifest.sha256);
     }
-    return r.model ?? { status: 'unavailable', reason: 'Model sonuç döndürmedi.' };
+    return r.model ? { ...r.model, ...(r.extras ? { extras: r.extras } : {}) } : { status: 'unavailable', reason: 'Model sonuç döndürmedi.' };
   } catch (e) {
     loadedModels.delete(manifest.sha256);
     return { status: 'unavailable', reason: e instanceof Error && e.message === 'cancelled' ? 'İptal edildi.' : `Model çalıştırılamadı: ${e instanceof Error ? e.message : 'bilinmeyen hata'}` };
+  } finally {
+    opts.signal?.removeEventListener('abort', abort);
+  }
+}
+
+/**
+ * 3B hacim modelini bir DICOM serisinde çalıştırır (işçide, cihazda). Kesit baytları işçiye aktarılır;
+ * model baytları yalnızca ilk kullanımda gönderilir. İptal işçiyi sonlandırır (bellek bırakılır).
+ */
+export async function runVolumeAnalysis(
+  manifest: ModelManifest,
+  files: Uint8Array[],
+  opts: { signal?: AbortSignal; onProgress?: (p: VolumeJobProgress) => void; prior?: { labels: ModelManifest['labels']; grid: RasGrid; labelsRle: number[] } } = {},
+): Promise<VolumeResult> {
+  const w = getWorker();
+  if (!w) return { ok: false, reason: 'Bu tarayıcıda arka plan işçisi (Web Worker) yok.' };
+  const abort = () => resetWorker('cancelled');
+  opts.signal?.addEventListener('abort', abort, { once: true });
+  const onP = (p: Progress) => typeof p === 'object' && opts.onProgress?.(p);
+  const copies = () => files.map((f) => f.slice().buffer as ArrayBuffer);
+  try {
+    let r: WorkerReply = { id: 0, needBytes: true };
+    if (loadedModels.has(`vol:${manifest.sha256}`)) {
+      const bufs = copies();
+      r = await ask(w, { kind: 'volume', manifest, files: bufs, prior: opts.prior }, bufs, onP);
+    }
+    if (r.needBytes) {
+      opts.onProgress?.({ stage: 'loading', done: 0, total: 1 });
+      const bytes = await modelBytes(manifest.id);
+      if (!bytes) return { ok: false, reason: 'Model dosyası cihazda bulunamadı.' };
+      const bufs = copies();
+      r = await ask(w, { kind: 'volume', manifest, files: bufs, bytes, prior: opts.prior }, [bytes, ...bufs], onP);
+      loadedModels.add(`vol:${manifest.sha256}`);
+    }
+    return r.volume ?? { ok: false, reason: 'Model sonuç döndürmedi.' };
+  } catch (e) {
+    loadedModels.delete(`vol:${manifest.sha256}`);
+    const msg = e instanceof Error ? e.message : 'bilinmeyen hata';
+    return { ok: false, reason: msg === 'cancelled' ? 'İptal edildi.' : /memory|allocation|out of bounds/i.test(msg) ? 'Cihaz belleği bu model için yetmedi.' : `Model çalıştırılamadı: ${msg}` };
   } finally {
     opts.signal?.removeEventListener('abort', abort);
   }
@@ -204,6 +289,7 @@ export function toStoredAnalysis(run: ImageAnalysisRun, sourceId: string): Store
     sequence: run.sequence,
     kind: run.kind,
     ...(run.modelFindings ? { modelFindings: run.modelFindings.slice(0, 32) } : {}),
+    ...(run.modelStructures ? { modelStructures: run.modelStructures.slice(0, 40) } : {}),
     ...(run.modelInfo ? { modelInfo: run.modelInfo } : {}),
   };
 }
@@ -217,6 +303,7 @@ export function runFromStored(a: StoredAnalysis, reportAvailable: boolean): Imag
     route: 'image-analysis',
     kind: a.kind ?? 'precheck',
     ...(a.modelFindings ? { modelFindings: a.modelFindings } : {}),
+    ...(a.modelStructures ? { modelStructures: a.modelStructures } : {}),
     ...(a.modelInfo ? { modelInfo: a.modelInfo } : {}),
     coverage: a.coverage ?? { kind: 'photo', frames: 1, label: '1 görüntü' },
     sequence: a.sequence ?? { source: 'none', text: 'Sekans belirlenemedi.' },
@@ -304,12 +391,14 @@ const STUDY_MODALITY: Record<string, string> = { mr: 'MRI', ct: 'CT', xray: 'XRA
 /** Tüm kasa verisinden birleşik sağlık modeli. */
 export function healthModelFrom(reports: StoredReport[], studies: ImagingStudy[]): HealthModel {
   const images = studies.flatMap((st) => {
+    const vol = st.note?.volume;
+    const volumeInput = (vol ? [vol, ...(st.note?.pathology ?? [])] : []).map((v) => ({ run: volumeRun(v, st.findings.length > 0), date: st.date, documentId: st.head.id, studyKey: st.key, modality: STUDY_MODALITY[st.category] ?? st.category }));
     const a = st.note?.analysis;
-    if (!a) return [];
+    if (!a) return volumeInput;
     const structure = a.structure ?? (st.region ? regionByKey.get(st.region)?.structure : undefined);
     // Aynı çekimin raporu (kendi notu ya da bağlı rapor belgesi) uyum karşılaştırması için eşleştirilir.
     const reportStudy = st.findings.length ? st : relatedStudies(st, studies).find((r) => r.findings.length > 0);
-    return [{ run: runFromStored(a, Boolean(reportStudy)), date: st.date, documentId: st.head.id, studyKey: reportStudy?.key ?? st.key, modality: STUDY_MODALITY[st.category] ?? st.category, ...(structure ? { structure } : {}) }];
+    return [{ run: runFromStored(a, Boolean(reportStudy)), date: st.date, documentId: st.head.id, studyKey: reportStudy?.key ?? st.key, modality: STUDY_MODALITY[st.category] ?? st.category, ...(structure ? { structure } : {}) }, ...volumeInput.map((v) => ({ ...v, studyKey: reportStudy?.key ?? st.key }))];
   });
   const reps = studies
     .filter((st) => st.findings.length > 0)

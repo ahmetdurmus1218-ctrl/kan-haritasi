@@ -94,9 +94,11 @@ export function Breadcrumb({ organId, trail = [], current }: { organId: string; 
   const sys = systemOf(organId);
   const organ = GRAPH.node(organId)?.nameTr ?? structureById.get(organId)?.nameTr ?? organId;
   // Bölge sayfasında (ör. Beyaz cevher) üstteki organ da görünür: Vücut › Sinir sistemi › Beyin › Beyaz cevher.
-  const ancestors = GRAPH.pathTo(organId).slice(0, -1);
+  const ancestors = GRAPH.pathTo(organId).slice(0, -1).filter((a) => a.kind !== 'body' && a.kind !== 'body-region');
+  const region = GRAPH.node(organId)?.kind === 'body-region' ? undefined : GRAPH.regionsOf(organId)[0];
   const items: Array<{ label: string; route?: Route }> = [
     { label: 'Vücut', route: { name: 'mybody' } },
+    ...(region ? [{ label: region.nameTr, route: { name: 'organ', id: region.id, view: 'derin', trail: [] } as Route }] : []),
     ...(sys ? [{ label: sys.name, route: { name: 'system', id: sys.id } as Route }] : []),
     ...ancestors.map((a) => ({ label: a.nameTr, route: { name: 'organ', id: a.id } as Route })),
     { label: organ, route: trail.length || current ? { name: 'organ', id: organId } : undefined },
@@ -127,6 +129,37 @@ export function Breadcrumb({ organId, trail = [], current }: { organId: string; 
 const NODE_SCENE: Record<string, InsideId> = {
   'tissue.intestinal-mucosa': 'villus',
   'tissue.villus': 'villus',
+  'tissue.intestinal-epithelium': 'villus',
+  'sub.microvilli': 'villus',
+  'cell.goblet': 'villus',
+  'tissue.crypt': 'villus',
+  'ear.cochlea': 'koklea',
+  'ear.inner': 'koklea',
+  'tissue.organ-of-corti': 'koklea',
+  'cell.inner-hair': 'koklea',
+  'cell.outer-hair': 'koklea',
+  'sub.stereocilia': 'koklea',
+  'sub.sarcomere': 'sarkomer',
+  'cell.skeletal-myocyte': 'sarkomer',
+  'tissue.glomerulus': 'nefron',
+  'tissue.proximal-tubule': 'nefron',
+  'tissue.loop-of-henle': 'nefron',
+  'tissue.collecting-duct': 'nefron',
+  'tissue.alveolar-wall': 'alveol',
+  'cell.pneumocyte-1': 'alveol',
+  'cell.pneumocyte-2': 'alveol',
+  'tissue.sinusoid': 'lobul',
+  'tissue.portal-triad': 'lobul',
+  'sub.synapse': 'noron',
+  'cell.astrocyte': 'noron',
+  'eyes.retina': 'retina',
+  'cell.photoreceptor': 'retina',
+  'ovary.cortex': 'ovaryum',
+  'tissue.ovarian-follicles': 'ovaryum',
+  'ovary.follicle-antral': 'ovaryum',
+  'cell.oocyte': 'ovaryum',
+  'cell.granulosa': 'ovaryum',
+  'spleen.white-pulp': 'lenf',
   'cell.enterocyte': 'villus',
   'tissue.villus-capillary': 'villus',
   'tissue.lacteal': 'villus',

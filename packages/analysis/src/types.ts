@@ -136,6 +136,21 @@ export type Localization =
   /** Tek nokta (ör. bir anahtar nokta modeli). */
   | { kind: 'point'; frame: number; x: number; y: number; imageSize: { width: number; height: number } }
   | { kind: 'report-approximate'; text: string }
+  /**
+   * 3B hacim modelinin bölütlemesi: gerçek voksel kümesi. Ağırlık merkezi ve sınırlar hasta koordinatında
+   * (DICOM LPS, mm); sliceRange serideki kesit sırası (0'dan). Maske ayrıca saklanır (etiket hacmi).
+   */
+  | {
+      kind: 'volume';
+      labelId: number;
+      voxels: number;
+      volumeMl: number;
+      centroid: [number, number, number];
+      bboxMin: [number, number, number];
+      bboxMax: [number, number, number];
+      sliceRange: [number, number];
+      centroidSlice: number;
+    }
   | { kind: 'region-only' }
   | { kind: 'none' };
 
@@ -362,4 +377,23 @@ export function provenanceOf(item: MedicalFinding | ImageObservation | ReportFin
   if (item.source === 'IMAGE_ANALYSIS') return { derivation: item.model.kind === 'learned' ? 'model-derived' : 'heuristic-derived', source: item.source, model: item.model, at };
   if (item.source === 'LAB') return { derivation: 'lab', source: 'LAB', at: item.date || at };
   return { derivation: 'report-derived', source: item.source, ...(item.documentId ? { documentId: item.documentId } : {}), at: item.date ?? at };
+}
+
+/**
+ * Yerel modelin bölütlediği ANATOMİK yapı (bulgu değil): "karaciğer bölütlendi, hacmi 1,5 L". Organı "dikkat"
+ * durumuna geçirmez; ölçüm ve konum sağlar. Kaynak her zaman modeldir (model-derived).
+ */
+export interface ModelStructure {
+  id: string;
+  /** Modelin sınıf anahtarı (ör. "liver", "Left Lung"). */
+  key: string;
+  name: string;
+  source: 'IMAGE_MODEL';
+  provenance: Provenance;
+  localization: Localization;
+  anatomicalStructure?: AnatomicalLocation;
+  /** Modelin çıktısından hesaplanan ölçüm (ör. hacim, kardiyotorasik oran). */
+  measurements: Array<{ name: string; value: number; unit: string; method: string; /** Fizyolojik üst sınır (varsa). */ refMax?: number }>;
+  confidence: Confidence;
+  limitations: string[];
 }

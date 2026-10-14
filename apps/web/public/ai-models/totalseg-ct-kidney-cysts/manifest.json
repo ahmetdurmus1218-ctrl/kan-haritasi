@@ -1,0 +1,122 @@
+{
+ "schema": "kh-model-manifest/2",
+ "id": "totalseg-ct-kidney-cysts",
+ "name": "TotalSegmentator — böbrek kisti (BT patoloji)",
+ "version": "2.5.0-weights · Dataset789 (1,5 mm)",
+ "modalities": [
+  "CT"
+ ],
+ "license": "Apache-2.0 (TotalSegmentator 'kidney_cysts' görevi; açık görevler listesinde)",
+ "source": "https://github.com/wasserth/TotalSegmentator",
+ "intendedUse": "BT serisinde böbrek kistlerinin bölütlenmesi (sol/sağ). Önce BT anatomi modeli çalışır; böbrek, karaciğer, dalak ve kalın bağırsak çevresi kırpılır. Tanı aracı değildir.",
+ "compatibleDevice": "Masaüstü tarayıcı ya da ≥ 8 GB RAM'li telefon; 1,5 mm ızgarada karo başına ~60–90 sn (tek çekirdek WASM), tipik BT'de 4–12 karo.",
+ "limitations": [
+  "Yalnızca kisti bölütler; kistin türünü (basit/karmaşık, Bosniak) ayırmaz, solid kitleyi tanımaz.",
+  "Çok küçük kistler (birkaç mm) 1,5 mm ızgarada kaçabilir; bulunmaması kist olmadığını kesinleştirmez.",
+  "Önce BT anatomi modeli çalışmalıdır; böbrekler bölütlenemediyse model çalıştırılmaz.",
+  "Klinik kullanım için onaylı tıbbi cihaz değildir."
+ ],
+ "validation": "Karo adımı 0,5 (resmi TotalSegmentator ile aynı). Aynı kırpılmış girdide resmi nnU-Net v2 öngörücüsüyle (aynı ağırlıklar): böbrek (yardımcı sınıf) Dice 0,978 / 0,985. Kistli gerçek BT'de (MSD Task09 spleen_19, CC BY-SA 4.0) resmi kidney_cysts: sol böbrek kisti 0,58 mL ↔ bu hat 0,51 mL (Dice 0,865); örnek BT'de ve gerçek bir göğüs BT'sinde (MSD Task06 lung_053) resmi çıktı da bu hat da kist bulmadı.",
+ "task": "segmentation-3d",
+ "format": "onnx",
+ "citation": "Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.",
+ "input": {
+  "name": "input",
+  "layout": "NCDHW",
+  "channels": 1,
+  "width": 128,
+  "height": 112,
+  "scale": 1,
+  "mean": [
+   0
+  ],
+  "std": [
+   1
+  ]
+ },
+ "output": {
+  "topkValues": "topk_values",
+  "topkIndices": "topk_indices"
+ },
+ "volume": {
+  "spacing": 1.5,
+  "patch": [
+   160,
+   112,
+   128
+  ],
+  "axisOrder": "SAR",
+  "normalization": {
+   "scheme": "ct",
+   "clip": [
+    -121.0,
+    370.0
+   ],
+   "mean": 105.17548302012092,
+   "std": 84.80785984796226
+  },
+  "tileStep": 0.5,
+  "topK": 4,
+  "cropNonzero": true,
+  "minSlices": 10,
+  "cascade": {
+   "model": "totalseg-ct-total-3mm",
+   "labels": [
+    "kidney_left",
+    "kidney_right",
+    "liver",
+    "spleen",
+    "colon"
+   ],
+   "addonMm": 10
+  },
+  "dropLabels": [
+   3,
+   4
+  ]
+ },
+ "labels": [
+  {
+   "id": 1,
+   "key": "kidney_cyst_left",
+   "finding": "Sol böbrekte kist (patoloji modeli)",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "kind": "finding",
+   "minMl": 0.1
+  },
+  {
+   "id": 2,
+   "key": "kidney_cyst_right",
+   "finding": "Sağ böbrekte kist (patoloji modeli)",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "kind": "finding",
+   "minMl": 0.1
+  },
+  {
+   "id": 3,
+   "key": "kidney_left_aux",
+   "finding": "Sol böbrek (yardımcı sınıf)",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "kind": "anatomy"
+  },
+  {
+   "id": 4,
+   "key": "kidney_right_aux",
+   "finding": "Sağ böbrek (yardımcı sınıf)",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "kind": "anatomy"
+  }
+ ],
+ "scoreThreshold": 0.5,
+ "upstream": {
+  "weights": "https://github.com/wasserth/TotalSegmentator/releases/download/v2.5.0-weights/Dataset789_kidney_cyst_501subj.zip",
+  "weightsSha256": "fd528187b1526135894ac03e15861ae4de9b39ed317fbfce06ab9066e9817425"
+ },
+ "file": "model.onnx",
+ "sha256": "eca0a2017f7b7e495b646e4591c058440bc988bc207ad16967733be3bcd104e0",
+ "size": 61630062
+}

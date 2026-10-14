@@ -77,8 +77,15 @@ jobs:
           if grep -E '\.gz$' apk-assets.txt; then echo "::error::APK'da .gz uzantılı varlık var"; exit 1; fi
           for f in index.html ocr/worker.min.js ocr/tesseract-core-simd-lstm.wasm.js ocr/tur.traineddata \
                    models/m/body.glb models/m/skeleton.glb models/m/muscles.glb models/m/cardio.glb \
-                   models/f/body.glb models/f/skeleton.glb models/f/reproductive.glb models/f/cardio.glb; do
+                   models/f/body.glb models/f/skeleton.glb models/f/reproductive.glb models/f/cardio.glb \
+                   ai-models/index.json; do
             grep -qx "assets/web/$f" apk-assets.txt || { echo "::error::APK'da eksik: $f"; exit 1; }
+          done
+          # Gömülü tıbbi modeller: index.json'daki her modelin dosyaları APK'da olmalı
+          for m in $(python3 -c "import json;print(' '.join(json.load(open('apps/web/public/ai-models/index.json'))['models']))"); do
+            for f in model.onnx manifest.json NOTICE.txt; do
+              grep -qx "assets/web/ai-models/$m/$f" apk-assets.txt || { echo "::error::APK'da eksik: ai-models/$m/$f"; exit 1; }
+            done
           done
 
       - name: APK'yı adlandır

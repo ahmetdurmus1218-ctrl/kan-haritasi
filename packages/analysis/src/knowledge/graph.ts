@@ -5,18 +5,28 @@
  *   Süreç → (ölçülür) → Biyobelirteç (laboratuvar testi / EKG ölçümü)
  *   Süreç → (yol açar) → Süreç   ("Vücudumda neyi ne etkiliyor?")
  *
+ *   Vücut → Vücut bölgesi (baş, boyun, göğüs, karın, pelvis) ← organlar orada bulunur (located_in)
+ *   Organ ↔ Organ: komşuluk (adjacent_to), bağlantı (connected_to), kanlanma (supplied_by / drained_by),
+ *   sinirlenme (innervated_by), birlikte çalışma (functions_with), gelişim kökeni (develops_from).
+ *
+ * Hiyerarşi yalnızca part_of / made_of ile kurulur; komşuluk ASLA "içinde" sayılmaz (yumurtalık bağırsağın
+ * parçası değildir, pelviste ona komşudur).
+ *
  * İçerik genel eğitim bilgisidir (KNOWLEDGE); kişiye özel değildir.
  */
 
-export type NodeKind = 'system' | 'organ' | 'region' | 'tissue' | 'cell' | 'process' | 'molecule' | 'function' | 'biomarker';
+export type NodeKind = 'body' | 'body-region' | 'system' | 'organ' | 'region' | 'tissue' | 'cell' | 'subcellular' | 'process' | 'molecule' | 'function' | 'biomarker';
 
 /** Detay seviyesi: kullanıcı "Detaylandır" ile bir sonraki seviyeye iner. */
 export const LEVEL: Record<NodeKind, number> = {
+  body: 0,
+  'body-region': 0,
   system: 0,
   organ: 1,
   region: 2,
   tissue: 3,
   cell: 4,
+  subcellular: 4,
   process: 5,
   function: 5,
   molecule: 6,
@@ -24,11 +34,14 @@ export const LEVEL: Record<NodeKind, number> = {
 };
 
 export const LEVEL_LABEL: Record<NodeKind, string> = {
+  body: 'Vücut',
+  'body-region': 'Vücut bölgesi',
   system: 'Sistem',
   organ: 'Organ',
   region: 'Bölge',
   tissue: 'Doku',
   cell: 'Hücre',
+  subcellular: 'Hücre içi yapı',
   process: 'Biyolojik süreç',
   function: 'İşlev',
   molecule: 'Molekül',
@@ -68,7 +81,26 @@ export type Relation =
   /** A, B'yi etkileyebilir (dolaylı, olasılıksal). */
   | 'affects'
   /** A organı B sistemine aittir. */
-  | 'belongs_to';
+  | 'belongs_to'
+  /** A, B vücut bölgesinde bulunur (ör. yumurtalık → pelvis). Hiyerarşi değildir. */
+  | 'located_in'
+  /** A ile B komşudur (simetrik). */
+  | 'adjacent_to'
+  /** A ile B arasında doğrudan bağlantı/geçiş vardır (kanal, boru, sinir yolu; simetrik). */
+  | 'connected_to'
+  /** A'yı B (atardamar) besler. */
+  | 'supplied_by'
+  /** A'nın kanını/lenfini B toplar. */
+  | 'drained_by'
+  /** A'yı B (sinir) yönetir. */
+  | 'innervated_by'
+  /** A ile B aynı işlevde birlikte çalışır (simetrik). */
+  | 'functions_with'
+  /** A, embriyoda B'den gelişir. */
+  | 'develops_from';
+
+/** Simetrik ilişkiler: iki yönde de gösterilir. */
+export const SYMMETRIC: ReadonlySet<Relation> = new Set<Relation>(['adjacent_to', 'connected_to', 'functions_with']);
 
 export const RELATION_LABEL: Record<Relation, string> = {
   part_of: 'parçasıdır',
@@ -80,6 +112,14 @@ export const RELATION_LABEL: Record<Relation, string> = {
   regulates: 'düzenler',
   affects: 'etkileyebilir',
   belongs_to: 'sistemine aittir',
+  located_in: 'bölgesinde bulunur',
+  adjacent_to: 'komşusudur',
+  connected_to: 'ile bağlantılıdır',
+  supplied_by: 'tarafından beslenir',
+  drained_by: 'tarafından boşaltılır',
+  innervated_by: 'tarafından sinirlenir',
+  functions_with: 'ile birlikte çalışır',
+  develops_from: 'kökeninden gelişir',
 };
 
 export interface KEdge {
@@ -261,7 +301,77 @@ export class KnowledgeGraph {
   /** 3B yapı (ve bölüm) → grafik düğümü (en özel olan). */
   nodeForStructure(structure: string, part?: string): KNode | undefined {
     const all = [...this.nodes.values()];
-    return (part ? all.find((n) => n.structure === structure && n.part === part) : undefined) ?? all.find((n) => n.structure === structure && !n.part);
+    const exact = part ? all.find((n) => n.structure === structure && n.part === part) : undefined;
+    if (exact) return exact;
+    // Yapının organ düğümü; yoksa tek aday. Birden çok damar/sinir düğümü aynı 3B yapıyı paylaşıyorsa
+    // (ör. "karın damarları") hiçbiri seçilmez: yanlış özgüllük üretilmez.
+    const cands = all.filter((n) => n.structure === structure && !n.part);
+    return cands.find((n) => n.kind === 'organ') ?? (cands.length === 1 ? cands[0] : undefined);
+  }
+
+  /**
+   * Komşuluk ve bağlantılar (iki yönde): "Yanında ne var?" — hiyerarşiye karışmaz. Aynı vücut bölgesindeki
+   * organlar ayrıca `regionMembers` ile listelenir.
+   */
+  neighbors(id: string): Array<{ node: KNode; rel: Relation; note?: string }> {
+    const out = new Map<string, { node: KNode; rel: Relation; note?: string }>();
+    for (const e of this.edgesFrom(id)) if (SYMMETRIC.has(e.rel)) out.set(`${e.rel}:${e.to}`, { node: this.nodes.get(e.to)!, rel: e.rel, note: e.note });
+    for (const e of this.edgesTo(id)) if (SYMMETRIC.has(e.rel)) out.set(`${e.rel}:${e.from}`, { node: this.nodes.get(e.from)!, rel: e.rel, note: e.note });
+    return [...out.values()];
+  }
+
+  /** Kanlanma, sinirlenme, gelişim kökeni (bu düğüm ya da üst yapısı için). */
+  supply(id: string): Array<{ node: KNode; rel: Relation; note?: string; inherited?: string }> {
+    const rels: Relation[] = ['supplied_by', 'drained_by', 'innervated_by', 'develops_from'];
+    const out: Array<{ node: KNode; rel: Relation; note?: string; inherited?: string }> = [];
+    for (const n of [...this.pathTo(id)].reverse()) {
+      for (const e of this.edgesFrom(n.id)) if (rels.includes(e.rel) && !out.some((o) => o.rel === e.rel && o.node.id === e.to)) out.push({ node: this.nodes.get(e.to)!, rel: e.rel, note: e.note, ...(n.id !== id ? { inherited: n.nameTr } : {}) });
+      if (out.length) break;
+    }
+    return out;
+  }
+
+  /** Bir vücut bölgesinde bulunan organlar (pelvis → mesane, rahim, yumurtalıklar, rektum …). */
+  regionMembers(regionId: string): KNode[] {
+    return this.edgesTo(regionId, 'located_in').map((e) => this.nodes.get(e.from)!);
+  }
+
+  /** Düğümün (ya da organının) bulunduğu vücut bölgeleri. */
+  regionsOf(id: string): KNode[] {
+    for (const n of [...this.pathTo(id)].reverse()) {
+      const r = this.edgesFrom(n.id, 'located_in').map((e) => this.nodes.get(e.to)!);
+      if (r.length) return r;
+    }
+    return [];
+  }
+
+  /** En derin iç yol uzunluğu (organ → … → hücre içi yapı / süreç). */
+  depthOf(id: string, maxLevel: number = LEVEL.molecule): number {
+    const memo = new Map<string, number>();
+    const walk = (n: string): number => {
+      const m = memo.get(n);
+      if (m !== undefined) return m;
+      memo.set(n, 0); // döngü koruması
+      const kids = this.drill(n).filter((k) => LEVEL[k.node.kind] <= maxLevel && k.node.kind !== 'biomarker');
+      const d = kids.length ? 1 + Math.max(...kids.map((k) => walk(k.node.id))) : 0;
+      memo.set(n, d);
+      return d;
+    };
+    return walk(id);
+  }
+
+  /** Grafik istatistikleri (rapor ve testler için). */
+  stats(): { nodes: number; edges: number; byKind: Record<string, number>; byRelation: Record<string, number> } {
+    const byKind: Record<string, number> = {};
+    const byRelation: Record<string, number> = {};
+    for (const n of this.nodes.values()) byKind[n.kind] = (byKind[n.kind] ?? 0) + 1;
+    let edges = 0;
+    for (const list of this.out.values())
+      for (const e of list) {
+        edges++;
+        byRelation[e.rel] = (byRelation[e.rel] ?? 0) + 1;
+      }
+    return { nodes: this.nodes.size, edges, byKind, byRelation };
   }
 
   /** Organın ait olduğu sistemler. */

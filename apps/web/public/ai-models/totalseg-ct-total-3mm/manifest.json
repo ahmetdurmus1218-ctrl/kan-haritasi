@@ -1,0 +1,1059 @@
+{
+ "schema": "kh-model-manifest/2",
+ "id": "totalseg-ct-total-3mm",
+ "name": "TotalSegmentator — BT anatomi (117 yapı)",
+ "version": "2.0.0-weights · Dataset297 (3 mm, fast)",
+ "modalities": [
+  "CT"
+ ],
+ "license": "Apache-2.0 (TotalSegmentator kodu ve 'total' görevinin ağırlıkları; eğitim verisi CC BY 4.0)",
+ "source": "https://github.com/wasserth/TotalSegmentator",
+ "intendedUse": "BT serisinde organ, kemik, damar ve kasların otomatik bölütlenmesi (3 mm). Tanı aracı değildir.",
+ "citation": "Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.",
+ "validation": "Resmi TotalSegmentator --fast çıktısıyla karşılaştırma (aynı ağırlıklar): örnek BT (1 karo) ortalama Dice 1,000; 9 karolu birleştirilmiş BT ortalama Dice 0,999 (en düşük yapı 0,981), voksel uyumu %99,97.",
+ "compatibleDevice": "Masaüstü tarayıcı ya da ≥ 6 GB RAM'li telefon; karo başına ~40–50 sn (tek çekirdek WASM), bellek ~1,5–2 GB.",
+ "limitations": [
+  "3 mm çözünürlükte çalışır (TotalSegmentator --fast); küçük yapılar (ör. böbreküstü bezleri) kaba bölütlenir.",
+  "Bölütleme normal anatomiyi gösterir; bir organın bölütlenmesi o organın sağlıklı olduğu anlamına gelmez.",
+  "Böbrek kisti sınıfı 'total' görevinin parçasıdır; ayrı ve daha doğru 'kidney_cysts' modeli değildir.",
+  "Kayan pencere birleştirmesi bellek için her karonun en yüksek 4 sınıfıyla yapılır (resmi çıktıyla uyum: doğrulama alanı).",
+  "Klinik kullanım için onaylı tıbbi cihaz değildir."
+ ],
+ "task": "segmentation-3d",
+ "format": "onnx",
+ "input": {
+  "name": "input",
+  "layout": "NCDHW",
+  "channels": 1,
+  "width": 128,
+  "height": 112,
+  "scale": 1,
+  "mean": [
+   0
+  ],
+  "std": [
+   1
+  ]
+ },
+ "output": {
+  "topkValues": "topk_values",
+  "topkIndices": "topk_indices"
+ },
+ "volume": {
+  "spacing": 3.0,
+  "patch": [
+   112,
+   112,
+   128
+  ],
+  "axisOrder": "SAR",
+  "normalization": {
+   "scheme": "ct",
+   "clip": [
+    -1004.0,
+    1588.0
+   ],
+   "mean": -50.38697721419439,
+   "std": 503.39235619144
+  },
+  "tileStep": 0.8,
+  "topK": 4,
+  "cropNonzero": true,
+  "minSlices": 10
+ },
+ "labels": [
+  {
+   "id": 1,
+   "key": "spleen",
+   "finding": "Dalak",
+   "structure": "spleen",
+   "kind": "anatomy"
+  },
+  {
+   "id": 2,
+   "key": "kidney_right",
+   "finding": "Sağ böbrek",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "kind": "anatomy"
+  },
+  {
+   "id": 3,
+   "key": "kidney_left",
+   "finding": "Sol böbrek",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "kind": "anatomy"
+  },
+  {
+   "id": 4,
+   "key": "gallbladder",
+   "finding": "Safra kesesi",
+   "structure": "gallbladder",
+   "part": "gallbladder",
+   "kind": "anatomy"
+  },
+  {
+   "id": 5,
+   "key": "liver",
+   "finding": "Karaciğer",
+   "structure": "liver",
+   "node": "liver",
+   "kind": "anatomy"
+  },
+  {
+   "id": 6,
+   "key": "stomach",
+   "finding": "Mide",
+   "structure": "stomach",
+   "node": "stomach",
+   "kind": "anatomy"
+  },
+  {
+   "id": 7,
+   "key": "pancreas",
+   "finding": "Pankreas",
+   "structure": "pancreas",
+   "node": "pancreas",
+   "kind": "anatomy"
+  },
+  {
+   "id": 8,
+   "key": "adrenal_gland_right",
+   "finding": "Sağ böbreküstü bezi",
+   "structure": "adrenals",
+   "part": "right",
+   "kind": "anatomy"
+  },
+  {
+   "id": 9,
+   "key": "adrenal_gland_left",
+   "finding": "Sol böbreküstü bezi",
+   "structure": "adrenals",
+   "part": "left",
+   "kind": "anatomy"
+  },
+  {
+   "id": 10,
+   "key": "lung_upper_lobe_left",
+   "finding": "Sol akciğer üst lobu",
+   "structure": "lungs",
+   "part": "left-upper",
+   "node": "lungs",
+   "kind": "anatomy"
+  },
+  {
+   "id": 11,
+   "key": "lung_lower_lobe_left",
+   "finding": "Sol akciğer alt lobu",
+   "structure": "lungs",
+   "part": "left-lower",
+   "node": "lungs",
+   "kind": "anatomy"
+  },
+  {
+   "id": 12,
+   "key": "lung_upper_lobe_right",
+   "finding": "Sağ akciğer üst lobu",
+   "structure": "lungs",
+   "part": "right-upper",
+   "node": "lungs",
+   "kind": "anatomy"
+  },
+  {
+   "id": 13,
+   "key": "lung_middle_lobe_right",
+   "finding": "Sağ akciğer orta lobu",
+   "structure": "lungs",
+   "part": "right-middle",
+   "node": "lungs",
+   "kind": "anatomy"
+  },
+  {
+   "id": 14,
+   "key": "lung_lower_lobe_right",
+   "finding": "Sağ akciğer alt lobu",
+   "structure": "lungs",
+   "part": "right-lower",
+   "node": "lungs",
+   "kind": "anatomy"
+  },
+  {
+   "id": 15,
+   "key": "esophagus",
+   "finding": "Yemek borusu",
+   "structure": "esophagus",
+   "kind": "anatomy"
+  },
+  {
+   "id": 16,
+   "key": "trachea",
+   "finding": "Nefes borusu (trakea)",
+   "structure": "airways",
+   "kind": "anatomy"
+  },
+  {
+   "id": 17,
+   "key": "thyroid_gland",
+   "finding": "Tiroid bezi",
+   "structure": "thyroid",
+   "node": "thyroid",
+   "kind": "anatomy"
+  },
+  {
+   "id": 18,
+   "key": "small_bowel",
+   "finding": "İnce bağırsak",
+   "structure": "small-intestine",
+   "node": "small-intestine",
+   "kind": "anatomy"
+  },
+  {
+   "id": 19,
+   "key": "duodenum",
+   "finding": "On iki parmak bağırsağı (duodenum)",
+   "structure": "small-intestine",
+   "part": "duodenum",
+   "node": "small-intestine.duodenum",
+   "kind": "anatomy"
+  },
+  {
+   "id": 20,
+   "key": "colon",
+   "finding": "Kalın bağırsak (kolon)",
+   "structure": "large-intestine",
+   "node": "large-intestine",
+   "kind": "anatomy"
+  },
+  {
+   "id": 21,
+   "key": "urinary_bladder",
+   "finding": "Mesane",
+   "structure": "urinary-tract",
+   "part": "bladder",
+   "kind": "anatomy"
+  },
+  {
+   "id": 22,
+   "key": "prostate",
+   "finding": "Prostat",
+   "structure": "prostate",
+   "kind": "anatomy"
+  },
+  {
+   "id": 23,
+   "key": "kidney_cyst_left",
+   "finding": "Sol böbrek kisti (model)",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "kind": "finding"
+  },
+  {
+   "id": 24,
+   "key": "kidney_cyst_right",
+   "finding": "Sağ böbrek kisti (model)",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "kind": "finding"
+  },
+  {
+   "id": 25,
+   "key": "sacrum",
+   "finding": "Sakrum",
+   "structure": "bones",
+   "part": "pelvis",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 26,
+   "key": "vertebrae_S1",
+   "finding": "S1 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 27,
+   "key": "vertebrae_L5",
+   "finding": "L5 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 28,
+   "key": "vertebrae_L4",
+   "finding": "L4 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 29,
+   "key": "vertebrae_L3",
+   "finding": "L3 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 30,
+   "key": "vertebrae_L2",
+   "finding": "L2 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 31,
+   "key": "vertebrae_L1",
+   "finding": "L1 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 32,
+   "key": "vertebrae_T12",
+   "finding": "T12 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 33,
+   "key": "vertebrae_T11",
+   "finding": "T11 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 34,
+   "key": "vertebrae_T10",
+   "finding": "T10 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 35,
+   "key": "vertebrae_T9",
+   "finding": "T9 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 36,
+   "key": "vertebrae_T8",
+   "finding": "T8 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 37,
+   "key": "vertebrae_T7",
+   "finding": "T7 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 38,
+   "key": "vertebrae_T6",
+   "finding": "T6 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 39,
+   "key": "vertebrae_T5",
+   "finding": "T5 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 40,
+   "key": "vertebrae_T4",
+   "finding": "T4 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 41,
+   "key": "vertebrae_T3",
+   "finding": "T3 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 42,
+   "key": "vertebrae_T2",
+   "finding": "T2 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 43,
+   "key": "vertebrae_T1",
+   "finding": "T1 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 44,
+   "key": "vertebrae_C7",
+   "finding": "C7 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 45,
+   "key": "vertebrae_C6",
+   "finding": "C6 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 46,
+   "key": "vertebrae_C5",
+   "finding": "C5 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 47,
+   "key": "vertebrae_C4",
+   "finding": "C4 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 48,
+   "key": "vertebrae_C3",
+   "finding": "C3 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 49,
+   "key": "vertebrae_C2",
+   "finding": "C2 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 50,
+   "key": "vertebrae_C1",
+   "finding": "C1 omuru",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 51,
+   "key": "heart",
+   "finding": "Kalp",
+   "structure": "heart",
+   "node": "heart",
+   "kind": "anatomy"
+  },
+  {
+   "id": 52,
+   "key": "aorta",
+   "finding": "Aort",
+   "structure": "aorta",
+   "kind": "anatomy"
+  },
+  {
+   "id": 53,
+   "key": "pulmonary_vein",
+   "finding": "Akciğer toplardamarları",
+   "structure": "pulmonary-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 54,
+   "key": "brachiocephalic_trunk",
+   "finding": "Brakiyosefalik arter",
+   "structure": "carotid-arteries",
+   "kind": "anatomy"
+  },
+  {
+   "id": 55,
+   "key": "subclavian_artery_right",
+   "finding": "Sağ köprücükaltı arter",
+   "structure": "carotid-arteries",
+   "kind": "anatomy"
+  },
+  {
+   "id": 56,
+   "key": "subclavian_artery_left",
+   "finding": "Sol köprücükaltı arter",
+   "structure": "carotid-arteries",
+   "kind": "anatomy"
+  },
+  {
+   "id": 57,
+   "key": "common_carotid_artery_right",
+   "finding": "Sağ ortak şah damarı",
+   "structure": "carotid-arteries",
+   "kind": "anatomy"
+  },
+  {
+   "id": 58,
+   "key": "common_carotid_artery_left",
+   "finding": "Sol ortak şah damarı",
+   "structure": "carotid-arteries",
+   "kind": "anatomy"
+  },
+  {
+   "id": 59,
+   "key": "brachiocephalic_vein_left",
+   "finding": "Sol brakiyosefalik ven",
+   "structure": "veins",
+   "kind": "anatomy"
+  },
+  {
+   "id": 60,
+   "key": "brachiocephalic_vein_right",
+   "finding": "Sağ brakiyosefalik ven",
+   "structure": "veins",
+   "kind": "anatomy"
+  },
+  {
+   "id": 61,
+   "key": "atrial_appendage_left",
+   "finding": "Sol kulakçık eki",
+   "structure": "heart",
+   "part": "left-atrium",
+   "node": "heart",
+   "kind": "anatomy"
+  },
+  {
+   "id": 62,
+   "key": "superior_vena_cava",
+   "finding": "Üst ana toplardamar",
+   "structure": "veins",
+   "kind": "anatomy"
+  },
+  {
+   "id": 63,
+   "key": "inferior_vena_cava",
+   "finding": "Alt ana toplardamar",
+   "structure": "veins",
+   "kind": "anatomy"
+  },
+  {
+   "id": 64,
+   "key": "portal_vein_and_splenic_vein",
+   "finding": "Kapı ve dalak toplardamarı",
+   "structure": "abdominal-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 65,
+   "key": "iliac_artery_left",
+   "finding": "Sol iliak arter",
+   "structure": "abdominal-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 66,
+   "key": "iliac_artery_right",
+   "finding": "Sağ iliak arter",
+   "structure": "abdominal-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 67,
+   "key": "iliac_vena_left",
+   "finding": "Sol iliak ven",
+   "structure": "abdominal-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 68,
+   "key": "iliac_vena_right",
+   "finding": "Sağ iliak ven",
+   "structure": "abdominal-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 69,
+   "key": "humerus_left",
+   "finding": "Sol üst kol kemiği",
+   "structure": "bones",
+   "part": "humerus-l",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 70,
+   "key": "humerus_right",
+   "finding": "Sağ üst kol kemiği",
+   "structure": "bones",
+   "part": "humerus-r",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 71,
+   "key": "scapula_left",
+   "finding": "Sol kürek kemiği",
+   "structure": "bones",
+   "part": "shoulder-l",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 72,
+   "key": "scapula_right",
+   "finding": "Sağ kürek kemiği",
+   "structure": "bones",
+   "part": "shoulder-r",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 73,
+   "key": "clavicula_left",
+   "finding": "Sol köprücük kemiği",
+   "structure": "bones",
+   "part": "shoulder-l",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 74,
+   "key": "clavicula_right",
+   "finding": "Sağ köprücük kemiği",
+   "structure": "bones",
+   "part": "shoulder-r",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 75,
+   "key": "femur_left",
+   "finding": "Sol uyluk kemiği",
+   "structure": "bones",
+   "part": "femur-l",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 76,
+   "key": "femur_right",
+   "finding": "Sağ uyluk kemiği",
+   "structure": "bones",
+   "part": "femur-r",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 77,
+   "key": "hip_left",
+   "finding": "Sol kalça kemiği",
+   "structure": "bones",
+   "part": "pelvis",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 78,
+   "key": "hip_right",
+   "finding": "Sağ kalça kemiği",
+   "structure": "bones",
+   "part": "pelvis",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 79,
+   "key": "spinal_cord",
+   "finding": "Omurilik",
+   "structure": "spinal-cord",
+   "kind": "anatomy"
+  },
+  {
+   "id": 80,
+   "key": "gluteus_maximus_left",
+   "finding": "Sol büyük kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-l",
+   "kind": "anatomy"
+  },
+  {
+   "id": 81,
+   "key": "gluteus_maximus_right",
+   "finding": "Sağ büyük kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-r",
+   "kind": "anatomy"
+  },
+  {
+   "id": 82,
+   "key": "gluteus_medius_left",
+   "finding": "Sol orta kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-l",
+   "kind": "anatomy"
+  },
+  {
+   "id": 83,
+   "key": "gluteus_medius_right",
+   "finding": "Sağ orta kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-r",
+   "kind": "anatomy"
+  },
+  {
+   "id": 84,
+   "key": "gluteus_minimus_left",
+   "finding": "Sol küçük kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-l",
+   "kind": "anatomy"
+  },
+  {
+   "id": 85,
+   "key": "gluteus_minimus_right",
+   "finding": "Sağ küçük kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-r",
+   "kind": "anatomy"
+  },
+  {
+   "id": 86,
+   "key": "autochthon_left",
+   "finding": "Sol sırt (otokton) kasları",
+   "structure": "skeletal-muscle",
+   "part": "back",
+   "kind": "anatomy"
+  },
+  {
+   "id": 87,
+   "key": "autochthon_right",
+   "finding": "Sağ sırt (otokton) kasları",
+   "structure": "skeletal-muscle",
+   "part": "back",
+   "kind": "anatomy"
+  },
+  {
+   "id": 88,
+   "key": "iliopsoas_left",
+   "finding": "Sol iliopsoas kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-l",
+   "kind": "anatomy"
+  },
+  {
+   "id": 89,
+   "key": "iliopsoas_right",
+   "finding": "Sağ iliopsoas kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-r",
+   "kind": "anatomy"
+  },
+  {
+   "id": 90,
+   "key": "brain",
+   "finding": "Beyin",
+   "structure": "brain",
+   "node": "brain",
+   "kind": "anatomy"
+  },
+  {
+   "id": 91,
+   "key": "skull",
+   "finding": "Kafatası",
+   "structure": "bones",
+   "part": "skull",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 92,
+   "key": "rib_left_1",
+   "finding": "Sol 1. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 93,
+   "key": "rib_left_2",
+   "finding": "Sol 2. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 94,
+   "key": "rib_left_3",
+   "finding": "Sol 3. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 95,
+   "key": "rib_left_4",
+   "finding": "Sol 4. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 96,
+   "key": "rib_left_5",
+   "finding": "Sol 5. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 97,
+   "key": "rib_left_6",
+   "finding": "Sol 6. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 98,
+   "key": "rib_left_7",
+   "finding": "Sol 7. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 99,
+   "key": "rib_left_8",
+   "finding": "Sol 8. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 100,
+   "key": "rib_left_9",
+   "finding": "Sol 9. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 101,
+   "key": "rib_left_10",
+   "finding": "Sol 10. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 102,
+   "key": "rib_left_11",
+   "finding": "Sol 11. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 103,
+   "key": "rib_left_12",
+   "finding": "Sol 12. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 104,
+   "key": "rib_right_1",
+   "finding": "Sağ 1. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 105,
+   "key": "rib_right_2",
+   "finding": "Sağ 2. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 106,
+   "key": "rib_right_3",
+   "finding": "Sağ 3. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 107,
+   "key": "rib_right_4",
+   "finding": "Sağ 4. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 108,
+   "key": "rib_right_5",
+   "finding": "Sağ 5. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 109,
+   "key": "rib_right_6",
+   "finding": "Sağ 6. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 110,
+   "key": "rib_right_7",
+   "finding": "Sağ 7. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 111,
+   "key": "rib_right_8",
+   "finding": "Sağ 8. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 112,
+   "key": "rib_right_9",
+   "finding": "Sağ 9. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 113,
+   "key": "rib_right_10",
+   "finding": "Sağ 10. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 114,
+   "key": "rib_right_11",
+   "finding": "Sağ 11. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 115,
+   "key": "rib_right_12",
+   "finding": "Sağ 12. kaburga",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 116,
+   "key": "sternum",
+   "finding": "Göğüs kemiği (sternum)",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 117,
+   "key": "costal_cartilages",
+   "finding": "Kaburga kıkırdakları",
+   "structure": "bones",
+   "part": "ribcage",
+   "node": "bones",
+   "kind": "anatomy"
+  }
+ ],
+ "scoreThreshold": 0.5,
+ "upstream": {
+  "weights": "https://github.com/wasserth/TotalSegmentator/releases/download/v2.0.0-weights/Dataset297_TotalSegmentator_total_3mm_1559subj.zip",
+  "weightsSha256": "0baa2c8de2975600eb31801dd5c1825cd2b356f794498659cf3348714c073394"
+ },
+ "file": "model.onnx",
+ "sha256": "e9e4b1d36b1efc65092d99b47f40ef90ae0902ab2b31816e0774bb0c16043cab",
+ "size": 33147498
+}

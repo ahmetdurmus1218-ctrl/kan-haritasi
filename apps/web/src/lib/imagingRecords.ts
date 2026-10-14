@@ -1,5 +1,5 @@
 import { type Vault, randomId } from '@kh/vault';
-import type { AnalysisStatus, ImageObservation, MedicalFinding, Modality, SequenceInfo, StudyCoverage } from '@kh/analysis';
+import type { AnalysisStatus, ImageObservation, MedicalFinding, Modality, ModelStructure, SequenceInfo, StudyCoverage, VolumeStructure } from '@kh/analysis';
 
 /** Kullanıcının görüntü üzerinde yaptığı ölçüm (cetvel, yoğunluk, oran). */
 export interface ManualMeasurement {
@@ -52,7 +52,38 @@ export interface StoredAnalysis {
   kind?: 'precheck' | 'model';
   /** Yerel tıbbi modelin bulguları ve kimliği (model çalıştıysa). */
   modelFindings?: MedicalFinding[];
+  /** Yerel modelin bölütlediği anatomik yapılar (bulgu değil). */
+  modelStructures?: ModelStructure[];
+  /** Çalışan tüm yerel modeller ve aralarındaki uyuşmazlıklar. */
+  models?: Array<{ id: string; name: string; version: string; sha256?: string; license?: string }>;
+  disagreements?: string[];
   modelInfo?: { id: string; name: string; version: string; sha256?: string; license?: string; at: string };
+}
+
+/**
+ * 3B hacim modelinin (ör. TotalSegmentator) seri sonucu: etiket hacmi (RLE), yapılar, geometri ve model kökeni.
+ * Serinin baş belgesinin notunda, kasada şifreli durur.
+ */
+export interface StoredVolume {
+  at: string;
+  model: { id: string; name: string; version: string; sha256: string; license: string; source: string };
+  /** Hacim içi kesit sırası → belge kimliği. */
+  fileIds: string[];
+  geometry: { rows: number; cols: number; slices: number; origin: [number, number, number]; iVec: [number, number, number]; jVec: [number, number, number]; kVec: [number, number, number] };
+  grid: { shape: [number, number, number]; spacing: number | [number, number, number]; lo: [number, number, number] };
+  labelsRle: number[];
+  structures: VolumeStructure[];
+  tiles: number;
+  seconds: number;
+  modality: Modality;
+  /** Basamaklı (patoloji) model: hangi anatomi sonucuna göre kırpıldığı (model kimliği ve sonuç zamanı). */
+  cascadeFrom?: { model: string; at: string };
+}
+
+function isVolume(v: unknown): v is StoredVolume {
+  if (typeof v !== 'object' || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.at === 'string' && Array.isArray(o.fileIds) && Array.isArray(o.labelsRle) && Array.isArray(o.structures) && typeof o.grid === 'object' && typeof o.geometry === 'object';
 }
 
 function isAnalysis(v: unknown): v is StoredAnalysis {
@@ -77,6 +108,9 @@ export interface ImagingNote {
   measurements?: ManualMeasurement[];
   review?: StoredReview;
   analysis?: StoredAnalysis;
+  volume?: StoredVolume;
+  /** Aynı seride anatomi sonucuna dayanarak çalışan patoloji (basamaklı) modellerinin sonuçları; model başına bir tane. */
+  pathology?: StoredVolume[];
 }
 
 function isManual(v: unknown): v is ManualMeasurement {
@@ -103,6 +137,8 @@ export async function listImagingNotes(vault: Vault): Promise<ImagingNote[]> {
       measurements: Array.isArray(n.measurements) ? n.measurements.filter(isManual) : undefined,
       review: isReview(n.review) ? n.review : undefined,
       analysis: isAnalysis(n.analysis) ? n.analysis : undefined,
+      volume: isVolume(n.volume) ? n.volume : undefined,
+      pathology: Array.isArray(n.pathology) ? n.pathology.filter(isVolume) : undefined,
     }));
 }
 
@@ -119,15 +155,22 @@ export async function saveImagingNote(
   measurements?: ManualMeasurement[],
   review?: StoredReview | null,
   analysis?: StoredAnalysis | null,
+  volume?: StoredVolume | null,
+  pathology?: StoredVolume[] | null,
 ): Promise<ImagingNote> {
   const previous = (await listImagingNotes(vault)).filter((n) => n.fileId === fileId);
   const kept = measurements ?? previous.flatMap((p) => p.measurements ?? []);
   const keptReview = review === undefined ? previous.find((p) => p.review)?.review : (review ?? undefined);
   const keptAnalysis = analysis === undefined ? previous.find((p) => p.analysis)?.analysis : (analysis ?? undefined);
+  const keptVolume = volume === undefined ? previous.find((p) => p.volume)?.volume : (volume ?? undefined);
   const note: ImagingNote = { id: randomId(), fileId, text: text.slice(0, MAX_NOTE_CHARS), method, updatedAt: new Date().toISOString() };
   if (kept.length) note.measurements = kept.slice(0, 200);
   if (keptReview) note.review = { ...keptReview, regions: keptReview.regions.slice(0, 40) };
   if (keptAnalysis) note.analysis = { ...keptAnalysis, observations: keptAnalysis.observations.slice(0, 24) };
+  // Anatomi sonucu silinir ya da yenilenirse ona dayanan patoloji sonuçları da düşer (kırpma artık geçersiz).
+  const keptPathology = (pathology === undefined ? previous.find((p) => p.pathology?.length)?.pathology : (pathology ?? undefined))?.filter((v) => keptVolume && v.cascadeFrom?.at === keptVolume.at);
+  if (keptVolume) note.volume = keptVolume;
+  if (keptPathology?.length) note.pathology = keptPathology.slice(0, 8);
   await vault.putRecord('imaging', note.id, note);
   for (const p of previous) await vault.deleteRecord('imaging', p.id);
   return note;
@@ -159,4 +202,16 @@ export async function saveReview(vault: Vault, fileId: string, review: StoredRev
 export async function saveAnalysis(vault: Vault, fileId: string, analysis: StoredAnalysis | null): Promise<ImagingNote> {
   const current = await noteForFile(vault, fileId);
   return saveImagingNote(vault, fileId, current?.text ?? '', current?.method ?? 'manual', current?.measurements ?? [], undefined, analysis);
+}
+
+/** Patoloji (basamaklı) model sonucunu ekler / değiştirir (null: o modelin sonucunu siler). */
+export async function savePathologyVolume(vault: Vault, fileId: string, modelId: string, volume: StoredVolume | null): Promise<ImagingNote> {
+  const current = await noteForFile(vault, fileId);
+  const rest = (current?.pathology ?? []).filter((v) => v.model.id !== modelId);
+  return saveImagingNote(vault, fileId, current?.text ?? '', current?.method ?? 'manual', current?.measurements ?? [], undefined, undefined, undefined, volume ? [...rest, volume] : rest);
+}
+
+export async function saveVolume(vault: Vault, fileId: string, volume: StoredVolume | null): Promise<ImagingNote> {
+  const current = await noteForFile(vault, fileId);
+  return saveImagingNote(vault, fileId, current?.text ?? '', current?.method ?? 'manual', current?.measurements ?? [], undefined, undefined, volume);
 }

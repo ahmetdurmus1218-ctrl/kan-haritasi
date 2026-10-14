@@ -3,7 +3,7 @@
  * (yerel tıbbi AI modeli / ön inceleme / model yok), raporun ayrı bir kaynak olduğunu ve rapor ile
  * model arasında çelişki varsa bunu gösterir. Satıra dokununca görüntüleyici açılır.
  */
-import { analysisState, ANALYSIS_STATE_TEXT } from '@kh/analysis';
+import { analysisState, ANALYSIS_STATE_TEXT, findingClass } from '@kh/analysis';
 import { go } from '../state/router';
 import { useHealthModel } from '../lib/analysisBridge';
 import { CATEGORY_LABEL, regionByKey } from '../lib/imaging';
@@ -45,8 +45,11 @@ export function ImagesPage() {
         <ul className="space-y-2" aria-label="Görüntüleme çalışmaları">
           {studies.map((st) => {
             const a = st.note?.analysis;
-            const modelN = a?.modelFindings?.length ?? 0;
-            const state = a ? analysisState({ modelRan: a.kind === 'model' || modelN > 0, precheckRan: true }) : 'none';
+            const vol = st.note?.volume;
+            // Seri (3B) model sonuçları da sayılır: anatomi bölütlemesi + patoloji modellerinin bulguları
+            const volN = [vol, ...(st.note?.pathology ?? [])].reduce((n, v) => n + (v?.structures.filter((x) => findingClass(x) === 'finding').length ?? 0), 0);
+            const modelN = (a?.modelFindings?.length ?? 0) + volN;
+            const state = a || vol ? analysisState({ modelRan: a?.kind === 'model' || modelN > 0 || Boolean(vol), precheckRan: Boolean(a) }) : 'none';
             const s = STATE_STYLE[state];
             const conflicts = model?.modelConcordance.filter((c) => c.relation === 'contradicted-by-report' && st.files.some((f) => f.id === c.finding.provenance.documentId)).length ?? 0;
             const region = st.region ? regionByKey.get(st.region)?.label : undefined;
@@ -65,7 +68,7 @@ export function ImagesPage() {
                       {st.dateKnown ? formatDate(st.date) : `yüklendi ${formatDate(st.date)}`} · {st.files.length > 1 ? `${st.files.length} dosya` : st.head.displayName}
                     </span>
                     <span className="flex flex-wrap gap-1.5 pt-0.5">
-                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${s.cls}`} title={a ? ANALYSIS_STATE_TEXT[state] : 'Bu görüntü henüz incelenmedi.'} data-state={state}>
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${s.cls}`} title={a || vol ? ANALYSIS_STATE_TEXT[state] : 'Bu görüntü henüz incelenmedi.'} data-state={state}>
                         <span aria-hidden="true">{s.icon}</span> {s.label}
                         {modelN ? ` · ${modelN} bulgu` : ''}
                       </span>

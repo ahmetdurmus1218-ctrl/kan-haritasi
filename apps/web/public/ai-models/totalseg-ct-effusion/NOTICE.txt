@@ -1,0 +1,6 @@
+TotalSegmentator — plevral ve perikardiyal efüzyon (BT patoloji)
+Kaynak: https://github.com/wasserth/TotalSegmentator
+Ağırlıklar: https://github.com/wasserth/TotalSegmentator/releases/download/v2.0.0-weights/Dataset315_thoraxCT.zip (SHA-256 974fd151df6b6755e86b34e3c7a9a11dfcee7351393f09d8621278c0aa2a5a75)
+Lisans: Apache-2.0 (TotalSegmentator 'pleural_pericard_effusion' görevi; açık görevler listesinde)
+Atıf: Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.
+Değişiklik: PyTorch → ONNX (opset 17), ağırlıklar float16 saklanır, çıktıya TopK(4) eklendi.

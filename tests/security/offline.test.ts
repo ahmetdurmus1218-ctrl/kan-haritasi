@@ -32,8 +32,21 @@ describe('çevrimdışı / veri cihazdan çıkmaz', () => {
     expect(sources.length).toBeGreaterThan(50);
     const NET = /\bfetch\s*\(|\bXMLHttpRequest\b|\bnew\s+WebSocket\b|\bEventSource\b|\bsendBeacon\b|\bimportScripts\s*\(/;
     // Tek istisna: uygulama kabuğunu (aynı köken) önbelleğe alan service worker — aşağıda ayrıca denetlenir.
-    const hits = sources.filter((s) => s.path !== 'apps/web/vite-plugins/security.ts' && NET.test(code(s.text))).map((s) => s.path);
+    // İstisnalar: uygulama kabuğunu önbelleğe alan service worker ve uygulamanın KENDİ paketlenmiş dosyalarını
+    // (model, manifest) aynı kökenden okuyan appAssets.ts — ikisi de aşağıda ayrıca denetlenir.
+    const allowed = new Set(['apps/web/vite-plugins/security.ts', 'apps/web/src/lib/appAssets.ts']);
+    const hits = sources.filter((s) => !allowed.has(s.path) && NET.test(code(s.text))).map((s) => s.path);
     expect(hits).toEqual([]);
+  });
+
+  it('appAssets yalnızca aynı kökenden, göreli yolla, GET ile uygulamanın kendi dosyasını okur', () => {
+    const a = readFileSync(join(ROOT, 'apps/web/src/lib/appAssets.ts'), 'utf8');
+    expect(a).toContain("method: 'GET'");
+    expect(a).toContain('url.origin !== location.origin');
+    expect(a).toMatch(/SAFE_PATH = \/\^\[a-z0-9\]/);
+    expect(a).not.toMatch(/body\s*:/);
+    // Paketlenmiş model dosyası SHA-256 ile doğrulanır
+    expect(readFileSync(join(ROOT, 'apps/web/src/lib/localModels/store.ts'), 'utf8')).toContain('Uygulamayla gelen model dosyası bozuk (SHA-256 uyuşmuyor).');
   });
 
   it('service worker yalnızca aynı kökenden GET ile uygulama dosyalarını önbelleğe alır', () => {

@@ -24,6 +24,10 @@ import { CircleDotIcon, ContrastIcon, DownloadIcon, MaximizeIcon, RotateCcwIcon,
 import { type Mark, type MeasureContext, MarksOverlay, type SavePayload, SaveMeasurePanel } from './MeasureTools';
 import { Banner, ToolbarGroup } from '../components/ui';
 import { clampZoom, useElementWidth, useFullscreen, usePinchZoom } from './hooks';
+import { labelColor, updateSeriesOverlay, useSeriesOverlay } from '../lib/seriesOverlay';
+import { storedSliceLabels } from '../lib/volumeResults';
+import { go } from '../state/router';
+import { GRAPH } from '@kh/analysis';
 
 type Gray = Extract<DecodedFrame, { kind: 'gray' }>;
 type Rgba = Extract<DecodedFrame, { kind: 'rgba' }>;
@@ -160,6 +164,9 @@ export function ImagingViewer({
     [],
   );
 
+  const overlayRef = useRef<HTMLCanvasElement>(null);
+  const seriesOverlay = useSeriesOverlay(ids[0]);
+  const [picked, setPicked] = useState<{ labelId: number; name: string; node?: string; structure?: string } | null>(null);
   const toggleFullscreen = useFullscreen(rootRef);
   useElementWidth(areaRef, (w, h) => setBox({ w, h }));
   usePinchZoom(areaRef, (f) => setZoom((z) => clampZoom(z * f)));
@@ -267,6 +274,66 @@ export function ImagingViewer({
     }
     ctx.putImageData(img, 0, 0);
   }, [view, win, invert]);
+
+  // Panelden "görüntüde göster": ilgili kesite git
+  const gotoNonce = seriesOverlay?.goto?.nonce;
+  useEffect(() => {
+    const g = seriesOverlay?.goto;
+    if (!g) return;
+    const i = ids.indexOf(g.fileId);
+    if (i >= 0) {
+      setPlane('acq');
+      setPos(i);
+    }
+    // yalnızca yeni istekte
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gotoNonce]);
+
+  // Model bölütlemesi katmanı (yalnızca çekim düzleminde; renkler 3B modeldeki organ renkleri)
+  const overlayK = seriesOverlay && seriesOverlay.visible && !mprPlane && multiFile ? seriesOverlay.volume.fileIds.indexOf(ids[pos]!) : -1;
+  // 2B → 3B: açık kesit kişisel 3B görünümünde düzlem olarak gösterilir.
+  const viewerSlice = seriesOverlay && multiFile && !mprPlane ? seriesOverlay.volume.fileIds.indexOf(ids[pos]!) : -1;
+  useEffect(() => {
+    if (viewerSlice >= 0) updateSeriesOverlay({ slice: viewerSlice });
+  }, [viewerSlice]);
+  const overlayLabels = useMemo(() => (seriesOverlay && overlayK >= 0 ? storedSliceLabels(seriesOverlay.volume, overlayK) : null), [seriesOverlay, overlayK]);
+  useEffect(() => {
+    const c = overlayRef.current;
+    if (!c || !overlayLabels || !seriesOverlay || !view) return;
+    const g = seriesOverlay.volume.geometry;
+    if (view.frame.width !== g.cols || view.frame.height !== g.rows) return;
+    c.width = g.cols;
+    c.height = g.rows;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    const img = ctx.createImageData(g.cols, g.rows);
+    const colors = new Map<number, [number, number, number]>();
+    const hl = seriesOverlay.highlight;
+    for (let p = 0; p < overlayLabels.length; p++) {
+      const L = overlayLabels[p]!;
+      if (!L) continue;
+      let col = colors.get(L);
+      if (!col) colors.set(L, (col = labelColor(seriesOverlay.volume, L)));
+      img.data[p * 4] = col[0];
+      img.data[p * 4 + 1] = col[1];
+      img.data[p * 4 + 2] = col[2];
+      img.data[p * 4 + 3] = hl === null ? 95 : L === hl ? 190 : 35;
+    }
+    ctx.putImageData(img, 0, 0);
+  }, [overlayLabels, seriesOverlay, view]);
+
+  const pickAt = (e: { clientX: number; clientY: number; currentTarget: Element }) => {
+    if (!overlayLabels || !seriesOverlay || rotation % 360 !== 0) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const g = seriesOverlay.volume.geometry;
+    const x = Math.floor(((e.clientX - r.left) / r.width) * g.cols);
+    const y = Math.floor(((e.clientY - r.top) / r.height) * g.rows);
+    if (x < 0 || y < 0 || x >= g.cols || y >= g.rows) return;
+    const L = overlayLabels[y * g.cols + x]!;
+    const s = seriesOverlay.volume.structures.find((t) => t.labelId === L);
+    setPicked(s ? { labelId: L, name: s.name, ...(s.node ? { node: s.node } : {}), ...(s.structure ? { structure: s.structure } : {}) } : null);
+    updateSeriesOverlay({ highlight: s ? L : null });
+  };
 
   const startMpr = async () => {
     mprCancel.current = false;
@@ -546,7 +613,22 @@ export function ImagingViewer({
               onPointerMove={onPointerMove}
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
+              onClick={(e) => !tool && pickAt(e)}
             />
+            {overlayLabels && (
+              <canvas
+                ref={overlayRef}
+                aria-hidden="true"
+                data-testid="segmentation-overlay"
+                className="pointer-events-none absolute left-1/2 top-1/2 max-w-none"
+                style={{
+                  width: natural.w * scale,
+                  height: natural.h * scale,
+                  transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+                  imageRendering: 'pixelated',
+                }}
+              />
+            )}
             {!mprPlane && <MarksOverlay
               marks={marks}
               natural={natural}
@@ -562,6 +644,21 @@ export function ImagingViewer({
         {current && (
           <>
             <p className="pointer-events-none absolute left-3 top-2 max-w-[70%] truncate font-mono text-[11px] text-white/80 drop-shadow">{title}</p>
+            {picked && overlayLabels && (
+              <div className="absolute left-3 top-8 flex items-center gap-2 rounded-lg bg-black/70 px-2.5 py-1.5 text-xs text-white" data-testid="picked-structure">
+                <span>
+                  {picked.name} <span className="text-white/60">· model bölütlemesi</span>
+                </span>
+                {picked.node && GRAPH.node(picked.node) && (
+                  <button type="button" className="underline" onClick={() => go({ name: 'organ', id: picked.node! })}>
+                    Organ sayfası
+                  </button>
+                )}
+                <button type="button" aria-label="Kapat" className="text-white/70" onClick={() => setPicked(null)}>
+                  ✕
+                </button>
+              </div>
+            )}
             <p className="pointer-events-none absolute bottom-2 left-3 font-mono text-[11px] text-white/80 drop-shadow">
               {sliceCount > 1 ? `Kesit ${slicePos + 1} / ${sliceCount}` : photo ? '' : 'Tek kesit'}
               {loading && ' …'}

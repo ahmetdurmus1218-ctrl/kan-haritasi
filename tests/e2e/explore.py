@@ -27,6 +27,18 @@ def check(cond, msg):
     if not cond:
         problems.append(msg)
 
+def skip_intro(page):
+    """Açılış ekranı model yüklenince kendiliğinden kapanır; hâlâ duruyorsa atla (yarış durumuna dayanıklı)."""
+    btn = page.get_by_role("button", name="Açılışı atla")
+    for _ in range(30):
+        if not btn.count():
+            return
+        try:
+            btn.click(timeout=1000)
+            return
+        except Exception:
+            page.wait_for_timeout(300)
+
 
 def settle(page, ms=2500):
     page.wait_for_timeout(ms)
@@ -77,7 +89,7 @@ with sync_playwright() as p:
 
     # --- Genel görünüm: sonuçla ilişkili organlar belirgin
     page.goto(URL + "#/vucut")
-    page.get_by_role("button", name="Açılışı atla").click(timeout=15000)
+    skip_intro(page)
     settle(page, 6000)
     page.screenshot(path=SHOTS / "01-genel-erkek-sonuc-odak.png")
     toggle = page.get_by_role("button", name="Sonucumla ilişkili organlar belirgin")

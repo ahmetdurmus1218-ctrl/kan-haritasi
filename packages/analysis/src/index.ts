@@ -22,3 +22,7 @@ export * from './fusion';
 export * from './organView';
 export * from './flows';
 export * from './localModel';
+export * from './volumeModel';
+export * from './modelAgreement';
+export * from './inside';
+export * from './volumeSurface';

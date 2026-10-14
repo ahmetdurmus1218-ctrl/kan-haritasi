@@ -89,7 +89,7 @@ describe('fizyoloji akışları (veri modeli)', () => {
 
 describe('bağırsak bilgi grafiği ve "içine gir" yolu', () => {
   it('İnce bağırsak → duvar → mukoza → villus → enterosit (hücreye tek tıkla atlanmaz)', () => {
-    expect(GRAPH.insidePath('small-intestine').map((n) => n.id)).toEqual(['tissue.intestinal-wall', 'tissue.intestinal-mucosa', 'tissue.villus', 'cell.enterocyte']);
+    expect(GRAPH.insidePath('small-intestine').map((n) => n.id)).toEqual(['tissue.intestinal-wall', 'tissue.intestinal-mucosa', 'tissue.villus', 'tissue.intestinal-epithelium', 'cell.enterocyte', 'sub.microvilli']);
     const villus = GRAPH.drill('tissue.villus').map((d) => d.node.id);
     expect(villus).toEqual(expect.arrayContaining(['cell.enterocyte', 'tissue.villus-capillary', 'tissue.lacteal']));
     const cell = GRAPH.drill('cell.enterocyte').map((d) => d.node.kind);

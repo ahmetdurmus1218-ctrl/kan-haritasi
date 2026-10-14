@@ -270,19 +270,21 @@ with sync_playwright() as p:
     page.get_by_role("button", name="Organın içine gir").click()
     page.get_by_text("İnce bağırsak · içi").wait_for()
     seen = []
-    for _ in range(6):
+    villus_scene = False
+    for _ in range(8):
         seen.append(page.get_by_role("region", name="Bu adım").locator("h2").inner_text())
+        villus_scene = villus_scene or page.get_by_role("button", name=re.compile("İçeri gir · Bağırsak villusları")).count() >= 1
         nxt = page.get_by_role("button", name=re.compile("^Bir seviye daha"))
         if not nxt.count():
             break
         nxt.click()
         page.wait_for_timeout(150)
-    check(seen == ["Bağırsak duvarı", "Mukozal yüzey", "Villuslar", "Enterosit (emici epitel hücresi)"], f"87/39: içini göster: duvar → mukoza → villus → hücre ({seen})")
-    check(page.get_by_role("button", name=re.compile("İçeri gir · Bağırsak villusları")).count() >= 1, "38: mevcut VillusScene bu akışa bağlı")
+    check(seen == ["Bağırsak duvarı", "Mukozal yüzey", "Villuslar", "Bağırsak epiteli", "Enterosit (emici epitel hücresi)", "Mikrovilluslar (fırçamsı kenar)"], f"87/39: içini göster: duvar → mukoza → villus → epitel → hücre → mikrovillus ({seen})")
+    check(villus_scene, "38: mevcut VillusScene bu akışa bağlı")
     page.screenshot(path=SHOTS / "94b-bagirsak-ici.png", full_page=True)
     page.get_by_role("button", name=re.compile("Daha derine in")).click()
-    page.get_by_text("Seviye 5 / Biyolojik süreç").first.wait_for()
-    check("Besin emilimi" in main.inner_text(), "87: derinleş: hücre → süreç → molekül")
+    page.get_by_text("Seviye 6 / Molekül").first.wait_for()
+    check("Besin emilimi" in main.inner_text() and "Fırçamsı kenar enzimleri" in main.inner_text(), "87: derinleş: hücre içi yapı → molekül → süreç (besin emilimi)")
     page.goto(URL + "#/organ/small-intestine")
     page.get_by_role("button", name=re.compile("^Fizyolojiyi adım adım incele")).click()
     page.get_by_text("1 / 11").first.wait_for()
