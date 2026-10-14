@@ -41,7 +41,8 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
   const state = model?.organs.get(node.structure ?? organId) ?? model?.organs.get(organId) ?? EMPTY;
   const biomarkers = graph.biomarkersFor(organId, 5);
   const labByKey = new Map(state.labs.map((l) => [l.testKey, l]));
-  const relations: ChainOverlay[] = graph.chains(organId, 6, 10).map((chain) => ({
+  // Çok sayıda zincirden: önce kişinin verisine bağlananlar, sonra farklı dallardan olanlar (ilk adım çeşitliliği).
+  const allRelations: ChainOverlay[] = graph.chains(organId, 6, 80).map((chain) => ({
     chain,
     overlay: chain
       .map((n) => {
@@ -54,6 +55,16 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
       })
       .flat(),
   }));
+  const relations: ChainOverlay[] = [];
+  const seenBranch = new Map<string, number>();
+  for (const r of [...allRelations].sort((x, y) => Number(y.overlay.length > 0) - Number(x.overlay.length > 0))) {
+    if (relations.length >= 10) break;
+    const branch = r.chain[1]?.id ?? '';
+    const n = seenBranch.get(branch) ?? 0;
+    if (r.overlay.length === 0 && n >= 3) continue;
+    seenBranch.set(branch, n + 1);
+    relations.push(r);
+  }
 
   const difference: DiffItem[] = [
     ...state.labs.filter((l) => l.status === 'high' || l.status === 'low').map((l) => ({ label: `${l.name} ${l.status === 'high' ? 'yüksek' : 'düşük'}`, detail: `${l.value.toLocaleString('tr-TR')} ${l.unit}${l.refMin !== undefined || l.refMax !== undefined ? ` · referans ${l.refMin ?? '…'}–${l.refMax ?? '…'}` : ''} · ${l.date}`, source: 'LAB' as const, direction: l.status as 'high' | 'low' })),
