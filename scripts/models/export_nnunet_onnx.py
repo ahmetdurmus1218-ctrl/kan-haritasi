@@ -44,7 +44,11 @@ def main(folder: str, out: str) -> None:
     f = Path(folder)
     plans = json.loads((f / "plans.json").read_text())
     ds = json.loads((f / "dataset.json").read_text())
-    cfg = plans["configurations"]["3d_fullres"]
+    # Klasör adı "<Trainer>__<Plans>__<yapılandırma>" (ör. 3d_fullres_high); yoksa 3d_fullres
+    conf = f.name.split("__")[-1] if f.name.count("__") >= 2 else "3d_fullres"
+    cfg = plans["configurations"][conf]
+    if "inherits_from" in cfg:
+        cfg = {**plans["configurations"][cfg["inherits_from"]], **cfg}
     n_classes = len(ds["labels"])
     net = build(cfg, n_classes)
     ck = torch.load(f / "fold_0" / "checkpoint_final.pth", map_location="cpu", weights_only=False)

@@ -133,8 +133,9 @@ export function validateManifest(json: unknown): { ok: true; manifest: ModelMani
     const v = m.volume;
     const okPatch = Array.isArray(v?.patch) && v.patch.length === 3 && v.patch.every((x) => Number.isInteger(x) && x > 0 && x <= 512);
     const okNorm = v?.normalization?.scheme === 'zscore' || (v?.normalization?.scheme === 'ct' && Array.isArray(v.normalization.clip) && v.normalization.std > 0);
-    if (!v || !(v.spacing > 0) || !okPatch || v.axisOrder !== 'SAR' || !okNorm || !(v.tileStep > 0 && v.tileStep <= 1) || !(Number.isInteger(v.topK) && v.topK >= 1 && v.topK <= 16) || !(v.minSlices >= 1))
-      e.push('volume: spacing > 0, patch [S,A,R], axisOrder "SAR", normalization (ct | zscore), tileStep (0–1], topK (1–16), minSlices gerekli.');
+    const okSpacing = typeof v?.spacing === 'number' ? v.spacing > 0 : Array.isArray(v?.spacing) && v.spacing.length === 3 && v.spacing.every((x) => x > 0);
+    if (!v || !okSpacing || !okPatch || v.axisOrder !== 'SAR' || !okNorm || !(v.tileStep > 0 && v.tileStep <= 1) || !(Number.isInteger(v.topK) && v.topK >= 1 && v.topK <= 16) || !(v.minSlices >= 1))
+      e.push('volume: spacing > 0 (ya da [R, A, S] mm), patch [S,A,R], axisOrder "SAR", normalization (ct | zscore), tileStep (0–1], topK (1–16), minSlices gerekli.');
     const c = v?.cascade;
     if (c !== undefined && !(c && typeof c.model === 'string' && c.model && Array.isArray(c.labels) && c.labels.length && c.labels.every((x) => typeof x === 'string') && c.addonMm >= 0 && c.addonMm <= 200))
       e.push('volume.cascade: { model, labels: [yapı anahtarları], addonMm (0–200) }.');

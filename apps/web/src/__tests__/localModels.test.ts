@@ -6,7 +6,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { LocalModelProvider, type RasterImage, defaultMedicalImageProviders, modelVersionOf, runMedicalImageModel, validateManifest } from '@kh/analysis';
-import { importModelFiles, listModels, memoryBackend, modelBytes, removeModel, setModelBackend, sha256Hex } from '../lib/localModels/store';
+import { importModelFiles, listModels, memoryBackend, modelBytes, removeModel, setModelBackend, setModelEnabled, sha256Hex } from '../lib/localModels/store';
+import { requirementsOf } from '../components/LocalModels';
+import { MODEL_INVENTORY } from '../lib/localModels/inventory';
 import { ortEngineFactory } from '../lib/localModels/engine';
 
 const DIR = resolve(__dirname, '../../../../tests/fixtures/models/mock-detector');
@@ -32,6 +34,26 @@ describe('yerel model kurulumu', () => {
     expect((await modelBytes('kh-test-mock-detector'))?.byteLength).toBe(modelBuf.byteLength);
     await removeModel('kh-test-mock-detector');
     expect(await listModels()).toEqual([]);
+  });
+
+  it('devre dışı bırakılan model analizde kullanılmaz, dosyası silinmez; yeniden etkinleştirilebilir', async () => {
+    await importModelFiles([file('manifest.json', manifestText), file('model.onnx', bytes())]);
+    await setModelEnabled('kh-test-mock-detector', false);
+    expect(await listModels()).toEqual([]);
+    expect((await modelBytes('kh-test-mock-detector'))?.byteLength).toBe(modelBuf.byteLength);
+    await setModelEnabled('kh-test-mock-detector', true);
+    expect((await listModels()).map((m) => m.manifest.id)).toEqual(['kh-test-mock-detector']);
+    await removeModel('kh-test-mock-detector');
+  });
+
+  it('model deposu meta verisi: disk, bellek, çalışma ortamı; eklenemeyen modellerin nedenleri yazılı', () => {
+    const m = JSON.parse(manifestText);
+    const r = requirementsOf(validateManifest(m).ok ? m : m, 1000);
+    expect(r.runtime).toMatch(/WASM/);
+    expect(r.ram).toMatch(/MB/);
+    expect(MODEL_INVENTORY.length).toBeGreaterThan(10);
+    for (const e of MODEL_INVENTORY) expect(e.reason.length, e.task).toBeGreaterThan(30);
+    for (const mod of ['Mamografi', 'Patoloji (WSI)', 'Endoskopi / Kolonoskopi', 'Fundus / OCT', 'EKG']) expect(MODEL_INVENTORY.some((e) => e.modality === mod), mod).toBe(true);
   });
 
   it('SHA-256 uyuşmazsa, manifest yoksa ya da bozuksa model kabul edilmez', async () => {

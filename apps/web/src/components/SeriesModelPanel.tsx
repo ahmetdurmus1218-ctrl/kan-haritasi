@@ -4,11 +4,13 @@
  * kesit aralığı), modelin bulgu sınıfları (ör. böbrek kisti), görüntü üzerinde maske, organ sayfası ve 3B
  * bağlantıları, model kökeni. Model yoksa ya da seri geometrisi güvenilir değilse nedeni açıkça yazılır.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { GRAPH, type ModelManifest, encodeRle, findingClass, type Modality } from '@kh/analysis';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { structureGroup } from '../lib/volumeResults';
+import { GRAPH, type ModelManifest, type Spacing, encodeRle, findingClass, spacing3, spacingLabel, type Modality } from '@kh/analysis';
 import type { DicomInfo } from '@kh/ingest';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { go } from '../state/router';
+import { insideRoute } from '../lib/anatomyNav';
 import { type VolumeJobProgress, runVolumeAnalysis } from '../lib/analysisBridge';
 import { type StoredVolume, savePathologyVolume, saveVolume } from '../lib/imagingRecords';
 import { type StoredModel, useLocalModels } from '../lib/localModels/store';
@@ -18,15 +20,10 @@ import { BodyIcon, SpinnerIcon } from './icons';
 import { SourceBadge } from './evidence';
 
 const MODALITY: Record<string, Modality> = { CT: 'CT', MR: 'MRI' };
-const VESSELS = new Set(['aorta', 'veins', 'carotid-arteries', 'pulmonary-vessels', 'abdominal-vessels', 'coronary-arteries', 'limb-vessels', 'renal-vessels']);
 const SECONDS_PER_TILE: Record<string, number> = { CT: 45, MRI: 30 };
 
-function group(structure?: string): 'Organlar' | 'Damarlar' | 'Kemikler' | 'Kaslar' {
-  if (structure === 'bones') return 'Kemikler';
-  if (structure === 'skeletal-muscle') return 'Kaslar';
-  if (structure && VESSELS.has(structure)) return 'Damarlar';
-  return 'Organlar';
-}
+const group = structureGroup;
+const PersonalVolume3D = lazy(() => import('./PersonalVolume3D'));
 
 const ml = (v: number) => (v >= 1000 ? `${(v / 1000).toLocaleString('tr-TR', { maximumFractionDigits: 2 })} L` : `${v.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} mL`);
 
@@ -45,6 +42,8 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
   const abort = useRef<AbortController | null>(null);
   const overlay = useSeriesOverlay(seriesIds[0]);
   const [showAll, setShowAll] = useState(false);
+  const [show3d, setShow3d] = useState(false);
+  const volumes3d = useMemo(() => (stored ? [stored, ...pathology.filter((p) => p.cascadeFrom?.at === stored.at)] : []), [stored, pathology]);
 
   // Kayıtlı sonuç görüntüleyiciye bağlanır (maske katmanı).
   useEffect(() => {
@@ -56,7 +55,7 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
   if (!modality) return null;
   const minSlices = model?.manifest.volume?.minSlices ?? 10;
   const tilesEstimate = (() => {
-    const sp = model?.manifest.volume?.spacing ?? 3;
+    const sp = Math.min(...spacing3(model?.manifest.volume?.spacing ?? 3));
     const patch = model?.manifest.volume?.patch ?? [128, 112, 112];
     const fovX = (dicom.columns * (dicom.pixelSpacing?.[1] ?? 1)) / sp;
     const fovY = (dicom.rows * (dicom.pixelSpacing?.[0] ?? 1)) / sp;
@@ -126,7 +125,7 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
     setSeriesOverlay({ headId: seriesIds[0], volume: v, visible: true, highlight: labelId, goto: { fileId, nonce: Date.now() } });
   };
   const running = (id: string | undefined) => busy && id !== undefined && 'modelId' in job && job.modelId === id;
-  const progress = (spacing: number) =>
+  const progress = (spacing: Spacing) =>
     busy && (
       <div className="space-y-2" aria-live="polite" data-testid="series-progress">
         <p className="flex items-center gap-2 text-sm text-fg">
@@ -136,7 +135,7 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
             : job.p.stage === 'loading'
               ? 'Model yükleniyor…'
               : job.p.stage === 'resample'
-                ? `Hacim ${spacing.toLocaleString('tr-TR')} mm ızgaraya hazırlanıyor…`
+                ? `Hacim ${spacingLabel(spacing)} ızgaraya hazırlanıyor…`
                 : job.p.stage === 'inference'
                   ? `Model çalışıyor: karo ${job.p.done + 1}/${job.p.total}`
                   : 'Sonuçlar birleştiriliyor…'}
@@ -213,6 +212,17 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
             </div>
           )}
 
+          <div className="space-y-2">
+            <button type="button" className="btn-ghost px-3 py-1.5 text-sm" aria-expanded={show3d} onClick={() => setShow3d((x) => !x)} data-testid="personal-3d-toggle">
+              {show3d ? 'Kişisel 3B görünümü kapat' : 'Kişisel 3B (senin maskelerinden)'}
+            </button>
+            {show3d && seriesIds[0] && (
+              <Suspense fallback={<p className="text-sm text-fg-muted">3B görünüm yükleniyor…</p>}>
+                <PersonalVolume3D volumes={volumes3d} headId={seriesIds[0]} />
+              </Suspense>
+            )}
+          </div>
+
           <div className="space-y-2" aria-label="Bölütlenen yapılar">
             <p className="text-sm font-medium text-fg">Bölütlenen yapılar (normal anatomi; bulgu değildir)</p>
             {groups.map(({ g, items }) => (
@@ -236,8 +246,8 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
                             Görüntüde
                           </button>
                           {node && (
-                            <button type="button" className="text-xs text-accent underline" onClick={() => go({ name: 'organ', id: node })}>
-                              Organ
+                            <button type="button" className="text-xs text-accent underline" onClick={() => go(insideRoute(node))} data-testid="structure-inside">
+                              İçine gir
                             </button>
                           )}
                           {s.structure && (
@@ -270,13 +280,15 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
 
       {pathologyModels.length > 0 && (
         <div className="space-y-2 border-t border-ink-700 pt-3" aria-label="Patoloji modelleri (seri)" data-testid="pathology-models">
-          <p className="text-sm font-medium text-fg">Patoloji modelleri</p>
-          <p className="text-xs text-fg-muted">Her biri ayrı bir yerel modeldir; anatomi bölütlemesindeki ilgili organların çevresinde, daha ince (1,5 mm) ızgarada çalışır. Sonuç tanı değildir.</p>
+          <p className="text-sm font-medium text-fg">Ek modeller (patoloji ve ayrıntılı anatomi)</p>
+          <p className="text-xs text-fg-muted">Her biri ayrı bir yerel modeldir; anatomi bölütlemesindeki ilgili organların çevresinde, daha ince ızgarada çalışır. Sonuç tanı değildir.</p>
           {pathologyModels.map((pm) => {
             const res = pathology.find((v) => v.model.id === pm.manifest.id && stored && v.cascadeFrom?.at === stored.at);
             const found = res?.structures.filter((x) => findingClass(x) === 'finding') ?? [];
             const normal = res?.structures.filter((x) => findingClass(x) === 'normal') ?? [];
             const below = res?.structures.filter((x) => findingClass(x) === 'below') ?? [];
+            const parts = res?.structures.filter((x) => x.kind === 'anatomy') ?? [];
+            const findsAnything = pm.manifest.labels.some((l) => l.kind === 'finding');
             const needs = !stored;
             return (
               <div key={pm.manifest.id} className="space-y-1.5 rounded-lg border border-ink-700 px-2.5 py-2" data-testid="pathology-model" data-model={pm.manifest.id} data-state={res ? 'done' : needs ? 'needs-anatomy' : 'ready'}>
@@ -289,7 +301,28 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
                 )}
                 {running(pm.manifest.id) && progress(pm.manifest.volume?.spacing ?? 1.5)}
                 {errorText(pm.manifest.id)}
-                {res && found.length === 0 && (
+                {res && parts.length > 0 && (
+                  <ul className="space-y-1" aria-label={`${pm.manifest.name}: bölütlenen bölümler`}>
+                    {parts.map((x) => (
+                      <li key={x.labelId} className="flex flex-wrap items-center gap-2 text-sm" data-testid="cascade-structure">
+                        <span className="h-2.5 w-2.5 rounded-sm" style={{ background: `rgb(${labelColor(res, x.labelId).join(',')})` }} aria-hidden="true" />
+                        <span className="text-fg">{x.name}</span>
+                        <span className="text-xs text-fg-muted">
+                          {ml(x.volumeMl)} · kesit {x.sliceRange[0] + 1}–{x.sliceRange[1] + 1}
+                        </span>
+                        <button type="button" className="ml-auto text-xs text-accent underline" onClick={() => show(res, res.fileIds[x.centroidSlice], x.labelId)}>
+                          Görüntüde
+                        </button>
+                        {x.node && GRAPH.node(x.node) && (
+                          <button type="button" className="text-xs text-accent underline" onClick={() => go(insideRoute(x.node!))}>
+                            İçine gir
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {res && findsAnything && found.length === 0 && (
                   <p className="text-sm text-fg-muted" data-testid="pathology-none">
                     ✓ Modelin bulgu sınıfı ({pm.manifest.labels.filter((l) => l.kind === 'finding').map((l) => l.finding).join(', ')}) bu seride {normal.length ? 'fizyolojik sınırın üstünde ' : ''}bulunmadı. Bu, bulgunun olmadığını kesinleştirmez.
                   </p>
@@ -324,8 +357,8 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
                         Görüntüde göster
                       </button>
                       {f.node && GRAPH.node(f.node) && (
-                        <button type="button" className="text-xs text-accent underline" onClick={() => go({ name: 'organ', id: f.node! })}>
-                          Organ
+                        <button type="button" className="text-xs text-accent underline" onClick={() => go(insideRoute(f.node!))} data-testid="pathology-inside">
+                          İçine gir
                         </button>
                       )}
                       {f.structure && (
@@ -368,7 +401,7 @@ function Provenance({ v, manifest }: { v: StoredVolume; manifest: ModelManifest 
         <dd className="break-all">{v.model.source}</dd>
         <dt className="text-fg-faint">Girdi</dt>
         <dd>
-          DICOM seri · {v.geometry.slices} kesit · {v.grid.spacing.toLocaleString('tr-TR')} mm izotropik ızgara ({v.grid.shape.join('×')}){v.cascadeFrom ? ` · anatomi sonucuna (${v.cascadeFrom.model}) göre kırpılmış bölge` : ''}
+          DICOM seri · {v.geometry.slices} kesit · {spacingLabel(v.grid.spacing)} ızgara ({v.grid.shape.join('×')}){v.cascadeFrom ? ` · anatomi sonucuna (${v.cascadeFrom.model}) göre kırpılmış bölge` : ''}
         </dd>
         <dt className="text-fg-faint">Çalışma</dt>
         <dd>

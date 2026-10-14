@@ -29,8 +29,29 @@ export interface SourceVolume {
   kVec: Vec3;
 }
 
+/** Izgara aralığı (mm): tek sayı izotropik; üçlü [R, A, S] eksen başına (ör. 0,75 × 0,75 × 1 mm). */
+export type Spacing = number | Vec3;
+
+/** Aralığı [R, A, S] üçlüsüne çevirir. */
+export function spacing3(s: Spacing): Vec3 {
+  return typeof s === 'number' ? [s, s, s] : [s[0], s[1], s[2]];
+}
+
+/** Bir vokselin hacmi (mm³). */
+export function voxelMm3(s: Spacing): number {
+  const [a, b, c] = spacing3(s);
+  return a * b * c;
+}
+
+/** Gösterim için: "3 mm" ya da "0,75 × 0,75 × 1 mm". */
+export function spacingLabel(s: Spacing): string {
+  const f = (x: number) => x.toLocaleString('tr-TR', { maximumFractionDigits: 3 });
+  const [a, b, c] = spacing3(s);
+  return a === b && b === c ? `${f(a)} mm izotropik` : `${f(a)} × ${f(b)} × ${f(c)} mm`;
+}
+
 export interface VolumeSpec {
-  spacing: number;
+  spacing: Spacing;
   /** Ağ girdisi [S, A, R] (nnU-Net / SimpleITK dizi sırası). */
   patch: [number, number, number];
   axisOrder: 'SAR';
@@ -52,7 +73,7 @@ export interface VolumeSpec {
 export interface RasGrid {
   /** [S, A, R] boyutları. */
   shape: [number, number, number];
-  spacing: number;
+  spacing: Spacing;
   /** (r=0, a=0, s=0) noktasının RAS koordinatı (mm). */
   lo: Vec3;
 }
@@ -153,7 +174,8 @@ export function gaussianImportance(patch: readonly [number, number, number]): Fl
 }
 
 /** Kaynak hacmi kapsayan RAS'a hizalı ızgara. */
-export function rasGrid(vol: SourceVolume, spacing: number): RasGrid {
+export function rasGrid(vol: SourceVolume, spacing: Spacing): RasGrid {
+  const sp = spacing3(spacing);
   const lo: Vec3 = [Infinity, Infinity, Infinity];
   const hi: Vec3 = [-Infinity, -Infinity, -Infinity];
   for (const i of [0, vol.cols - 1])
@@ -165,7 +187,7 @@ export function rasGrid(vol: SourceVolume, spacing: number): RasGrid {
           hi[a] = Math.max(hi[a]!, p[a]!);
         }
       }
-  const n = (a: number) => Math.floor((hi[a]! - lo[a]!) / spacing + 1e-6) + 1;
+  const n = (a: number) => Math.floor((hi[a]! - lo[a]!) / sp[a]! + 1e-6) + 1;
   return { shape: [n(2), n(1), n(0)], spacing, lo };
 }
 
@@ -189,12 +211,12 @@ export function resampleToGrid(vol: SourceVolume, grid: RasGrid, padValue: numbe
   const toSrc = sourceMapper(vol);
   const { rows, cols, slices, data } = vol;
   const at = (k: number, j: number, i: number) => data[(k * rows + j) * cols + i]!;
-  const sp = grid.spacing;
+  const [sr, sa, ss] = spacing3(grid.spacing);
   let o = 0;
   for (let s = 0; s < S; s++)
     for (let a = 0; a < A; a++)
       for (let r = 0; r < R; r++, o++) {
-        const [fi, fj, fk] = toSrc([grid.lo[0] + r * sp, grid.lo[1] + a * sp, grid.lo[2] + s * sp]);
+        const [fi, fj, fk] = toSrc([grid.lo[0] + r * sr, grid.lo[1] + a * sa, grid.lo[2] + s * ss]);
         // scipy map_coordinates(order=1, mode='constant'): sınırın dışı padValue
         if (fi < -1e-6 || fj < -1e-6 || fk < -1e-6 || fi > cols - 1 + 1e-6 || fj > rows - 1 + 1e-6 || fk > slices - 1 + 1e-6) {
           out[o] = padValue;
@@ -396,7 +418,8 @@ export async function segmentVolume(
 /** Etiket başına voksel sayısı, hacim, ağırlık merkezi, sınırlar ve kaynak kesit aralığı. */
 export function structureStats(labels: Uint8Array, grid: RasGrid, vol: SourceVolume, manifest: Pick<ModelManifest, 'labels'>): VolumeStructure[] {
   const [S, A, R] = grid.shape;
-  const sp = grid.spacing;
+  const [sr, sa, ss] = spacing3(grid.spacing);
+  const vox = sr * sa * ss;
   const toSrc = sourceMapper(vol);
   type Acc = { n: number; sum: Vec3; min: Vec3; max: Vec3; kmin: number; kmax: number };
   const acc = new Map<number, Acc>();
@@ -405,7 +428,7 @@ export function structureStats(labels: Uint8Array, grid: RasGrid, vol: SourceVol
       for (let r = 0; r < R; r++, o++) {
         const L = labels[o]!;
         if (!L) continue;
-        const ras: Vec3 = [grid.lo[0] + r * sp, grid.lo[1] + a * sp, grid.lo[2] + s * sp];
+        const ras: Vec3 = [grid.lo[0] + r * sr, grid.lo[1] + a * sa, grid.lo[2] + s * ss];
         const lps = lpsToRas(ras);
         let e = acc.get(L);
         if (!e) acc.set(L, (e = { n: 0, sum: [0, 0, 0], min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity], kmin: Infinity, kmax: -Infinity }));
@@ -435,7 +458,7 @@ export function structureStats(labels: Uint8Array, grid: RasGrid, vol: SourceVol
         ...(l?.part ? { part: l.part } : {}),
         ...(l?.node ? { node: l.node } : {}),
         voxels: e.n,
-        volumeMl: Math.round(((e.n * sp ** 3) / 1000) * 10) / 10,
+        volumeMl: Math.round(((e.n * vox) / 1000) * 100) / 100,
         centroid,
         bboxMin: e.min.map((v) => Math.round(v * 10) / 10) as Vec3,
         bboxMax: e.max.map((v) => Math.round(v * 10) / 10) as Vec3,
@@ -453,15 +476,15 @@ export function structureStats(labels: Uint8Array, grid: RasGrid, vol: SourceVol
 export function sliceLabels(seg: Pick<VolumeSegmentation, 'grid' | 'labels'>, vol: Pick<SourceVolume, 'rows' | 'cols' | 'origin' | 'iVec' | 'jVec' | 'kVec'>, k: number): Uint8Array {
   const out = new Uint8Array(vol.rows * vol.cols);
   const [S, A, R] = seg.grid.shape;
-  const sp = seg.grid.spacing;
+  const [sr, sa, ss] = spacing3(seg.grid.spacing);
   for (let j = 0, o = 0; j < vol.rows; j++)
     for (let i = 0; i < vol.cols; i++, o++) {
       const x = vol.origin[0] + i * vol.iVec[0] + j * vol.jVec[0] + k * vol.kVec[0];
       const y = vol.origin[1] + i * vol.iVec[1] + j * vol.jVec[1] + k * vol.kVec[1];
       const z = vol.origin[2] + i * vol.iVec[2] + j * vol.jVec[2] + k * vol.kVec[2];
-      const r = Math.round((-x - seg.grid.lo[0]) / sp);
-      const a = Math.round((-y - seg.grid.lo[1]) / sp);
-      const s = Math.round((z - seg.grid.lo[2]) / sp);
+      const r = Math.round((-x - seg.grid.lo[0]) / sr);
+      const a = Math.round((-y - seg.grid.lo[1]) / sa);
+      const s = Math.round((z - seg.grid.lo[2]) / ss);
       if (r < 0 || a < 0 || s < 0 || r >= R || a >= A || s >= S) continue;
       out[o] = seg.labels[(s * A + a) * R + r]!;
     }
@@ -521,7 +544,7 @@ export function cascadeBox(vol: SourceVolume, prior: Pick<VolumeSegmentation, 'g
   const want = new Uint8Array(256);
   for (const id of labelIds) want[id] = 1;
   const [S, A, R] = prior.grid.shape;
-  const sp = prior.grid.spacing;
+  const psp = spacing3(prior.grid.spacing);
   const toSrc = sourceMapper(vol);
   const mn: Vec3 = [Infinity, Infinity, Infinity];
   const mx: Vec3 = [-Infinity, -Infinity, -Infinity];
@@ -529,7 +552,7 @@ export function cascadeBox(vol: SourceVolume, prior: Pick<VolumeSegmentation, 'g
     for (let a = 0; a < A; a++)
       for (let r = 0; r < R; r++, o++) {
         if (!want[prior.labels[o]!]) continue;
-        const p = toSrc([prior.grid.lo[0] + r * sp, prior.grid.lo[1] + a * sp, prior.grid.lo[2] + s * sp]);
+        const p = toSrc([prior.grid.lo[0] + r * psp[0], prior.grid.lo[1] + a * psp[1], prior.grid.lo[2] + s * psp[2]]);
         for (let d = 0; d < 3; d++) {
           if (p[d]! < mn[d]!) mn[d] = p[d]!;
           if (p[d]! > mx[d]!) mx[d] = p[d]!;
@@ -540,7 +563,7 @@ export function cascadeBox(vol: SourceVolume, prior: Pick<VolumeSegmentation, 'g
   const dims = [vol.cols, vol.rows, vol.slices];
   const box = [0, 1, 2].map((d) => {
     // önceki ızgaranın vokseli (en yakın komşu ile özgün ızgaraya taşındığında) yarım ızgara adımı kadar yayılır
-    const half = sp / 2 / zoom[d]!;
+    const half = Math.max(...psp) / 2 / zoom[d]!;
     const add = Math.floor(addonMm / zoom[d]! + 1e-9);
     const lo = Math.max(0, Math.ceil(mn[d]! - half - 1e-6) - add);
     const hi = Math.min(dims[d]!, Math.floor(mx[d]! + half + 1e-6) + 1 + add);

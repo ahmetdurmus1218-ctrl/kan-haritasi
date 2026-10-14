@@ -291,6 +291,11 @@ export function ImagingViewer({
 
   // Model bölütlemesi katmanı (yalnızca çekim düzleminde; renkler 3B modeldeki organ renkleri)
   const overlayK = seriesOverlay && seriesOverlay.visible && !mprPlane && multiFile ? seriesOverlay.volume.fileIds.indexOf(ids[pos]!) : -1;
+  // 2B → 3B: açık kesit kişisel 3B görünümünde düzlem olarak gösterilir.
+  const viewerSlice = seriesOverlay && multiFile && !mprPlane ? seriesOverlay.volume.fileIds.indexOf(ids[pos]!) : -1;
+  useEffect(() => {
+    if (viewerSlice >= 0) updateSeriesOverlay({ slice: viewerSlice });
+  }, [viewerSlice]);
   const overlayLabels = useMemo(() => (seriesOverlay && overlayK >= 0 ? storedSliceLabels(seriesOverlay.volume, overlayK) : null), [seriesOverlay, overlayK]);
   useEffect(() => {
     const c = overlayRef.current;

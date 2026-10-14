@@ -70,7 +70,7 @@ export interface StoredVolume {
   /** Hacim içi kesit sırası → belge kimliği. */
   fileIds: string[];
   geometry: { rows: number; cols: number; slices: number; origin: [number, number, number]; iVec: [number, number, number]; jVec: [number, number, number]; kVec: [number, number, number] };
-  grid: { shape: [number, number, number]; spacing: number; lo: [number, number, number] };
+  grid: { shape: [number, number, number]; spacing: number | [number, number, number]; lo: [number, number, number] };
   labelsRle: number[];
   structures: VolumeStructure[];
   tiles: number;

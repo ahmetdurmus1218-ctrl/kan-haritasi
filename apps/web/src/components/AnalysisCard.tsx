@@ -27,11 +27,14 @@ import {
   analysisState,
   buildHealthModel,
   modelDisagreements,
+  INSIDE_DEPTH_TR,
+  insideCapability,
 } from '@kh/analysis';
 import { Sheet } from './Sheet';
 import type { DicomInfo } from '@kh/ingest';
 import type { Bytes, FileInfo } from '@kh/vault';
 import { go } from '../state/router';
+import { insideRoute } from '../lib/anatomyNav';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { type ModelProgress, contextFor, modelRaster, runLocalModel, toStoredAnalysis, useImageAnalysis } from '../lib/analysisBridge';
 import { type StoredAnalysis, type StoredReview, saveAnalysis } from '../lib/imagingRecords';
@@ -289,7 +292,15 @@ function ModelFindings({
                     {conc.text}
                   </p>
                 )}
+                <p className="mt-1 text-[11px] text-fg-faint" data-testid="inside-depth" data-depth={insideCapability(f).depth}>
+                  İçine gir derinliği: {INSIDE_DEPTH_TR[insideCapability(f).depth]}
+                </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
+                  {insideCapability(f).node && (
+                    <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={() => go(insideRoute(insideCapability(f).node!.id))} data-testid="inside-button">
+                      İçine gir · {insideCapability(f).node!.nameTr}
+                    </button>
+                  )}
                   {organ && GRAPH.node(organ) && (
                     <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => go({ name: 'organ', id: organ })}>
                       Organ sayfası · {GRAPH.node(organ)!.nameTr}

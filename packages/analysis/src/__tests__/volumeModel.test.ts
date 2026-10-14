@@ -158,3 +158,33 @@ describe('manifest: basamaklı model alanları', () => {
     }
   });
 });
+
+describe('etiket hacminden 3B yüzey (surface nets)', () => {
+  it('küre maskesi: kapalı yüzey, gerçek sınırlar içinde, mm koordinatında', async () => {
+    const { labelSurface } = await import('../volumeSurface');
+    const n = 24;
+    const labels = new Uint8Array(n * n * n);
+    for (let s = 0; s < n; s++) for (let a = 0; a < n; a++) for (let r = 0; r < n; r++) if ((s - 12) ** 2 + (a - 12) ** 2 + (r - 12) ** 2 <= 36) labels[(s * n + a) * n + r] = 5;
+    const grid = { shape: [n, n, n] as [number, number, number], spacing: 2, lo: [100, -50, 10] as [number, number, number] };
+    const m = labelSurface(labels, grid, 5)!;
+    expect(m.indices.length % 3).toBe(0);
+    expect(m.indices.length).toBeGreaterThan(300);
+    // Her kenar tam iki üçgende kullanılır (kapalı yüzey)
+    const edges = new Map<string, number>();
+    for (let t = 0; t < m.indices.length; t += 3)
+      for (const [x, y] of [[0, 1], [1, 2], [2, 0]] as const) {
+        const a = m.indices[t + x]!, b = m.indices[t + y]!;
+        const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+        edges.set(key, (edges.get(key) ?? 0) + 1);
+      }
+    expect([...edges.values()].every((c) => c === 2)).toBe(true);
+    // Merkez ~ (lo + 12×2), yarıçap ~ 6 voksel × 2 mm
+    for (let d = 0; d < 3; d++) {
+      const c = [100, -50, 10][d]! + 24;
+      expect((m.min[d]! + m.max[d]!) / 2).toBeCloseTo(c, 0);
+      expect(m.max[d]! - m.min[d]!).toBeGreaterThan(18);
+      expect(m.max[d]! - m.min[d]!).toBeLessThan(28);
+    }
+    expect(labelSurface(labels, grid, 9)).toBeNull();
+  });
+});

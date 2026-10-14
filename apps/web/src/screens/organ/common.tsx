@@ -94,9 +94,11 @@ export function Breadcrumb({ organId, trail = [], current }: { organId: string; 
   const sys = systemOf(organId);
   const organ = GRAPH.node(organId)?.nameTr ?? structureById.get(organId)?.nameTr ?? organId;
   // Bölge sayfasında (ör. Beyaz cevher) üstteki organ da görünür: Vücut › Sinir sistemi › Beyin › Beyaz cevher.
-  const ancestors = GRAPH.pathTo(organId).slice(0, -1);
+  const ancestors = GRAPH.pathTo(organId).slice(0, -1).filter((a) => a.kind !== 'body' && a.kind !== 'body-region');
+  const region = GRAPH.node(organId)?.kind === 'body-region' ? undefined : GRAPH.regionsOf(organId)[0];
   const items: Array<{ label: string; route?: Route }> = [
     { label: 'Vücut', route: { name: 'mybody' } },
+    ...(region ? [{ label: region.nameTr, route: { name: 'organ', id: region.id, view: 'derin', trail: [] } as Route }] : []),
     ...(sys ? [{ label: sys.name, route: { name: 'system', id: sys.id } as Route }] : []),
     ...ancestors.map((a) => ({ label: a.nameTr, route: { name: 'organ', id: a.id } as Route })),
     { label: organ, route: trail.length || current ? { name: 'organ', id: organId } : undefined },

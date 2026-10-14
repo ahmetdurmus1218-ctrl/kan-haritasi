@@ -4,6 +4,7 @@
  * alanları laboratuvar kataloğuna bağlanır (testler bu bağların geçerliliğini denetler).
  */
 import type { KEdge, KNode, Relation } from './graph';
+import { addDeepAnatomy } from './deep';
 
 const N: KNode[] = [];
 const E: KEdge[] = [];
@@ -359,6 +360,9 @@ edge(follicle, 'performs', thyroidAxis);
 edge(thyroidAxis, 'leads_to', energy, 'Tiroid hormonları hücrelerin enerji harcama hızını artırır.');
 edge(thyroidAxis, 'measured_by', lab('tsh', 'TSH', 'Hipofizin tiroidi uyaran hormonu.'));
 edge(thyroidAxis, 'measured_by', lab('ft4', 'Serbest T4', 'Kandaki serbest tiroid hormonu.'));
+
+/* ---------------------------------------------------------------- Derin anatomi, bölgeler, komşuluk (deep.ts) */
+addDeepAnatomy({ N, E });
 
 export const NODES: readonly KNode[] = N;
 export const EDGES: readonly KEdge[] = E;

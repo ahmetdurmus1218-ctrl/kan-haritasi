@@ -3,7 +3,7 @@
  * (hacim ölçümüyle), "finding" türündeki sınıflar → MedicalFinding. Konum gerçek voksel kümesidir
  * (Localization 'volume'); köken model-derived (model, sürüm, SHA-256, lisans, belge, kesit).
  */
-import { type ImageAnalysisRun, type MedicalFinding, type ModelStructure, type Provenance, anatomyForLabel, decodeRle, findingClass, score, sliceLabels } from '@kh/analysis';
+import { type ImageAnalysisRun, type MedicalFinding, type ModelStructure, type Provenance, anatomyForLabel, decodeRle, findingClass, score, sliceLabels, voxelMm3 } from '@kh/analysis';
 import type { StoredVolume } from './imagingRecords';
 
 export function volumeStructures(v: StoredVolume): { structures: ModelStructure[]; findings: MedicalFinding[] } {
@@ -46,7 +46,7 @@ export function volumeStructures(v: StoredVolume): { structures: ModelStructure[
         provenance,
         localization,
         ...(anatomicalStructure ? { anatomicalStructure } : {}),
-        measurements: [{ name: 'Hacim', value: s.volumeMl, unit: 'mL', method: `${v.model.name} bölütlemesinden (voksel sayısı × ${v.grid.spacing} mm³)`, ...(cls === 'normal' && s.normalMaxMl !== undefined ? { refMax: s.normalMaxMl } : {}) }],
+        measurements: [{ name: 'Hacim', value: s.volumeMl, unit: 'mL', method: `${v.model.name} bölütlemesinden (voksel sayısı × ${voxelMm3(v.grid.spacing).toLocaleString('tr-TR', { maximumFractionDigits: 3 })} mm³)`, ...(cls === 'normal' && s.normalMaxMl !== undefined ? { refMax: s.normalMaxMl } : {}) }],
         confidence: conf,
         limitations: [
           cls === 'normal'
@@ -81,11 +81,25 @@ export function volumeRun(v: StoredVolume, reportAvailable: boolean): ImageAnaly
 const cache = new WeakMap<StoredVolume, Uint8Array>();
 
 /** Görüntüleyici için: hacim içi k kesitinin piksel etiketleri. */
-export function storedSliceLabels(v: StoredVolume, k: number): Uint8Array {
+export function storedLabels(v: StoredVolume): Uint8Array {
   let labels = cache.get(v);
   if (!labels) {
     labels = decodeRle(v.labelsRle, v.grid.shape[0] * v.grid.shape[1] * v.grid.shape[2]);
     cache.set(v, labels);
   }
-  return sliceLabels({ grid: v.grid, labels }, v.geometry, k);
+  return labels;
+}
+
+export function storedSliceLabels(v: StoredVolume, k: number): Uint8Array {
+  return sliceLabels({ grid: v.grid, labels: storedLabels(v) }, v.geometry, k);
+}
+
+const VESSELS = new Set(['aorta', 'veins', 'carotid-arteries', 'pulmonary-vessels', 'abdominal-vessels', 'coronary-arteries', 'limb-vessels', 'renal-vessels']);
+
+/** Yapının grubu (seri paneli ve kişisel 3B aynı gruplamayı kullanır). */
+export function structureGroup(structure?: string): 'Organlar' | 'Damarlar' | 'Kemikler' | 'Kaslar' {
+  if (structure === 'bones') return 'Kemikler';
+  if (structure === 'skeletal-muscle') return 'Kaslar';
+  if (structure && VESSELS.has(structure)) return 'Damarlar';
+  return 'Organlar';
 }

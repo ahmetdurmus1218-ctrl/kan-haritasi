@@ -39,11 +39,12 @@ def run(model, man, img):
     data = np.asarray(img.dataobj, dtype=np.float32)
     aff = img.affine  # voksel (i,j,k) → RAS mm
     sp = man["volume"]["spacing"]
+    sp = np.array([sp, sp, sp] if np.isscalar(sp) else sp, dtype=float)  # [R, A, S] mm
     # RAS'a hizalı ızgara: köşelerin dünya koordinatlarından sınırlar
     corners = np.array([[i, j, k, 1] for i in (0, data.shape[0] - 1) for j in (0, data.shape[1] - 1) for k in (0, data.shape[2] - 1)]) @ aff.T
     lo, hi = corners[:, :3].min(0), corners[:, :3].max(0)
-    shape = [int(np.floor((hi[a] - lo[a]) / sp) + 1) for a in range(3)]
-    gx, gy, gz = [lo[a] + np.arange(shape[a]) * sp for a in range(3)]
+    shape = [int(np.floor((hi[a] - lo[a]) / sp[a] + 1e-6) + 1) for a in range(3)]
+    gx, gy, gz = [lo[a] + np.arange(shape[a]) * sp[a] for a in range(3)]
     W = np.stack(np.meshgrid(gx, gy, gz, indexing="ij"), -1).reshape(-1, 3)
     inv = np.linalg.inv(aff)
     vox = (np.c_[W, np.ones(len(W))] @ inv.T)[:, :3].T

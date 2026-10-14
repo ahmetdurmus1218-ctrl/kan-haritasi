@@ -15,6 +15,8 @@ export interface SeriesOverlayState {
   highlight: number | null;
   /** Görüntüleyicinin gitmesi istenen belge (kesit) ve istek sayacı. */
   goto: { fileId: string; nonce: number } | null;
+  /** Görüntüleyicide şu an açık olan kesit (hacim içi sıra): 3B'de düzlem olarak gösterilir (2B → 3B). */
+  slice?: number;
 }
 
 let state: SeriesOverlayState | null = null;
@@ -28,6 +30,7 @@ export function setSeriesOverlay(next: SeriesOverlayState | null) {
 
 export function updateSeriesOverlay(patch: Partial<Omit<SeriesOverlayState, 'headId' | 'volume'>>) {
   if (!state) return;
+  if (Object.entries(patch).every(([k, v]) => (state as unknown as Record<string, unknown>)[k] === v)) return;
   state = { ...state, ...patch };
   emit();
 }

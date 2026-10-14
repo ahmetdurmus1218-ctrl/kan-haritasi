@@ -147,6 +147,64 @@ PATHOLOGY = {
     },
 }
 
+TS_LIVER_LESION_VALIDATION = "{liver_lesions_real}"
+TS_LIVER_SEGMENTS_VALIDATION = "{liver_segments_real}"
+PATHOLOGY["liver-lesions"] = {
+    "zip": f"{TS_URL}/v2.5.0-weights/Dataset591_ct_liver_lesions_842subj.zip",
+    "zip_sha256": "b3bdd53de65dc64a46264edfdeb491b18e8f95973a691eeccfa530d1da1678a0",
+    "folder": "Dataset591_ct_liver_lesions_842subj",
+    "labels": {1: ("liver_lesion", "Karaciğerde lezyon (patoloji modeli)", "liver", "liver", "finding")},
+    "drop": [],
+    "topk": 2,
+    # ~5 mm çaplı odak ≈ 0,07 mL; daha küçüğü bu ızgarada güvenilir değil
+    "thresholds": {1: {"minMl": 0.1}},
+    "cascade": {"model": "totalseg-ct-total-3mm", "labels": ["liver"], "addonMm": 10},
+    "manifest": {
+        "id": "totalseg-ct-liver-lesions",
+        "name": "TotalSegmentator — karaciğer lezyonu (BT patoloji)",
+        "version": "2.5.0-weights · Dataset591 (0,75 × 0,75 × 1 mm)",
+        "modalities": ["CT"],
+        "license": "Apache-2.0 (TotalSegmentator 'liver_lesions' görevi; açık görevler listesinde)",
+        "source": "https://github.com/wasserth/TotalSegmentator",
+        "intendedUse": "BT serisinde karaciğer içindeki odak lezyonların (kist, tümör, metastaz ayrımı yapmadan) bölütlenmesi. Önce BT anatomi modeli çalışır; karaciğer + 1 cm kırpılır. Tanı aracı değildir.",
+        "validation_key": "liver_lesions",
+        "compatibleDevice": "Masaüstü tarayıcı; 0,75 mm ızgarada karo başına ~60–120 sn (tek çekirdek WASM), tipik karaciğerde 8–20 karo (10–40 dk). Telefonda önerilmez.",
+        "limitations": [
+            "Lezyonun türünü (kist, hemanjiyom, tümör, metastaz) AYIRMAZ; yalnızca karaciğer dokusundan farklı odakları bölütler.",
+            "Kontrastsız ya da kalın kesitli BT'de küçük lezyonlar kaçabilir; bulunmaması lezyon olmadığını kesinleştirmez.",
+            "Önce BT anatomi modeli çalışmalıdır; karaciğer bölütlenemediyse model çalıştırılmaz.",
+            "Klinik kullanım için onaylı tıbbi cihaz değildir.",
+        ],
+    },
+}
+PATHOLOGY["liver-segments"] = {
+    "zip": f"{TS_URL}/v2.5.0-weights/Dataset570_ct_liver_segments.zip",
+    "zip_sha256": "76f3bf368cbae7756729bf2971cb1b25a1ee8993a18495f2d563d5edfead8aac",
+    "folder": "Dataset570_ct_liver_segments",
+    "labels": {i: (f"liver_segment_{i}", f"Karaciğer segment {r}", "liver", f"liver.segment-{i}", "anatomy") for i, r in zip(range(1, 9), ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"])},
+    "parts": {1: "caudate", 2: "left-lobe", 3: "left-lobe", 4: "left-lobe", 5: "right-lobe", 6: "right-lobe", 7: "right-lobe", 8: "right-lobe"},
+    "drop": [],
+    "topk": 4,
+    "thresholds": {},
+    "cascade": {"model": "totalseg-ct-total-3mm", "labels": ["liver"], "addonMm": 10},
+    "manifest": {
+        "id": "totalseg-ct-liver-segments",
+        "name": "TotalSegmentator — karaciğer segmentleri (Couinaud I–VIII)",
+        "version": "2.5.0-weights · Dataset570 (0,8 × 0,8 × 1,5 mm)",
+        "modalities": ["CT"],
+        "license": "Apache-2.0 (TotalSegmentator 'liver_segments' görevi; açık görevler listesinde)",
+        "source": "https://github.com/wasserth/TotalSegmentator",
+        "intendedUse": "BT serisinde karaciğerin 8 Couinaud segmentine ayrılması (ayrıntılı anatomi; bir lezyonun hangi segmentte olduğunu göstermek için). Bulgu değildir.",
+        "validation_key": "liver_segments",
+        "compatibleDevice": "Masaüstü tarayıcı; karo başına ~60–120 sn, tipik karaciğerde 4–12 karo.",
+        "limitations": [
+            "Normal anatomi bölütlemesidir; hastalık tespiti yapmaz.",
+            "Segment sınırları damar dallanmasına göre tanımlıdır ve kişiden kişiye değişir; model yaklaşık sınır çizer.",
+            "Klinik kullanım için onaylı tıbbi cihaz değildir.",
+        ],
+    },
+}
+
 XRV_CLS_TARGETS_TR = {
     "Atelectasis": ("Atelektazi (akciğer sönmesi) bulgusu", "lungs"),
     "Consolidation": ("Konsolidasyon bulgusu", "lungs"),
@@ -271,21 +329,28 @@ def build_pathology(work: Path, key: str, out_dir: Path, validation: dict) -> No
     if not unpack.exists():
         with zipfile.ZipFile(z) as f:
             f.extractall(unpack)
-    trained = next((unpack / spec["folder"]).glob("*__3d_fullres"))
+    trained = next((unpack / spec["folder"]).glob("*__3d_fullres*"))
     plans = json.loads((trained / "plans.json").read_text())
     ds = json.loads((trained / "dataset.json").read_text())
     fp = json.loads((trained / "dataset_fingerprint.json").read_text())["foreground_intensity_properties_per_channel"]["0"]
-    cfg = plans["configurations"]["3d_fullres"]
+    conf = trained.name.split("__")[-1]
+    cfg = plans["configurations"][conf]
+    if "inherits_from" in cfg:
+        cfg = {**plans["configurations"][cfg["inherits_from"]], **cfg}
+    # nnU-Net aralığı [S, A, R]; manifest [R, A, S] ya da izotropikse tek sayı
+    sp_sar = [round(float(x), 6) for x in cfg["spacing"]]
+    spacing = sp_sar[0] if len(set(sp_sar)) == 1 else [sp_sar[2], sp_sar[1], sp_sar[0]]
     if sorted(int(v) for v in ds["labels"].values() if v) != sorted(spec["labels"]):
         raise SystemExit(f"{key}: etiketler beklenenle uyuşmuyor: {ds['labels']}")
     raw, fp16, topk = work / f"{key}.fp32.onnx", work / f"{key}.fp16.onnx", work / f"{key}.onnx"
     print(run(str(HERE / "export_nnunet_onnx.py"), str(trained), str(raw)).strip())
     run(str(HERE / "fp16_storage.py"), str(raw), str(fp16))
-    run(str(HERE / "add_topk.py"), str(fp16), str(topk), "4")
-    labels = [{"id": i, "key": k, "finding": tr, "structure": st, "node": nd, "kind": kind, **spec.get("thresholds", {}).get(i, {})} for i, (k, tr, st, nd, kind) in spec["labels"].items()]
+    k = spec.get("topk", 4)
+    run(str(HERE / "add_topk.py"), str(fp16), str(topk), str(k))
+    labels = [{"id": i, "key": key, "finding": tr, "structure": st, **({"part": spec["parts"][i]} if spec.get("parts") else {}), "node": nd, "kind": kind, **spec.get("thresholds", {}).get(i, {})} for i, (key, tr, st, nd, kind) in spec["labels"].items()]
     m = dict(spec["manifest"])
     vkey = m.pop("validation_key")
-    m["validation"] = (TS_KIDNEY_VALIDATION if vkey == "kidney" else TS_EFFUSION_VALIDATION).format(**validation)
+    m["validation"] = {"kidney": TS_KIDNEY_VALIDATION, "effusion": TS_EFFUSION_VALIDATION, "liver_lesions": TS_LIVER_LESION_VALIDATION, "liver_segments": TS_LIVER_SEGMENTS_VALIDATION}[vkey].format(**validation)
     manifest = {
         "schema": "kh-model-manifest/2",
         **m,
@@ -295,12 +360,12 @@ def build_pathology(work: Path, key: str, out_dir: Path, validation: dict) -> No
         "input": {"name": "input", "layout": "NCDHW", "channels": 1, "width": cfg["patch_size"][2], "height": cfg["patch_size"][1], "scale": 1, "mean": [0], "std": [1]},
         "output": {"topkValues": "topk_values", "topkIndices": "topk_indices"},
         "volume": {
-            "spacing": cfg["spacing"][0],
+            "spacing": spacing,
             "patch": cfg["patch_size"],
             "axisOrder": "SAR",
             "normalization": {"scheme": "ct", "clip": [fp["percentile_00_5"], fp["percentile_99_5"]], "mean": fp["mean"], "std": fp["std"]},
             "tileStep": 0.8,
-            "topK": 4,
+            "topK": k,
             "cropNonzero": True,
             "minSlices": 10,
             "cascade": spec["cascade"],
@@ -312,7 +377,7 @@ def build_pathology(work: Path, key: str, out_dir: Path, validation: dict) -> No
     }
     notice = (
         f"{manifest['name']}\nKaynak: {manifest['source']}\nAğırlıklar: {spec['zip']} (SHA-256 {spec['zip_sha256']})\n"
-        f"Lisans: {manifest['license']}\nAtıf: {TS_CITATION}\nDeğişiklik: PyTorch → ONNX (opset 17), ağırlıklar float16 saklanır, çıktıya TopK(4) eklendi.\n"
+        f"Lisans: {manifest['license']}\nAtıf: {TS_CITATION}\nDeğişiklik: PyTorch → ONNX (opset 17), ağırlıklar float16 saklanır, çıktıya TopK({k}) eklendi.\n"
     )
     write_model(out_dir, topk, manifest, notice)
 
@@ -394,7 +459,7 @@ def main() -> None:
     ap.add_argument("--bundle", help="uygulamaya gömülecek modellerin klasörü (apps/web/public/ai-models)")
     ap.add_argument("--packs", help="isteğe bağlı model paketlerinin yazılacağı klasör")
     ap.add_argument("--xray-sample", required=True, help="doğrulama için örnek göğüs röntgeni (PNG)")
-    ap.add_argument("--only", help="yalnızca bu modeller (virgülle: totalseg-ct, totalseg-mr, xrv, kidney-cysts, effusion)")
+    ap.add_argument("--only", help="yalnızca bu modeller (virgülle: totalseg-ct, totalseg-mr, xrv, kidney-cysts, effusion; paketler: liver-lesions, liver-segments, xrv-seg)")
     ap.add_argument("--validation", help="patoloji modellerinin ölçülmüş doğrulama sonuçları (JSON: kidney_real, effusion_real)")
     a = ap.parse_args()
     work = Path(a.work)
@@ -408,16 +473,33 @@ def main() -> None:
             build_totalseg(work, "totalseg-mr", b / "totalseg-mr-total-3mm")
         if "xrv" in want:
             build_xrv(work, Path(a.xray_sample), b / "xrv-densenet121-nih", None)
-        validation = json.loads(Path(a.validation).read_text()) if a.validation else {"kidney_real": "ölçülmedi", "effusion_real": "ölçülmedi"}
+        validation = {"kidney_real": "ölçülmedi", "effusion_real": "ölçülmedi", "liver_lesions_real": "ölçülmedi", "liver_segments_real": "ölçülmedi"}
+        if a.validation:
+            validation.update(json.loads(Path(a.validation).read_text()))
         if "kidney-cysts" in want:
             build_pathology(work, "kidney-cysts", b / "totalseg-ct-kidney-cysts", validation)
         if "effusion" in want:
             build_pathology(work, "effusion", b / "totalseg-ct-effusion", validation)
-        index = sorted(p.name for p in b.iterdir() if (p / "manifest.json").exists())
+        index = sorted(x.name for x in b.iterdir() if (x / "manifest.json").exists())
         (b / "index.json").write_text(json.dumps({"schema": "kh-model-index/1", "models": index}, indent=1))
     if a.packs:
         p = Path(a.packs)
-        build_xrv(work, Path(a.xray_sample), None, p / "xrv-pspnet-chestxdet")
+        validation = {"kidney_real": "ölçülmedi", "effusion_real": "ölçülmedi", "liver_lesions_real": "ölçülmedi", "liver_segments_real": "ölçülmedi"}
+        if a.validation:
+            validation.update(json.loads(Path(a.validation).read_text()))
+        want = set(a.only.split(",")) if a.only else {"liver-lesions", "liver-segments", "xrv-seg"}
+        if "liver-lesions" in want:
+            build_pathology(work, "liver-lesions", p / "totalseg-ct-liver-lesions", validation)
+        if "liver-segments" in want:
+            build_pathology(work, "liver-segments", p / "totalseg-ct-liver-segments", validation)
+        if "xrv-seg" in want:
+            build_xrv(work, Path(a.xray_sample), None, p / "xrv-pspnet-chestxdet")
+        # Uygulama isteğe bağlı paketleri tanısın diye: yalnızca manifestler (model dosyası değil)
+        packs = [json.loads((x / "manifest.json").read_text()) for x in sorted(p.iterdir()) if (x / "manifest.json").exists()]
+        doc = json.dumps({"schema": "kh-model-packs/1", "folder": "model-packs", "packs": packs}, ensure_ascii=False, indent=1)
+        (p / "packs.json").write_text(doc)
+        if a.bundle:
+            (Path(a.bundle) / "packs.json").write_text(doc)
 
 
 if __name__ == "__main__":
