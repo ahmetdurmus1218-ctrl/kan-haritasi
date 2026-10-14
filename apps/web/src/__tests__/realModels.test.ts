@@ -18,7 +18,6 @@ const ROOT = resolve(__dirname, '../../../..');
 const MODELS = resolve(ROOT, 'apps/web/public/ai-models');
 const IMG = resolve(ROOT, 'fixtures/imaging');
 
-const PACKS = resolve(ROOT, 'model-packs');
 /** KH_MODEL_REPORT=<dosya> verilirse ölçülen doğrulama sayıları oraya da yazılır (manifest doğrulama metni için). */
 const report = (o: unknown) => {
   console.log(JSON.stringify(o));
@@ -133,7 +132,7 @@ describe('gerçek yerel modeller (cihaz içi motor) — resmi çıktıyla karş�
 
   it('Anizotropik ızgara + basamaklı: karaciğer segmentleri (0,8 × 0,8 × 1,5 mm, isteğe bağlı paket) — resmi çıktıyla', async () => {
     const anatomy = await anatomyCT();
-    const segs = model('totalseg-ct-liver-segments', PACKS);
+    const segs = model('totalseg-ct-liver-segments');
     expect(Array.isArray(segs.manifest.volume?.spacing)).toBe(true);
     const seg = await runVolumeModel(anatomy.vol, segs.manifest, segs.bytes, ortEngineFactory(), { prior: { manifest: anatomy.manifest, seg: anatomy.seg } });
     const ref = JSON.parse(readFileSync(resolve(IMG, 'totalseg-ct-sm.liver-segments.reference.json'), 'utf8')) as { shape: [number, number, number]; rle: number[] };

@@ -182,13 +182,11 @@ with sync_playwright() as p:
     check(manifest("totalseg-ct-kidney-cysts")["sha256"] in kt and "anatomi sonucuna" in kt and "1,5 mm" in kt, "D: köken: patoloji modeli SHA-256, 1,5 mm ızgara, anatomiye göre kırpılmış bölge")
     kc.screenshot(path=SHOTS / "r5-bt-patoloji.png")
 
-    # ------------------------------------------------------------ F: isteğe bağlı paket (dosyadan kur) → karaciğer segmentleri
-    pack = ROOT / "model-packs/totalseg-ct-liver-segments"
+    # ------------------------------------------------------------ F: uygulamayla gelen karaciğer segmentleri (kurulum gerekmez)
     page.goto(URL + "#/gizlilik")
     page.get_by_test_id("model-card").first.wait_for()
-    page.set_input_files("[data-testid=model-input]", [str(pack / "manifest.json"), str(pack / "model.onnx")])
-    page.get_by_text("kuruldu (SHA-256 doğrulandı)", exact=False).wait_for(timeout=120000)
-    check(page.locator("[data-testid=model-card][data-model=totalseg-ct-liver-segments]").count() == 1, "F: isteğe bağlı paket dosyadan kuruldu (SHA-256 doğrulandı)")
+    card = page.locator("[data-testid=model-card][data-model=totalseg-ct-liver-segments]")
+    check(card.count() == 1 and "uygulamayla gelir" in card.inner_text(), "F: karaciğer segmentleri uygulamayla geliyor (dosya seçmeden)")
     page.goto(ct_url)
     panel = page.get_by_test_id("series-model-panel")
     seg = panel.locator("[data-testid=pathology-model][data-model=totalseg-ct-liver-segments]")
