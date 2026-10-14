@@ -25,6 +25,8 @@ const MyBodyPage = lazy(() => import('./screens/MyBodyPage').then((m) => ({ defa
 const OrganPage = lazy(() => import('./screens/OrganPage').then((m) => ({ default: m.OrganPage })));
 const FlowPage = lazy(() => import('./screens/FlowPage').then((m) => ({ default: m.FlowPage })));
 const SystemPage = lazy(() => import('./screens/SystemPage').then((m) => ({ default: m.SystemPage })));
+const InteriorPage = lazy(() => import('./screens/InteriorPage').then((m) => ({ default: m.InteriorPage })));
+const PhysiologyPage = lazy(() => import('./screens/PhysiologyPage').then((m) => ({ default: m.PhysiologyPage })));
 
 function ExplorerFallback() {
   return (
@@ -105,6 +107,14 @@ function Gate() {
           ) : route.name === 'system' ? (
             <Suspense fallback={<PageFallback />}>
               <SystemPage key={route.id} id={route.id} />
+            </Suspense>
+          ) : route.name === 'interior' ? (
+            <Suspense fallback={<PageFallback />}>
+              <InteriorPage key={route.id} id={route.id} stage={route.stage} mode={route.mode} />
+            </Suspense>
+          ) : route.name === 'physiology' ? (
+            <Suspense fallback={<PageFallback />}>
+              <PhysiologyPage key={route.id ?? 'list'} id={route.id} />
             </Suspense>
           ) : (
             <DocumentsPage navigate={navigate} />

@@ -100,6 +100,8 @@ export interface HealthModel {
   modelFindings: MedicalFinding[];
   modelConcordance: FindingConcordance[];
   latestLabs: LabObservation[];
+  /** Test başına tarih sıralı tüm ölçümler (zaman boyutu; geçmiş yoksa yalnızca bir ölçüm). */
+  labHistory?: Map<string, LabObservation[]>;
   trends: Map<string, Trend>;
   concordance: Concordance[];
   patterns: PatternResult[];
@@ -173,6 +175,7 @@ export function buildHealthModel(input: HealthInput): HealthModel {
   const trends = new Map<string, Trend>();
   const byTest = new Map<string, LabObservation[]>();
   for (const l of input.labs) (byTest.get(l.testKey) ?? byTest.set(l.testKey, []).get(l.testKey)!).push(l);
+  for (const ls of byTest.values()) ls.sort((a, b) => a.date.localeCompare(b.date));
   for (const [k, ls] of byTest) if (ls.length >= 2) trends.set(k, computeTrend(ls.map((l) => ({ date: l.date, value: l.value, refMin: l.refMin, refMax: l.refMax })), ls[0]!.name));
   steps.push({ step: 'analyze_labs', ran: available.lab, detail: available.lab ? `${latestLabs.length} testin en güncel sonucu; ${trends.size} test için eğilim.` : 'Laboratuvar sonucu yok.' });
 
@@ -264,5 +267,5 @@ export function buildHealthModel(input: HealthInput): HealthModel {
   if (!available.lab) statements.push('Laboratuvar sonucu yok: organ durumları laboratuvar verisi olmadan değerlendirildi.');
   if (!available.image && !available.report && !available.lab) statements.push('Henüz analiz edilecek veri yok.');
 
-  return { available, steps, imageObservations, reportFindings, modelFindings, modelConcordance, latestLabs, trends, concordance, patterns, organs, timeline, comparisons, statements };
+  return { available, steps, imageObservations, reportFindings, modelFindings, modelConcordance, latestLabs, labHistory: byTest, trends, concordance, patterns, organs, timeline, comparisons, statements };
 }

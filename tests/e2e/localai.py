@@ -81,7 +81,7 @@ with sync_playwright() as p:
     caps = page.locator("details", has_text="Bu cihazda neler yapılabiliyor?")
     caps.locator("summary").click()
     ct = caps.inner_text()
-    check(ct.count("Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor.") == 9, "modeli olmayan 9 modalitede 'bu cihazda tıbbi AI modeli bulunmuyor' (BT, MR, röntgen hariç)")
+    check(ct.count("Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor.") == 15, "modeli olmayan 15 modalitede 'bu cihazda tıbbi AI modeli bulunmuyor' (BT, MR, röntgen hariç; OCT, PET/BT, DEXA, anjiyografi, floroskopi, kolonoskopi dahil)")
     check("3B, yalnızca DICOM serisinde" in ct and "görüntü düzeyinde skor, konum vermez" in ct, "yetenekler: BT/MR modeli 3B (seri), röntgen modeli skor (konum yok) diye dürüstçe yazıyor")
     check(all(m in ct for m in ["MR", "BT", "Röntgen", "Ultrason", "Doppler", "EKO", "Mamografi", "Patoloji", "EKG", "Endoskopi", "Fundus", "Diş"]), "yetenek listesi: 12 modalite")
 
@@ -111,7 +111,7 @@ with sync_playwright() as p:
     caps = page.locator("details", has_text="Bu cihazda neler yapılabiliyor?")
     caps.locator("summary").click()
     check(page.get_by_test_id("model-card").count() == BUNDLED + 1, "S3: kurulu modeller listesi bir arttı")
-    check(caps.inner_text().count("Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor.") == 9, "S3: test modelinin modaliteleri (MR, BT) zaten destekli; diğer 9'u hâlâ 'yok'")
+    check(caps.inner_text().count("Bu modalite için bu cihazda tıbbi AI modeli bulunmuyor.") == 15, "S3: test modelinin modaliteleri (MR, BT) zaten destekli; diğer 15'i hâlâ 'yok'")
     page.screenshot(path=SHOTS / "a2-model-kuruldu.png", full_page=True)
 
     # Aynı görüntüyü yeniden aç: model cihazda çalışır

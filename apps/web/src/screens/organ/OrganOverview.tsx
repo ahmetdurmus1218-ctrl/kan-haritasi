@@ -1,17 +1,17 @@
 /**
- * Organın ilk ekranı. Sıra bilinçlidir: önce organın kendisi, sonra kişinin durumu, sonra ilişkiler;
- * iç yapı ve doku → hücre → molekül yalnızca kullanıcı isterse.
+ * Organın ilk ekranı. Sıra bilinçlidir (ilerleyen açıklama — her şey aynı anda gösterilmez):
  *
  *   ← Geri · Vücut › Sistem › Organ
  *   Organ adı · kısa açıklama · [Vücudumda göster]
- *   1. Nasıl çalışır?      normal anatomi + işlev · [Fizyolojiyi adım adım incele]
- *   2. Benim durumum       renkli sonuçlar · görüntüleme · [Neden?] · [Sonuçlarımı gör]
- *   3. Bunlar nasıl ilişkili?  organlar arası akış (tıklanabilir)
- *   4. İç yapı            [Organın içine gir]
- *   5. Daha derine in      Doku · Hücre · Molekül
+ *   1. Genel görünüm                 organ nedir, bölümleri, yapı türü (lümenli / dolu / damar / bileşik)
+ *   2. Normalde nasıl çalışır?       normal fizyoloji · [Fizyolojiyi adım adım incele] · organlar arası akış
+ *   3. İÇİNE GİR                     ana düğme → organın fiziksel/işlevsel iç dünyası (lümen, içerik, akış…)
+ *   4. Benim durumum                 renkli sonuçlar · görüntüleme · [Neden?] · [Sonuçlarımı gör]
+ *   5. Bende ne değişmiş olabilir?   kanıt (destekleyen / çelişen / eksik) ve fizyolojik ilişkiler
+ *   6. Daha derine in                doku → hücre → molekül (İçine gir'den ayrı: mikroanatomi)
  */
 import { useState } from 'react';
-import { GRAPH, type HealthModel, type OrganView, flowsForOrgan, isPositiveReport, organNeighbors } from '@kh/analysis';
+import { GRAPH, type HealthModel, INTERIOR_TYPE_TR, type OrganView, chainsForPlace, flowsForOrgan, interiorFor, isPositiveReport, organNeighbors, physioOverlay } from '@kh/analysis';
 import { structureById } from '@kh/catalog';
 import { type Route, go } from '../../state/router';
 import { TONE, TONE_RANK, labTone } from '../../lib/tone';
@@ -96,6 +96,9 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
   const repN = v.personal.reportFindings.filter((f) => !f.negated && (f.status === 'abnormal' || f.status === 'uncertain')).length;
   const modelN = v.personal.modelFindings.length;
   const inside = GRAPH.insidePath(v.node.id);
+  const interior = interiorFor(v.node.id);
+  const chains = chainsForPlace(interior?.organId ?? v.node.id).slice(0, 4);
+  const personalChains = chains.map((c) => ({ c, ov: physioOverlay(c, model) })).filter((x) => x.ov.hasData);
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 md:px-8 md:py-10">
@@ -130,7 +133,17 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
         </Banner>
       )}
 
-      <Section title="1. Nasıl çalışır?" id="nasil-calisir">
+      <Section title="1. Genel görünüm" id="genel">
+        <p className="text-[14px] leading-relaxed text-fg">{v.node.summary}</p>
+        {v.normal.parts.length > 0 && <p className="text-[13px] text-fg-muted">Bölümleri: {v.normal.parts.map((p) => p.nameTr).join(', ')}</p>}
+        {interior && (
+          <p className="text-[12.5px] text-fg-muted" data-testid="organ-interior-type">
+            Yapı türü: {INTERIOR_TYPE_TR[interior.type]}
+          </p>
+        )}
+      </Section>
+
+      <Section title="2. Normalde nasıl çalışır?" id="nasil-calisir">
         {v.normal.functions.length > 0 && (
           <div>
             <p className="mb-1 text-sm font-medium text-fg-muted">Normalde ne işe yarar?</p>
@@ -143,11 +156,6 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
             </ul>
           </div>
         )}
-        {v.normal.parts.length > 0 && (
-          <p className="text-[13px] text-fg-muted">
-            Bölümleri: {v.normal.parts.map((p) => p.nameTr).join(', ')}
-          </p>
-        )}
         {flows.length > 0 && (
           <div className="flex flex-col gap-2 pt-1">
             {flows.slice(0, 3).map((f, i) => (
@@ -155,9 +163,78 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
             ))}
           </div>
         )}
+        {neighbors.length > 0 && (
+          <div className="space-y-2 pt-1" aria-label="Organlar arası akış">
+            <p className="text-xs font-medium text-fg-muted">Bunlar nasıl ilişkili? (organlar arası akış — bir organa dokunarak ona geç)</p>
+            <ul className="space-y-2">
+              {neighbors.map((n) => (
+                <li key={n.flow.id} className="text-sm">
+                  <p className="mb-1 text-xs text-fg-faint">{n.flow.title}</p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {n.before && (
+                      <>
+                        <button type="button" className="rounded-full border border-ink-600 px-2.5 py-1 hover:border-accent" onClick={() => go(organRoute(n.before!))}>
+                          {nameOf(n.before)}
+                        </button>
+                        <span className="text-fg-faint">→</span>
+                      </>
+                    )}
+                    <span className="rounded-full border border-accent/50 bg-accent/10 px-2.5 py-1 text-accent">{v.node.nameTr}</span>
+                    {n.after && (
+                      <>
+                        <span className="text-fg-faint">→</span>
+                        <button type="button" className="rounded-full border border-ink-600 px-2.5 py-1 hover:border-accent" onClick={() => go(organRoute(n.after!))}>
+                          {nameOf(n.after)}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {chains.length > 0 && (
+          <p className="flex flex-wrap items-center gap-1.5 pt-1 text-[12.5px] text-fg-muted">
+            Vücudun süreçleri:{' '}
+            {chains.map((c) => (
+              <button key={c.id} type="button" className="rounded-full border border-ink-600 px-2.5 py-1 hover:border-accent hover:text-accent" onClick={() => go({ name: 'physiology', id: c.id })}>
+                {c.title}
+              </button>
+            ))}
+          </p>
+        )}
       </Section>
 
-      <Section title="2. Benim durumum" id="benim-durumum">
+      <Section title="3. İçine gir" id="icine-gir">
+        {interior ? (
+          <>
+            <p className="text-sm text-fg-muted">
+              {interior.type === 'solid' ? 'Organın içi dolu bir dokudur (lümen yok): ' : 'Organın içindeymiş gibi gör: '}
+              {interior.stages
+                .filter((x) => x.scale === 'interior')
+                .slice(0, 6)
+                .map((x) => x.title)
+                .join(' → ')}
+              .
+            </p>
+            <button type="button" className="btn-primary min-h-[48px] w-full justify-between px-4 text-[15px]" onClick={() => go({ name: 'interior', id: interior.organId })} data-testid="organ-enter-interior">
+              <span className="flex items-center gap-2">
+                <LayersIcon size={16} /> İçine gir
+              </span>
+              <ChevronRightIcon size={16} />
+            </button>
+            <p className="text-[11px] text-fg-faint">Eğitimsel normal anatomi/fizyoloji — kişisel görüntü değildir.</p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-fg-muted">{inside.length ? `Organın içi adım adım: ${inside.map((n) => n.nameTr).join(' → ')}.` : 'Organın iç dokusunu eğitsel sahnede görebilirsin.'}</p>
+            <StepButton label="Organın içine gir" icon={<LayersIcon size={15} />} onClick={() => go({ name: 'organ', id: v.node.id, view: 'doku' })} />
+          </>
+        )}
+      </Section>
+
+      <Section title="4. Benim durumum" id="benim-durumum">
         {!v.personal.hasData ? (
           <div className="rounded-xl border border-dashed border-ink-600 p-4 text-center">
             <p className="text-[15px] text-fg">Bu organla ilgili verin yok.</p>
@@ -219,47 +296,54 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
         )}
       </Section>
 
-      {neighbors.length > 0 && (
-        <Section title="3. Bunlar nasıl ilişkili?" hint="Organlar arası akış: bir organa dokunarak ona geçebilirsin.">
-          <ul className="space-y-2">
-            {neighbors.map((n) => (
-              <li key={n.flow.id} className="text-sm">
-                <p className="mb-1 text-xs text-fg-faint">{n.flow.title}</p>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {n.before && (
-                    <>
-                      <button type="button" className="rounded-full border border-ink-600 px-2.5 py-1 hover:border-accent" onClick={() => go(organRoute(n.before!))}>
-                        {nameOf(n.before)}
-                      </button>
-                      <span className="text-fg-faint">→</span>
-                    </>
-                  )}
-                  <span className="rounded-full border border-accent/50 bg-accent/10 px-2.5 py-1 text-accent">{v.node.nameTr}</span>
-                  {n.after && (
-                    <>
-                      <span className="text-fg-faint">→</span>
-                      <button type="button" className="rounded-full border border-ink-600 px-2.5 py-1 hover:border-accent" onClick={() => go(organRoute(n.after!))}>
-                        {nameOf(n.after)}
-                      </button>
-                    </>
-                  )}
-                </div>
-              </li>
+      <Section title="5. Bende ne değişmiş olabilir?" id="bende-ne-degismis">
+        {!v.personal.hasData ? (
+          <p className="text-sm text-fg-muted" data-testid="organ-changes-none">
+            Bu organla ilişkili kişisel veri bulunamadı. Normal anatomi ve fizyoloji yukarıda ve “İçine gir”de çalışmaya devam eder.
+          </p>
+        ) : (
+          <div className="space-y-2" data-testid="organ-changes">
+            {v.personal.patterns.slice(0, 2).map((p) => (
+              <div key={p.id} className="rounded-lg border border-caution/30 p-2.5 text-[13px]">
+                <p className="font-medium text-fg">{p.title}</p>
+                <ul className="mt-1 space-y-0.5 text-[12.5px]">
+                  {p.supporting.slice(0, 3).map((e, i) => (
+                    <li key={`s${i}`} className="text-fg">
+                      ✓ Destekler: {e.label}
+                    </li>
+                  ))}
+                  {p.contradictory.slice(0, 2).map((e, i) => (
+                    <li key={`c${i}`} className="text-caution-fg">
+                      ✗ Desteklemez: {e.label}
+                    </li>
+                  ))}
+                  {p.missing.slice(0, 2).map((m, i) => (
+                    <li key={`m${i}`} className="text-fg-faint">
+                      ? Eksik: {m}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
-        </Section>
-      )}
-
-      <Section title="4. İç yapı">
-        <p className="text-sm text-fg-muted">
-          {inside.length ? `Organın içi adım adım: ${inside.map((n) => n.nameTr).join(' → ')}.` : 'Organın iç dokusunu eğitsel sahnede görebilirsin.'}
-        </p>
-        <StepButton label="Organın içine gir" icon={<LayersIcon size={15} />} onClick={() => go({ name: 'organ', id: v.node.id, view: 'ic' })} />
+            {personalChains.map(({ c, ov }) => (
+              <button key={c.id} type="button" className="btn-ghost min-h-[44px] w-full justify-between px-3 text-left text-[13px]" onClick={() => go({ name: 'physiology', id: c.id })}>
+                <span>
+                  {c.title}
+                  <span className="block text-[11.5px] text-fg-muted">{ov.markers.map((m) => `${m.name} ${m.latest.status === 'high' ? '▲' : m.latest.status === 'low' ? '▼' : '·'}`).join(', ')} — ilişkili olabilir (olası ilişki)</span>
+                </span>
+                <ChevronRightIcon size={15} />
+              </button>
+            ))}
+            {!v.personal.patterns.length && !personalChains.length && <p className="text-sm text-fg-muted">Verilerinde bu organın süreçleriyle ilişkili belirgin bir sapma görünmüyor; bu, her şeyin değerlendirildiği anlamına gelmez.</p>}
+            <p className="text-[11px] text-fg-faint">“Olabilir”, “ilişkili olabilir”, “destekler / desteklemez” kanıt düzeyini anlatır; bu bir tanı değildir, değerlendirme hekime aittir.</p>
+          </div>
+        )}
       </Section>
 
-      <Section title="5. Daha derine in">
-        <p className="text-sm text-fg-muted">Doku · Hücre · Biyolojik süreç · Molekül — her seviye ayrı açılır.</p>
+      <Section title="6. Daha derine in" id="daha-derine">
+        <p className="text-sm text-fg-muted">Mikroanatomi: doku · hücre · biyolojik süreç · molekül — her seviye ayrı açılır. (İçine gir organın iç dünyasıdır; burası mikroanatomidir.)</p>
         <StepButton label="Derinlemesine incele" onClick={() => go({ name: 'organ', id: v.node.id, view: 'derin', trail: [] })} />
+        {inside.length > 0 && <StepButton label="Duvarı ve dokuyu adım adım incele" onClick={() => go({ name: 'organ', id: v.node.id, view: 'doku' })} />}
       </Section>
     </div>
   );

@@ -121,7 +121,7 @@ export function ImageCapabilityPanel({ run, model }: { run: ImageAnalysisRun; mo
           <span className="w-4 shrink-0 text-center text-fg-faint">{CAP_ICON['not-implemented']}</span>
           <span className="text-fg-muted">
             {c.key === 'sequence' ? 'MR sekansı' : c.label}
-            <span className="block text-xs text-fg-faint">{c.key === 'sequence' ? 'Belirlenemedi.' : c.key === 'lesion-detection' ? 'Bu kurulumda tıbbi AI modeli yok.' : 'Bu kurulumda model yok.'}</span>
+            <span className="block text-xs text-fg-faint">{c.key === 'sequence' ? 'Belirlenemedi.' : c.key === 'lesion-detection' ? 'Bu görüntü türü için kurulu doğrulanmış lezyon modeli yok.' : 'Bu modalite için kurulu doğrulanmış model yok.'}</span>
           </span>
         </li>
       ))}

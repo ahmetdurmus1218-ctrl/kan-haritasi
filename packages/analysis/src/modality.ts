@@ -67,7 +67,11 @@ export function dicomModality(code: string | undefined): Modality | undefined {
     case 'NM':
       return 'SPECT';
     case 'XA':
-      return 'XRAY';
+      return 'ANGIOGRAPHY';
+    case 'OPT':
+      return 'OCT';
+    case 'BMD':
+      return 'DEXA';
     case 'PX':
     case 'IO':
       return 'DENTAL';
@@ -94,8 +98,8 @@ export const CATEGORY_MODALITY: Record<string, Modality> = {
   us: 'ULTRASOUND',
   mammo: 'MAMMOGRAPHY',
   pet: 'PET_CT',
-  angio: 'XRAY',
-  dexa: 'XRAY',
+  angio: 'ANGIOGRAPHY',
+  dexa: 'DEXA',
   pathology: 'PATHOLOGY',
   endoscopy: 'ENDOSCOPY',
   ekg: 'ECG',
@@ -120,6 +124,9 @@ const NAME_HINTS: Array<[RegExp, Modality]> = [
   [/(dermo|derma|ben |nevus|skin)/, 'DERMOSCOPY'],
   [/(dental|dis |panoramik|panoramic)/, 'DENTAL'],
   [/(fundus|retina|gozdibi)/, 'FUNDUS'],
+  [/(^|[^a-z])oct([^a-z]|$)/, 'OCT'],
+  [/(dexa|dxa|kemik ?yogunlu)/, 'DEXA'],
+  [/(anjiyo|angio)/, 'ANGIOGRAPHY'],
   [/(tahlil|lab|hemogram|biyokimya|kan )/, 'DOCUMENT'],
 ];
 
@@ -366,7 +373,7 @@ export function regionFromName(name: string | undefined): string | undefined {
 }
 
 /** Modalitenin doğası gereği bölge (ör. EKG → kalp). */
-const MODALITY_REGION: Partial<Record<Modality, string>> = { ECG: 'heart', ECHOCARDIOGRAPHY: 'heart', MAMMOGRAPHY: 'breasts', FUNDUS: 'eyes', COLONOSCOPY: 'large-intestine', ENDOSCOPY: 'stomach', DERMOSCOPY: 'skin', DENTAL: 'bones' };
+const MODALITY_REGION: Partial<Record<Modality, string>> = { ECG: 'heart', ECHOCARDIOGRAPHY: 'heart', MAMMOGRAPHY: 'breasts', FUNDUS: 'eyes', COLONOSCOPY: 'large-intestine', ENDOSCOPY: 'stomach', DERMOSCOPY: 'skin', DENTAL: 'bones', OCT: 'eyes', DEXA: 'bones' };
 
 export interface AnatomyEstimate {
   structure?: string;

@@ -174,7 +174,7 @@ with sync_playwright() as p:
     steps = card.get_by_role("list", name="Görüntü ön incelemesi adımları").inner_text()
     for label in ["Görüntü okundu", "Kesitleri ayırma", "Orta hat", "Sağ-sol simetri ön kontrolü"]:
         check(label in steps, f"88: ✓ {label}")
-    check("Lezyon analizi" in steps and "Bu kurulumda tıbbi AI modeli yok." in steps, "88: ◻ lezyon analizi — tıbbi AI modeli yok")
+    check("Lezyon analizi" in steps and "kurulu doğrulanmış lezyon modeli yok" in steps, "88: ◻ lezyon analizi — tıbbi AI modeli yok")
     check("Organ segmentasyonu" in steps and "MR sekansı" in steps and "Belirlenemedi." in steps, "88/34: ◻ segmentasyon, MR sekansı belirlenemedi")
     check("yarıküre" in vis, "A: gözlem kartı konumu (beyin → yarıküre → lob)")
     check("Görüntü asimetrisi gözlemi" in vis and "tıbbi bulgu değil" in vis and "Kaynak:" in vis, "56: sağ-sol farkı 'görüntü asimetrisi gözlemi', bulgu değil")
@@ -265,9 +265,13 @@ with sync_playwright() as p:
     page.get_by_role("heading", name="İnce bağırsak", exact=True).wait_for()
     mt = main.inner_text()
     check("Normalde ne işe yarar?" in mt and "Besin emilimi" in mt, "87: önce bağırsağın ne olduğu / nasıl çalıştığı")
-    check("Seviye 4" not in mt and "Enterosit" not in mt.split("4. İÇ YAPI")[0], "87: ilk ekranda hücreye atlanmıyor")
+    check("Seviye 4" not in mt and "Enterosit" not in mt.split("İçine gir")[0], "87: ilk ekranda hücreye atlanmıyor")
+    sections = [(h.text_content() or "").strip() for h in main.locator("section > h2.label-caps").all()]
+    check(sections[:6] == ["1. Genel görünüm", "2. Normalde nasıl çalışır?", "3. İçine gir", "4. Benim durumum", "5. Bende ne değişmiş olabilir?", "6. Daha derine in"], f"87: organ sayfası sırası Genel → Normal → İçine gir → Benim durumum → Değişim → Derin ({sections[:6]})")
     page.screenshot(path=SHOTS / "94a-bagirsak.png", full_page=True)
-    page.get_by_role("button", name="Organın içine gir").click()
+    # "İçine gir" artık organın iç dünyasıdır (lümen…); duvar → doku → hücre adım adım görünümü "Daha derine in" altında
+    check(page.get_by_test_id("organ-enter-interior").count() == 1, "87: ana 'İçine gir' düğmesi")
+    page.get_by_role("button", name="Duvarı ve dokuyu adım adım incele").click()
     page.get_by_text("İnce bağırsak · içi").wait_for()
     seen = []
     villus_scene = False

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type DicomInfo, burnedInRisk, parseDicom } from '@kh/ingest';
+import { type DicomInfo, burnedInRisk, parseDicom, scanDicomPixels } from '@kh/ingest';
 import { type Bytes, DOC_CATEGORIES, type DocCategory, type FileInfo } from '@kh/vault';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { go } from '../state/router';
@@ -93,7 +93,8 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
       return null;
     }
   }, [info.kind, bytes]);
-  const burned = useMemo(() => (dicom ? burnedInRisk(dicom) : null), [dicom]);
+  // Meta veri + piksel: başlık temizlense bile görüntüye yakılmış yazı silinemez.
+  const burned = useMemo(() => (dicom ? burnedInRisk(dicom, scanDicomPixels(bytes, dicom)) : null), [dicom, bytes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -239,7 +240,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
         image: !hasImage
           ? 'Bu belgede incelenebilir görüntü yok (rapor belgesi).'
           : imageEvidence && imageEvidence.compared > 0
-            ? `Görüntü açıldı; ${imageEvidence.compared} kesitte sağ-sol simetri ön kontrolü yapıldı. Tıbbi görüntü modeli yok; görüntüden bulgu analizi yapılmıyor.`
+            ? `Görüntü açıldı; ${imageEvidence.compared} kesitte sağ-sol simetri ön kontrolü yapıldı. Bu görüntü (fotoğraf / tek kesit) için kurulu doğrulanmış model yok; görüntüden bulgu analizi yapılmıyor (3B modeller DICOM serisi ister).`
             : 'Görüntü görüntüleyicide açılabiliyor; görüntüden otomatik bulgu analizi yapılmıyor (yalnızca uygun kesitlerde basit sağ-sol karşılaştırması).',
       },
     };
@@ -663,7 +664,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
                   ['Boyut', `${dicom.columns} × ${dicom.rows} piksel`],
                   ['Piksel aralığı', dicom.pixelSpacing ? `${dicom.pixelSpacing.map((v) => v.toLocaleString('tr-TR', { maximumFractionDigits: 3 })).join(' × ')} mm` : undefined],
                   ['Kesit kalınlığı', dicom.sliceThickness ? `${dicom.sliceThickness.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} mm` : undefined],
-                  ['Yakılmış yazı', burned ? (burned.level === 'yes' ? 'Var (başlık bildiriyor)' : burned.level === 'possible' ? 'Olabilir (ikincil yakalama)' : burned.level === 'no' ? 'Yok (başlık bildiriyor)' : 'Bilinmiyor') : undefined],
+                  ['Yakılmış yazı', burned ? (burned.level === 'yes' ? 'Var (başlık bildiriyor)' : burned.level === 'possible' ? (burned.pixel?.status === 'detected' ? 'Olabilir (piksel kontrolü: yazı benzeri alan)' : 'Olabilir (ikincil yakalama)') : burned.level === 'no' ? 'Yok (başlık bildiriyor)' : 'Bilinmiyor') : undefined],
                   ['Yönelim', dicom.imageOrientation ? dicom.imageOrientation.map((v) => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 })).join(' ') : undefined],
                   ['Kodlama', dicom.codec === 'native' ? 'Sıkıştırmasız' : dicom.codec === 'rle' ? 'RLE (kayıpsız)' : dicom.codec === 'jpeg-baseline' ? 'JPEG' : 'Desteklenmeyen sıkıştırma'],
                 ] as Array<[string, string | undefined]>

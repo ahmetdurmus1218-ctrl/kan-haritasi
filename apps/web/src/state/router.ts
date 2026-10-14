@@ -33,10 +33,18 @@ export type Route =
   /** Vücut akışları: liste (#/akis) ya da bir akışın adımı; personal: "Benim durumuma göre göster". */
   | { name: 'flow'; id?: string; step?: number; personal?: boolean }
   /** Sistem sayfası: organları ve akışları. */
-  | { name: 'system'; id: string };
+  | { name: 'system'; id: string }
+  /**
+   * "İÇİNE GİR": organın fiziksel/işlevsel iç dünyası (lümen, içerik, akış, duvar → doku → hücre → molekül).
+   * stage: 1'den başlayan basamak; mode: eğitimsel içerik modu (ör. "sindirim").
+   */
+  | { name: 'interior'; id: string; stage?: number; mode?: string }
+  /** Fizyoloji grafiği: zincir listesi ya da bir zincir (glukoz, B12, demir…). */
+  | { name: 'physiology'; id?: string };
 
-export type OrganViewMode = 'normal' | 'benim' | 'fark' | 'ic' | 'derin';
-const VIEWS: readonly string[] = ['normal', 'benim', 'fark', 'ic', 'derin'];
+/** ic: İçine gir (iç dünya); doku: duvar → doku → hücre adım adım; derin: bilgi grafiğinde serbest iniş. */
+export type OrganViewMode = 'normal' | 'benim' | 'fark' | 'ic' | 'doku' | 'derin';
+const VIEWS: readonly string[] = ['normal', 'benim', 'fark', 'ic', 'doku', 'derin'];
 /** Bilgi grafiği düğüm kimliği: küçük harf, rakam, tire ve nokta. */
 const NODE = /^[a-z0-9][a-z0-9.:-]{0,59}$/;
 
@@ -98,6 +106,14 @@ export function parseHash(hash: string): Route {
     }
     case 'sistem':
       return arg && KEY.test(arg) ? { name: 'system', id: arg } : { name: 'mybody' };
+    case 'ic': {
+      if (!arg || !NODE.test(arg)) return { name: 'mybody' };
+      const n = arg2 && /^\d{1,2}$/.test(arg2) ? Math.max(1, Number(arg2)) : undefined;
+      const mode = arg3 && KEY.test(arg3) ? arg3 : undefined;
+      return { name: 'interior', id: arg, ...(n ? { stage: n } : {}), ...(mode ? { mode } : {}) };
+    }
+    case 'fizyoloji':
+      return arg && KEY.test(arg) ? { name: 'physiology', id: arg } : { name: 'physiology' };
     default:
       return { name: 'home' };
   }
@@ -140,6 +156,10 @@ export function hrefFor(route: Route): string {
       return route.id ? `#/akis/${route.id}/${route.step ?? 1}${route.personal ? '/benim' : ''}` : '#/akis';
     case 'system':
       return `#/sistem/${route.id}`;
+    case 'interior':
+      return `#/ic/${route.id}${route.stage || route.mode ? `/${route.stage ?? 1}` : ''}${route.mode ? `/${route.mode}` : ''}`;
+    case 'physiology':
+      return route.id ? `#/fizyoloji/${route.id}` : '#/fizyoloji';
     default:
       return '#/belgeler';
   }

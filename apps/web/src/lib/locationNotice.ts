@@ -1,6 +1,6 @@
 /**
  * "Vücutta göster" açıklaması konumun NEREDEN geldiğine göre değişir; üç durum birbirine karıştırılmaz.
- *  - model:  gerçek bir tıbbi görüntü modelinin piksel/voksel konumu (bugün bu kurulumda yok).
+ *  - model:  gerçek bir tıbbi görüntü modelinin piksel/voksel konumu (yalnızca konum üreten model çalıştıysa).
  *  - region: yalnızca görüntünün ait olduğu organ/bölge biliniyor.
  *  - report: konum rapordaki anatomik ifadeden eşleştirildi.
  *  - precheck: sağ-sol ön kontrolündeki alanın yaklaşık anatomik karşılığı (varsayımla).

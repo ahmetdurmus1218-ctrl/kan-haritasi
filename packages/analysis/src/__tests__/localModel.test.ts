@@ -193,7 +193,7 @@ describe('LocalModelProvider (sahte motorla — yalnızca testte)', () => {
 
 describe('modalite yetenekleri ve üç durum', () => {
   it('model kurulu değilken 12 modalitenin hiçbirinde "yerel model" desteklenmez ve nedeni yazılıdır', () => {
-    expect(CAPABILITY_MODALITIES.map((m) => m.modality)).toEqual(['MRI', 'CT', 'XRAY', 'ULTRASOUND', 'DOPPLER', 'ECHOCARDIOGRAPHY', 'MAMMOGRAPHY', 'PATHOLOGY', 'ECG', 'ENDOSCOPY', 'FUNDUS', 'DENTAL']);
+    expect(CAPABILITY_MODALITIES.map((m) => m.modality)).toEqual(['MRI', 'CT', 'XRAY', 'ULTRASOUND', 'DOPPLER', 'ECHOCARDIOGRAPHY', 'MAMMOGRAPHY', 'PATHOLOGY', 'ECG', 'ENDOSCOPY', 'FUNDUS', 'DENTAL', 'COLONOSCOPY', 'OCT', 'PET_CT', 'DEXA', 'ANGIOGRAPHY', 'FLUOROSCOPY']);
     for (const { modality } of CAPABILITY_MODALITIES) {
       const caps = capabilitiesFor(modality);
       const lm = caps.find((c) => c.key === 'local-model')!;

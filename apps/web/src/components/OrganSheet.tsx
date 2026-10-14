@@ -1,5 +1,5 @@
 import type { HealthModel } from '@kh/analysis';
-import { GRAPH, isPositiveReport } from '@kh/analysis';
+import { GRAPH, interiorFor, isPositiveReport } from '@kh/analysis';
 import { structureById } from '@kh/catalog';
 import { go } from '../state/router';
 import { organName } from '../lib/summary';
@@ -17,6 +17,7 @@ export function OrganSheet({ organ, model, onClose }: { organ: string | null; mo
   const summary = node?.summary ?? (organ ? structureById.get(organ)?.blurb : undefined);
   const off = st?.labs.filter((l) => labTone(l) !== 'normal') ?? [];
   const imaging = (st?.imageObservations.filter((o) => o.kind === 'asymmetry').length ?? 0) + (st?.reportFindings.filter(isPositiveReport).length ?? 0) + (st?.modelFindings.length ?? 0);
+  const interior = organ ? interiorFor(organ) : undefined;
   const goTo = (r: Parameters<typeof go>[0]) => {
     onClose();
     go(r);
@@ -61,8 +62,13 @@ export function OrganSheet({ organ, model, onClose }: { organ: string | null; mo
             <button type="button" className="btn-ghost justify-center" onClick={() => goTo({ name: 'organ', id: organ, view: 'normal' })}>
               Normalde nasıl çalışır?
             </button>
+            {interior && (
+              <button type="button" className="btn-ghost justify-center" onClick={() => goTo({ name: 'interior', id: interior.organId })}>
+                İçine gir
+              </button>
+            )}
             {(node?.structure || structureById.has(organ)) && (
-              <button type="button" className="btn-ghost col-span-2 justify-center" onClick={() => goTo({ name: 'body', structure: node?.structure ?? organ })}>
+              <button type="button" className={`btn-ghost justify-center ${interior ? '' : 'col-span-2'}`} onClick={() => goTo({ name: 'body', structure: node?.structure ?? organ })}>
                 <BodyIcon size={15} /> 3B'de göster
               </button>
             )}

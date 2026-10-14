@@ -1,0 +1,753 @@
+/**
+ * "İÇİNE GİR" 3B sahnesi: tek bir genel motor, iç dünya tanımındaki SceneSpec'ten çizilir.
+ *
+ *   lumen      organın tüpünün/kesesinin İÇİNDEN bakış: astar (villus, kıvrım, haustra, rugae, sil…),
+ *              içerik parçacıkları, peristaltik dalga, emilim/salgı/gaz değişimi; "duvar" odağında katman kesiti
+ *   vessel     damar lümeni: alyuvarlar, nabız (atardamar) ya da sürekli akış (toplardamar), kılcalda tek sıra
+ *   chambers   kalbin dört odacığı ve kapakları; kan yolu (sağ → akciğer → sol → aort) parçacıklarla
+ *   parenchyma dolu organ: fonksiyonel birimler (lobül, nefron, folikül, nöron, asinus…) ve kanın girişten çıkışa akışı
+ *   pathway    ses / ışık / hava yolu: istasyonlar ve ilerleyen sinyal
+ *
+ * Her şey prosedürel ve EĞİTİMSELDİR (normal anatomi/fizyoloji); kişinin görüntüsü değildir. Modlar ve odak
+ * yalnızca tanımdan gelir, kişinin verisinden türetilmez.
+ */
+import { useEffect, useMemo, useRef } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  CapsuleGeometry,
+  CatmullRomCurve3,
+  Color,
+  CylinderGeometry,
+  DoubleSide,
+  ExtrudeGeometry,
+  type InstancedMesh,
+  type Mesh,
+  MeshStandardMaterial,
+  Object3D,
+  Shape,
+  SphereGeometry,
+  TorusGeometry,
+  TubeGeometry,
+  Vector3,
+} from 'three';
+import type { InteriorMode, SceneFocus, SceneSpec } from '@kh/analysis';
+import { bumpySphere, rbcGeometry, rng, useDisposable } from './kit';
+
+export interface InteriorSceneProps {
+  spec: SceneSpec;
+  focus: SceneFocus;
+  mode?: InteriorMode;
+  /** Duvar katmanları (lümenden dışa) — "duvar" odağında kesit. */
+  layers?: Array<{ id: string; name: string }>;
+  highlightLayer?: number;
+  /** Akış yolu istasyon sayısı (kalp, kulak, göz, hava). */
+  stations?: number;
+  playing: boolean;
+  reducedMotion: boolean;
+  theme: 'light' | 'dark';
+}
+
+const TMP = new Object3D();
+const V = new Vector3();
+const W = new Vector3();
+const U = new Vector3();
+
+/** Yoğunluk/hareket varsayılanları (mod yoksa): tipik normal işleyiş. */
+const DEFAULT_MODE: InteriorMode = { id: 'normal', name: 'Normal', text: '', content: 0.6, motion: 0.6, digestion: 0.3, absorption: 0 };
+
+function useClock(playing: boolean, reducedMotion: boolean) {
+  const t = useRef(0);
+  const invalidate = useThree((s) => s.invalidate);
+  const live = useRef(playing);
+  live.current = playing;
+  useFrame((_, dt) => {
+    if (!live.current) return;
+    t.current += Math.min(dt, 0.05) * (reducedMotion ? 0.3 : 1);
+    invalidate();
+  });
+  useEffect(() => invalidate(), [playing, invalidate]);
+  return t;
+}
+
+/** Kamerayı yerleştirir ve OrbitControls hedefini aynı noktaya taşır (aksi hâlde kontrol merkeze döner). */
+function useAim(eye: Vector3 | null, target: Vector3 | null, key: string) {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as unknown as { target: Vector3; update: () => void } | null;
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    if (!eye || !target) return;
+    camera.position.copy(eye);
+    camera.lookAt(target);
+    if (controls) {
+      controls.target.copy(target);
+      controls.update();
+    }
+    invalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, controls]);
+}
+
+/* ================================================================== LÜMEN (organ/damar içi) */
+
+interface LumenSpec {
+  shape: 'tube' | 'sac' | 'canal';
+  lining: string;
+  content: string;
+  radius: number;
+  wave: number;
+  flow: number;
+  color: string;
+  pulse?: boolean;
+}
+
+const LENGTH = 14;
+const TUBULAR = 180;
+const RADIAL = 40;
+
+function lumenCurve(shape: LumenSpec['shape']): CatmullRomCurve3 {
+  const len = shape === 'sac' ? 6 : LENGTH;
+  const pts = Array.from({ length: 7 }, (_, i) => new Vector3(Math.sin(i * 1.3) * (shape === 'sac' ? 0.15 : 0.9), Math.cos(i * 0.9) * (shape === 'sac' ? 0.1 : 0.5), -i * (len / 6)));
+  return new CatmullRomCurve3(pts);
+}
+
+/** Yarıçap profili: şekil × astar deseni × peristaltik dalga (s: 0–1 boy, th: açı). */
+function radiusAt(sp: LumenSpec, s: number, th: number, t: number, motion: number): number {
+  let r = sp.radius;
+  if (sp.shape === 'sac') r *= 0.32 + 0.68 * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, s))), 0.55);
+  const L = sp.shape === 'sac' ? 6 : LENGTH;
+  switch (sp.lining) {
+    case 'villi':
+    case 'folds':
+      r *= 1 - 0.11 * Math.pow(Math.abs(Math.sin(s * L * 2.6)), 8);
+      break;
+    case 'haustra':
+      r *= 1 + 0.1 * Math.pow(Math.abs(Math.sin(s * L * 1.1)), 2) - 0.16 * Math.pow(Math.abs(Math.cos(s * L * 1.1)), 14);
+      break;
+    case 'rugae':
+      r *= 1 - 0.1 * Math.pow(Math.abs(Math.sin(th * 7 + s * 5)), 6);
+      break;
+    case 'trabeculae':
+      r *= 1 - 0.07 * Math.pow(Math.abs(Math.sin(th * 5 + s * L * 2)), 4) - 0.05 * Math.pow(Math.abs(Math.sin(th * 11 - s * L * 3)), 6);
+      break;
+    default:
+      r *= 1 + 0.025 * Math.sin(th * 9 + s * 30) * Math.sin(s * 17);
+  }
+  if (sp.pulse) r *= 1 + 0.07 * Math.pow(Math.max(0, Math.sin(2 * Math.PI * (t * 1.1 - s * 1.5))), 3);
+  else if (sp.wave > 0) {
+    const squeeze = Math.pow(Math.max(0, Math.sin(2 * Math.PI * (s * (sp.shape === 'sac' ? 1.5 : 3) - t * 0.22))), 6);
+    r *= 1 - sp.wave * motion * 0.38 * squeeze;
+  }
+  return Math.max(sp.radius * 0.2, r);
+}
+
+const CONTENT: Record<string, { color: string; size: [number, number]; opacity: number; geo: 'blob' | 'sphere' | 'rbc' | 'long' }> = {
+  chyme: { color: '#d9b26a', size: [0.06, 0.14], opacity: 0.9, geo: 'blob' },
+  bolus: { color: '#d2a46f', size: [0.08, 0.3], opacity: 0.95, geo: 'blob' },
+  saliva: { color: '#e7eef3', size: [0.03, 0.07], opacity: 0.45, geo: 'sphere' },
+  feces: { color: '#7a5537', size: [0.1, 0.24], opacity: 0.95, geo: 'blob' },
+  bile: { color: '#7fa04a', size: [0.03, 0.07], opacity: 0.7, geo: 'sphere' },
+  juice: { color: '#efe0a6', size: [0.03, 0.06], opacity: 0.6, geo: 'sphere' },
+  air: { color: '#ffffff', size: [0.015, 0.04], opacity: 0.35, geo: 'sphere' },
+  urine: { color: '#e9cf59', size: [0.03, 0.06], opacity: 0.5, geo: 'sphere' },
+  blood: { color: '#c0272d', size: [0.09, 0.11], opacity: 1, geo: 'rbc' },
+  mucus: { color: '#f2efe4', size: [0.05, 0.12], opacity: 0.5, geo: 'long' },
+  fluid: { color: '#9cc7e0', size: [0.02, 0.05], opacity: 0.45, geo: 'sphere' },
+  sperm: { color: '#f3efe6', size: [0.03, 0.05], opacity: 0.9, geo: 'long' },
+  none: { color: '#ffffff', size: [0.02, 0.03], opacity: 0.2, geo: 'sphere' },
+};
+
+interface Particle {
+  s: number;
+  th: number;
+  rho: number;
+  size: number;
+  role: 'flow' | 'absorb' | 'secrete' | 'o2' | 'co2';
+  speed: number;
+}
+
+function LumenView({ sp, focus, mode, time }: { sp: LumenSpec; focus: SceneFocus; mode: InteriorMode; time: { current: number } }) {
+  const curve = useMemo(() => lumenCurve(sp.shape), [sp.shape]);
+  const frames = useMemo(() => curve.computeFrenetFrames(TUBULAR, false), [curve]);
+  const centers = useMemo(() => Array.from({ length: TUBULAR + 1 }, (_, i) => curve.getPointAt(i / TUBULAR)), [curve]);
+  const wall = useDisposable(() => {
+    const g = new BufferGeometry();
+    const pos = new Float32Array((TUBULAR + 1) * (RADIAL + 1) * 3);
+    const idx: number[] = [];
+    for (let i = 0; i < TUBULAR; i++)
+      for (let j = 0; j < RADIAL; j++) {
+        const a = i * (RADIAL + 1) + j;
+        const b = (i + 1) * (RADIAL + 1) + j;
+        idx.push(a, b, a + 1, b, b + 1, a + 1);
+      }
+    g.setAttribute('position', new BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    return g;
+  }, [curve]);
+  const wallMat = useDisposable(() => new MeshStandardMaterial({ color: new Color(sp.color), roughness: 0.55, metalness: 0, side: DoubleSide }), [sp.color]);
+
+  const cfg = CONTENT[sp.content] ?? CONTENT.none!;
+  const n = sp.content === 'none' ? 0 : sp.content === 'bolus' ? 14 : Math.round(30 + 170 * mode.content);
+  const particles = useMemo<Particle[]>(() => {
+    const r = rng(7);
+    return Array.from({ length: Math.max(n, 1) }, (_, k) => ({
+      s: 0.14 + r() * 0.83,
+      th: r() * Math.PI * 2,
+      rho: Math.sqrt(r()) * 0.75,
+      size: cfg.size[0] + r() * (cfg.size[1] - cfg.size[0]) * (sp.content === 'bolus' && k === 0 ? 3 : 1),
+      role: 'flow',
+      speed: 0.6 + r() * 0.8,
+    }));
+  }, [n, cfg.size, sp.content]);
+  const pGeo = useDisposable(() => (cfg.geo === 'rbc' ? rbcGeometry(20) : cfg.geo === 'blob' ? bumpySphere(1, 0.12, 3) : cfg.geo === 'long' ? new CapsuleGeometry(0.5, 1.6, 3, 8) : new SphereGeometry(1, 10, 8)), [cfg.geo]);
+  const pMat = useDisposable(() => new MeshStandardMaterial({ color: '#ffffff', transparent: cfg.opacity < 1, opacity: cfg.opacity, roughness: 0.5 }), [cfg.opacity]);
+  const pRef = useRef<InstancedMesh>(null);
+
+  // Ek parçacıklar: emilen (yeşil), salgılanan (sarı), gaz değişimi (O₂ kırmızı, CO₂ mavi)
+  const extraN = 60;
+  const extras = useMemo<Particle[]>(() => {
+    const r = rng(11);
+    return Array.from({ length: extraN }, (_, k) => ({ s: 0.05 + r() * 0.5, th: r() * Math.PI * 2, rho: r(), size: 0.035 + r() * 0.03, role: k % 2 ? 'o2' : 'co2', speed: 0.5 + r() }));
+  }, []);
+  const eRef = useRef<InstancedMesh>(null);
+  const eGeo = useDisposable(() => new SphereGeometry(1, 8, 6));
+  const eMat = useDisposable(() => new MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.6, roughness: 0.4 }));
+
+  // Astar: villus (ince bağırsak) ya da sil (solunum yolu, tüp)
+  const liningN = sp.lining === 'villi' ? 2200 : sp.lining === 'cilia' ? 1800 : 0;
+  const lining = useMemo(() => {
+    const r = rng(3);
+    return Array.from({ length: liningN }, () => ({ s: 0.02 + r() * 0.96, th: r() * Math.PI * 2, len: 0.7 + r() * 0.6, ph: r() * 6.28 }));
+  }, [liningN]);
+  const lGeo = useDisposable(() => (sp.lining === 'villi' ? new CapsuleGeometry(0.022, 0.1, 3, 6).translate(0, 0.072, 0) : new CylinderGeometry(0.004, 0.006, 0.07, 3).translate(0, 0.035, 0)), [sp.lining]);
+  const lMat = useDisposable(() => new MeshStandardMaterial({ color: new Color(sp.color).offsetHSL(0.01, 0.05, 0.12), roughness: 0.6 }), [sp.color]);
+  const lRef = useRef<InstancedMesh>(null);
+
+  const frameAt = (s: number) => {
+    const i = Math.min(TUBULAR, Math.max(0, Math.round(s * TUBULAR)));
+    return { c: centers[i]!, nn: frames.normals[i]!, bb: frames.binormals[i]! };
+  };
+  const pointAt = (s: number, th: number, rad: number, out: Vector3) => {
+    const { c, nn, bb } = frameAt(s);
+    return out.copy(c).addScaledVector(nn, Math.cos(th) * rad).addScaledVector(bb, Math.sin(th) * rad);
+  };
+
+  const color = useMemo(() => new Color(), []);
+  useFrame(() => {
+    const t = time.current;
+    const motion = mode.motion;
+    // Duvar
+    const pos = wall.attributes.position as BufferAttribute;
+    for (let i = 0; i <= TUBULAR; i++) {
+      const s = i / TUBULAR;
+      for (let j = 0; j <= RADIAL; j++) {
+        const th = (j / RADIAL) * Math.PI * 2;
+        pointAt(s, th, radiusAt(sp, s, th, t, motion), V);
+        pos.setXYZ(i * (RADIAL + 1) + j, V.x, V.y, V.z);
+      }
+    }
+    pos.needsUpdate = true;
+    wall.computeVertexNormals();
+    // Astar
+    const lm = lRef.current;
+    if (lm) {
+      lining.forEach((v, k) => {
+        const R = radiusAt(sp, v.s, v.th, t, motion);
+        pointAt(v.s, v.th, R * 0.995, V);
+        pointAt(v.s, v.th, 0, W);
+        U.copy(W).sub(V).normalize().add(V);
+        TMP.position.copy(V);
+        TMP.up.set(0, 1, 0);
+        TMP.lookAt(U);
+        TMP.rotateX(Math.PI / 2 + Math.sin(t * (sp.lining === 'cilia' ? 9 : 1.4) + v.ph) * (sp.lining === 'cilia' ? 0.5 : 0.12));
+        const sc = (sp.radius / 0.9) * v.len;
+        TMP.scale.set(sc, sc, sc);
+        TMP.updateMatrix();
+        lm.setMatrixAt(k, TMP.matrix);
+      });
+      lm.instanceMatrix.needsUpdate = true;
+    }
+    // İçerik
+    const pm = pRef.current;
+    const absorbing = focus === 'absorb' ? 0.45 : mode.absorption * 0.3;
+    if (pm) {
+      particles.forEach((p, k) => {
+        const forward = sp.flow * 0.035 * p.speed * (0.4 + motion * 0.9);
+        p.s += forward * 0.016 * (1 + (sp.pulse ? Math.max(0, Math.sin(2 * Math.PI * t * 1.1)) * 2 : 0));
+        p.th += Math.sin(t * 0.7 + k) * 0.002 * (1 + motion * 3);
+        const absorbingHere = k / particles.length < absorbing;
+        if (absorbingHere) p.rho = Math.min(1.05, p.rho + 0.002 * p.speed);
+        if (p.s > 0.97 || p.rho > 1.02) {
+          p.s = 0.14 + (k % 7) * 0.01;
+          p.rho = ((k * 37) % 100) / 140;
+        }
+        const R = radiusAt(sp, p.s, p.th, t, motion);
+        pointAt(p.s, p.th, p.rho * R * 0.85, V);
+        TMP.position.copy(V);
+        TMP.rotation.set(t * 0.3 + k, k, t * 0.2);
+        const digest = sp.content === 'chyme' ? 1 - mode.digestion * 0.55 * p.s : 1;
+        const sc = p.size * digest * (absorbingHere ? Math.max(0.3, 1.1 - p.rho * 0.7) : 1);
+        TMP.scale.set(sc, cfg.geo === 'rbc' ? sc : sc, sc);
+        TMP.updateMatrix();
+        pm.setMatrixAt(k, TMP.matrix);
+        color.set(absorbingHere ? '#7ee0b0' : cfg.color);
+        pm.setColorAt(k, color);
+      });
+      pm.instanceMatrix.needsUpdate = true;
+      if (pm.instanceColor) pm.instanceColor.needsUpdate = true;
+    }
+    // Ek parçacıklar: salgı ya da gaz değişimi
+    const em = eRef.current;
+    if (em) {
+      const showExchange = focus === 'exchange';
+      const showSecrete = focus === 'secrete';
+      extras.forEach((p, k) => {
+        if (!showExchange && !showSecrete) {
+          TMP.scale.setScalar(0);
+        } else {
+          const phase = (t * 0.25 * p.speed + k / extraN) % 1;
+          // O₂: lümenden duvara; CO₂: duvardan lümene; salgı: duvardan lümene
+          const rho = showSecrete || p.role === 'co2' ? 1 - phase * 0.7 : 0.3 + phase * 0.75;
+          const R = radiusAt(sp, p.s, p.th, t, mode.motion);
+          pointAt(p.s, p.th, rho * R, V);
+          TMP.position.copy(V);
+          TMP.scale.setScalar(p.size * (sp.radius / 0.9));
+          color.set(showSecrete ? '#f6d36b' : p.role === 'o2' ? '#ff5a5f' : '#5b8cff');
+          em.setColorAt(k, color);
+        }
+        TMP.updateMatrix();
+        em.setMatrixAt(k, TMP.matrix);
+      });
+      em.instanceMatrix.needsUpdate = true;
+      if (em.instanceColor) em.instanceColor.needsUpdate = true;
+    }
+  });
+
+  // Kamera: odakla değişen bakış (merkez, içerik, duvara yakın, geride)
+  const near = focus === 'absorb' || focus === 'secrete' || focus === 'exchange';
+  const s0 = focus === 'motion' ? 0.02 : 0.06;
+  const eye = pointAt(s0, Math.PI * 0.5, near ? sp.radius * 0.55 : sp.radius * 0.1, new Vector3());
+  const look = near ? pointAt(s0 + 0.06, Math.PI * 0.5, sp.radius * 0.9, new Vector3()) : pointAt(focus === 'contents' ? 0.2 : 0.35, 0, 0, new Vector3());
+  useAim(eye, look, `${focus}|${sp.shape}|${sp.radius}`);
+
+  return (
+    <group>
+      <mesh geometry={wall} material={wallMat} />
+      {liningN > 0 && <instancedMesh ref={lRef} args={[lGeo, lMat, liningN]} frustumCulled={false} />}
+      {n > 0 && <instancedMesh ref={pRef} args={[pGeo, pMat, particles.length]} frustumCulled={false} />}
+      <instancedMesh ref={eRef} args={[eGeo, eMat, extraN]} frustumCulled={false} />
+    </group>
+  );
+}
+
+/* ================================================================== DUVAR KESİTİ */
+
+const LAYER_COLORS = ['#20151a', '#f1ece0', '#e6a0a0', '#d98b8b', '#e4c0a8', '#b9545c', '#efe4d8', '#cfa0b0', '#a87f6a'];
+
+function WallSection({ layers, highlight, time }: { layers: Array<{ id: string; name: string }>; highlight?: number; time: { current: number } }) {
+  const shown = layers.filter((l, i) => !(i === 0 && /lümen|boşluk/i.test(l.name)));
+  const offset = layers.length - shown.length;
+  const geos = useMemo(() => {
+    let r = 0.6;
+    return shown.map((_, i) => {
+      const th = i === 0 ? 0.08 : 0.16 + (i % 3) * 0.06;
+      const inner = r;
+      const outer = r + th;
+      r = outer + 0.015;
+      const sh = new Shape();
+      sh.absarc(0, 0, outer, 0, Math.PI, false);
+      sh.absarc(0, 0, inner, Math.PI, 0, true);
+      return new ExtrudeGeometry(sh, { depth: 1.6, bevelEnabled: false, curveSegments: 48 });
+    });
+  }, [shown.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => geos.forEach((g) => g.dispose()), [geos]);
+  const group = useRef<import('three').Group>(null);
+  useAim(new Vector3(0, 0.6, 0.4), new Vector3(0, -0.2, -3.2), 'wall');
+  useFrame(() => {
+    if (group.current) group.current.rotation.y = -0.5 + Math.sin(time.current * 0.3) * 0.25;
+  });
+  return (
+    <group ref={group} rotation={[0, -0.5, 0]} position={[0, -0.3, -3.2]}>
+      {geos.map((g, i) => (
+        <mesh key={i} geometry={g} position={[0, 0, -0.8]}>
+          <meshStandardMaterial color={LAYER_COLORS[(i + 1) % LAYER_COLORS.length]} roughness={0.6} emissive={highlight === i + offset ? '#ffd27a' : '#000000'} emissiveIntensity={highlight === i + offset ? 0.55 : 0} side={DoubleSide} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/* ================================================================== KALP ODACIKLARI */
+
+const CH = {
+  ra: new Vector3(-0.75, 0.45, 0),
+  rv: new Vector3(-0.45, -0.5, 0.25),
+  la: new Vector3(0.7, 0.55, -0.25),
+  lv: new Vector3(0.45, -0.55, 0),
+};
+const HEART_PATH = [
+  new Vector3(-1.5, 1.3, 0),
+  CH.ra,
+  new Vector3(-0.62, -0.05, 0.15),
+  CH.rv,
+  new Vector3(-0.15, 0.3, 0.45),
+  new Vector3(0, 1.1, 0.4),
+  new Vector3(0.5, 1.6, 0),
+  new Vector3(1.2, 1.2, -0.3),
+  CH.la,
+  new Vector3(0.6, 0.0, -0.1),
+  CH.lv,
+  new Vector3(0.15, 0.25, 0.1),
+  new Vector3(0.05, 1.25, -0.1),
+  new Vector3(-0.35, 1.45, -0.35),
+  new Vector3(-0.3, 0.6, -0.7),
+];
+/** Yoldaki 9 istasyon: RA, triküspit, RV, pulmoner, akciğer, LA, mitral, LV, aort → eğri üzerindeki noktalar. */
+const STATION_PT = [1, 2, 3, 4, 6, 8, 9, 10, 12];
+
+function ChambersView({ focus, time }: { focus: SceneFocus; time: { current: number } }) {
+  const curve = useMemo(() => new CatmullRomCurve3(HEART_PATH), []);
+  const stationU = useMemo(() => STATION_PT.map((i) => i / (HEART_PATH.length - 1)), []);
+  const blob = useDisposable(() => bumpySphere(2, 0.05, 2));
+  const valveGeo = useDisposable(() => new TorusGeometry(0.11, 0.025, 8, 24));
+  const n = 140;
+  const pRef = useRef<InstancedMesh>(null);
+  const pGeo = useDisposable(() => rbcGeometry(16));
+  const pMat = useDisposable(() => new MeshStandardMaterial({ roughness: 0.5 }));
+  const vessel = useDisposable(() => new TubeGeometry(curve, 200, 0.06, 8, false));
+  const vMat = useDisposable(() => new MeshStandardMaterial({ color: '#8e2b33', transparent: true, opacity: 0.25, side: DoubleSide }));
+  const chambers = useRef<Mesh[]>([]);
+  const active = focus.startsWith('path:') ? Number(focus.slice(5)) : -1;
+  const color = useMemo(() => new Color(), []);
+  useFrame(() => {
+    const t = time.current;
+    const beat = (t * 1.15) % 1;
+    const sys = beat < 0.35 ? Math.sin((beat / 0.35) * Math.PI) : 0;
+    const atr = beat > 0.75 ? Math.sin(((beat - 0.75) / 0.25) * Math.PI) : 0;
+    chambers.current.forEach((m, i) => {
+      if (!m) return;
+      const ventricle = i === 1 || i === 3;
+      const base = [0.42, 0.5, 0.4, 0.56][i]!;
+      m.scale.setScalar(base * (1 - (ventricle ? sys : atr) * 0.1));
+    });
+    const pm = pRef.current;
+    if (!pm) return;
+    for (let k = 0; k < n; k++) {
+      const u = (k / n + t * 0.05 * (1 + sys * 0.6)) % 1;
+      curve.getPointAt(u, V);
+      TMP.position.copy(V);
+      TMP.rotation.set(k, t + k, 0);
+      TMP.scale.setScalar(0.07);
+      TMP.updateMatrix();
+      pm.setMatrixAt(k, TMP.matrix);
+      // Akciğerden (istasyon 4) önce oksijeni azalmış (mavi), sonra oksijenli (kırmızı)
+      color.set(u < stationU[4]! || u > 0.97 ? '#4b6cc6' : '#d23a3f');
+      pm.setColorAt(k, color);
+    }
+    pm.instanceMatrix.needsUpdate = true;
+    if (pm.instanceColor) pm.instanceColor.needsUpdate = true;
+  });
+  const chamberOf = [0, -1, 1, -1, -1, 2, -1, 3, -1];
+  const valveAt = [-1, 2, -1, 4, -1, -1, 9, -1, 11];
+  const target = active >= 0 ? curve.getPointAt(stationU[active]!) : new Vector3(0, 0.3, 0);
+  useAim(new Vector3(target.x * 0.6, target.y * 0.5 + 0.3, active >= 0 ? 2.6 : 3.6), target, `ch${active}`);
+  return (
+    <group>
+      {[CH.ra, CH.rv, CH.la, CH.lv].map((p, i) => {
+        const lit = chamberOf[active] === i;
+        return (
+          <mesh key={i} ref={(m) => void (m && (chambers.current[i] = m))} geometry={blob} position={p}>
+            <meshStandardMaterial color={i < 2 ? '#7a3a52' : '#a8343c'} transparent opacity={lit ? 0.55 : 0.28} emissive={lit ? '#ffcf70' : '#000000'} emissiveIntensity={lit ? 0.35 : 0} side={DoubleSide} depthWrite={false} />
+          </mesh>
+        );
+      })}
+      {valveAt.map((pi, i) =>
+        pi >= 0 ? (
+          <mesh key={i} geometry={valveGeo} position={HEART_PATH[pi]!} rotation={[Math.PI / 2, 0, 0]}>
+            <meshStandardMaterial color={active === i ? '#ffd27a' : '#f0d9c8'} emissive={active === i ? '#ffd27a' : '#000000'} emissiveIntensity={active === i ? 0.6 : 0} />
+          </mesh>
+        ) : null,
+      )}
+      <mesh geometry={vessel} material={vMat} />
+      <instancedMesh ref={pRef} args={[pGeo, pMat, n]} frustumCulled={false} />
+    </group>
+  );
+}
+
+/* ================================================================== PARANKİM (dolu organ) */
+
+function unitGeometry(unit: string): BufferGeometry {
+  switch (unit) {
+    case 'lobule':
+      return new CylinderGeometry(0.46, 0.46, 0.25, 6);
+    case 'follicle':
+      return new SphereGeometry(0.32, 20, 14);
+    case 'acinus':
+    case 'islet':
+    case 'cells':
+      return bumpySphere(1, 0.1, 5).scale(0.22, 0.22, 0.22);
+    case 'neuron':
+      return bumpySphere(1, 0.15, 9).scale(0.14, 0.14, 0.14);
+    case 'fibers':
+    case 'fascicles':
+      return new CylinderGeometry(0.09, 0.09, 4.2, 10).rotateZ(Math.PI / 2);
+    case 'layers':
+      return new CylinderGeometry(2.4, 2.4, 0.22, 48);
+    case 'osteon':
+      return new TorusGeometry(0.4, 0.06, 8, 32);
+    case 'alveoli':
+      return new SphereGeometry(0.25, 16, 12);
+    default:
+      return new SphereGeometry(0.25, 14, 10);
+  }
+}
+
+function unitLayout(unit: string): Array<{ p: Vector3; s: number }> {
+  const r = rng(unit.length * 13 + 5);
+  const out: Array<{ p: Vector3; s: number }> = [];
+  if (unit === 'lobule') {
+    for (let q = -2; q <= 2; q++) for (let k = -2; k <= 2; k++) out.push({ p: new Vector3((q + (k % 2 ? 0.5 : 0)) * 0.9, 0, k * 0.78), s: 1 });
+  } else if (unit === 'layers') {
+    for (let i = 0; i < 5; i++) out.push({ p: new Vector3(0, 0.9 - i * 0.45, 0), s: 1 });
+  } else if (unit === 'fibers' || unit === 'fascicles') {
+    const groups = unit === 'fascicles' ? 5 : 1;
+    for (let g = 0; g < groups; g++) {
+      const cx = unit === 'fascicles' ? Math.cos(g * 1.25) * 0.7 : 0;
+      const cz = unit === 'fascicles' ? Math.sin(g * 1.25) * 0.7 : 0;
+      for (let i = 0; i < (unit === 'fascicles' ? 12 : 30); i++) out.push({ p: new Vector3(0, cx + (r() - 0.5) * 0.5 * (groups > 1 ? 1 : 3), cz + (r() - 0.5) * 0.5 * (groups > 1 ? 1 : 3)), s: 0.7 + r() * 0.5 });
+    }
+  } else if (unit === 'osteon') {
+    for (let q = 0; q < 6; q++) for (let ring = 0; ring < 4; ring++) out.push({ p: new Vector3(Math.cos(q) * 1.4 * (q % 2 ? 0.6 : 1), 0, Math.sin(q) * 1.1), s: 0.4 + ring * 0.28 });
+  } else {
+    const count = unit === 'cells' ? 70 : unit === 'neuron' ? 40 : unit === 'follicle' ? 14 : 46;
+    for (let i = 0; i < count; i++) out.push({ p: new Vector3((r() - 0.5) * 4, (r() - 0.5) * 1.6, (r() - 0.5) * 2.6), s: unit === 'follicle' ? 0.4 + r() * 1.3 : 0.6 + r() * 0.8 });
+  }
+  return out;
+}
+
+function ParenchymaView({ unit, color, focus, time }: { unit: string; color: string; focus: SceneFocus; time: { current: number } }) {
+  const geo = useDisposable(() => unitGeometry(unit), [unit]);
+  const layout = useMemo(() => unitLayout(unit), [unit]);
+  // Renk örnek başına (instanceColor) verilir; malzeme beyaz kalır ki renkler çarpılıp kararmasın.
+  const mat = useDisposable(() => new MeshStandardMaterial({ color: '#ffffff', roughness: 0.6, transparent: unit === 'follicle' || unit === 'layers', opacity: unit === 'layers' ? 0.75 : unit === 'follicle' ? 0.6 : 1 }), [unit]);
+  const uRef = useRef<InstancedMesh>(null);
+  // Kan/sinyal akışı: girişten (sol, kırmızı) çıkışa (sağ, mavi-mor); lobülde köşeden merkeze.
+  const n = focus === 'flow' ? 220 : 120;
+  const flows = useMemo(() => {
+    const r = rng(29);
+    return Array.from({ length: n }, () => ({ y: (r() - 0.5) * 1.4, z: (r() - 0.5) * 2.2, ph: r(), sp: 0.6 + r() * 0.8, unit: Math.floor(r() * 25) }));
+  }, [n]);
+  const fRef = useRef<InstancedMesh>(null);
+  const fGeo = useDisposable(() => (unit === 'neuron' || unit === 'fibers' || unit === 'fascicles' ? new SphereGeometry(1, 8, 6) : rbcGeometry(12)), [unit]);
+  const fMat = useDisposable(() => new MeshStandardMaterial({ roughness: 0.5, emissive: '#000000' }));
+  const c = useMemo(() => new Color(), []);
+  const signal = unit === 'neuron' || unit === 'fibers' || unit === 'fascicles';
+  useEffect(() => {
+    const m = uRef.current;
+    if (!m) return;
+    layout.forEach((u, k) => {
+      TMP.position.copy(u.p);
+      TMP.rotation.set(unit === 'osteon' ? Math.PI / 2 : 0, unit === 'lobule' ? Math.PI / 6 : 0, 0);
+      TMP.scale.setScalar(u.s);
+      TMP.updateMatrix();
+      m.setMatrixAt(k, TMP.matrix);
+      c.set(color).offsetHSL(0, 0, unit === 'layers' ? k * 0.07 - 0.1 : ((k * 17) % 10) / 100 - 0.05);
+      m.setColorAt(k, c);
+    });
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  }, [layout, unit, color, c]);
+  useFrame(() => {
+    const t = time.current;
+    const m = fRef.current;
+    if (!m) return;
+    flows.forEach((f, k) => {
+      const u = (f.ph + t * 0.06 * f.sp) % 1;
+      if (unit === 'lobule') {
+        // Portal üçlüden (altıgen köşesi) merkezi vene doğru
+        const cell = layout[f.unit % layout.length]!.p;
+        const a = Math.floor(f.ph * 6) * (Math.PI / 3);
+        V.set(cell.x + Math.cos(a) * 0.5 * (1 - u), 0.2, cell.z + Math.sin(a) * 0.5 * (1 - u));
+        c.set('#d23a3f').lerp(new Color('#5b3a8c'), u);
+      } else {
+        V.set(-2.4 + u * 4.8, f.y + Math.sin(u * 9 + k) * 0.12, f.z + Math.cos(u * 7 + k) * 0.12);
+        c.set(signal ? '#ffe27a' : '#d23a3f').lerp(new Color(signal ? '#a78bfa' : '#5b3a8c'), signal ? 0 : u);
+      }
+      if (focus === 'secrete' && k % 3 === 0) {
+        const src = layout[k % layout.length]!.p;
+        V.set(src.x, src.y + u * 1.2, src.z);
+        c.set('#f6d36b');
+      }
+      TMP.position.copy(V);
+      TMP.rotation.set(k, t + k, 0);
+      TMP.scale.setScalar(signal ? 0.035 : 0.06);
+      TMP.updateMatrix();
+      m.setMatrixAt(k, TMP.matrix);
+      m.setColorAt(k, c);
+    });
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  });
+  const close = focus === 'units' || focus === 'secrete';
+  useAim(new Vector3(close ? 1.2 : 0.6, close ? 1.6 : 2.4, close ? 2.6 : 4.2), new Vector3(0, 0, 0), `p${focus}`);
+  return (
+    <group>
+      <instancedMesh ref={uRef} args={[geo, mat, layout.length]} />
+      <instancedMesh ref={fRef} args={[fGeo, fMat, n]} frustumCulled={false} />
+    </group>
+  );
+}
+
+/* ================================================================== YOL (ses / ışık / hava) */
+
+const STATION_SHAPES: Record<'sound' | 'light' | 'air', string[]> = {
+  sound: ['bowl', 'tube', 'disc', 'bone', 'bone', 'bone', 'spiral', 'strip', 'block', 'hair', 'nerve'],
+  light: ['glow', 'dome', 'sphere', 'lens', 'big', 'shell', 'hair', 'cell', 'cell', 'nerve', 'brain'],
+  air: ['cloud', 'tube', 'fork', 'thin', 'cluster', 'capillary'],
+};
+
+function stationGeometry(kind: string): BufferGeometry {
+  switch (kind) {
+    case 'bowl':
+      return new SphereGeometry(0.35, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2).rotateZ(Math.PI / 2);
+    case 'tube':
+      return new CylinderGeometry(0.16, 0.16, 0.7, 20, 1, true).rotateZ(Math.PI / 2);
+    case 'thin':
+      return new CylinderGeometry(0.07, 0.07, 0.6, 12, 1, true).rotateZ(Math.PI / 2);
+    case 'disc':
+      return new CylinderGeometry(0.3, 0.3, 0.02, 32).rotateZ(Math.PI / 2);
+    case 'bone':
+      return new CapsuleGeometry(0.06, 0.18, 4, 8);
+    case 'spiral':
+      return new TorusGeometry(0.28, 0.07, 10, 40, Math.PI * 4.5);
+    case 'strip':
+      return new CylinderGeometry(0.02, 0.02, 0.8, 6).rotateZ(Math.PI / 2).scale(1, 1, 6);
+    case 'block':
+      return new CylinderGeometry(0.12, 0.16, 0.18, 6);
+    case 'hair':
+      return new CapsuleGeometry(0.05, 0.22, 4, 8);
+    case 'nerve':
+      return new CylinderGeometry(0.05, 0.05, 0.8, 10).rotateZ(Math.PI / 2);
+    case 'glow':
+      return new SphereGeometry(0.16, 16, 12);
+    case 'dome':
+      return new SphereGeometry(0.32, 24, 12, 0, Math.PI * 2, 0, Math.PI / 3).rotateZ(-Math.PI / 2);
+    case 'lens':
+      return new SphereGeometry(0.22, 24, 16).scale(0.45, 1, 1);
+    case 'big':
+      return new SphereGeometry(0.45, 24, 16);
+    case 'shell':
+      return new SphereGeometry(0.5, 24, 16, 0, Math.PI * 2, 0, Math.PI / 3).rotateZ(Math.PI / 2);
+    case 'brain':
+      return bumpySphere(2, 0.12, 4).scale(0.35, 0.3, 0.3);
+    case 'fork':
+      return new CylinderGeometry(0.1, 0.13, 0.6, 14).rotateZ(Math.PI / 2.6);
+    case 'cluster':
+      return bumpySphere(1, 0.25, 6).scale(0.3, 0.3, 0.3);
+    case 'capillary':
+      return new TorusGeometry(0.22, 0.04, 8, 30);
+    case 'cloud':
+      return new SphereGeometry(0.2, 12, 10);
+    default:
+      return new SphereGeometry(0.14, 14, 10);
+  }
+}
+
+function PathwayView({ signal, color, focus, stations, time }: { signal: 'sound' | 'light' | 'air'; color: string; focus: SceneFocus; stations: number; time: { current: number } }) {
+  const shapes = useMemo(() => STATION_SHAPES[signal].slice(0, Math.max(1, stations)), [signal, stations]);
+  const geos = useMemo(() => shapes.map(stationGeometry), [shapes]);
+  useEffect(() => () => geos.forEach((g) => g.dispose()), [geos]);
+  const xs = useMemo(() => shapes.map((_, i) => -((shapes.length - 1) * 0.55) / 2 + i * 0.55), [shapes]);
+  const active = focus.startsWith('path:') ? Number(focus.slice(5)) : -1;
+  const pulseRef = useRef<InstancedMesh>(null);
+  const pn = 24;
+  const pGeo = useDisposable(() => (signal === 'sound' ? new TorusGeometry(0.12, 0.012, 6, 24).rotateY(Math.PI / 2) : new SphereGeometry(1, 8, 6)), [signal]);
+  const pMat = useDisposable(() => new MeshStandardMaterial({ emissive: '#ffffff', emissiveIntensity: 0.5, transparent: true, opacity: 0.85 }));
+  const c = useMemo(() => new Color(), []);
+  // Dönüşüm noktası: kulakta tüy hücresi (9), gözde fotoreseptör (6); sonrası elektrik sinyali.
+  const transduce = signal === 'sound' ? 9 : signal === 'light' ? 6 : 99;
+  useFrame(() => {
+    const t = time.current;
+    const m = pulseRef.current;
+    if (!m) return;
+    for (let k = 0; k < pn; k++) {
+      const u = (k / pn + t * 0.06) % 1;
+      const x = xs[0]! + u * (xs[xs.length - 1]! - xs[0]!);
+      const idx = Math.round(u * (xs.length - 1));
+      const electric = idx >= transduce;
+      V.set(x, Math.sin(u * 30 + k) * (signal === 'air' ? 0.12 : 0.02), signal === 'air' ? Math.cos(u * 21 + k) * 0.12 : 0);
+      TMP.position.copy(V);
+      TMP.rotation.set(0, 0, 0);
+      TMP.scale.setScalar(signal === 'sound' && !electric ? 1 + Math.sin(u * 40) * 0.2 : signal === 'air' ? 0.03 : 0.035);
+      TMP.updateMatrix();
+      m.setMatrixAt(k, TMP.matrix);
+      c.set(electric ? '#a78bfa' : signal === 'light' ? '#fff3b0' : signal === 'air' ? '#e8f4ff' : '#ffd27a');
+      m.setColorAt(k, c);
+    }
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  });
+  const ax = active >= 0 ? xs[Math.min(active, xs.length - 1)]! : 0;
+  useAim(new Vector3(ax, 0.6, active >= 0 ? 1.8 : 3.4), new Vector3(ax, 0, 0), `w${active}`);
+  return (
+    <group>
+      {geos.map((g, i) => (
+        <mesh key={i} geometry={g} position={[xs[i]!, 0, 0]}>
+          <meshStandardMaterial color={i >= transduce ? '#c9b8ef' : color} roughness={0.5} transparent opacity={shapes[i] === 'big' || shapes[i] === 'sphere' ? 0.35 : 0.92} emissive={active === i ? '#ffd27a' : '#000000'} emissiveIntensity={active === i ? 0.55 : 0} side={DoubleSide} />
+        </mesh>
+      ))}
+      <instancedMesh ref={pulseRef} args={[pGeo, pMat, pn]} frustumCulled={false} />
+    </group>
+  );
+}
+
+/* ================================================================== KÖK */
+
+function Scene({ spec, focus, mode, layers, highlightLayer, stations, playing, reducedMotion }: InteriorSceneProps) {
+  const time = useClock(playing, reducedMotion);
+  const m = mode ?? DEFAULT_MODE;
+  if (focus === 'wall' && layers?.length && (spec.kind === 'lumen' || spec.kind === 'vessel'))
+    return <WallSection layers={layers} highlight={highlightLayer} time={time} />;
+  switch (spec.kind) {
+    case 'lumen':
+      return <LumenView sp={spec} focus={focus} mode={m} time={time} />;
+    case 'vessel': {
+      const radius = spec.caliber === 'large' ? 1.4 : spec.caliber === 'medium' ? 1 : spec.caliber === 'small' ? 0.55 : 0.28;
+      return <LumenView sp={{ shape: 'tube', lining: 'smooth', content: 'blood', radius, wave: 0, flow: spec.pulse ? 1 : 0.5, color: spec.color, pulse: spec.pulse }} focus={focus} mode={{ ...m, content: spec.caliber === 'capillary' ? 0.15 : 0.7, motion: 0.6 }} time={time} />;
+    }
+    case 'chambers':
+      return <ChambersView focus={focus} time={time} />;
+    case 'parenchyma':
+      return <ParenchymaView unit={spec.unit} color={spec.color} focus={focus} time={time} />;
+    case 'pathway':
+      return <PathwayView signal={spec.signal} color={spec.color} focus={focus} stations={stations ?? STATION_SHAPES[spec.signal].length} time={time} />;
+  }
+}
+
+export default function InteriorScene(props: InteriorSceneProps) {
+  const lumenLike = props.spec.kind === 'lumen' || props.spec.kind === 'vessel';
+  const bg = props.theme === 'light' ? '#efe7e3' : lumenLike ? '#1a0c0f' : '#0d1117';
+  const fogColor = lumenLike ? (props.theme === 'light' ? '#d9c3bf' : '#2a1014') : bg;
+  return (
+    <Canvas
+      frameloop={props.playing ? 'always' : 'demand'}
+      dpr={Math.min(window.devicePixelRatio || 1, 1.5)}
+      gl={{ antialias: true, powerPreference: 'low-power' }}
+      camera={{ fov: lumenLike ? 70 : 42, near: 0.01, far: 60, position: [0, 0, 4] }}
+      onCreated={({ gl }) => {
+        gl.domElement.setAttribute('role', 'img');
+        gl.domElement.setAttribute('aria-label', 'Organın içinin eğitimsel 3B canlandırması. Aynı bilgi aşağıdaki basamaklarda yazılı olarak da var.');
+      }}
+    >
+      <color attach="background" args={[bg]} />
+      {lumenLike && props.focus !== 'wall' && <fog attach="fog" args={[fogColor, 1.5, 9]} />}
+      <ambientLight intensity={props.theme === 'light' ? 0.75 : 0.45} />
+      <directionalLight position={[2, 3, 2]} intensity={0.9} />
+      <pointLight position={[0, 0, 0.5]} intensity={lumenLike ? 3 : 1} distance={10} decay={1.3} color="#ffe8e0" />
+      <Scene {...props} />
+      <OrbitControls makeDefault enablePan={false} enableDamping dampingFactor={0.12} rotateSpeed={0.6} minDistance={0.05} maxDistance={8} />
+    </Canvas>
+  );
+}

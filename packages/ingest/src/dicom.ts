@@ -12,6 +12,8 @@
  * Diğer sıkıştırmalar (JPEG 2000, JPEG-LS, JPEG Lossless) tanınır ama çözülmez; kullanıcıya açıkça söylenir.
  */
 
+import type { PixelTextScan } from './burnedIn';
+
 export class DicomError extends Error {
   constructor(
     readonly code: 'NOT_DICOM' | 'CORRUPT' | 'UNSUPPORTED',
@@ -31,6 +33,7 @@ export interface PixelLocation {
   fragments?: Array<{ offset: number; length: number }>;
   offsetTable?: number[];
 }
+
 
 export interface DicomInfo {
   transferSyntax: string;
@@ -789,22 +792,29 @@ export function summarizeDicom(info: DicomInfo): DicomSummary {
 export const SECONDARY_CAPTURE_SOP = '1.2.840.10008.5.1.4.1.1.7';
 
 export interface BurnedInRisk {
-  /** yes: başlık "var" diyor · possible: ikincil yakalama / ekran görüntüsü · no: başlık "yok" diyor · unknown: bilgi yok */
+  /** yes: başlık "var" diyor · possible: ikincil yakalama / ekran görüntüsü ya da piksel kontrolünde yazı benzeri alan · no: başlık "yok" diyor · unknown: bilgi yok */
   level: 'yes' | 'possible' | 'no' | 'unknown';
   reason: string;
+  /** Piksel kontrolü yapıldıysa sonucu (yazı okunmaz; yalnızca yazı benzeri alanlar). */
+  pixel?: PixelTextScan;
 }
 
 /**
  * Görüntünün piksellerine yazı (ad, tarih, kurum) yakılmış olabilir mi? Başlık temizliği bunu
- * SİLEMEZ. (0028,0301) "YES" ise kesin; ikincil yakalama (SC) ya da DERIVED\SECONDARY görüntülerde
- * olasıdır (ekran görüntüsü, rapor sayfası). Bu bilgiye göre arayüz ve dışa aktarma uyarır.
+ * SİLEMEZ. İki kaynak birlikte değerlendirilir: (1) META VERİ — (0028,0301) "YES" ise kesin; ikincil
+ * yakalama (SC) ya da DERIVED\SECONDARY görüntülerde olasıdır; (2) PİKSEL — köşelerde/kenar şeritlerinde
+ * yazıya benzeyen alan (scanBurnedInText). Başlık "NO" dese bile piksellerde yazı benzeri alan varsa
+ * "olası" denir: başlık yanlış olabilir.
  */
-export function burnedInRisk(info: Pick<DicomInfo, 'burnedInAnnotation' | 'sopClassUid' | 'imageType'>): BurnedInRisk {
-  if (info.burnedInAnnotation === 'YES') return { level: 'yes', reason: 'DICOM başlığı (0028,0301) görüntünün içine yazı yakıldığını bildiriyor; bu yazılar başlık temizliğiyle silinemez.' };
+export function burnedInRisk(info: Pick<DicomInfo, 'burnedInAnnotation' | 'sopClassUid' | 'imageType'>, pixel?: PixelTextScan): BurnedInRisk {
+  const px = pixel ? { pixel } : {};
+  const detected = pixel?.status === 'detected';
+  if (info.burnedInAnnotation === 'YES') return { level: 'yes', reason: `DICOM başlığı (0028,0301) görüntünün içine yazı yakıldığını bildiriyor; bu yazılar başlık temizliğiyle silinemez.${detected ? ` ${pixel!.reason}` : ''}`, ...px };
   const secondary = info.sopClassUid?.startsWith(SECONDARY_CAPTURE_SOP) || /\bSECONDARY\b/.test(info.imageType ?? '');
-  if (secondary) return { level: 'possible', reason: 'İkincil yakalama (ekran görüntüsü / türetilmiş görüntü): görüntünün içinde hasta adı, tarih ya da kurum yazısı olabilir.' };
-  if (info.burnedInAnnotation === 'NO') return { level: 'no', reason: 'DICOM başlığı (0028,0301) görüntüye yazı yakılmadığını bildiriyor.' };
-  return { level: 'unknown', reason: 'Başlıkta bilgi yok; görüntünün köşelerinde yazı olup olmadığını kendin kontrol et.' };
+  if (secondary) return { level: 'possible', reason: `İkincil yakalama (ekran görüntüsü / türetilmiş görüntü): görüntünün içinde hasta adı, tarih ya da kurum yazısı olabilir.${detected ? ` ${pixel!.reason}` : ''}`, ...px };
+  if (detected) return { level: 'possible', reason: `${pixel!.reason}${info.burnedInAnnotation === 'NO' ? ' DICOM başlığı yazı olmadığını bildiriyor; ancak piksel kontrolü yazıya benzer alan buldu.' : ''}`, ...px };
+  if (info.burnedInAnnotation === 'NO') return { level: 'no', reason: `DICOM başlığı (0028,0301) görüntüye yazı yakılmadığını bildiriyor.${pixel?.status === 'none' ? ' Piksel kontrolünde de yazı benzeri alan bulunmadı.' : ''}`, ...px };
+  return { level: 'unknown', reason: pixel?.status === 'none' ? `Başlıkta bilgi yok. ${pixel.reason}` : 'Başlıkta bilgi yok; görüntünün köşelerinde yazı olup olmadığını kendin kontrol et.', ...px };
 }
 
 // ---------------------------------------------------------------------------------------------

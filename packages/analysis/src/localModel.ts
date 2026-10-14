@@ -6,13 +6,14 @@
  *              → anatomi (bilgi grafiği) → fizyoloji (akışlar)
  *
  * Model dosyası (.onnx) ve manifest (JSON) kullanıcının cihazına yüklenir; HİÇBİR görüntü ve veri
- * cihaz dışına gönderilmez (uzak servis yok). Depoda gerçek bir tıbbi model ağırlığı YOKTUR: model
- * kurulmadıkça her şey "bu cihazda tıbbi AI modeli bulunmuyor" der ve hiçbir bulgu üretilmez.
+ * cihaz dışına gönderilmez (uzak servis yok). Uygulamayla gelen gerçek modeller (BT/MR bölütleme,
+ * BT patoloji, göğüs röntgeni) ai-models/ altında SHA-256 ile doğrulanır; modeli olmayan modalitede
+ * "Bu modalite için kurulu doğrulanmış model yok." yazar ve hiçbir bulgu üretilmez.
  *
  * Bu dosya saf TypeScript'tir (tarayıcı/Node); çıkarım motorunu (ONNX Runtime Web) uygulama
  * `EngineFactory` olarak verir. Böylece ön/son işleme ve sağlayıcı mantığı motor olmadan test edilir.
  */
-import { type ModelFinding, type MedicalImageAIProvider, type ProviderOutput, type StudyAnalysis, type StudyInput, UnavailableImageProvider } from './medicalAI';
+import { type ModelFinding, type MedicalImageAIProvider, type ProviderOutput, type StudyAnalysis, type StudyInput, UnavailableImageProvider, enforceLocalization } from './medicalAI';
 import { GRAPH } from './knowledge';
 import { type Modality, type ModelVersion, type RasterImage, score } from './types';
 import type { VolumeSpec } from './volumeModel';
@@ -104,7 +105,7 @@ export interface ModelManifest {
   upstream?: { weights: string; weightsSha256: string };
 }
 
-const MODALITIES: ReadonlySet<string> = new Set(['MRI', 'CT', 'XRAY', 'ULTRASOUND', 'DOPPLER', 'MAMMOGRAPHY', 'PET', 'PET_CT', 'SPECT', 'FLUOROSCOPY', 'ECHOCARDIOGRAPHY', 'ENDOSCOPY', 'COLONOSCOPY', 'DERMOSCOPY', 'DENTAL', 'FUNDUS', 'PATHOLOGY', 'MICROSCOPY', 'ECG']);
+const MODALITIES: ReadonlySet<string> = new Set(['MRI', 'CT', 'XRAY', 'ULTRASOUND', 'DOPPLER', 'MAMMOGRAPHY', 'PET', 'PET_CT', 'SPECT', 'FLUOROSCOPY', 'ECHOCARDIOGRAPHY', 'ENDOSCOPY', 'COLONOSCOPY', 'DERMOSCOPY', 'DENTAL', 'FUNDUS', 'PATHOLOGY', 'MICROSCOPY', 'ECG', 'ANGIOGRAPHY', 'DEXA', 'OCT']);
 
 /** Manifest doğrulama: eksik/yanlış alanlar açıkça listelenir; doğrulanmamış model yüklenmez. */
 export function validateManifest(json: unknown): { ok: true; manifest: ModelManifest } | { ok: false; errors: string[] } {
@@ -374,7 +375,7 @@ export function postprocess(outputs: Record<string, Tensor>, manifest: ModelMani
   } else {
     throw new Error('3B hacim modeli tek görüntüde çalıştırılmaz; seri (DICOM) gerekir.');
   }
-  return out;
+  return out.map((f) => enforceLocalization(manifest.task, f));
 }
 
 /**
@@ -436,6 +437,7 @@ export function modelVersionOf(m: ModelManifest): ModelVersion & { sha256: strin
  */
 export class LocalModelProvider implements MedicalImageAIProvider {
   readonly sendsDataOffDevice = false;
+  readonly task: ModelTask;
   readonly id: string;
   readonly label: string;
   readonly modalities: readonly Modality[];
@@ -449,6 +451,7 @@ export class LocalModelProvider implements MedicalImageAIProvider {
     private readonly loadBytes: () => Promise<Uint8Array>,
     private readonly createEngine: EngineFactory,
   ) {
+    this.task = manifest.task;
     this.id = `local:${manifest.id}`;
     this.label = `${manifest.name} ${manifest.version} (cihazda)`;
     this.modalities = manifest.modalities;
@@ -544,6 +547,12 @@ export const CAPABILITY_MODALITIES: Array<{ modality: Modality; label: string }>
   { modality: 'ENDOSCOPY', label: 'Endoskopi' },
   { modality: 'FUNDUS', label: 'Fundus' },
   { modality: 'DENTAL', label: 'Diş' },
+  { modality: 'COLONOSCOPY', label: 'Kolonoskopi' },
+  { modality: 'OCT', label: 'OCT' },
+  { modality: 'PET_CT', label: 'PET/BT' },
+  { modality: 'DEXA', label: 'DEXA' },
+  { modality: 'ANGIOGRAPHY', label: 'Anjiyografi' },
+  { modality: 'FLUOROSCOPY', label: 'Floroskopi' },
 ];
 
 const PRECHECK: Partial<Record<Modality, string>> = {

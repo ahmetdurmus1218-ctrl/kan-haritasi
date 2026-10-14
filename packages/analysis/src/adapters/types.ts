@@ -25,7 +25,7 @@ export interface ImageAnalysisAdapter {
 /** Bildirilen yeteneklerden bu çalıştırmanın durumunu üretir. */
 export function capabilityStatus(adapter: Pick<ImageAnalysisAdapter, 'capabilities'>, done: Record<string, { ok: boolean; detail?: string }> = {}): Capability[] {
   return adapter.capabilities.map((c) => {
-    if (!c.implemented) return { ...c, status: 'not-implemented' as const, detail: 'Bu kurulumda tıbbi görüntü modeli yok.' };
+    if (!c.implemented) return { ...c, status: 'not-implemented' as const, detail: 'Bu modalite için kurulu doğrulanmış model yok.' };
     const d = done[c.key];
     return { ...c, status: d?.ok ? ('done' as const) : ('not-possible' as const), ...(d?.detail ? { detail: d.detail } : {}) };
   });

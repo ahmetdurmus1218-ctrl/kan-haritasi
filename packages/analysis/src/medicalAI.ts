@@ -77,12 +77,40 @@ export interface StudyAnalysis {
   measurements: StructureMeasurement[];
 }
 
+/** Model çıktı görevi (manifest.task ile aynı değerler). */
+export type ModelOutputTask = 'detection' | 'segmentation' | 'classification' | 'multilabel' | 'segmentation-3d';
+
+/**
+ * Görev → üretebileceği konum türleri. KOD DÜZEYİNDE zorunludur: sınıflandırma (classification /
+ * multilabel) koordinat, kutu, maske ya da 3B lezyon ÜRETEMEZ; tespit gerçek kutu/nokta, 2B bölütleme
+ * gerçek piksel maskesi, 3B bölütleme gerçek voksel maskesi üretebilir.
+ */
+export const ALLOWED_LOCALIZATION: Readonly<Record<ModelOutputTask, ReadonlyArray<Localization['kind']>>> = {
+  classification: ['region-only', 'none'],
+  multilabel: ['region-only', 'none'],
+  detection: ['pixel', 'point', 'region-only', 'none'],
+  segmentation: ['pixel', 'region-only', 'none'],
+  'segmentation-3d': ['volume', 'region-only', 'none'],
+};
+
+export const LOCALIZATION_REMOVED = 'Bu model görevi (sınıflandırma/tespit/bölütleme) bu türde konum üretemez; konum kaldırıldı (sahte konum gösterilmez).';
+
+/** Görevin üretemeyeceği bir konum gelirse (hatalı sağlayıcı/manifest) konum kaldırılır ve bu yazılır. */
+export function enforceLocalization<T extends { localization: Localization; limitations?: string[] }>(task: ModelOutputTask, f: T): T {
+  const L = f.localization;
+  const allowed = ALLOWED_LOCALIZATION[task].includes(L.kind) && !(task === 'segmentation' && L.kind === 'pixel' && !L.mask);
+  if (allowed) return f;
+  return { ...f, localization: { kind: 'region-only' }, limitations: [...(f.limitations ?? []), LOCALIZATION_REMOVED] };
+}
+
 export interface MedicalImageAIProvider {
   id: string;
   label: string;
   modalities: readonly Modality[];
   /** Veri cihaz dışına gidiyor mu? Her zaman false olmalı; true olan sağlayıcı reddedilir. */
   sendsDataOffDevice: boolean;
+  /** Modelin çıktı görevi; verilirse konum türü bu göreve göre zorunlu tutulur (ALLOWED_LOCALIZATION). */
+  task?: ModelOutputTask;
   /** Yapılandırılmış ve kullanılabilir mi? */
   available(): boolean;
   analyzeStudy(input: StudyInput): Promise<ProviderOutput<StudyAnalysis>>;
@@ -96,17 +124,18 @@ export interface MedicalImageAIProvider {
   compareStudies(previous: StudyInput, current: StudyInput): Promise<ProviderOutput<ModelComparison[]>>;
 }
 
-export type ProviderGroup = 'mri' | 'ct' | 'xray' | 'ultrasound' | 'mammography' | 'pathology' | 'ecg' | 'endoscopy';
+export type ProviderGroup = 'mri' | 'ct' | 'xray' | 'ultrasound' | 'mammography' | 'pathology' | 'ecg' | 'endoscopy' | 'ophthalmic';
 
 export const GROUP_MODALITIES: Record<ProviderGroup, readonly Modality[]> = {
   mri: ['MRI'],
   ct: ['CT', 'PET_CT'],
-  xray: ['XRAY', 'FLUOROSCOPY'],
+  xray: ['XRAY', 'FLUOROSCOPY', 'ANGIOGRAPHY', 'DEXA'],
   ultrasound: ['ULTRASOUND', 'DOPPLER', 'ECHOCARDIOGRAPHY'],
   mammography: ['MAMMOGRAPHY'],
   pathology: ['PATHOLOGY', 'MICROSCOPY'],
   ecg: ['ECG'],
   endoscopy: ['ENDOSCOPY', 'COLONOSCOPY'],
+  ophthalmic: ['FUNDUS', 'OCT'],
 };
 
 const GROUP_LABEL: Record<ProviderGroup, string> = {
@@ -118,6 +147,7 @@ const GROUP_LABEL: Record<ProviderGroup, string> = {
   pathology: 'Patoloji morfoloji modeli',
   ecg: 'EKG yorum modeli',
   endoscopy: 'Endoskopi modeli',
+  ophthalmic: 'Göz (fundus / OCT) modeli',
 };
 
 /** Gerçek modeli olmayan modalite grubu: her yöntem dürüstçe "yok" der, hiçbir şey uydurmaz. */
@@ -128,7 +158,7 @@ export class UnavailableImageProvider implements MedicalImageAIProvider {
   constructor(
     readonly id: string,
     group: ProviderGroup,
-    private readonly reason = 'Bu kurulumda tıbbi görüntü modeli yok.',
+    private readonly reason = 'Bu modalite için kurulu doğrulanmış model yok.',
   ) {
     this.modalities = GROUP_MODALITIES[group];
     this.label = GROUP_LABEL[group];
@@ -273,7 +303,9 @@ export async function runMedicalImageModel(
     const detected = await withTimeout(provider.detectFindings(input));
     if (detected.status !== 'ok') return { status: 'unavailable', reason: detected.reason };
     const localized = await withTimeout(provider.localizeFindings(input, detected.value));
-    const list = localized.status === 'ok' ? localized.value : detected.value;
+    const raw = localized.status === 'ok' ? localized.value : detected.value;
+    const task = provider.task;
+    const list = task ? raw.map((f) => enforceLocalization(task, f)) : raw;
     const at = (opts.now?.() ?? new Date()).toISOString();
     const provenanceFor = (f: ModelFinding): Provenance => {
       const frame = f.localization.kind === 'pixel' || f.localization.kind === 'point' ? f.localization.frame : undefined;

@@ -1,13 +1,13 @@
 /**
  * "Yerel tıbbi görüntü modelleri": kullanıcı cihazındaki bir ONNX modelini manifestiyle kurar. Model
- * cihazda çalışır; görüntüler ve sağlık verisi hiçbir yere gönderilmez. Uygulama kendi içinde gerçek
- * bir tıbbi model ağırlığı İÇERMEZ; kurulu model yoksa her modalite için bunu açıkça gösterir.
+ * cihazda çalışır; görüntüler ve sağlık verisi hiçbir yere gönderilmez. Uygulamayla gelen doğrulanmış
+ * modeller ayrıca listelenir; modeli olmayan her modalite için bu açıkça gösterilir.
  */
 import { useEffect, useRef, useState } from 'react';
 import { CAPABILITY_MODALITIES, type ModelManifest, capabilitiesFor, spacingLabel } from '@kh/analysis';
 import { formatBytes, formatDateTime } from '../lib/format';
 import { type PackInfo, importModelFiles, loadPacks, removeModel, setModelEnabled, useAllModels } from '../lib/localModels/store';
-import { MODEL_INVENTORY } from '../lib/localModels/inventory';
+import { INVENTORY_ACCESS_NOTE, MODEL_INVENTORY } from '../lib/localModels/inventory';
 import { SpinnerIcon, TrashIcon, UploadIcon } from './icons';
 
 const TASK_TR: Record<string, string> = {
@@ -189,6 +189,7 @@ export function LocalModels() {
       <details className="rounded-xl border border-ink-600/60 p-3 text-sm" data-testid="model-inventory">
         <summary className="cursor-pointer font-medium text-fg">Model envanteri: araştırılıp eklenemeyenler · {MODEL_INVENTORY.length}</summary>
         <p className="mt-1 text-xs text-fg-muted">Bu modaliteler/görevler için gerçek modeller arandı; aşağıdaki nedenlerle eklenmedi. Bu alanlarda uygulama "model yok" der, sonuç uydurmaz.</p>
+        <p className="mt-1 text-xs text-fg-faint" data-testid="inventory-access-note">{INVENTORY_ACCESS_NOTE}</p>
         <ul className="mt-2 space-y-1.5">
           {MODEL_INVENTORY.map((e) => (
             <li key={`${e.modality}-${e.task}`} className="rounded-lg border border-ink-600/60 px-2.5 py-2 text-xs" data-testid="inventory-entry">
