@@ -1,30 +1,8 @@
 workflow: CI
-run: 38519210374
-sha: 4bb3f937c938a8e0ff164e664eca6201e2846abd
+run: 38519106354
+sha: 8df0b5f187a172face21609f138a71773146ce15
 conclusion: success
 
-dependencies: success
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-web: success
-  - Set up job: success
-  - Run actions/checkout@v4: success
-  - Run pnpm/action-setup@v4: success
-  - Run actions/setup-node@v4: success
-  - Run pnpm install --frozen-lockfile: success
-  - Lint (güvenlik kuralları dahil): success
-  - Tip denetimi: success
-  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
-  - Derleme: success
-  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
-  - Post Run actions/setup-node@v4: success
-  - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
 e2e: success
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -49,6 +27,28 @@ e2e: success
   - Post Run actions/setup-python@v5: success
   - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
+web: success
+  - Set up job: success
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Lint (güvenlik kuralları dahil): success
+  - Tip denetimi: success
+  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
+  - Derleme: success
+  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
+  - Post Run actions/setup-node@v4: success
+  - Post Run pnpm/action-setup@v4: success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
+dependencies: success
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
