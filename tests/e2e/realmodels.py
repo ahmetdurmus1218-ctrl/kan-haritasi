@@ -1,6 +1,6 @@
 """Uçtan uca: GERÇEK yerel tıbbi modeller (uygulamayla gelir, cihazda çalışır), gerçek görüntülerle.
 
-  A — Model deposu: 5 gerçek model; lisans, kaynak, SHA-256, cihaz, sınırlar; uygulamayla gelenler kaldırılamaz.
+  A — Model deposu: 6 gerçek model; lisans, kaynak, SHA-256, cihaz, sınırlar; uygulamayla gelenler kaldırılamaz.
   B — Röntgen (NIH ChestX-ray14 örneği) → TorchXRayVision sınıflandırıcı → skorlar, kardiyomegali bulgusu
       (konum yok: yalnızca organ), köken (SHA-256), organ sayfası.
   C — BT serisi (TotalSegmentator örneği, DICOM) → patoloji modeli önce anatomi ister → 3B anatomi bölütleme
@@ -83,9 +83,9 @@ with sync_playwright() as p:
     page.goto(URL + "#/gizlilik")
     page.get_by_test_id("model-card").first.wait_for()
     cards = page.get_by_test_id("model-card")
-    check(cards.count() == 5, f"A: uygulamayla gelen 5 gerçek model ({cards.count()})")
+    check(cards.count() == 6, f"A: uygulamayla gelen 6 gerçek model ({cards.count()})")
     store = page.get_by_role("list", name="Kurulu modeller").inner_text()
-    for mid in ["totalseg-ct-total-3mm", "totalseg-mr-total-3mm", "xrv-densenet121-nih", "totalseg-ct-kidney-cysts", "totalseg-ct-effusion"]:
+    for mid in ["totalseg-ct-total-3mm", "totalseg-mr-total-3mm", "xrv-densenet121-nih", "totalseg-ct-kidney-cysts", "totalseg-ct-effusion", "totalseg-ct-liver-segments"]:
         m = manifest(mid)
         check(m["name"] in store and m["sha256"] in store, f"A: {mid}: ad ve SHA-256 görünür")
     check(store.count("Apache-2.0") >= 5, "A: her modelin lisansı yazıyor (Apache-2.0)")

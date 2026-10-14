@@ -77,7 +77,7 @@ with sync_playwright() as p:
     page.goto(URL + "#/gizlilik")
     page.get_by_test_id("model-card").first.wait_for()
     BUNDLED = page.get_by_test_id("model-card").count()
-    check(BUNDLED == 5, f"uygulamayla gelen 5 gerçek model listelendi ({BUNDLED})")
+    check(BUNDLED == 6, f"uygulamayla gelen 6 gerçek model listelendi ({BUNDLED})")
     caps = page.locator("details", has_text="Bu cihazda neler yapılabiliyor?")
     caps.locator("summary").click()
     ct = caps.inner_text()
