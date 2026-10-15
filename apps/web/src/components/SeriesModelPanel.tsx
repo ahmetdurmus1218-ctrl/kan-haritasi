@@ -10,7 +10,7 @@ import { GRAPH, type ModelManifest, type Spacing, encodeRle, findingClass, spaci
 import type { DicomInfo } from '@kh/ingest';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { go } from '../state/router';
-import { insideRoute, routeForNode } from '../lib/anatomyNav';
+import { deepRoute, insideRoute } from '../lib/anatomyNav';
 import { type VolumeJobProgress, runVolumeAnalysis } from '../lib/analysisBridge';
 import { type StoredVolume, savePathologyVolume, saveVolume } from '../lib/imagingRecords';
 import { type StoredModel, useLocalModels } from '../lib/localModels/store';
@@ -251,7 +251,7 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
                               <button type="button" className="text-xs text-accent underline" onClick={() => go(insideRoute(node))} data-testid="structure-inside">
                                 İçine gir
                               </button>
-                              <button type="button" className="text-xs text-accent underline" onClick={() => go(routeForNode(node))} data-testid="structure-anatomy">
+                              <button type="button" className="text-xs text-accent underline" onClick={() => go(deepRoute(node))} data-testid="structure-anatomy">
                                 Anatomide konumu
                               </button>
                             </>
@@ -324,7 +324,7 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
                             <button type="button" className="text-xs text-accent underline" onClick={() => go(insideRoute(x.node!))}>
                               İçine gir
                             </button>
-                            <button type="button" className="text-xs text-accent underline" onClick={() => go(routeForNode(x.node!))} data-testid="cascade-anatomy">
+                            <button type="button" className="text-xs text-accent underline" onClick={() => go(deepRoute(x.node!))} data-testid="cascade-anatomy">
                               Anatomide konumu
                             </button>
                           </>

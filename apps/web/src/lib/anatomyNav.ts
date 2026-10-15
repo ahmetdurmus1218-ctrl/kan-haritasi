@@ -23,7 +23,11 @@ export function routeForNode(id: string): Route {
  */
 export function insideRoute(id: string): Route {
   const def = interiorFor(id);
-  if (def) return { name: 'interior', id: def.organId };
+  return def ? { name: 'interior', id: def.organId } : deepRoute(id);
+}
+
+/** "Anatomide konumu": düğümün derin anatomi görünümü (organ düğümünde de organ özeti yerine derin görünüm). */
+export function deepRoute(id: string): Route {
   const r = routeForNode(id);
   return r.name === 'organ' && !r.view ? { name: 'organ', id: r.id, view: 'derin', trail: [] } : r;
 }
