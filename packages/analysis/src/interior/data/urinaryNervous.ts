@@ -237,6 +237,12 @@ export const NERVOUS: OrganInteriorDefinition[] = [
     anchor: 'tissue.cortical-layers',
     structure: 'brain',
     interiorScene: { kind: 'parenchyma', unit: 'layers', color: '#b9868d', inflow: 'Pial arterler', outflow: 'Pial venler' },
+    functionalRegions: [
+      { id: 'frontal', name: 'Ön (frontal) korteks', text: 'Planlama, karar, istemli hareket (motor korteks).' },
+      { id: 'parietal', name: 'Parietal korteks', text: 'Dokunma, ağrı ve vücut konumu (somatosensoriyel).' },
+      { id: 'temporal', name: 'Temporal korteks', text: 'İşitme, dil anlama ve bellek.' },
+      { id: 'occipital', name: 'Oksipital korteks', text: 'Görme.' },
+    ],
     wallLayers: [
       { id: 'l1', name: 'I · moleküler', text: 'Az hücre, çok lif.' },
       { id: 'l23', name: 'II–III', text: 'Korteks içi bağlantılar.' },
@@ -310,6 +316,12 @@ export const NERVOUS: OrganInteriorDefinition[] = [
     anchor: 'brain.cerebellum',
     structure: 'brain',
     interiorScene: { kind: 'parenchyma', unit: 'layers', color: '#c8a08a', inflow: 'Serebellar arterler', outflow: 'Serebellar venler' },
+    functionalRegions: [
+      { id: 'vermis', name: 'Vermis', text: 'Gövde dengesi ve duruş.' },
+      { id: 'hemispheres', name: 'Hemisferler', text: 'Kol ve bacak hareketlerinin zamanlaması.' },
+      { id: 'flocculonodular', name: 'Flokülonodüler lob', text: 'Denge ve göz hareketleri.' },
+      { id: 'nuclei', name: 'Derin çekirdekler', text: 'Beyinciğin çıkış istasyonları.' },
+    ],
     wallLayers: [
       { id: 'molecular', name: 'Moleküler katman', text: 'Paralel lifler ve Purkinje dendritleri.' },
       { id: 'purkinje', name: 'Purkinje katmanı', text: 'Tek sıra büyük Purkinje hücreleri.' },
@@ -360,7 +372,14 @@ export const NERVOUS: OrganInteriorDefinition[] = [
     system: 'nervous',
     summary: 'Beyin/omurilik ile kaslar, deri ve organlar arasında sinyal taşıyan akson demetleri.',
     structure: 'nerves',
+    aliases: ['nerve.vagus', 'nerve.sympathetic', 'nerve.enteric', 'nerve.pelvic-splanchnic', 'nerve.cochlear', 'nerve.vestibular', 'nerve.phrenic'],
     interiorScene: { kind: 'parenchyma', unit: 'fascicles', color: '#efe4c8', inflow: 'Vasa nervorum', outflow: 'Venler' },
+    functionalRegions: [
+      { id: 'motor', name: 'Motor lifler', text: 'Omurilikten kaslara komut taşır.' },
+      { id: 'sensory', name: 'Duyu lifleri', text: 'Deri, kas ve organlardan omuriliğe bilgi taşır.' },
+      { id: 'autonomic', name: 'Otonom lifler', text: 'Damar, ter bezi ve organları yönetir.' },
+      { id: 'nodes', name: 'Ranvier düğümleri', text: 'Sinyalin miyelin aralarında atlayarak hızlandığı noktalar.' },
+    ],
     wallLayers: [
       { id: 'epineurium', name: 'Epinöryum', text: 'Siniri saran dış kılıf.' },
       { id: 'perineurium', name: 'Perinöryum', text: 'Her demeti (fasikül) saran kılıf.' },
@@ -478,6 +497,12 @@ export const ENDOCRINE: OrganInteriorDefinition[] = [
     summary: 'Böbreklerin üstündeki iki katmanlı bez: kabuk kortizol ve aldosteron, öz adrenalin üretir.',
     structure: 'adrenals',
     interiorScene: { kind: 'parenchyma', unit: 'layers', color: '#d4a24f', inflow: 'Adrenal arterler', outflow: 'Adrenal ven' },
+    functionalRegions: [
+      { id: 'glomerulosa', name: 'Zona glomerulosa', text: 'Aldosteron: tuz ve su dengesi.' },
+      { id: 'fasciculata', name: 'Zona fasciculata', text: 'Kortizol: stres ve şeker dengesi.' },
+      { id: 'reticularis', name: 'Zona reticularis', text: 'Zayıf androjenler (DHEA).' },
+      { id: 'medulla', name: 'Medulla', text: 'Adrenalin ve noradrenalin: ani stres yanıtı.' },
+    ],
     wallLayers: [
       { id: 'capsule', name: 'Kapsül', text: 'Dış kılıf.' },
       { id: 'zg', name: 'Glomeruloza', text: 'Aldosteron (tuz–su).', node: 'mol.aldosterone' },
@@ -538,6 +563,9 @@ export const ENDOCRINE: OrganInteriorDefinition[] = [
     stages: [
       st('parenchyma', 'parenchyma', 'interior', 'Gonadın içi', 'Yumurtalıkta foliküller, testiste kıvrımlı kanalcıklar ve aralarında hormon hücreleri.', { focus: 'units' }),
       st('axis', 'process', 'interior', 'Hormon ekseni', 'Hipofizin FSH ve LH\'si gonadları uyarır; cinsiyet hormonları geri bildirimle hipofizi baskılar.', { focus: 'secrete', biomarkers: ['fsh', 'lh', 'estradiol', 'testosterone'], next: [{ to: 'ovaries', label: 'Yumurtalığa git' }, { to: 'testes', label: 'Testise git' }, { to: 'pituitary', label: 'Hipofize git' }] }),
+      st('blood', 'flow', 'interior', 'Kanlanma ve hormonun dolaşıma çıkışı', 'Gonad arterleri doğrudan aorttan çıkar; yapılan hormonlar gonad venleriyle tüm vücuda dağılır.', { focus: 'flow' }),
+      st('gametes', 'process', 'interior', 'Üreme hücresi yapımı', 'Yumurtalıkta her döngüde bir folikül olgunlaşıp yumurtlar; testiste kanalcıklarda her gün milyonlarca sperm yapılır.', { focus: 'units' }),
+      st('hormone-cells', 'cell', 'cell', 'Hormon üreten hücreler', 'Teka ve granüloza hücreleri (östradiol, progesteron) ile Leydig hücreleri (testosteron) kolesterolden steroid hormon yapar.', { biomarkers: ['estradiol', 'testosterone'] }),
     ],
   },
 ];

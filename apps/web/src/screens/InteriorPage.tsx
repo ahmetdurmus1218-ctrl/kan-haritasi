@@ -13,13 +13,16 @@
  */
 import { Suspense, lazy, useMemo, useState } from 'react';
 import {
+  ARCHETYPE_TR,
   EDUCATIONAL_LABEL,
   GRAPH,
   INTERIOR_TYPE_TR,
   type OrganInteriorDefinition,
   SCALE_TR,
   SIMULATION_LABEL,
+  interiorArchetype,
   interiorById,
+  interiorExperience,
   interiorFor,
   interiorModes,
   interiorPersonal,
@@ -63,24 +66,28 @@ function organRoute(def: OrganInteriorDefinition): Route | undefined {
   return undefined;
 }
 
-function Trail({ def, stageTitle }: { def: OrganInteriorDefinition; stageTitle?: string }) {
+/**
+ * "Şu anda neredeyim?": Vücut › Sistem › Organ › İçerisi › geçilen basamaklar (İçerik › Hareket › … › Duvar › Mukoza).
+ * Kullanıcı içeride mi, duvarda mı, hücrede mi — her an görür; her basamak tıklanabilir.
+ */
+function Trail({ def, idx, at }: { def: OrganInteriorDefinition; idx: number; at: (n: number) => void }) {
   const sys = systemOf(def.anchor ?? def.structure ?? def.organId);
   const chain = interiorTrail(def);
-  const items: Array<{ label: string; route?: Route }> = [
+  const items: Array<{ label: string; route?: Route; stage?: number }> = [
     { label: 'Vücut', route: { name: 'mybody' } },
     ...(sys ? [{ label: sys.name, route: { name: 'system', id: sys.id } as Route }] : []),
     ...chain.slice(0, -1).map((d) => ({ label: d.name, route: { name: 'interior', id: d.organId } as Route })),
     { label: def.name, route: organRoute(def) },
-    { label: 'İçerisi', route: { name: 'interior', id: def.organId } },
-    ...(stageTitle ? [{ label: stageTitle }] : []),
+    { label: 'İçerisi', stage: 0 },
+    ...def.stages.slice(1, idx + 1).map((x, k) => ({ label: x.title, stage: k + 1 })),
   ];
   return (
     <nav aria-label="Şu anda neredeyim?" className="flex flex-wrap items-center gap-1 text-xs text-fg-muted">
       {items.map((it, i) => (
         <span key={i} className="flex items-center gap-1">
           {i > 0 && <span className="text-fg-faint">›</span>}
-          {it.route && i < items.length - 1 ? (
-            <button type="button" className="min-h-[32px] hover:text-accent" onClick={() => go(it.route!)}>
+          {(it.route || it.stage !== undefined) && i < items.length - 1 ? (
+            <button type="button" className="min-h-[32px] hover:text-accent" onClick={() => (it.route ? go(it.route) : at(it.stage!))}>
               {it.label}
             </button>
           ) : (
@@ -126,14 +133,25 @@ export function InteriorPage({ id, stage, mode }: { id: string; stage?: number; 
   const last = idx === def.stages.length - 1;
   const stations = def.routes?.[0]?.steps.length;
   const organR = organRoute(def);
+  const archetype = interiorArchetype(def);
+  const insideCount = interiorExperience(def).inside.length;
+  const crossing = idx === insideCount - 1 && !last;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 md:px-8 md:py-8" data-testid="interior" data-interior={def.organId} data-type={def.type}>
+    <div
+      className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 md:px-8 md:py-8"
+      data-testid="interior"
+      data-interior={def.organId}
+      data-type={def.type}
+      data-archetype={archetype}
+      data-current-level={st.scale}
+      data-current-node={st.kind}
+    >
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="btn-ghost min-h-[40px] px-2.5 text-xs" onClick={() => (organR ? go(organR) : history.back())}>
           <ChevronLeftIcon size={14} /> {def.name}
         </button>
-        <Trail def={def} stageTitle={st.title} />
+        <Trail def={def} idx={idx} at={(n) => (setLayer(undefined), at(n))} />
       </div>
 
       <header className="space-y-1.5">
@@ -141,6 +159,9 @@ export function InteriorPage({ id, stage, mode }: { id: string; stage?: number; 
         <div className="flex flex-wrap items-center gap-1.5 text-[11.5px]">
           <span className="rounded-full border border-ink-600 px-2 py-0.5 text-fg-muted" data-testid="interior-type">
             {INTERIOR_TYPE_TR[def.type]}
+          </span>
+          <span className="rounded-full border border-ink-600 px-2 py-0.5 text-fg-muted" data-testid="interior-archetype">
+            {ARCHETYPE_TR[archetype]}
           </span>
           <span className="rounded-full border border-accent/40 bg-accent/[0.06] px-2 py-0.5 text-accent" data-testid="interior-label">
             {EDUCATIONAL_LABEL}
@@ -173,7 +194,9 @@ export function InteriorPage({ id, stage, mode }: { id: string; stage?: number; 
           <p className="p-4 text-sm text-fg-muted">Bu cihazda 3B grafik (WebGL) yok; aşağıdaki basamaklar aynı bilgiyi yazılı olarak verir.</p>
         )}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2">
-          <span className="pointer-events-auto rounded-md bg-ink-950/75 px-2 py-1 text-[11px] text-fg-muted">Eğitimsel canlandırma · temsili ölçek</span>
+          <span className="pointer-events-auto rounded-md bg-ink-950/75 px-2 py-1 text-[11px] text-fg-muted" data-testid="interior-scene-label">
+            {prov.personal3D ? 'Organ: senin görüntünden · içerisi eğitimsel' : 'Eğitimsel · Temsili anatomi'}
+          </span>
           <button type="button" className="pointer-events-auto btn-ghost min-h-[32px] bg-ink-950/75 px-2 text-[11px]" aria-pressed={playing} onClick={() => setPlaying((p) => !p)}>
             {playing ? 'Duraklat' : 'Oynat'}
           </button>
@@ -214,8 +237,13 @@ export function InteriorPage({ id, stage, mode }: { id: string; stage?: number; 
       <ol className="flex flex-wrap items-center gap-1 text-xs" aria-label="İçine gir basamakları">
         {def.stages.map((s, k) => (
           <li key={s.id} className="flex items-center gap-1">
+            {k === insideCount && (
+              <span className="ml-1 rounded-md bg-ink-800 px-1.5 py-0.5 text-[10.5px] font-medium uppercase tracking-wide text-fg-faint" data-testid="interior-deeper-divider">
+                Daha derine in
+              </span>
+            )}
             {k > 0 && <span className={`text-fg-faint ${def.stages[k - 1]!.scale !== s.scale ? 'font-semibold' : ''}`}>{def.stages[k - 1]!.scale !== s.scale ? '⟩' : '→'}</span>}
-            <button type="button" aria-current={k === idx ? 'step' : undefined} className={`min-h-[32px] rounded-full border px-2.5 ${k === idx ? 'border-accent/60 bg-accent/10 text-accent' : 'border-ink-600 text-fg-muted hover:text-fg'}`} onClick={() => (setLayer(undefined), at(k))} data-testid="interior-step" data-scale={s.scale}>
+            <button type="button" aria-current={k === idx ? 'step' : undefined} className={`min-h-[32px] rounded-full border px-2.5 ${k === idx ? 'border-accent/60 bg-accent/10 text-accent' : 'border-ink-600 text-fg-muted hover:text-fg'}`} onClick={() => (setLayer(undefined), at(k))} data-testid="interior-step" data-scale={s.scale} data-kind={s.kind}>
               {s.title}
             </button>
           </li>
@@ -293,8 +321,8 @@ export function InteriorPage({ id, stage, mode }: { id: string; stage?: number; 
           <ChevronLeftIcon size={15} /> Önceki
         </button>
         {!last ? (
-          <button type="button" className="btn-primary min-h-[44px] px-3.5 text-sm" onClick={() => (setLayer(undefined), at(idx + 1))} data-testid="interior-next-stage">
-            Sonraki · {def.stages[idx + 1]!.title} <ChevronRightIcon size={15} />
+          <button type="button" className="btn-primary min-h-[44px] px-3.5 text-sm" onClick={() => (setLayer(undefined), at(idx + 1))} data-testid="interior-next-stage" data-crossing={crossing ? 'deeper' : undefined}>
+            {crossing ? `Daha derine in · ${def.stages[idx + 1]!.title}` : `Sonraki · ${def.stages[idx + 1]!.title}`} <ChevronRightIcon size={15} />
           </button>
         ) : def.deepAnatomyEntry ? (
           <button type="button" className="btn-primary min-h-[44px] px-3.5 text-sm" onClick={() => deep(def.deepAnatomyEntry!)}>

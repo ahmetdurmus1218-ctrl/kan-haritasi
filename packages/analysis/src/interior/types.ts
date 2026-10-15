@@ -14,6 +14,18 @@
 
 export type InteriorType = 'hollow' | 'solid' | 'vascular' | 'tubular' | 'compound';
 
+/**
+ * Deneyim kalıbı (İçine gir'in ilk sahnesinin ne olacağı). Organın gerçek anatomisine göre seçilir;
+ * kalıp değişse de deneyim mantığı aynıdır: önce organın KENDİ iç dünyası, sonra (isteğe bağlı) duvar → doku → hücre → molekül.
+ *   hollow    lümen → içerik → hareket → işlev → duvar
+ *   solid     parankim → fonksiyonel bölgeler → kan/işlev süreci → mikroanatomi
+ *   vascular  lümen → kan akışı → kan hücreleri → damar duvarı
+ *   chamber   odacıklar → akış → kapaklar → işlev → duvar (kalp)
+ *   airway    hava yolu → hava akışı → gaz değişimi → doku
+ *   sensory   uyaranın yolu (ışık / ses / denge) → algılayıcı hücre → sinir
+ */
+export type InteriorArchetype = 'hollow' | 'solid' | 'vascular' | 'chamber' | 'airway' | 'sensory';
+
 /** Ölçek merdiveni (§43): WHOLE BODY → SYSTEM → ORGAN → ORGAN INTERIOR → REGION → TISSUE → CELL → MOLECULE. */
 export type InteriorScale = 'interior' | 'region' | 'tissue' | 'cell' | 'molecule';
 export const SCALE_LEVEL: Record<'body' | 'system' | 'organ' | InteriorScale, number> = { body: 0, system: 1, organ: 2, interior: 3, region: 4, tissue: 5, cell: 6, molecule: 7 };
@@ -91,6 +103,8 @@ export interface OrganInteriorDefinition {
   organId: string;
   name: string;
   type: InteriorType;
+  /** Deneyim kalıbı; verilmezse türden ve sahneden türetilir (interiorArchetype). */
+  archetype?: InteriorArchetype;
   /** Katalog sistemi (sindirim, dolaşım…). */
   system: string;
   summary: string;

@@ -3,7 +3,7 @@
  * Pankreas › Sonuçlar · Görüntüler · Bulgular · Fizyoloji · Zaman çizelgesi bağlantıları çıkar; derin
  * özelliklere ana gezinmeyi büyütmeden ulaşılır. Sağlık verisi aranmaz (yalnızca adlar).
  */
-import { FLOWS, GRAPH } from '@kh/analysis';
+import { FLOWS, GRAPH, interiorFor } from '@kh/analysis';
 import { STRUCTURES, TESTS, normalizeText } from '@kh/catalog';
 import type { Route } from '../state/router';
 
@@ -37,16 +37,19 @@ function organEntry(id: string, title: string, subtitle: string | undefined, ext
     title,
     subtitle,
     words: [title, ...extra].map(normalizeText),
-    build: () => ({
-      route: { name: 'organ', id },
-      links: [
-        { label: 'Sonuçlar', route: { name: 'organ', id, view: 'benim' } },
-        { label: 'Görüntüler ve bulgular', route: { name: 'organ', id, view: 'benim' } },
-        { label: 'Normalde nasıl çalışır?', route: { name: 'organ', id } },
-        { label: 'İçine gir', route: { name: 'organ', id, view: 'ic' } },
-        { label: 'Zaman çizelgesi', route: { name: 'timeline' } },
-      ],
-    }),
+    build: () => {
+      const interior = interiorFor(id);
+      return {
+        route: { name: 'organ', id },
+        links: [
+          { label: 'Sonuçlar', route: { name: 'organ', id, view: 'benim' } },
+          { label: 'Görüntüler ve bulgular', route: { name: 'organ', id, view: 'benim' } },
+          { label: 'Normalde nasıl çalışır?', route: { name: 'organ', id } },
+          ...(interior ? [{ label: 'İçine gir', route: { name: 'interior', id: interior.organId } as Route }] : []),
+          { label: 'Zaman çizelgesi', route: { name: 'timeline' } },
+        ],
+      };
+    },
   };
 }
 

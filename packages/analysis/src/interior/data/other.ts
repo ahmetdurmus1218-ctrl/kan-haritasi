@@ -47,6 +47,11 @@ export const REPRODUCTIVE: OrganInteriorDefinition[] = [
     anchor: 'tissue.endometrium',
     structure: 'uterus',
     interiorScene: { kind: 'parenchyma', unit: 'layers', color: '#d07e8c', inflow: 'Sarmal arterler', outflow: 'Venöz göller' },
+    functionalRegions: [
+      { id: 'glands', name: 'Bezler', text: 'Salgı evresinde besleyici sıvı salgılar.' },
+      { id: 'stroma', name: 'Stroma', text: 'Bezlerin arasındaki destek dokusu; progesteronla dönüşür.' },
+      { id: 'spiral-arteries', name: 'Sarmal arterler', text: 'Döngüyle büyüyen, adette kasılan damarlar.' },
+    ],
     wallLayers: [
       { id: 'functional', name: 'Fonksiyonel tabaka', text: 'Her adette dökülen üst tabaka.' },
       { id: 'basal', name: 'Bazal tabaka', text: 'Yenilenmeyi sağlayan kalıcı tabaka.' },
@@ -70,6 +75,11 @@ export const REPRODUCTIVE: OrganInteriorDefinition[] = [
     anchor: 'tissue.myometrium',
     structure: 'uterus',
     interiorScene: { kind: 'parenchyma', unit: 'fibers', color: '#b8606e', inflow: 'Uterin arter', outflow: 'Uterin ven' },
+    functionalRegions: [
+      { id: 'inner', name: 'İç katman', text: 'Endometriuma komşu, ritmik kasılmalar.' },
+      { id: 'middle', name: 'Orta damarlı katman', text: 'Doğumdan sonra damarları sıkıştırarak kanamayı durdurur.' },
+      { id: 'outer', name: 'Dış katman', text: 'Boylamsal lifler; doğumda itici güç.' },
+    ],
     deepAnatomyEntry: 'tissue.myometrium',
     stages: [
       st('parenchyma', 'parenchyma', 'interior', 'Kasın içi', 'Üç yönde örülmüş düz kas demetleri ve damarlar.', { focus: 'units' }),
@@ -336,6 +346,12 @@ export const SENSORY: OrganInteriorDefinition[] = [
     anchor: 'eyes.retina',
     structure: 'eyes',
     interiorScene: { kind: 'parenchyma', unit: 'layers', color: '#c98a6b', inflow: 'Santral retina arteri + koroid', outflow: 'Santral retina veni' },
+    functionalRegions: [
+      { id: 'macula', name: 'Makula ve fovea', text: 'Koni yoğun bölge: keskin ve renkli görme.' },
+      { id: 'periphery', name: 'Periferik retina', text: 'Çubuk yoğun bölge: loş ışıkta ve yanda görme.' },
+      { id: 'optic-disc', name: 'Optik disk', text: 'Sinir liflerinin çıktığı kör nokta.' },
+      { id: 'vessels', name: 'Retina damarları', text: 'İç katmanları besler.' },
+    ],
     wallLayers: [
       { id: 'ganglion', name: 'Gangliyon hücre katmanı', text: 'Işığın ilk geçtiği iç katman.' },
       { id: 'bipolar', name: 'Bipolar katman', text: 'Ara nöronlar.' },
@@ -407,6 +423,7 @@ export const SENSORY: OrganInteriorDefinition[] = [
     organId: 'ear.canal',
     name: 'Kulak yolu',
     type: 'tubular',
+    archetype: 'sensory',
     system: 'nervous',
     parent: 'ear',
     summary: 'Kulak kepçesinden zara uzanan, dış üçte biri kıkırdak, iç üçte ikisi kemik kanal.',
@@ -452,6 +469,7 @@ export const SENSORY: OrganInteriorDefinition[] = [
     organId: 'ear.middle',
     name: 'Orta kulak',
     type: 'hollow',
+    archetype: 'sensory',
     system: 'nervous',
     parent: 'ear',
     summary: 'Zar ile iç kulak arasında, üç kemikçiği barındıran hava dolu boşluk; Östaki borusuyla yutağa açılır.',
@@ -476,6 +494,7 @@ export const SENSORY: OrganInteriorDefinition[] = [
     organId: 'ear.cochlea',
     name: 'Koklea',
     type: 'compound',
+    archetype: 'sensory',
     system: 'nervous',
     parent: 'ear',
     summary: '2,5 tur dönen sıvı dolu salyangoz: titreşimi frekanslarına ayırıp sinir sinyaline çevirir.',
@@ -504,6 +523,7 @@ export const SENSORY: OrganInteriorDefinition[] = [
     organId: 'ear.vestibule',
     name: 'Vestibüler sistem (denge)',
     type: 'compound',
+    archetype: 'sensory',
     system: 'nervous',
     parent: 'ear',
     summary: 'Başın dönüşünü ve eğimini algılayan sıvı dolu kanallar ve keseler.',
@@ -620,6 +640,12 @@ export const MUSCULOSKELETAL: OrganInteriorDefinition[] = [
     system: 'musculoskeletal',
     summary: 'Damarsız, esnek ve sürtünmesi çok düşük bağ dokusu.',
     interiorScene: { kind: 'parenchyma', unit: 'cells', color: '#cfe0e6', inflow: 'Sinoviyal sıvıdan difüzyon', outflow: '—' },
+    functionalRegions: [
+      { id: 'superficial', name: 'Yüzeyel zon', text: 'Kayganlığı sağlayan yassı hücreler ve yüzeye paralel lifler.' },
+      { id: 'middle', name: 'Orta zon', text: 'Basınca dayanan, rastgele yönlü lifler.' },
+      { id: 'deep', name: 'Derin zon', text: 'Kemiğe dik lifler, sütun gibi dizilmiş hücreler.' },
+      { id: 'calcified', name: 'Kalsifiye zon', text: 'Kıkırdağı kemiğe bağlar.' },
+    ],
     wallLayers: [
       { id: 'superficial', name: 'Yüzey katmanı', text: 'Yatay kolajen.' },
       { id: 'middle', name: 'Orta katman', text: 'Eğik lifler.' },
@@ -639,6 +665,12 @@ export const MUSCULOSKELETAL: OrganInteriorDefinition[] = [
     system: 'musculoskeletal',
     summary: 'Kası kemiğe bağlayan, paralel kolajen liflerden oluşan halat.',
     interiorScene: { kind: 'parenchyma', unit: 'fascicles', color: '#efe6d6', inflow: 'Az sayıda damar', outflow: '—' },
+    functionalRegions: [
+      { id: 'mtj', name: 'Kas–tendon bileşkesi', text: 'Kas kuvvetinin tendona geçtiği yer.' },
+      { id: 'midsubstance', name: 'Tendon gövdesi', text: 'Paralel kolajen demetleri.' },
+      { id: 'enthesis', name: 'Kemiğe tutunma (entez)', text: 'Tendonun kemiğe kıkırdak geçişle bağlandığı yer.' },
+      { id: 'sheath', name: 'Tendon kılıfı', text: 'Bazı tendonların kaydığı sıvılı kılıf.' },
+    ],
     wallLayers: [
       { id: 'epitenon', name: 'Epitenon', text: 'Dış kılıf.' },
       { id: 'fascicle', name: 'Fasiküller', text: 'Lif demetleri.' },
@@ -657,6 +689,11 @@ export const MUSCULOSKELETAL: OrganInteriorDefinition[] = [
     system: 'musculoskeletal',
     summary: 'Kemiği kemiğe bağlayıp eklemi sabitleyen sıkı bağ dokusu.',
     interiorScene: { kind: 'parenchyma', unit: 'fascicles', color: '#ece3d0', inflow: 'Az sayıda damar', outflow: '—' },
+    functionalRegions: [
+      { id: 'body', name: 'Bağın gövdesi', text: 'Kemikleri birbirine bağlayan kolajen demetleri.' },
+      { id: 'insertion', name: 'Kemiğe tutunma', text: 'Bağın kemiğe girdiği bölge.' },
+      { id: 'receptors', name: 'Sinir uçları', text: 'Eklem konumunu beyne bildiren alıcılar.' },
+    ],
     stages: [
       st('parenchyma', 'parenchyma', 'interior', 'Bağın içi', 'Tendona benzer ama daha karışık yönlü kolajen ve biraz elastik lif.', { focus: 'units' }),
       st('stability', 'motion', 'interior', 'Eklemi sabitleme', 'Aşırı hareketi sınırlar; içindeki alıcılar eklem konumunu beyne bildirir.', { focus: 'motion', next: [{ to: 'ic.joint', label: 'Ekleme dön' }] }),
@@ -672,6 +709,13 @@ export const MUSCULOSKELETAL: OrganInteriorDefinition[] = [
     anchor: 'skeletal-muscle',
     structure: 'skeletal-muscle',
     interiorScene: { kind: 'parenchyma', unit: 'fascicles', color: '#a8444a', inflow: 'Kas arterleri', outflow: 'Kas venleri' },
+    functionalRegions: [
+      { id: 'belly', name: 'Kas karnı', text: 'Liflerin yoğun olduğu, kasılan ana bölüm.' },
+      { id: 'type1', name: 'Tip I (yavaş) lifler', text: 'Mitokondriden zengin, yorulmaz; duruş ve dayanıklılık.' },
+      { id: 'type2', name: 'Tip II (hızlı) lifler', text: 'Güçlü ve hızlı ama çabuk yorulan lifler.' },
+      { id: 'endplate', name: 'Motor son plak', text: 'Sinirin kasa komut verdiği sinaps.' },
+      { id: 'tendon', name: 'Tendon bileşkesi', text: 'Kuvvetin kemiğe aktarıldığı uç.' },
+    ],
     wallLayers: [
       { id: 'epimysium', name: 'Epimizyum', text: 'Kası saran kılıf.' },
       { id: 'perimysium', name: 'Perimizyum', text: 'Fasikülleri saran kılıf.' },
@@ -702,6 +746,13 @@ export const MUSCULOSKELETAL: OrganInteriorDefinition[] = [
     anchor: 'cell.skeletal-myocyte',
     structure: 'skeletal-muscle',
     interiorScene: { kind: 'parenchyma', unit: 'fibers', color: '#b34e55', inflow: 'Kılcallar', outflow: 'Venüller' },
+    functionalRegions: [
+      { id: 'sarcolemma', name: 'Sarkolemma ve T tübüller', text: 'Uyarıyı lifin derinine taşır.' },
+      { id: 'sr', name: 'Sarkoplazmik retikulum', text: 'Kalsiyum deposu.' },
+      { id: 'myofibrils', name: 'Miyofibriller', text: 'Sarkomer zincirleri.' },
+      { id: 'mitochondria', name: 'Mitokondriler', text: 'ATP üretimi.' },
+      { id: 'nuclei', name: 'Çekirdekler', text: 'Bir lifte yüzlerce çekirdek bulunur.' },
+    ],
     deepAnatomyEntry: 'cell.skeletal-myocyte',
     personalDataBindings: ['ck'],
     stages: [
@@ -753,6 +804,12 @@ export const SKIN: OrganInteriorDefinition[] = [
     summary: 'Derinin dış tabakası: bazal hücreler ~4 haftada yüzeye çıkıp ölü keratin pulları olur.',
     structure: 'skin',
     interiorScene: { kind: 'parenchyma', unit: 'layers', color: '#ebc6ae', inflow: 'Dermisten difüzyon', outflow: '—' },
+    functionalRegions: [
+      { id: 'basale', name: 'Bazal katman', text: 'Kök hücreler ve melanositler.' },
+      { id: 'spinosum', name: 'Dikenli katman', text: 'Hücreler birbirine sıkıca bağlanır.' },
+      { id: 'granulosum', name: 'Granüler katman', text: 'Su geçirmez bariyer lipitleri.' },
+      { id: 'corneum', name: 'Boynuzsu katman', text: 'Ölü, keratin dolu koruyucu hücreler.' },
+    ],
     wallLayers: [
       { id: 'corneum', name: 'Stratum corneum', text: 'Ölü, keratin dolu pullar: su bariyeri.' },
       { id: 'granulosum', name: 'Stratum granulosum', text: 'Lipid bariyer yapımı.' },
@@ -776,6 +833,12 @@ export const SKIN: OrganInteriorDefinition[] = [
     summary: 'Derinin kolajen ve elastik liflerle güç ve esneklik veren, damar ve sinir taşıyan orta tabakası.',
     structure: 'skin',
     interiorScene: { kind: 'parenchyma', unit: 'fibers', color: '#e7b9a4', inflow: 'Dermal arter ağları', outflow: 'Dermal venler' },
+    functionalRegions: [
+      { id: 'papillary', name: 'Papiller dermis', text: 'Epidermise uzanan kılcal kıvrımlar ve dokunma alıcıları.' },
+      { id: 'reticular', name: 'Retiküler dermis', text: 'Kalın kolajen ve elastik lifler: deri dayanıklılığı.' },
+      { id: 'adnexa', name: 'Ekler', text: 'Kıl folikülleri, ter ve yağ bezleri.' },
+      { id: 'nerves', name: 'Sinir uçları', text: 'Dokunma, ağrı, sıcaklık.' },
+    ],
     wallLayers: [
       { id: 'papillary', name: 'Papiller dermis', text: 'Gevşek doku; kılcal kıvrımlar ve dokunma alıcıları.' },
       { id: 'reticular', name: 'Retiküler dermis', text: 'Kalın kolajen demetleri.' },
@@ -795,6 +858,11 @@ export const SKIN: OrganInteriorDefinition[] = [
     summary: 'Deriyi kaslara bağlayan, yağ depolayan ve ısı yalıtımı sağlayan tabaka.',
     structure: 'skin',
     interiorScene: { kind: 'parenchyma', unit: 'cells', color: '#f0d27e', inflow: 'Deri altı arterleri', outflow: 'Deri altı venleri' },
+    functionalRegions: [
+      { id: 'lobules', name: 'Yağ lobülleri', text: 'Adipositlerin topluluğu: enerji deposu ve yalıtım.' },
+      { id: 'septa', name: 'Bağ dokusu bölmeleri', text: 'Lobülleri ayıran, damar ve sinir taşıyan bölmeler.' },
+      { id: 'vessels', name: 'Büyük damarlar', text: 'Derinin damar ağını besler.' },
+    ],
     personalDataBindings: ['triglyceride'],
     stages: [
       st('parenchyma', 'parenchyma', 'interior', 'Hipodermisin içi', 'Bölmelerle ayrılmış yağ lobülleri ve büyük damarlar.', { focus: 'units' }),
@@ -857,6 +925,10 @@ export const SKIN: OrganInteriorDefinition[] = [
     summary: 'Kıl folikülüne açılan, hücrelerinin kendisi parçalanarak sebum oluşturan bez.',
     structure: 'skin',
     interiorScene: { kind: 'parenchyma', unit: 'acinus', color: '#ecd18f', inflow: 'Dermal kılcallar', outflow: 'Kıl folikülü kanalı' },
+    functionalRegions: [
+      { id: 'acini', name: 'Bez lobülleri', text: 'Sebum üreten hücre kümeleri.' },
+      { id: 'duct', name: 'Kanal', text: 'Sebumu kıl folikülüne boşaltır.' },
+    ],
     stages: [
       st('parenchyma', 'parenchyma', 'interior', 'Bezin içi', 'Yağla dolan hücre kümeleri; tabanda bölünen hücreler.', { focus: 'units' }),
       st('secretion', 'process', 'interior', 'Holokrin salgı', 'Olgun hücre parçalanır, içeriği sebum olarak folikül kanalına boşalır.', { focus: 'secrete', next: [{ to: 'ic.hair-follicle', label: 'Kıl folikülüne git' }] }),

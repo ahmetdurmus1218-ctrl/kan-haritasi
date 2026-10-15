@@ -156,8 +156,10 @@ with sync_playwright() as p:
     page.keyboard.press("Escape")
     page.wait_for_timeout(4000)
     check("#/vucut/yapi/coronary-arteries" in page.url, "Esc ile organa dönüş")
-    # İçeri gir: önce kişisel durum; genel süreç yalnızca istenince başlar
-    page.locator("button:has-text('İçeri gir · Damar içi')").first.click()
+    # İçine gir organın iç dünyasıdır (damar lümeni, kan akışı); doku sahnesi "Daha derine in"dir
+    check(page.locator("aside[aria-label='Bilgi paneli'] button:has-text('İçine gir · Arter')").count() >= 1, "3B organ paneli: 'İçine gir' damarın iç dünyasına (doku sahnesi değil)")
+    # Daha derine in: önce kişisel durum; genel süreç yalnızca istenince başlar
+    page.locator("button:has-text('Daha derine in · Damar içi')").first.click()
     page.locator("aside[aria-label='Simülasyon paneli']").wait_for(timeout=60000)
     page.wait_for_timeout(1500)
     sim = page.locator("aside[aria-label='Simülasyon paneli']").inner_text()

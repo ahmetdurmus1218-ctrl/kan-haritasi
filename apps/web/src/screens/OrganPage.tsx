@@ -374,7 +374,7 @@ function StructureFallback({ id }: { id: string }) {
       )}
       <div className="flex flex-wrap gap-2">
         {interior && (
-          <button type="button" className="btn-primary" onClick={() => go({ name: 'interior', id: interior.organId })}>
+          <button type="button" className="btn-primary" onClick={() => go({ name: 'interior', id: interior.organId })} data-testid="organ-enter-interior">
             İçine gir · {interior.name}
           </button>
         )}
@@ -385,7 +385,7 @@ function StructureFallback({ id }: { id: string }) {
         )}
         {scenes.map((l) => (
           <button key={l.id} type="button" className="btn-ghost" onClick={() => go({ name: 'simulation', id: l.id, from: id, mode: 'temel' })}>
-            İçeri gir · {INSIDE[l.id].title}
+            Daha derine in · {INSIDE[l.id].title}
           </button>
         ))}
       </div>
@@ -406,8 +406,9 @@ export function OrganPage({ id, view, trail }: { id: string; view?: OrganViewMod
   if (!v) return <StructureFallback id={id} />;
   if (view === 'benim' || view === 'fark') return <PersonalDetail v={v} model={model} studies={studies} />;
   if (view === 'ic') {
+    // İçine gir: daima organın iç dünyası. Duvar → doku → hücre ("doku" görünümü) buraya asla yedek olarak açılmaz.
     const def = interiorFor(v.node.id);
-    return def ? <InteriorPage id={def.organId} /> : <OrganInside v={v} model={model} />;
+    return def ? <InteriorPage id={def.organId} /> : <OrganOverview v={v} model={model} />;
   }
   if (view === 'doku') return <OrganInside v={v} model={model} />;
   if (view === 'derin') return <DeepDive v={v} model={model} trail={trail ?? []} />;

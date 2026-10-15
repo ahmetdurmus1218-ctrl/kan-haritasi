@@ -228,8 +228,7 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
           </>
         ) : (
           <>
-            <p className="text-sm text-fg-muted">{inside.length ? `Organın içi adım adım: ${inside.map((n) => n.nameTr).join(' → ')}.` : 'Organın iç dokusunu eğitsel sahnede görebilirsin.'}</p>
-            <StepButton label="Organın içine gir" icon={<LayersIcon size={15} />} onClick={() => go({ name: 'organ', id: v.node.id, view: 'doku' })} />
+            <p className="text-sm text-fg-muted">Bu yapının ayrı bir iç dünyası yok (embriyonik ya da soyut yapı). Mikroanatomisi “Daha derine in” bölümündedir.</p>
           </>
         )}
       </Section>

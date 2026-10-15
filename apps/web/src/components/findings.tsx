@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { structureById } from '@kh/catalog';
 import { go } from '../state/router';
+import { interiorForStructure } from '../lib/anatomyNav';
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { INSIDE } from '../explore/inside/registry';
 import { type FindingStatus, type ImagingFinding, normalInfo } from '../lib/imagingFindings';
@@ -74,6 +75,11 @@ function FindingItem({ f }: { f: ImagingFinding }) {
             <BodyIcon size={13} /> {f.located === 'text' ? 'Vücutta göster' : 'Vücutta göster (yaklaşık)'}
           </button>
         )}
+        {f.structure && interiorForStructure(f.structure) && (
+          <button type="button" className="btn-ghost px-2.5 py-1 text-xs" onClick={() => go({ name: 'interior', id: interiorForStructure(f.structure!)!.organId })}>
+            İçine gir · {interiorForStructure(f.structure)!.name}
+          </button>
+        )}
         {inside && f.structure && (
           <button
             type="button"
@@ -87,7 +93,7 @@ function FindingItem({ f }: { f: ImagingFinding }) {
               })
             }
           >
-            ↘ İçeri gir · {INSIDE[inside].title}
+            ↘ Daha derine in · {INSIDE[inside].title}
           </button>
         )}
         {(normal || meaning.length > 0) && (

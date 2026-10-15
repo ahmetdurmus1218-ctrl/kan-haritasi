@@ -18,6 +18,7 @@ import { highlightName, highlightsFrom, withFindingHighlights, withImagingHighli
 import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene';
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { partLabel, partLatin } from '../anatomy/names';
+import { interiorForStructure } from '../lib/anatomyNav';
 import { type BodyModel, webglAvailable } from '../anatomy/models';
 import { highlightColor } from '../anatomy/palette';
 import { Banner } from '../components/ui';
@@ -604,6 +605,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     const abnormal = findings.filter((f) => f.status === 'high' || f.status === 'low');
     const insides = insidesOf(cloud.structure);
     const scene = insides[0];
+    const interior = interiorForStructure(cloud.structure, cloudPart?.def?.key);
+    const enterInterior = interior ? { key: 'icine-gir', label: 'İçine gir', sub: interior.name, primary: true, onClick: () => (setCloud(null), go({ name: 'interior', id: interior.organId })) } : null;
     const imaging = studies ? studiesForStructure(cloud.structure, studies) : [];
     const openPanel = (tab: OrganTab) => {
       setCloud(null);
@@ -628,7 +631,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         latin: cloudPart.latin ?? partLatin(cloud.structure, cloudPart.raw),
         note: cloudPart.def?.info,
         actions: [
-          ...(scene ? [{ key: 'temel', label: 'Nasıl çalışır', sub: 'temel süreç', primary: true, onClick: () => enter(scene, cloud.structure, 'temel') }] : []),
+          ...(enterInterior ? [enterInterior] : []),
+          ...(scene ? [{ key: 'temel', label: 'Daha derine in', sub: INSIDE[scene].title, onClick: () => enter(scene, cloud.structure, 'temel') }] : []),
           { key: 'detay', label: 'Ayrıntılar', sub: 'bölüm paneli', onClick: () => openPanel('anatomy') },
         ],
         more: { label: `← ${s.nameTr}`, onClick: () => { setPartKey(null); setCloud(null); } },
@@ -649,11 +653,12 @@ export function Explorer({ route }: { route: ExploreRoute }) {
           sub: `${CATEGORY_SHORT[st.category]} · ${formatDate(st.date)}`,
           onClick: () => go({ name: 'document', id: st.head.id }),
         })),
+        // İçine gir = organın kendi iç dünyası (lümen / parankim / odacık…). Doku ve hücre sahnesi "Daha derine in"dir.
+        ...(enterInterior ? [{ ...enterInterior, primary: !h }] : []),
         ...(scene
           ? [
-              { key: 'temel', label: 'Temelde nasıl çalışır', sub: INSIDE[scene].process, primary: !h, onClick: () => enter(scene, cloud.structure, 'temel') },
               { key: 'benim', label: 'Sonucuma göre', sub: findings.length ? 'senin değerlerinle' : 'ilişkili sonuç yok', disabled: !findings.length, onClick: () => enter(scene, cloud.structure, 'benim') },
-              { key: 'enter', label: 'İçeri gir', sub: INSIDE[scene].title, onClick: () => enter(scene, cloud.structure) },
+              { key: 'derin', label: 'Daha derine in', sub: `doku · ${INSIDE[scene].title}`, onClick: () => enter(scene, cloud.structure, 'temel') },
             ]
           : []),
       ],

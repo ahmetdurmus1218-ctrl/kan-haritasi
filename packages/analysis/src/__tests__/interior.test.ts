@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { testByKey } from '@kh/catalog';
+import { STRUCTURES, testByKey } from '@kh/catalog';
 import { buildHealthModel } from '../fusion';
 import { GRAPH } from '../knowledge';
 import {
@@ -8,7 +8,11 @@ import {
   PERSONAL_LABEL,
   SCALE_LEVEL,
   type OrganInteriorDefinition,
+  INTERIOR_ACCEPTANCE,
+  NOT_FIRST,
+  interiorArchetype,
   interiorById,
+  interiorExperience,
   interiorFor,
   interiorModes,
   interiorProvenance,
@@ -133,12 +137,13 @@ describe('Kabul — bağırsak (İçine gir ≠ Daha derine in)', () => {
     expect(interiorModes(interiorById('small-intestine.ileum')!).length).toBe(3);
   });
 
-  it('kalın bağırsak ince bağırsakla aynı sahne değildir: villus yok, su/elektrolit → mikrobiyota → yoğunlaşma → dışkı → rektum', () => {
+  it('kalın bağırsak ince bağırsakla aynı sahne değildir: villus yok, içerik → segmental/peristaltik hareket → su/elektrolit → mikrobiyota → yoğunlaşma → dışkı → rektum', () => {
     const c = interiorById('large-intestine')!;
     expect(c.interiorScene).toMatchObject({ kind: 'lumen', lining: 'haustra', content: 'feces' });
     expect(nodes('large-intestine')).not.toContain('tissue.villus');
     expect(c.stages.some((s) => s.scene === 'villus')).toBe(false);
-    expect(c.stages.slice(0, 6).map((s) => s.id)).toEqual(['lumen', 'contents', 'water', 'microbiota', 'concentration', 'feces']);
+    expect(c.stages.slice(0, 7).map((s) => s.id)).toEqual(['lumen', 'contents', 'motion', 'water', 'microbiota', 'concentration', 'feces']);
+    expect(c.stages[1]!.text).toMatch(/su.*elektrolit.*sindirim artıkları.*mukus.*mikrobiyota/s);
     expect(c.stages.find((s) => s.id === 'feces')!.next![0]!.to).toBe('large-intestine.rectum');
   });
 
@@ -149,9 +154,10 @@ describe('Kabul — bağırsak (İçine gir ≠ Daha derine in)', () => {
 });
 
 describe('Diğer referans iç dünyalar', () => {
-  it('kalp: sağ atriyum → triküspit → sağ ventrikül → pulmoner → akciğer → sol atriyum → mitral → sol ventrikül → aort; sonra endokard → miyokard → epikard → hücre → sarkomer → aktin/miyozin → ATP', () => {
+  it('kalp: sağ atriyum → triküspit → sağ ventrikül → pulmoner → akciğer → sol atriyum → mitral → sol ventrikül → aort → sistemik dolaşım; sonra endokard → miyokard → epikard → hücre → sarkomer → aktin/miyozin → ATP', () => {
     expect(interiorById('heart')!.routes![0]!.steps.map((s) => s.label)).toEqual(['Sağ atriyum', 'Triküspit kapak', 'Sağ ventrikül', 'Pulmoner kapak', 'Akciğer', 'Sol atriyum', 'Mitral kapak', 'Sol ventrikül', 'Aort']);
-    expect(titles('heart').slice(10)).toEqual(['Duvarı incele: endokard → miyokard → epikard', 'Endokard', 'Miyokard', 'Epikard', 'Kalp kas hücresi', 'Sarkomer', 'Aktin / miyozin', 'ATP']);
+    expect(titles('heart')[10]).toBe('Sistemik dolaşım');
+    expect(titles('heart').slice(11)).toEqual(['Duvarı incele: endokard → miyokard → epikard', 'Endokard', 'Miyokard', 'Epikard', 'Kalp kas hücresi', 'Sarkomer', 'Aktin / miyozin', 'ATP']);
   });
 
   it('akciğer: hava → trakea → bronş → bronşiyol → alveol → alveol-kılcal; tip I/II pnömosit, sürfaktan, endotel', () => {
@@ -300,5 +306,87 @@ describe('Fizyoloji grafiği', () => {
     // Zaman kaydırıcı: Mart itibarıyla son değer düşük
     expect(physioOverlay(physioChain('oxygen')!, hist, '2026-03-31').markers.find((m) => m.testKey === 'hemoglobin')!.latest.value).toBe(10);
     expect(physioOverlay(physioChain('oxygen')!, null).hasData).toBe(false);
+  });
+});
+
+describe('Kabul — "İçine gir" her organda organın iç dünyasıdır (duvar / doku / hücre / molekül değil)', () => {
+  const all = Object.values(INTERIOR_ACCEPTANCE).flat();
+
+  it.each(all)('%s: ilk sahne iç dünya; kalıba uygun içerik; derine inmek ayrı adım', (id) => {
+    const d = interiorById(id);
+    expect(d, id).toBeDefined();
+    const first = d!.stages[0]!;
+    // §26: currentLevel === interior; currentNode ∉ {wall, tissue, cell, molecule}
+    expect(first.scale).toBe('interior');
+    expect(NOT_FIRST.has(first.kind)).toBe(false);
+    const { inside, deeper } = interiorExperience(d!);
+    expect(inside.length).toBeGreaterThanOrEqual(2);
+    const kinds = new Set(inside.map((s) => s.kind));
+    expect(['motion', 'flow', 'process'].some((k) => kinds.has(k as never)), `${id}: organın nasıl çalıştığı`).toBe(true);
+    switch (interiorArchetype(d!)) {
+      case 'hollow':
+        expect(kinds.has('lumen') && kinds.has('content'), `${id}: lümen + içerik`).toBe(true);
+        expect(d!.lumen?.enabled).toBe(true);
+        break;
+      case 'solid':
+        expect(first.kind).toBe('parenchyma');
+        expect(d!.lumen?.enabled ?? false).toBe(false);
+        expect(Boolean(d!.functionalRegions?.length) || d!.stages.some((s) => s.kind === 'region'), `${id}: fonksiyonel bölgeler`).toBe(true);
+        break;
+      case 'vascular':
+        expect(kinds.has('lumen') && (kinds.has('flow') || kinds.has('content')), `${id}: lümen + kan akışı`).toBe(true);
+        expect(d!.lumen?.contents?.some((c) => c.includes('kan'))).toBe(true);
+        break;
+      case 'chamber':
+        expect(kinds.has('flow'), `${id}: odacıklarda akış`).toBe(true);
+        break;
+      case 'airway':
+        expect(kinds.has('flow') || kinds.has('process'), `${id}: hava akışı`).toBe(true);
+        break;
+      case 'sensory':
+        expect(kinds.has('flow') || kinds.has('motion'), `${id}: uyaranın yolu`).toBe(true);
+        break;
+    }
+    // Duvar ya da mikroanatomi varsa iç dünyadan SONRA gelir.
+    for (const s of deeper) expect(s.scale).not.toBe('interior');
+  });
+
+  it('kalıplar organın anatomisine göre: bağırsak lümen, böbrek/karaciğer/beyin parankim, kalp odacık, damar damar, akciğer hava yolu, göz/kulak duyu yolu', () => {
+    const a = (id: string) => interiorArchetype(interiorById(id)!);
+    expect(['large-intestine', 'small-intestine', 'stomach', 'esophagus', 'urinary-tract.bladder', 'uterus'].map(a)).toEqual(Array(6).fill('hollow'));
+    expect(['kidneys', 'liver', 'brain', 'ic.bone', 'skeletal-muscle', 'skin', 'thyroid', 'spleen'].map(a)).toEqual(Array(8).fill('solid'));
+    expect(['heart', 'ic.atrium', 'ic.ventricle', 'heart.valves'].map(a)).toEqual(Array(4).fill('chamber'));
+    expect(['vessel.aorta', 'ic.artery', 'ic.capillary', 'ic.vein', 'ic.pulmonary-vessels'].map(a)).toEqual(Array(5).fill('vascular'));
+    expect(['lungs', 'airways.trachea', 'airways.bronchioles', 'tissue.alveolus'].map(a)).toEqual(Array(4).fill('airway'));
+    expect(['eyes', 'ear', 'ear.cochlea', 'ear.middle'].map(a)).toEqual(Array(4).fill('sensory'));
+  });
+
+  it('kalın bağırsak: ilk sahne lümen (duvar / mukoza / kript / epitel değil); duvar ancak "Duvarı incele" ile', () => {
+    const { inside, deeper } = interiorExperience(interiorById('large-intestine')!);
+    expect(inside[0]!.kind).toBe('lumen');
+    expect(inside.map((s) => s.kind)).not.toContain('wall');
+    expect(deeper.find((s) => s.kind === 'wall')!.title).toBe('Duvarı incele');
+  });
+
+  it('ince bağırsak: villus ilk ekran değil, duvardan sonra', () => {
+    const st = interiorById('small-intestine')!.stages;
+    expect(st[0]!.kind).toBe('lumen');
+    expect(st.findIndex((s) => s.node === 'tissue.villus')).toBeGreaterThan(st.findIndex((s) => s.kind === 'wall'));
+  });
+
+  it('kalp: odacıklar → kanın yolu → aort → sistemik dolaşım; duvar sonra', () => {
+    const { inside } = interiorExperience(interiorById('heart')!);
+    expect(inside.map((s) => s.title).slice(-2)).toEqual(['Aort', 'Sistemik dolaşım']);
+  });
+
+  it('katalogdaki HER 3B yapı ve bilgi grafiğindeki HER organ/bölge bir iç dünyaya bağlanır (boş "İçine gir" yok)', () => {
+    expect(STRUCTURES.filter((s) => !interiorFor(s.id)).map((s) => s.id)).toEqual([]);
+    const nodes = [...GRAPH.nodes.values()].filter((n) => n.kind === 'organ' || n.kind === 'region');
+    expect(nodes.filter((n) => !interiorFor(n.id)).map((n) => n.id)).toEqual([]);
+    // Embriyonik yapı uydurulmaz: ondan gelişen yetişkin organın iç dünyası açılır.
+    expect(interiorFor('dev.neural-tube')!.organId).toBe('brain');
+    expect(interiorFor('vessel.portal-vein')!.organId).toBe('ic.vein');
+    expect(interiorFor('nerve.vagus')!.organId).toBe('nerves');
+    expect(interiorFor('thymus')!.organId).toBe('ic.thymus');
   });
 });
