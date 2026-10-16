@@ -1,8 +1,15 @@
 workflow: CI
-run: 38934868766
-sha: e70a29fba89a11378d9703b311709a6314bfe4d6
+run: 38944981754
+sha: b05d02071d5a630b027fc8a75907e99a66133738
 conclusion: failure
 
+dependencies: success
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 e2e: failure
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -14,8 +21,8 @@ e2e: failure
   - Playwright (Chromium): success
   - Önizleme sunucusu: success
   - Belgeler ve kasa (smoke): success
-  - Okuma → sonuçlar → vücutta göster → simülasyon: failure
-  - Zaman çizelgesi, şifreli yedek, dışa aktarma: skipped
+  - Okuma → sonuçlar → vücutta göster → simülasyon: success
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: failure
   - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: skipped
   - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: skipped
   - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: skipped
@@ -47,66 +54,36 @@ web: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-dependencies: success
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
 
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	﻿2026-10-16T17:51:01.9893683Z ##[group]Run python tests/e2e/flow.py "$RUNNER_TEMP/shots"
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9894421Z ^[[36;1mpython tests/e2e/flow.py "$RUNNER_TEMP/shots"^[[0m
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9996711Z shell: /usr/bin/bash -e {0}
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9997203Z env:
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9997635Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9998300Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9999034Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9999766Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:02.0000419Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:02.0001084Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:02.0001800Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:02.0002295Z ##[endgroup]
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.7997586Z Traceback (most recent call last):
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.7998469Z PASS PDF'ten 14 sonuç okundu
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8002805Z   File "/home/runner/work/kan-haritasi/kan-haritasi/tests/e2e/flow.py", line 139, in <module>
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8004916Z PASS kaydedilen raporda 5 aralık dışı sonuç (ALT, T.kolesterol, LDL, TG yüksek; ferritin düşük)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8008377Z     page.get_by_text("Eğitimsel biyolojik simülasyon").locator("visible=true").first.wait_for(timeout=20000)  # telefon ve masaüstü kopyası var: görüneni bekle
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8010248Z PASS fotoğraftan OCR ile 9 sonuç okundu
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8013813Z     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8014910Z PASS Sonuçlarım listesinde LDL
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8035099Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/sync_api/_generated.py", line 18005, in wait_for
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8036780Z PASS kişisel genel değerlendirme
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8039973Z PASS karaciğer paterni (ALT yüksek)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8040782Z PASS lipid paterni
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8042625Z PASS 90: LDL yüksek → ad ve değer yüksek tonunda (block truncate text-[15px] font-medium text-high | text-right text-sm font-semibold tabular-nums text-high)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8044777Z PASS 90: ferritin düşük → ad ve değer düşük (mavi) tonunda (block truncate text-[15px] font-medium text-low)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8046808Z PASS 91: normal glukoz nötr (block truncate text-[15px] font-medium )
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8048267Z PASS 90: pankreas sayfasında trigliserid adı/değeri/durumu aynı tonda (follow)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8049321Z PASS 90: ▲ Yüksek etiketi
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8050323Z PASS 91: normal glukoz pankreas sayfasında nötr
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8051679Z PASS 28: organ özeti 'ilişkili N sonuç referans dışında' (organ hasta denmiyor)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8052980Z PASS 46/84: fizyoloji akışında kişisel katman 'olası ilişki'
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8053871Z PASS öğren paneli
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8054550Z     self._sync(self._impl_obj.wait_for(timeout=timeout, state=state))
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8056031Z PASS kişisel yorum
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8056837Z PASS sapma derecesi (LDL 178 / 130)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8057717Z PASS LDL için vücut rotası
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8058582Z PASS LDL → koroner arterler bağlantısı
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8067016Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8068216Z     return task.result()
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8068789Z            ^^^^^^^^^^^^^
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8070009Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_locator.py", line 692, in wait_for
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8071203Z     await self._frame.wait_for_selector(
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8072527Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_frame.py", line 369, in wait_for_selector
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8073695Z     await self._channel.send(
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8074847Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 69, in send
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8076806Z     return await self._connection.wrap_api_call(
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8077488Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8078761Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 559, in wrap_api_call
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8080197Z     raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8081336Z playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 20000ms exceeded.
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8082149Z Call log:
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8083212Z   - waiting for get_by_text("Eğitimsel biyolojik simülasyon").filter(visible=True).first to be visible
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8084000Z 
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8330699Z ##[error]Process completed with exit code 1.
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	﻿2026-10-16T18:11:45.5054259Z ##[group]Run python tests/e2e/data.py "$RUNNER_TEMP/shots"
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5054650Z ^[[36;1mpython tests/e2e/data.py "$RUNNER_TEMP/shots"^[[0m
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5111837Z shell: /usr/bin/bash -e {0}
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5112089Z env:
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5112303Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5112628Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5112970Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5113309Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5113610Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5113916Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5114218Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:11:45.5114502Z ##[endgroup]
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5002401Z FAIL LDL için iki ölçümlü grafik
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5003134Z PASS seçili ölçüm tarihi
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5005615Z PASS seçili ölçümden rapora gidiş
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5006238Z PASS rapor geçmişi
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5006856Z PASS yedek dosyası imzası
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5007411Z PASS yedekte açık metin yok (şifreli)
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5008169Z PASS ZIP bütünlüğü (CRC)
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5008612Z PASS ZIP'te orijinal PDF
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5009029Z PASS ZIP'te orijinal PNG
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5009500Z PASS orijinal PDF bayt bayt aynı
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5009960Z PASS sonuclar.json iki rapor
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5010420Z PASS sonuclar.csv içerik
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5010923Z PASS yanlış yedek parolası reddedildi
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5011485Z PASS geri yüklenen kasada sonuçlar
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5012030Z PASS geri yüklenen kasada iki belge
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5012495Z PASS CSP ihlali yok []
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5012936Z PASS konsol hatası yok []
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5013725Z PASS harici istek yok []
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5014280Z {'problems': ['LDL için iki ölçümlü grafik']}
+e2e	Zaman çizelgesi, şifreli yedek, dışa aktarma	2026-10-16T18:12:11.5204793Z ##[error]Process completed with exit code 1.
