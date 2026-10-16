@@ -37,7 +37,8 @@ jobs:
     # zaman çizelgesi, şifreli yedek → başka kasaya geri yükleme, ZIP dışa aktarma, MR/BT (DICOM) görüntüleme;
     # CSP ihlali ve dış istek yok.
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    # 3B gezinme testleri (navigation3d, 99 yapının iç dünyası) yazılımsal GPU'da uzun sürer.
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

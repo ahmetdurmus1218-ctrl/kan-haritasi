@@ -90,7 +90,9 @@ def walk_titles(page, n):
 
 with sync_playwright() as p:
     browser = p.chromium.launch(executable_path=os.environ.get("CHROME_PATH") or None, args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"])
-    ctx = browser.new_context(viewport={"width": 1280, "height": 900}, device_scale_factor=1)
+    # 99 yapının durum denetimi (seviye, sahne, eylemler) animasyon gerektirmez: "hareketi azalt" ile geçişler
+    # kısalır (uygulamanın erişilebilirlik kipi). Tam kamera animasyonları navigation3d.py'de denetlenir.
+    ctx = browser.new_context(viewport={"width": 1280, "height": 900}, device_scale_factor=1, reduced_motion="reduce")
     ctx.set_default_timeout(60000)
     page = ctx.new_page()
     console, external = [], []
