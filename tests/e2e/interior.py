@@ -20,6 +20,8 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+from nav3d import action, attrs, goto_interior, settle
+
 ROOT = Path(__file__).resolve().parents[2]
 SHOTS = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "tests/e2e/.shots")
 SHOTS.mkdir(parents=True, exist_ok=True)
@@ -35,9 +37,8 @@ def check(cond, msg):
         problems.append(msg)
 
 
-def stage(page):
-    s = page.get_by_test_id("interior-stage")
-    return s.get_attribute("data-stage"), s.get_attribute("data-scale")
+def norm(t):
+    return t.replace("İ", "I").replace("ı", "i").replace("i̇", "i").lower()
 
 
 def upload(page, name):
@@ -87,78 +88,57 @@ with sync_playwright() as p:
     check(page.get_by_test_id("organ-changes-none").count() == 1, "39: kişisel veri yokken 'Bu organla ilişkili kişisel veri bulunamadı'")
     page.get_by_test_id("organ-enter-interior").click()
     page.wait_for_url("**/#/ic/small-intestine**")
-    page.get_by_test_id("interior").wait_for()
-    sc = page.get_by_test_id("interior-scene")
-    sc.locator("canvas").wait_for(timeout=60000)
-    check(sc.get_attribute("data-kind") == "lumen", "49: 3B iç sahne — lümen (tüpün içinden bakış)")
-    check("Eğitimsel normal anatomi/fizyoloji — kişisel görüntü değildir." in page.get_by_test_id("interior-label").inner_text(), "35: eğitimsel etiket (kişisel görüntü değildir)")
-    check(page.get_by_test_id("interior-mine-none").count() == 1, "39: 'Bu organla ilişkili kişisel veri bulunamadı' ama iç dünya çalışıyor")
-    modes = page.get_by_test_id("interior-modes")
-    check([b.inner_text() for b in modes.get_by_role("button").all()] == ["Boş / az içerikli", "Sindirim sırasında", "Emilim sırasında"], "11C: içerik modları")
-    check("Eğitimsel normal simülasyon — kişisel veri değildir." in modes.inner_text(), "Simulation ≠ patient data etiketi")
-    page.wait_for_timeout(1500)
+    # İçine gir 3B keşifte açılır: önce organ 3B vücutta, sonra kamera organa dalar (aynı tuval, aynı kamera)
+    a, phases = settle(page, 120, want={"interior": "small-intestine"})
+    if not a.get("scene", "").startswith("ic:"):
+        a, phases2 = settle(page, 120, before=a)
+        phases |= phases2
+    check(a.get("scene") == "ic:small-intestine" and a.get("sceneKind") == "lumen", f"49: 3B iç sahne — lümen (tüpün içinden bakış) ({a.get('scene')}, {a.get('sceneKind')})")
+    check(a.get("level") == "interior" and a.get("stage") == "lumen", "49: İçine gir → organın içi (duvar/hücre değil)")
+    check("Eğitimsel" in page.get_by_test_id("interior-label").inner_text(), "35: eğitimsel etiket (Eğitimsel · Temsili anatomi)")
     page.screenshot(path=SHOTS / "ic1-ince-bagirsak-lumen.png")
-    seen, scales = [], []
-    for _ in range(14):
-        sid, scale = stage(page)
-        seen.append(sid)
-        scales.append(scale)
-        nxt = page.get_by_test_id("interior-next-stage")
-        if not nxt.count():
-            break
-        nxt.click()
-        page.wait_for_timeout(150)
+    seen, scales = [a.get("stage")], [a.get("currentLevel")]
+    for act in ["forward"] * 5 + ["wall"] + ["deeper"] * 5:
+        a = action(page, act)
+        seen.append(a.get("stage"))
+        scales.append(a.get("currentLevel"))
     check(seen == ["lumen", "contents", "motion", "digestion", "absorption", "regions", "wall", "mucosa", "villus", "enterocyte", "microvilli", "transport"], f"49: lümen → içerik → hareket → sindirim → emilim → bölge → duvar → mukoza → villus → enterosit → mikrovillus → moleküler taşıma ({seen})")
     order = {"interior": 3, "region": 4, "tissue": 5, "cell": 6, "molecule": 7}
     check([order[s] for s in scales] == sorted(order[s] for s in scales) and scales[0] == "interior", f"43: ölçek merdiveni geri gitmiyor, organın içinden başlıyor ({scales})")
-    check("Daha derine in" in main.inner_text(), "son basamaktan sonra 'Daha derine in' (bilgi grafiği)")
-    # Mod değiştirme ve emilim odağı
-    page.goto(URL + "#/ic/small-intestine/5/emilim")
-    page.get_by_test_id("interior-scene").locator("canvas").wait_for(timeout=60000)
-    check(page.get_by_test_id("interior-scene").get_attribute("data-mode") == "emilim" and page.get_by_test_id("interior-scene").get_attribute("data-focus") == "absorb", "11G: emilim modu ve emilim odağı")
-    check("ileuma git" in page.get_by_test_id("interior-next").inner_text(), "38: 'Bunun devamı nerede?' — B12: ileuma git")
-    page.wait_for_timeout(1500)
-    page.screenshot(path=SHOTS / "ic2-emilim.png")
-    route = page.get_by_test_id("interior-route").first.inner_text()
-    check(all(x in route for x in ["Lümen", "Mikrovillus", "Enterosit", "Kılcal damar / lenf", "Portal ven / lenf", "Karaciğer / sistemik dolaşım"]), "11G: emilim yolu lümen → … → karaciğer/sistemik dolaşım")
-    layers = page.get_by_test_id("interior-layers")
-    check(all(x in layers.inner_text() for x in ["Mukus", "Epitel", "Lamina propria", "Submukoza", "Kas tabakası", "Seroza"]), "11E: duvar katmanları")
-    layers.get_by_role("button").filter(has_text="Submukoza").click()
-    page.wait_for_timeout(300)
-    check(page.get_by_test_id("interior-scene").get_attribute("data-focus") == "wall", "11E: katman seçince 3B'de duvar kesiti")
-    page.wait_for_timeout(1500)
-    page.screenshot(path=SHOTS / "ic3-duvar.png")
-    # Bölge seç → ileum
-    page.get_by_test_id("interior-regions").get_by_role("button", name=re.compile("İleum")).click()
-    page.wait_for_url("**/#/ic/small-intestine.ileum**")
-    check(page.locator("[data-testid=interior][data-interior='small-intestine.ileum']").count() == 1, "11D: bölge seç → ileum iç dünyası")
-    crumb = page.get_by_role("navigation", name="Şu anda neredeyim?").inner_text()
-    check(all(x in crumb for x in ["Vücut", "Sindirim sistemi", "İnce bağırsak", "İleum", "İçerisi"]), f"42: breadcrumb ({crumb!r})")
-    # Daha derine in → bilgi grafiği
-    page.goto(URL + "#/ic/small-intestine/12")
-    page.get_by_role("button", name=re.compile("^Daha derine in")).click()
+    check(len(a["actions"]) <= 5 and any(x.startswith("graph:") for x in a["actions"]), f"son seviyede yalnızca kendi eylemleri + 'Bilgi grafiğinde incele' ({a['actions']})")
+    page.screenshot(path=SHOTS / "ic2-molekul.png")
+    page.locator("[data-testid=level-action][data-action=graph]").click()
     page.get_by_test_id("deep-dive").wait_for()
     check(True, "Daha derine in → bilgi grafiği (derin anatomi)")
+    # Emilim basamağı: emilim odağı ve "Bunun devamı nerede?" (B12 → ileum)
+    a = goto_interior(page, URL, "small-intestine", 5)
+    check(a.get("focus") == "absorb" and a.get("stage") == "absorption", f"11G: emilim basamağı — 3B emilim odağı ({a.get('focus')})")
+    check(any("ileuma git" in x for x in a["actions"]), f"38: 'Bunun devamı nerede?' — B12: ileuma git ({a['actions']})")
+    page.screenshot(path=SHOTS / "ic3-emilim.png")
+    a = action(page, "wall")
+    check(a.get("sceneKind") == "wall" and a.get("level") == "wall", "11E: Duvarı incele → 3B duvar kesiti (ayrı sahne)")
+    # Bölge → ileum: başka bir iç dünyaya geçiş
+    a = goto_interior(page, URL, "small-intestine.ileum")
+    check(a.get("interior") == "small-intestine.ileum" and a.get("level") == "interior", "11D: ileum iç dünyası")
+    crumb = page.get_by_role("navigation", name="Keşif seviyesi").inner_text()
+    check(all(norm(x) in norm(crumb) for x in ["Sindirim", "İnce bağırsak", "İleum", "İçerisi"]), f"42: breadcrumb ({crumb!r})")
 
     # Kalın bağırsak: villus yok; karaciğer: lümen yok; kalp: kan yolu
-    page.goto(URL + "#/ic/large-intestine")
-    page.get_by_test_id("interior").wait_for()
-    steps = [b.inner_text() for b in page.get_by_test_id("interior-step").all()]
-    check(not any("Villus" in s for s in steps) and "Su ve elektrolit geri emilimi" in steps and "Dışkı → rektum" in steps, "12: kalın bağırsak ayrı sahne — su/elektrolit → mikrobiyota → dışkı → rektum, villus YOK")
-    page.goto(URL + "#/ic/liver")
-    page.get_by_test_id("interior").wait_for()
-    check(page.get_by_test_id("interior-no-lumen").count() == 1 and page.get_by_test_id("interior-stage").get_attribute("data-kind") == "parenchyma", "8/17: karaciğer — sahte lümen yok, parankim")
-    check(page.get_by_test_id("interior-scene").get_attribute("data-kind") == "parenchyma", "17: karaciğer 3B sahnesi parankim (lobül)")
-    page.goto(URL + "#/ic/heart/8")
-    page.get_by_test_id("interior").wait_for()
-    check(page.get_by_test_id("interior-scene").get_attribute("data-focus") == "path:6" and stage(page)[0] == "mitral", "14: kalp — kanın yolu, mitral kapak odağı")
-    page.get_by_test_id("interior-scene").locator("canvas").wait_for(timeout=60000)
-    page.wait_for_timeout(1500)
+    a = goto_interior(page, URL, "large-intestine")
+    seen = [a.get("stage")]
+    for _ in range(6):
+        seen.append(action(page, "forward").get("stage"))
+    check(seen == ["lumen", "contents", "motion", "water", "microbiota", "concentration", "feces"], f"12: kalın bağırsak ayrı sahne — su/elektrolit → mikrobiyota → dışkı ({seen})")
+    a = attrs(page)
+    check(any("Rektuma git" in x for x in a["actions"]), "12: dışkı → rektuma git")
+    a = goto_interior(page, URL, "liver")
+    check(a.get("sceneKind") == "parenchyma" and a.get("currentNode") == "parenchyma", "8/17: karaciğer — sahte lümen yok, parankim (lobül)")
+    a = goto_interior(page, URL, "heart", 8)
+    check(a.get("focus") == "path:6" and a.get("stage") == "mitral", f"14: kalp — kanın yolu, mitral kapak odağı ({a.get('focus')}, {a.get('stage')})")
     page.screenshot(path=SHOTS / "ic4-kalp.png")
-    for path, kind in [("#/ic/ear/3", "pathway"), ("#/ic/eyes/2", "pathway"), ("#/ic/ic.capillary", "vessel"), ("#/ic/kidneys", "parenchyma"), ("#/ic/brain", "parenchyma")]:
-        page.goto(URL + path)
-        page.get_by_test_id("interior").wait_for()
-        check(page.get_by_test_id("interior-scene").get_attribute("data-kind") == kind, f"{path}: sahne türü {kind}")
+    for oid, st, kind in [("ear", 3, "pathway"), ("eyes", 2, "pathway"), ("ic.capillary", None, "vessel"), ("kidneys", None, "parenchyma"), ("brain", None, "parenchyma")]:
+        a = goto_interior(page, URL, oid, st)
+        check(a.get("sceneKind") == kind, f"#/ic/{oid}: sahne türü {kind} ({a.get('sceneKind')})")
 
     # ------------------------------------------------------------------ 52: model yok, normal fizyoloji çalışır
     page.goto(URL + "#/gizlilik")
@@ -170,9 +150,8 @@ with sync_playwright() as p:
     inv = page.get_by_test_id("model-inventory")
     inv.locator("summary").click()
     check("erişilemedi" in page.get_by_test_id("inventory-access-note").inner_text(), "30/53: model araştırması — erişilemeyen kaynaklar açıkça yazıyor, sahte model yok")
-    page.goto(URL + "#/ic/stomach")
-    page.get_by_test_id("interior").wait_for()
-    check(page.get_by_test_id("interior-scene").get_attribute("data-kind") == "lumen", "52: model olmasa da eğitimsel iç dünya (mide) çalışıyor")
+    a = goto_interior(page, URL, "stomach")
+    check(a.get("sceneKind") == "lumen", "52: model olmasa da eğitimsel iç dünya (mide) çalışıyor")
 
     # ------------------------------------------------------------------ 50: B12 (iki gerçek ölçüm)
     upload(page, "vitamin-mineral.pdf")
@@ -199,9 +178,10 @@ with sync_playwright() as p:
     page.locator("[data-testid=physio-node][data-node=ileum]").first.click()
     page.wait_for_url("**/#/ic/small-intestine.ileum**")
     check(True, "38: B12 → ileum: 'Bunun devamı nerede?' ileuma götürür")
-    page.goto(URL + "#/ic/small-intestine.ileum/4")
+    goto_interior(page, URL, "small-intestine.ileum", 4)
+    page.get_by_test_id("interior-stage-personal-toggle").click()
     page.get_by_test_id("interior-stage-personal").wait_for()
-    check("B12" in page.get_by_test_id("interior-stage-personal").inner_text(), "21: B12 sonucu ileum 'B12 emilimi' basamağında kişisel veri olarak")
+    check("B12" in page.get_by_test_id("interior-stage-personal").inner_text() and "olası ilişki" in page.get_by_test_id("interior-stage-personal").inner_text(), "21: B12 sonucu ileum 'B12 emilimi' basamağında kişisel veri (olası ilişki)")
     page.goto(URL + "#/organ/small-intestine")
     page.get_by_role("heading", name="İnce bağırsak", exact=True).wait_for()
     check(page.get_by_test_id("organ-changes").count() == 1, "5: 'Bende ne değişmiş olabilir?' — kişisel veri bağlandı")
@@ -225,8 +205,7 @@ with sync_playwright() as p:
 
     # Telefon genişliği: yatay taşma yok
     page.set_viewport_size({"width": 390, "height": 844})
-    page.goto(URL + "#/ic/small-intestine")
-    page.get_by_test_id("interior").wait_for()
+    goto_interior(page, URL, "small-intestine")
     overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
     check(overflow <= 1, f"telefon: iç dünya ekranında yatay taşma yok ({overflow}px)")
 

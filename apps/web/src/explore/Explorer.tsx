@@ -1,9 +1,11 @@
-import { type ComponentType, type LazyExoticComponent, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { type ComponentType, type LazyExoticComponent, type RefObject, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CameraControls, type CameraControlsImpl } from '@react-three/drei';
-import { Box3, type PerspectiveCamera, Plane, PMREMGenerator, Vector3 } from 'three';
+import { Box3, MathUtils, type PerspectiveCamera, Plane, PMREMGenerator, Sphere, Vector3 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { type Sex, type SystemId, structureById, systemById, testByKey } from '@kh/catalog';
+import { interiorArchetype, interiorById, interiorFor, interiorProvenance, stagePersonal } from '@kh/analysis';
+import { useHealthModel } from '../lib/analysisBridge';
 import { useUnlockedVault } from '../state/VaultContext';
 import { type Route, type SimulationMode, go } from '../state/router';
 import { useSetting } from '../state/settings';
@@ -18,7 +20,7 @@ import { highlightName, highlightsFrom, withFindingHighlights, withImagingHighli
 import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene';
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { partLabel, partLatin } from '../anatomy/names';
-import { interiorForStructure } from '../lib/anatomyNav';
+import { interiorForStructure, routeForNode } from '../lib/anatomyNav';
 import { type BodyModel, webglAvailable } from '../anatomy/models';
 import { highlightColor } from '../anatomy/palette';
 import { Banner } from '../components/ui';
@@ -26,7 +28,10 @@ import { LayersIcon, MaximizeIcon, MinimizeIcon } from '../components/icons';
 import { setImmersive, useImmersive } from '../state/immersive';
 import { useModels, structureBoxes } from './useModels';
 import { INTRO_START, OVERVIEW, PRESETS, type Shot, applyShot, direction, frameBox, overviewShot, panelOffset, shotDistance } from './camera';
-import { SceneDirector } from './SceneDirector';
+import { type Phase, SceneDirector } from './SceneDirector';
+import { type Entry, InteriorWorld, type Leaving, WORLD_FOV, type WorldView } from './inside/InteriorScene';
+import { type ActionTarget, LEVEL_DEPTH, type LevelAction, type LevelView, clampStage, levelActions, levelCrumbs, levelView, structureOfInterior } from './interiorNav';
+import { LevelDock } from './LevelDock';
 import { BodyIntroPanel, OrganPanel, type OrganTab, SystemPanel, TestPanel, vesselParts } from './BodyPanels';
 import { MENU_SYSTEMS, inBody, isSystemId, structuresOfSystem, systemColor } from './systems';
 import { type CloudData, CloudAnchor, OrganCloud, useCloudRefs } from './OrganCloud';
@@ -40,8 +45,35 @@ import { useInside } from './inside/state';
 import { InsidePanel, SimulationBadge } from './inside/InsidePanel';
 import { personalFor } from './inside/personal';
 import { type InsideSceneProps, SceneThemeContext } from './inside/kit';
+import type { InsideState } from './inside/state';
 
-type ExploreRoute = Extract<Route, { name: 'body' }> | Extract<Route, { name: 'simulation' }>;
+type ExploreRoute = Extract<Route, { name: 'body' }> | Extract<Route, { name: 'simulation' }> | Extract<Route, { name: 'interior' }>;
+
+/** Seviye geçişlerinde perde kapanmadan önce kameranın hareket süresi (saniye). */
+const DIVE_DELAY = 0.8;
+const DEEPER_DELAY = 0.6;
+const UP_DELAY = 0.45;
+
+/** Gezinme hedefinden rota. */
+function routeOf(def: { organId: string }, t: ActionTarget): Route {
+  if ('stage' in t) return { name: 'interior', id: def.organId, stage: t.stage + 1 };
+  if ('interior' in t) return { name: 'interior', id: t.interior };
+  if ('body' in t) return { name: 'body', structure: t.body };
+  if ('graph' in t) return routeForNode(t.graph);
+  return { name: 'body' };
+}
+
+/** Görünür alan (panelin kapatmadığı kısım) için kadraj mesafesi çarpanı. */
+function coverFactor(cam: PerspectiveCamera, vp: { width: number; height: number }, cover: { right: number; bottom: number }): number {
+  if (vp.width <= 0 || vp.height <= 0) return 1;
+  const vt = Math.tan(MathUtils.degToRad(cam.fov) / 2);
+  const aspect = vp.width / vp.height;
+  const full = Math.min(vt, vt * aspect);
+  const fh = Math.max(0.4, (vp.height - cover.bottom) / vp.height);
+  const fw = Math.max(0.4, (vp.width - cover.right) / vp.width);
+  const vis = Math.min(vt * fh, vt * aspect * fw);
+  return Math.sin(Math.atan(full)) / Math.sin(Math.atan(vis));
+}
 
 // Doku atlası sahnelerinin hepsi tek bir veri güdümlü bileşenle çizilir.
 const TissueScene = lazy(() => import('./inside/scenes/TissueScene'));
@@ -151,13 +183,36 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const inside = route.name === 'simulation' ? resolveInside(route.id) : null;
   const mode: SimulationMode | undefined = route.name === 'simulation' ? route.mode : undefined;
   const fromStructure = route.name === 'simulation' && route.from && structureById.has(route.from) ? route.from : undefined;
+  // "İçine gir": organın iç dünyası, her basamak bir gezinme seviyesi (rota → seviye → sahne → kamera).
+  const interiorDef = route.name === 'interior' ? (interiorById(route.id) ?? interiorFor(route.id)) : undefined;
+  const routeStage = route.name === 'interior' ? route.stage : undefined;
+  const lv = useMemo(() => (interiorDef ? levelView(interiorDef, clampStage(interiorDef, routeStage)) : null), [interiorDef, routeStage]);
+  const interiorStructure = interiorDef ? structureOfInterior(interiorDef) : undefined;
   // İçeri girilirken (geçiş sürerken) vücut sahnesi girilen organa odaklı kalır.
-  const structure = route.name === 'body' ? (route.structure && structureById.has(route.structure) ? route.structure : undefined) : fromStructure;
+  const structure = route.name === 'body' ? (route.structure && structureById.has(route.structure) ? route.structure : undefined) : route.name === 'interior' ? interiorStructure : fromStructure;
   const routePart = route.name === 'body' ? route.part : undefined;
   const system: SystemId | undefined = route.name === 'body' && isSystemId(route.system) ? route.system : undefined;
   const focusTest = route.name === 'body' && route.focus && testByKey.has(route.focus) ? route.focus : undefined;
-  const sceneKey = inside ? `inside:${inside.scene}` : 'body';
+  // Doğrudan bir iç dünya adresiyle açılınca önce organ 3B vücutta gösterilir, sonra kamera içine dalar.
+  const [diveOk, setDiveOk] = useState(() => !(route.name === 'interior' && interiorStructure));
+  const holding = !!lv && !diveOk;
+  const sceneKey = inside ? `inside:${inside.scene}` : lv && !holding ? lv.sceneKey : 'body';
   const [shownKey, setShownKey] = useState(sceneKey);
+  // Seviye geçiş yönü: derine (kamera yaklaşır → perde → yeni sahneye dışarıdan girer) ya da yukarı (geri çekilir).
+  const levelByKey = useRef(new Map<string, LevelView>());
+  if (lv) levelByKey.current.set(lv.sceneKey, lv);
+  const depthOf = (k: string) => (k === 'body' ? LEVEL_DEPTH.organ * 100 : k.startsWith('inside:') ? LEVEL_DEPTH.tissue * 100 : (() => {
+    const l = levelByKey.current.get(k);
+    return l ? LEVEL_DEPTH[l.level] * 100 + l.idx : 0;
+  })());
+  const trans = useRef({ target: sceneKey, dir: 'in' as 'in' | 'out' });
+  if (trans.current.target !== sceneKey) trans.current = { target: sceneKey, dir: depthOf(sceneKey) >= depthOf(shownKey) ? 'in' : 'out' };
+  const dir = trans.current.dir;
+  const leaving: Leaving = sceneKey !== shownKey ? dir : null;
+  const entry: Entry = dir === 'in' ? 'outside' : 'deeper';
+  const transitionDelay = sceneKey === shownKey ? 0 : shownKey === 'body' ? (structure ? DIVE_DELAY : 0) : dir === 'in' ? DEEPER_DELAY : UP_DELAY;
+  const shownLv = shownKey.startsWith('ic:') || shownKey.startsWith('in:') ? (levelByKey.current.get(shownKey) ?? null) : null;
+  const [phase, setPhase] = useState<Phase>('idle');
   const shownInside = shownKey.startsWith('inside:') ? (shownKey.slice(7) as InsideId) : null;
   const [partKey, setPartKey] = useState<string | null>(null);
   useEffect(() => {
@@ -185,6 +240,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const seriesMap = useMemo(() => new Map(series.map((s) => [s.test.key, s])), [series]);
   const interp = useInterpretation(series, sex);
   const studies = useImagingStudies();
+  const { model: health } = useHealthModel();
   const weights = useMemo(() => severityWeights(interp), [interp]);
   // Tahlil vurgularına referans dışı görüntüleme ölçümleri de eklenir (bir tahlile odaklanılmadıkça).
   const highlights = useMemo(() => {
@@ -267,6 +323,24 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const cameraRef = useRef<PerspectiveCamera | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const coverRef = useRef({ right: 0, bottom: 0 });
+  // Görünür alan: tuval boyutu + panelin kapattığı kısım (3B kadraj ekran oranına ve panele göre hesaplanır).
+  const [cover, setCover] = useState({ right: 0, bottom: 0 });
+  const [vp, setVp] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const on = () => setVp((v) => (v.width === el.clientWidth && v.height === el.clientHeight ? v : { width: el.clientWidth, height: el.clientHeight }));
+    on();
+    const ro = new ResizeObserver(on);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const worldView = useMemo<WorldView>(() => ({ width: Math.max(1, vp.width), height: Math.max(1, vp.height), right: cover.right, bottom: cover.bottom }), [vp, cover]);
+  /** Ekrana sığma denetimi için kadraja alınan nesnenin küresi (dünya koordinatı). */
+  const subjectRef = useRef<{ center: [number, number, number]; radius: number } | null>(null);
+  const onSubject = useCallback((sub: { center: [number, number, number]; radius: number } | null) => {
+    subjectRef.current = sub;
+  }, []);
   // Kamera denetimi sahne ağacında hazır olunca (Canvas içi ayrı çizilir) kamera işleri başlar.
   const [controlsReady, setControlsReady] = useState(false);
   const setControls = useCallback((c: CameraControlsImpl | null) => {
@@ -332,7 +406,11 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       const c = controlsRef.current;
       const cam = cameraRef.current;
       if (!c || !cam) return;
-      const shot = shotForLevel();
+      const raw = shotForLevel();
+      // Panelin kapattığı alan hesaba katılır: model görünür alana sığar (telefonda alttan panel, dikey ekran).
+      const k = coverFactor(cam, viewport(), coverRef.current);
+      const t = new Vector3(...raw.target);
+      const shot = { position: t.clone().add(new Vector3(...raw.position).sub(t).multiplyScalar(k)).toArray() as Shot['position'], target: raw.target };
       c.minDistance = 0.05;
       c.maxDistance = 6;
       void applyShot(c, shot, animate);
@@ -341,12 +419,61 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     [shotForLevel],
   );
 
+  // İç dünyadan vücuda dönüşte kamera organın içinden başlar ve geri çekilerek organı kadrajlar (ters yön).
+  const prevShown = useRef(shownKey);
   useEffect(() => {
-    if (shownKey !== 'body' || intro || !controlsReady) return;
+    const was = prevShown.current;
+    prevShown.current = shownKey;
+    if (shownKey !== 'body' || sceneKey !== 'body' || intro || !controlsReady) return;
+    const c = controlsRef.current;
+    const b = structure ? boxes.get(structure) : undefined;
+    // İç dünya sahnesi (ayrı R3F ağacı) görüş açısını geri almadan önce kadrajlanabilir: vücudun açısı burada kesinleşir.
+    const cam = cameraRef.current;
+    if (cam && cam.fov !== WORLD_FOV.body) {
+      cam.fov = WORLD_FOV.body;
+      cam.updateProjectionMatrix();
+    }
+    if (was !== 'body' && c && b) {
+      const center = b.getCenter(new Vector3());
+      const r = Math.max(0.02, b.getBoundingSphere(new Sphere()).radius);
+      const d = direction(...(ORGANS[structure!]?.view ?? [0, 5]));
+      const eye = center.clone().addScaledVector(d, r * 0.1);
+      void c.setFocalOffset(0, 0, 0, false);
+      void c.setLookAt(eye.x, eye.y, eye.z, center.x - d.x * r, center.y - d.y * r, center.z - d.z * r, false);
+    }
     frame(!reducedMotion);
     // focusReady: model geldiğinde tekrar kadrajla; frame her render'da yeni olduğundan bağımlılıkta yok.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownKey, structure, system, focusTest, partKey, focusReady, intro, reducedMotion, controlsReady, body]);
+  }, [shownKey, structure, system, focusTest, partKey, focusReady, intro, reducedMotion, controlsReady, body, vp.width, vp.height]);
+
+  // "İçine gir": kamera organa yaklaşır ve içine dalar; perde bu hareketin sonunda kapanır (SceneDirector delay).
+  useEffect(() => {
+    if (shownKey !== 'body' || sceneKey === 'body' || !controlsReady) return;
+    const c = controlsRef.current;
+    const b = structure ? boxes.get(structure) : undefined;
+    if (!c || !b) return;
+    const center = b.getCenter(new Vector3());
+    const r = Math.max(0.02, b.getBoundingSphere(new Sphere()).radius);
+    const d = c.getPosition(new Vector3()).sub(c.getTarget(new Vector3())).normalize();
+    const eye = center.clone().addScaledVector(d, r * 0.08);
+    c.smoothTime = reducedMotion ? 0.15 : 0.62;
+    void c.setFocalOffset(0, 0, 0, true);
+    void c.setLookAt(eye.x, eye.y, eye.z, center.x - d.x * r, center.y - d.y * r, center.z - d.z * r, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sceneKey, shownKey, controlsReady]);
+
+  // Doğrudan iç dünya adresi: organın modeli yüklenip kadrajlanınca kısa bir an gösterilir, sonra dalış başlar.
+  const organLoaded = !!interiorStructure && boxes.has(interiorStructure);
+  useEffect(() => {
+    if (diveOk || !lv) return;
+    const fallback = window.setTimeout(() => setDiveOk(true), 7000);
+    if (!organLoaded || !controlsReady || intro) return () => window.clearTimeout(fallback);
+    const t = window.setTimeout(() => setDiveOk(true), reducedMotion ? 200 : 1100);
+    return () => {
+      window.clearTimeout(t);
+      window.clearTimeout(fallback);
+    };
+  }, [diveOk, lv, organLoaded, controlsReady, intro, reducedMotion]);
 
   // Açılış: uzaktan yavaşça yaklaş (atlanabilir)
   const bodyLoaded = models.loaded.has('body');
@@ -375,13 +502,24 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 
   const shownKeyRef = useRef(shownKey);
   shownKeyRef.current = shownKey;
-  const onCover = useCallback((cover: { right: number; bottom: number }) => {
-    coverRef.current = cover;
+  const onCover = useCallback((next: { right: number; bottom: number }) => {
+    coverRef.current = next;
+    setCover((p) => (p.right === next.right && p.bottom === next.bottom ? p : next));
     const c = controlsRef.current;
     const cam = cameraRef.current;
     // İçeri-gir sahnelerinde kamera damarın/dokunun içinde; yana kaydırmak onu dışarı taşır.
-    if (c && cam && shownKeyRef.current === 'body') void panelOffset(c, cam, viewport(), cover, true);
+    // Doku/hücre sahnelerinde (in:) ise nesne panelin arkasında kalmasın diye odak kaydırılır.
+    if (c && cam && (shownKeyRef.current === 'body' || shownKeyRef.current.startsWith('in:'))) void panelOffset(c, cam, viewport(), next, true);
   }, []);
+  useEffect(() => {
+    if (!shownKey.startsWith('in:')) return;
+    const t = window.setTimeout(() => {
+      const c = controlsRef.current;
+      const cam = cameraRef.current;
+      if (c && cam) void panelOffset(c, cam, viewport(), coverRef.current, true);
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [shownKey]);
 
   const onView = (v: ViewName) => {
     const c = controlsRef.current;
@@ -453,6 +591,10 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 
   const goUp = useCallback(() => {
     if (cloud) return setCloud(null);
+    if (lv) {
+      const back = levelActions(lv).find((a) => a.id === 'back');
+      return go(back?.to ? routeOf(lv.def, back.to) : { name: 'body' });
+    }
     if (shownInside || inside) return go(fromStructure ? { name: 'body', structure: fromStructure } : { name: 'body' });
     if (partKey) return setPartKey(null);
     if (structure) {
@@ -460,7 +602,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       return go(sys && sys !== 'integumentary' && sys !== 'hematologic' ? { name: 'body', system: sys } : { name: 'body' });
     }
     if (system || focusTest) return go({ name: 'body' });
-  }, [cloud, shownInside, inside, fromStructure, partKey, structure, system, focusTest]);
+  }, [cloud, lv, shownInside, inside, fromStructure, partKey, structure, system, focusTest]);
 
   const hideCurrent = useCallback(() => {
     if (!structure) return;
@@ -566,7 +708,12 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 
   /* ---------------------------------------------------------- gezinme yolu */
   const crumbs: Crumb[] = [{ label: body === 'female' ? 'İnsan · Kadın' : 'İnsan · Erkek', onClick: () => go({ name: 'body' }) }];
-  if (shownInside) {
+  if (lv) {
+    // Vücut › Sistem › Organ › İçerisi › geçilen basamaklar (duvara geçince: … › İçerisi › Duvar › Mukoza)
+    const sys = (structure ? structureById.get(structure)?.systems[0] : undefined) ?? (systemById.has(lv.def.system as SystemId) ? (lv.def.system as SystemId) : undefined);
+    if (sys && systemById.get(sys)) crumbs.push({ label: systemById.get(sys)!.nameTr, onClick: () => go({ name: 'body', system: sys }) });
+    for (const c of levelCrumbs(lv)) crumbs.push({ label: c.label, onClick: c.to ? () => go(routeOf(lv.def, c.to!)) : undefined });
+  } else if (shownInside) {
     const sc = INSIDE[shownInside];
     const from = fromStructure;
     const sys = from ? structureById.get(from)?.systems[0] : sc.system;
@@ -587,6 +734,37 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   }
 
   const SceneComp = shownInside ? SCENES[shownInside] : undefined;
+
+  // İç dünya seviyesinin doku/hücre sahnesi (in:<sahne>): durum seviyeden türetilir (aşama = kamera çekimi).
+  const [picked, setPicked] = useState<string | null>(null);
+  useEffect(() => setPicked(null), [lv?.def.organId, lv?.idx]);
+  const lvScene = shownLv?.scene.kind === 'inside' ? shownLv.scene : null;
+  const LvComp = lvScene ? SCENES[lvScene.id] : undefined;
+  const lvState = useMemo<InsideState | null>(
+    () => (lvScene ? { scene: lvScene.id, stage: lvScene.stage, playing: !reducedMotion, speed: 1, auto: false, selected: picked ?? lvScene.selected, view: 'typical', process: lvScene.stage > 0 } : null),
+    [lvScene, reducedMotion, picked],
+  );
+  const lvParams = useMemo(() => (lvScene ? personalFor(lvScene.id, interp, INSIDE_CONTENT[lvScene.id].tests, structure).typical : {}), [lvScene, interp, structure]);
+  const lvActions = useMemo(() => (lv ? levelActions(lv) : []), [lv]);
+  const lvPersonal = useMemo(() => (lv ? stagePersonal(lv.stage, health) : null), [lv, health]);
+  const lvProv = lv ? interiorProvenance(lv.def, health) : null;
+  const lvLabel = lvProv?.personal3D ? 'Organ: senin görüntünden · içerisi eğitimsel' : 'Eğitimsel · Temsili anatomi';
+  // Organ kişinin BT/MR serisinden gerçek maskeyle bölütlendiyse: "Senin görüntünden oluşturuldu." (iç seviyeler eğitimsel)
+  const lvPersonal3D = lvProv?.personal3D
+    ? {
+        label: lvProv.organLabel,
+        detail: `${lvProv.structures.map((x) => `${x.name}${x.localization.kind === 'volume' ? ` · ${x.localization.volumeMl.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} mL` : ''}`).join(' · ')}. Organın kendisi senin serinden; içerideki seviyeler (lobül, nefron, villus…) eğitimseldir.`,
+        onOpen: lvProv.structures[0]?.provenance.documentId ? () => go({ name: 'document', id: lvProv.structures[0]!.provenance.documentId! }) : undefined,
+      }
+    : null;
+  const pickedInfo = picked && lvScene ? (INSIDE_CONTENT[lvScene.id].objects[picked] ?? null) : null;
+  const busy = phase !== 'idle' || holding;
+  // Ekrana sığma denetimi: vücut seviyesinde odaktaki organın küresi (iç dünyada sahne kendisi bildirir).
+  if (shownKey === 'body') {
+    const b = structure ? boxes.get(structure) : undefined;
+    const sp = b ? b.getBoundingSphere(new Sphere()) : null;
+    subjectRef.current = sp ? { center: sp.center.toArray() as [number, number, number], radius: sp.radius } : null;
+  } else if (shownKey.startsWith('in:') || shownKey.startsWith('inside:')) subjectRef.current = null;
   const personal = useMemo(
     () => (shownInside ? personalFor(shownInside, interp, INSIDE_CONTENT[shownInside].tests, fromStructure) : null),
     [shownInside, interp, fromStructure],
@@ -678,9 +856,35 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   }
 
   const light = theme === 'light';
+  // Vücut seviyesinin arayüzü (sistem menüsü, araçlar, bilgi paneli) yalnızca vücut sahnesinde; iç dünyada seviye paneli.
+  const bodyUi = shownKey === 'body' && route.name !== 'interior';
+  const navLevel = lv ? lv.level : structure ? 'organ' : system ? 'system' : 'body';
+  const onPhase = (p: Phase) => setPhase(p);
 
   return (
-    <div ref={rootRef} className="explore-bg relative h-full w-full select-none overflow-hidden" style={{ ['--kh-accent' as string]: accent }}>
+    <div
+      ref={rootRef}
+      className="explore-bg relative h-full w-full select-none overflow-hidden"
+      style={{ ['--kh-accent' as string]: accent }}
+      data-testid="explorer"
+      data-level={navLevel}
+      data-scene={shownKey}
+      data-target-scene={sceneKey}
+      data-transition={phase}
+      {...(lv
+        ? {
+            'data-interior': lv.def.organId,
+            'data-stage': lv.stage.id,
+            'data-stage-index': lv.idx + 1,
+            'data-current-level': lv.stage.scale,
+            'data-current-node': lv.stage.kind,
+            'data-type': lv.def.type,
+            'data-archetype': interiorArchetype(lv.def),
+            'data-scene-kind': lv.scene.kind === 'interior' ? lv.def.interiorScene.kind : lv.scene.kind === 'wall' ? 'wall' : `inside:${lv.scene.id}`,
+            'data-focus': lv.scene.kind === 'interior' ? lv.scene.focus : lv.scene.kind,
+          }
+        : {})}
+    >
       <Canvas
         key={canvasKey}
         className="!absolute inset-0 touch-none"
@@ -709,13 +913,13 @@ export function Explorer({ route }: { route: ExploreRoute }) {
             color={accent}
             origin={origin}
             reducedMotion={reducedMotion}
+            delay={transitionDelay}
+            onPhase={onPhase}
             onSwap={(key) => {
               setShownKey(key);
-              if (key === 'body') {
-                // İçeriden dönerken organın çevresinden başla
-                const c = controlsRef.current;
-                if (c) c.smoothTime = 0.55;
-              }
+              // Yeni seviyenin kamera hareketleri normal hızda (dalışta hızlandırılmıştı)
+              const c = controlsRef.current;
+              if (c) c.smoothTime = reducedMotion ? 0.2 : 0.55;
             }}
           >
             {(shown) => (
@@ -746,10 +950,34 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                     <SceneComp key={shownInside} state={insideState} onSelect={insideActions.select} reducedMotion={reducedMotion} params={sceneParams} origin={fromStructure} theme={theme} />
                   </Suspense>
                 )}
+                {shown.startsWith('ic:') && shownLv && shownLv.scene.kind !== 'inside' && (
+                  <InteriorWorld
+                    key={shown}
+                    spec={shownLv.def.interiorScene}
+                    focus={shownLv.scene.kind === 'interior' ? shownLv.scene.focus : 'wall'}
+                    progress={shownLv.scene.kind === 'interior' ? shownLv.scene.progress : 1}
+                    wall={shownLv.scene.kind === 'wall'}
+                    layers={shownLv.def.wallLayers}
+                    highlightLayer={shownLv.scene.kind === 'wall' ? shownLv.scene.highlight : undefined}
+                    stations={shownLv.def.routes?.[0]?.steps.length}
+                    playing
+                    reducedMotion={reducedMotion}
+                    entry={entry}
+                    leaving={leaving}
+                    view={worldView}
+                    onSubject={onSubject}
+                  />
+                )}
+                {shown.startsWith('in:') && LvComp && lvState && (
+                  <Suspense fallback={<ScenePending onChange={setScenePending} />}>
+                    <LvComp key={shown} state={lvState} onSelect={setPicked} reducedMotion={reducedMotion} params={lvParams} origin={structure} theme={theme} depth={lvScene?.depth ?? 0} />
+                  </Suspense>
+                )}
               </>
             )}
           </SceneDirector>
-          <CloudAnchor point={cloud && shownKey === 'body' ? cloud.point : null} refs={cloudRefs} cover={coverRef} />
+          <CloudAnchor point={cloud && bodyUi ? cloud.point : null} refs={cloudRefs} cover={coverRef} />
+          <CameraProbe rootRef={rootRef} subjectRef={subjectRef} />
         </SceneThemeContext>
         <ambientLight intensity={light ? 0.5 : 0.22} />
         <directionalLight position={[1.2, 2, 2.5]} intensity={light ? 1.25 : 1.05} />
@@ -787,7 +1015,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
             )}
           </div>
         </div>
-        {shownKey === 'body' && (
+        {bodyUi && (
           <>
             <div className="pointer-events-auto flex rounded-full border border-ink-600/70 bg-ink-950/70 p-0.5 backdrop-blur" role="radiogroup" aria-label="Vücut modeli">
               {(
@@ -851,7 +1079,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 
 
       {/* Araç çubuğu ve kesit */}
-      {shownKey === 'body' && !intro && !immersive && (
+      {bodyUi && !intro && !immersive && (
         <div className={`pointer-events-none absolute left-4 z-20 flex flex-col items-start gap-2 md:left-6 ${!structure && !focusTest ? 'top-[5.75rem]' : 'top-[6.25rem]'} md:top-auto md:bottom-20`}>
           <ToolBar
             canFocusTools={!!structure}
@@ -884,7 +1112,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       )}
 
       {/* Sistem menüsü */}
-      {shownKey === 'body' && !structure && !focusTest && !immersive && (
+      {bodyUi && !structure && !focusTest && !immersive && (
         <nav
           aria-label="Vücut sistemleri"
           className="pointer-events-auto absolute inset-x-0 top-12 z-10 flex gap-1.5 overflow-x-auto px-4 pb-2 md:inset-x-auto md:left-6 md:top-24 md:w-48 md:flex-col md:gap-0 md:overflow-visible md:px-0"
@@ -915,12 +1143,14 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       )}
 
       {/* Kamera denetimleri */}
-      <div className="pointer-events-none absolute bottom-[40%] left-4 z-10 hidden md:bottom-6 md:left-6 md:block">
-        <ViewControls onView={onView} onZoom={onZoom} onReset={onReset} />
-      </div>
+      {(bodyUi || shownInside) && (
+        <div className="pointer-events-none absolute bottom-[40%] left-4 z-10 hidden md:bottom-6 md:left-6 md:block">
+          <ViewControls onView={onView} onZoom={onZoom} onReset={onReset} />
+        </div>
+      )}
 
       {/* Bağlam paneli */}
-      {!intro && shownKey === 'body' && !immersive && (
+      {!intro && bodyUi && !immersive && (
         <ContextSheet
           onSize={onCover}
           label="Bilgi paneli"
@@ -974,15 +1204,19 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         </ContextSheet>
       )}
 
-      {cloudData && shownKey === 'body' && <OrganCloud data={cloudData} refs={cloudRefs} accent={accent} onClose={() => setCloud(null)} />}
+      {lv && !immersive && (
+        <LevelDock view={lv} actions={lvActions} onAction={(a: LevelAction) => a.to && go(routeOf(lv.def, a.to))} accent={accent} onSize={onCover} personal={lvPersonal} label={lvLabel} busy={busy} picked={pickedInfo} personal3D={lvPersonal3D} />
+      )}
+
+      {cloudData && bodyUi && <OrganCloud data={cloudData} refs={cloudRefs} accent={accent} onClose={() => setCloud(null)} />}
 
       <Tooltip ref={tooltipRef} />
 
-      {scenePending && shownInside && (
+      {scenePending && (shownInside || shownKey.startsWith('in:')) && (
         <div className="pointer-events-none absolute inset-x-0 top-1/2 z-20 flex justify-center md:right-[26rem]" role="status" aria-live="polite">
           <div className="flex items-center gap-2 rounded-full border border-ink-600/70 bg-ink-950/80 px-4 py-2 backdrop-blur">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" aria-hidden="true" />
-            <Caps className="text-fg-muted">{INSIDE[shownInside].title} hazırlanıyor…</Caps>
+            <Caps className="text-fg-muted">{shownInside ? INSIDE[shownInside].title : lvScene ? INSIDE[lvScene.id].title : 'Sahne'} hazırlanıyor…</Caps>
           </div>
         </div>
       )}
@@ -1054,5 +1288,63 @@ function Env({ intensity }: { intensity: number }) {
     scene.environmentIntensity = intensity;
     invalidate();
   }, [scene, intensity, invalidate]);
+  return null;
+}
+
+/**
+ * Kamera ve kadraj durumunu kök öğeye yazar (uçtan uca testler gerçek kamera hareketini ve ekrana sığmayı
+ * denetler): data-camera = konum|hedef|görüş açısı; data-camera-moving; data-subject = kadrajdaki nesnenin
+ * ekrandaki dairesi (merkez x, y ve yarıçap, CSS pikseli).
+ */
+function CameraProbe({ rootRef, subjectRef }: { rootRef: RefObject<HTMLDivElement | null>; subjectRef: RefObject<{ center: [number, number, number]; radius: number } | null> }) {
+  const camera = useThree((s) => s.camera) as PerspectiveCamera;
+  const controls = useThree((s) => s.controls) as unknown as CameraControlsImpl | null;
+  const size = useThree((s) => s.size);
+  const last = useRef('');
+  const tmp = useMemo(() => ({ t: new Vector3(), c: new Vector3(), d: new Vector3() }), []);
+  // Hareket durumu kare hızından bağımsız: kamera denetiminin olaylarından (geçiş başladı / güncellendi → uyudu).
+  useEffect(() => {
+    if (!controls || typeof controls.addEventListener !== 'function') return;
+    const set = (v: string) => () => {
+      if (rootRef.current) rootRef.current.dataset.cameraMoving = v;
+    };
+    const on = set('true');
+    const off = set('false');
+    controls.addEventListener('transitionstart', on);
+    controls.addEventListener('controlstart', on);
+    controls.addEventListener('update', on);
+    controls.addEventListener('sleep', off);
+    if (rootRef.current && !rootRef.current.dataset.cameraMoving) rootRef.current.dataset.cameraMoving = controls.active ? 'true' : 'false';
+    return () => {
+      controls.removeEventListener('transitionstart', on);
+      controls.removeEventListener('controlstart', on);
+      controls.removeEventListener('update', on);
+      controls.removeEventListener('sleep', off);
+    };
+  }, [controls, rootRef]);
+  useFrame(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const p = camera.position;
+    const t = controls && typeof controls.getTarget === 'function' ? controls.getTarget(tmp.t) : tmp.t.set(0, 0, 0);
+    const f = (v: Vector3) => `${v.x.toFixed(3)},${v.y.toFixed(3)},${v.z.toFixed(3)}`;
+    const cam = `${f(p)}|${f(t)}|${camera.fov.toFixed(0)}`;
+    if (cam !== last.current) {
+      last.current = cam;
+      el.dataset.camera = cam;
+    }
+    const sub = subjectRef.current;
+    if (!sub) {
+      delete el.dataset.subject;
+      return;
+    }
+    tmp.c.set(...sub.center);
+    const dist = tmp.d.copy(tmp.c).sub(p).length();
+    tmp.c.project(camera);
+    const cx = ((tmp.c.x + 1) / 2) * size.width;
+    const cy = ((1 - tmp.c.y) / 2) * size.height;
+    const r = (sub.radius / (Math.max(dist, 1e-3) * Math.tan(MathUtils.degToRad(camera.fov) / 2))) * (size.height / 2);
+    el.dataset.subject = `${cx.toFixed(1)},${cy.toFixed(1)},${r.toFixed(1)}`;
+  });
   return null;
 }

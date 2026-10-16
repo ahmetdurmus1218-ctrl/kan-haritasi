@@ -79,6 +79,11 @@ with sync_playwright() as p:
     page.goto(URL + "#/zaman/ldl")
     page.get_by_text("Sonuçların zaman içinde").wait_for()
     chart = page.locator("svg[aria-label='Zaman içinde değerler, 2 ölçüm']")
+    # Grafik kasadaki ölçümler okunduktan sonra çizilir (başlıktan sonra gelir): beklenir, hemen sayılmaz.
+    try:
+        chart.first.wait_for(timeout=30000)
+    except Exception:
+        pass
     check(chart.count() == 1, "LDL için iki ölçümlü grafik")
     page.locator("svg circle[role=button]").first.focus()
     page.keyboard.press("Enter")

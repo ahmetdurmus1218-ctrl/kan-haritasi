@@ -23,6 +23,8 @@ export interface InsideSceneProps {
   origin?: string;
   /** Arayüz teması: açık temada sahne arka planı aydınlanır. */
   theme?: 'light' | 'dark';
+  /** "İçine gir" derinliği (0 = katman, 1+ = kript → epitel → hücre): kamera seçili katmana giderek yaklaşır. */
+  depth?: number;
 }
 
 /** Tipik sayıyı düğmeye göre ölçekler (tamsayı, sınırlı). */

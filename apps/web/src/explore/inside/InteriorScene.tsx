@@ -10,10 +10,16 @@
  *
  * Her şey prosedürel ve EĞİTİMSELDİR (normal anatomi/fizyoloji); kişinin görüntüsü değildir. Modlar ve odak
  * yalnızca tanımdan gelir, kişinin verisinden türetilmez.
+ *
+ * Sahne 3B vücut keşfinin (Explorer) tuvalinde, aynı kamera denetimiyle çizilir: "İçine gir" ile kamera
+ * organa dalar, perde açılınca iç dünyaya GİRİŞ çekiminden (dışarıdan / derinden) bu basamağın çekimine
+ * animasyonla gider. Basamak değişince kamera yeni odağa hareket eder; başka bir seviyeye geçilirken
+ * (duvar, doku…) perde kapanmadan önce kamera o yöne yaklaşır, geri dönülürken uzaklaşır. Nesne sahneleri
+ * (odacık, parankim, yol, duvar kesiti) görünür alana — panelin kapatmadığı kısma — sığdırılır.
  */
-import { useEffect, useMemo, useRef } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { createContext, useContext, useEffect, useMemo, useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import type { CameraControlsImpl } from '@react-three/drei';
 import {
   BufferAttribute,
   BufferGeometry,
@@ -27,6 +33,7 @@ import {
   type Mesh,
   MeshStandardMaterial,
   Object3D,
+  type PerspectiveCamera,
   Shape,
   SphereGeometry,
   TorusGeometry,
@@ -34,20 +41,44 @@ import {
   Vector3,
 } from 'three';
 import type { InteriorMode, SceneFocus, SceneSpec } from '@kh/analysis';
-import { bumpySphere, rbcGeometry, rng, useDisposable } from './kit';
+import { Headlight, bumpySphere, rbcGeometry, rng, useAtmosphere, useDisposable } from './kit';
 
-export interface InteriorSceneProps {
+/** Görünür alan: tuval boyutu ve panelin sağdan/alttan kapattığı piksel. */
+export interface WorldView {
+  width: number;
+  height: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Seviyeler arası geçiş: 'in' = daha derine (duvar, doku…) geçilmek üzere, kamera o yöne yaklaşır;
+ * 'out' = yukarı (organın dışına) çıkılmak üzere, kamera uzaklaşır.
+ */
+export type Leaving = 'in' | 'out' | null;
+/** Sahneye giriş çekimi: 'outside' = organın dışından içeri; 'deeper' = daha derin bir seviyeden geri dönüş. */
+export type Entry = 'outside' | 'deeper';
+
+export interface InteriorWorldProps {
   spec: SceneSpec;
   focus: SceneFocus;
+  /** 0–1: iç dünyada ne kadar ilerlendi (İlerle → kamera lümende ileri gider). */
+  progress: number;
+  /** Duvar kesiti (duvar ve doku seviyesi). */
+  wall: boolean;
   mode?: InteriorMode;
-  /** Duvar katmanları (lümenden dışa) — "duvar" odağında kesit. */
+  /** Duvar katmanları (lümenden dışa / yüzeyden derine). */
   layers?: Array<{ id: string; name: string }>;
   highlightLayer?: number;
   /** Akış yolu istasyon sayısı (kalp, kulak, göz, hava). */
   stations?: number;
   playing: boolean;
   reducedMotion: boolean;
-  theme: 'light' | 'dark';
+  entry: Entry;
+  leaving: Leaving;
+  view: WorldView;
+  /** Kadraja alınan nesnenin küresi (uçtan uca testte ekrana sığma denetimi); lümen içinde null. */
+  onSubject?: (s: { center: [number, number, number]; radius: number } | null) => void;
 }
 
 const TMP = new Object3D();
@@ -55,8 +86,19 @@ const V = new Vector3();
 const W = new Vector3();
 const U = new Vector3();
 
+/** Lümen içinde geniş açı (endoskop hissi); nesne sahnelerinde dar açı. 3B vücut 35° ile çizilir. */
+export const WORLD_FOV = { lumen: 62, object: 38, body: 35 } as const;
+
 /** Yoğunluk/hareket varsayılanları (mod yoksa): tipik normal işleyiş. */
 const DEFAULT_MODE: InteriorMode = { id: 'normal', name: 'Normal', text: '', content: 0.6, motion: 0.6, digestion: 0.3, absorption: 0 };
+
+const WorldContext = createContext<{ view: WorldView; entry: Entry; leaving: Leaving; reducedMotion: boolean; progress: number; onSubject?: InteriorWorldProps['onSubject'] }>({
+  view: { width: 1, height: 1, right: 0, bottom: 0 },
+  progress: 0,
+  entry: 'outside',
+  leaving: null,
+  reducedMotion: false,
+});
 
 function useClock(playing: boolean, reducedMotion: boolean) {
   const t = useRef(0);
@@ -72,22 +114,101 @@ function useClock(playing: boolean, reducedMotion: boolean) {
   return t;
 }
 
-/** Kamerayı yerleştirir ve OrbitControls hedefini aynı noktaya taşır (aksi hâlde kontrol merkeze döner). */
-function useAim(eye: Vector3 | null, target: Vector3 | null, key: string) {
-  const camera = useThree((s) => s.camera);
-  const controls = useThree((s) => s.controls) as unknown as { target: Vector3; update: () => void } | null;
+interface Pose {
+  eye: Vector3;
+  target: Vector3;
+  /** Odak kaydırması (kamera uzayı): panelin kapattığı alanı dengeler. */
+  offset?: [number, number];
+}
+
+const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
+
+/**
+ * Küreyi panelin kapatmadığı görünür alana sığdıran çekim (ekran oranı, dikey/yatay, alttan/yandan panel).
+ * Mesafe dikey ve yatay görüş açısından küçük olana göre hesaplanır; odak kaydırması nesneyi görünür
+ * alanın ortasına taşır. Böylece telefonda dikey ekranda da model ekran dışına taşmaz.
+ */
+export function fitPose(center: Vector3, radius: number, dir: Vector3, view: WorldView, fov: number = WORLD_FOV.object, margin = 1.08): Pose {
+  const aspect = view.width / Math.max(1, view.height);
+  const vt = Math.tan((fov * Math.PI) / 360);
+  const fh = clamp((view.height - view.bottom) / Math.max(1, view.height), 0.4, 1);
+  const fw = clamp((view.width - view.right) / Math.max(1, view.width), 0.4, 1);
+  const t = Math.min(vt * fh, vt * aspect * fw);
+  const dist = (radius / Math.sin(Math.atan(t))) * margin;
+  const visibleH = 2 * dist * vt;
+  const visibleW = visibleH * aspect;
+  return {
+    eye: center.clone().addScaledVector(dir.clone().normalize(), dist),
+    target: center.clone(),
+    offset: [(visibleW * view.right) / Math.max(1, view.width) / 2, (visibleH * view.bottom) / Math.max(1, view.height) / 2],
+  };
+}
+
+/** Geçiş öncesi kamera: derine inerken hedefe yaklaşır, yukarı çıkarken geri çekilir. */
+function leavingPose(p: Pose, leaving: Leaving): Pose {
+  if (!leaving) return p;
+  const d = p.eye.clone().sub(p.target);
+  return { eye: p.target.clone().addScaledVector(d, leaving === 'in' ? 0.28 : 2.4), target: p.target, offset: p.offset };
+}
+
+/**
+ * Kamera yönetimi (CameraControls): sahne açılınca giriş çekimine anında yerleşir, sonra bu basamağın
+ * çekimine animasyonla gider; anahtar değişince (yeni basamak / geçiş) yine animasyonla gider.
+ */
+function useWorldCamera(pose: Pose, key: string, entry: Pose | null, fov: number) {
+  const controls = useThree((s) => s.controls) as unknown as CameraControlsImpl | null;
+  const camera = useThree((s) => s.camera) as PerspectiveCamera;
   const invalidate = useThree((s) => s.invalidate);
+  const placed = useRef(false);
   useEffect(() => {
-    if (!eye || !target) return;
-    camera.position.copy(eye);
-    camera.lookAt(target);
-    if (controls) {
-      controls.target.copy(target);
-      controls.update();
+    const prev = camera.fov;
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+    invalidate();
+    return () => {
+      camera.fov = prev === fov ? WORLD_FOV.body : prev;
+      camera.updateProjectionMatrix();
+    };
+  }, [camera, fov, invalidate]);
+  useEffect(() => {
+    const [ox, oy] = pose.offset ?? [0, 0];
+    if (!controls || typeof controls.setLookAt !== 'function') {
+      camera.position.copy(pose.eye);
+      camera.lookAt(pose.target);
+      invalidate();
+      return;
     }
+    controls.minDistance = 0.01;
+    controls.maxDistance = 30;
+    if (!placed.current) {
+      placed.current = true;
+      const e = entry ?? pose;
+      void controls.setFocalOffset(ox, oy, 0, false);
+      void controls.setLookAt(e.eye.x, e.eye.y, e.eye.z, e.target.x, e.target.y, e.target.z, false);
+    }
+    void controls.setFocalOffset(ox, oy, 0, true);
+    void controls.setLookAt(pose.eye.x, pose.eye.y, pose.eye.z, pose.target.x, pose.target.y, pose.target.z, true);
     invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, controls]);
+}
+
+/** Nesne sahnelerinin kadrajı: görünür alana sığdırılır; giriş dışarıdan (uzaktan) ya da derinden (yakından). */
+function useFitted(center: Vector3, radius: number, dir: Vector3, key: string) {
+  const { view, entry, leaving, onSubject, progress } = useContext(WorldContext);
+  // Bölge basamakları (progress > 1): her bölgede kamera nesnenin etrafında başka bir açıya döner.
+  const orbit = progress > 1 ? (progress - 1) * 4 * 0.6 : 0;
+  const d0 = orbit ? dir.clone().applyAxisAngle(new Vector3(0, 1, 0), orbit) : dir;
+  const base = fitPose(center, radius, d0, view);
+  const pose = leavingPose(base, leaving);
+  const d = base.eye.clone().sub(base.target);
+  const entryPose: Pose = { eye: base.target.clone().addScaledVector(d, entry === 'outside' ? 3.2 : 0.3), target: base.target, offset: base.offset };
+  useWorldCamera(pose, `${key}|${orbit.toFixed(2)}|${leaving ?? ''}|${view.width}x${view.height}|${view.right},${view.bottom}`, entryPose, WORLD_FOV.object);
+  const subjectKey = `${center.toArray().map((x) => x.toFixed(2)).join()}|${radius.toFixed(2)}`;
+  useEffect(() => {
+    onSubject?.({ center: center.toArray() as [number, number, number], radius });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjectKey, onSubject]);
 }
 
 /* ================================================================== LÜMEN (organ/damar içi) */
@@ -147,7 +268,7 @@ const CONTENT: Record<string, { color: string; size: [number, number]; opacity: 
   chyme: { color: '#d9b26a', size: [0.06, 0.14], opacity: 0.9, geo: 'blob' },
   bolus: { color: '#d2a46f', size: [0.08, 0.3], opacity: 0.95, geo: 'blob' },
   saliva: { color: '#e7eef3', size: [0.03, 0.07], opacity: 0.45, geo: 'sphere' },
-  feces: { color: '#7a5537', size: [0.1, 0.24], opacity: 0.95, geo: 'blob' },
+  feces: { color: '#7a5537', size: [0.06, 0.15], opacity: 0.95, geo: 'blob' },
   bile: { color: '#7fa04a', size: [0.03, 0.07], opacity: 0.7, geo: 'sphere' },
   juice: { color: '#efe0a6', size: [0.03, 0.06], opacity: 0.6, geo: 'sphere' },
   air: { color: '#ffffff', size: [0.015, 0.04], opacity: 0.35, geo: 'sphere' },
@@ -168,7 +289,8 @@ interface Particle {
   speed: number;
 }
 
-function LumenView({ sp, focus, mode, time }: { sp: LumenSpec; focus: SceneFocus; mode: InteriorMode; time: { current: number } }) {
+function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: SceneFocus; mode: InteriorMode; time: { current: number }; progress: number }) {
+  const { entry, leaving, onSubject } = useContext(WorldContext);
   const curve = useMemo(() => lumenCurve(sp.shape), [sp.shape]);
   const frames = useMemo(() => curve.computeFrenetFrames(TUBULAR, false), [curve]);
   const centers = useMemo(() => Array.from({ length: TUBULAR + 1 }, (_, i) => curve.getPointAt(i / TUBULAR)), [curve]);
@@ -325,12 +447,25 @@ function LumenView({ sp, focus, mode, time }: { sp: LumenSpec; focus: SceneFocus
     }
   });
 
-  // Kamera: odakla değişen bakış (merkez, içerik, duvara yakın, geride)
+  // Kamera: lümenin İÇİNDE. "İlerle" ile tüp boyunca ileri gider (progress); odakla bakış değişir
+  // (merkez, içerik, duvara yakın emilim/salgı). Genel bakış (bölümler) geride, uzağa bakar.
+  const R = sp.radius;
   const near = focus === 'absorb' || focus === 'secrete' || focus === 'exchange';
-  const s0 = focus === 'motion' ? 0.02 : 0.06;
-  const eye = pointAt(s0, Math.PI * 0.5, near ? sp.radius * 0.55 : sp.radius * 0.1, new Vector3());
-  const look = near ? pointAt(s0 + 0.06, Math.PI * 0.5, sp.radius * 0.9, new Vector3()) : pointAt(focus === 'contents' ? 0.2 : 0.35, 0, 0, new Vector3());
-  useAim(eye, look, `${focus}|${sp.shape}|${sp.radius}`);
+  const overview = focus === 'overview' || focus === 'flow';
+  const s0 = Math.min(0.62, 0.05 + progress * 0.5 + (focus === 'motion' ? -0.02 : 0));
+  const pose: Pose = near
+    ? { eye: pointAt(s0, Math.PI * 0.5, R * 0.55, new Vector3()), target: pointAt(s0 + 0.06, Math.PI * 0.5, R * 0.9, new Vector3()) }
+    : overview
+      ? { eye: pointAt(Math.max(0.02, s0 - 0.04), Math.PI * 0.5, R * 0.25, new Vector3()), target: pointAt(Math.min(0.97, s0 + 0.4), 0, 0, new Vector3()) }
+      : { eye: pointAt(s0, Math.PI * 0.5, R * 0.1, new Vector3()), target: pointAt(s0 + (focus === 'contents' ? 0.12 : 0.26), 0, 0, new Vector3()) };
+  // Duvara yaklaşma (derine geçiş) ve tüpün ağzından dışarı çıkış (yukarı geçiş)
+  const toWall: Pose = { eye: pointAt(s0 + 0.02, Math.PI * 0.5, R * 0.86, new Vector3()), target: pointAt(s0 + 0.035, Math.PI * 0.5, R * 1.1, new Vector3()) };
+  const mouth = centers[0]!.clone();
+  const outward = mouth.clone().sub(centers[Math.round(TUBULAR * 0.08)]!).normalize();
+  const outside: Pose = { eye: mouth.clone().addScaledVector(outward, R * 3.2), target: mouth.clone().addScaledVector(outward, -R) };
+  const entryPose = entry === 'deeper' ? toWall : outside;
+  useWorldCamera(leaving === 'in' ? toWall : leaving === 'out' ? outside : pose, `${focus}|${progress.toFixed(3)}|${leaving ?? ''}|${sp.shape}|${R}`, entryPose, WORLD_FOV.lumen);
+  useEffect(() => onSubject?.(null), [onSubject]);
 
   return (
     <group>
@@ -346,25 +481,35 @@ function LumenView({ sp, focus, mode, time }: { sp: LumenSpec; focus: SceneFocus
 
 const LAYER_COLORS = ['#20151a', '#f1ece0', '#e6a0a0', '#d98b8b', '#e4c0a8', '#b9545c', '#efe4d8', '#cfa0b0', '#a87f6a'];
 
+const WALL_AT = new Vector3(0, -0.3, -3.2);
+
 function WallSection({ layers, highlight, time }: { layers: Array<{ id: string; name: string }>; highlight?: number; time: { current: number } }) {
   const shown = layers.filter((l, i) => !(i === 0 && /lümen|boşluk/i.test(l.name)));
   const offset = layers.length - shown.length;
-  const geos = useMemo(() => {
+  const { geos, radii } = useMemo(() => {
     let r = 0.6;
-    return shown.map((_, i) => {
+    const radii: Array<[number, number]> = [];
+    const geos = shown.map((_, i) => {
       const th = i === 0 ? 0.08 : 0.16 + (i % 3) * 0.06;
       const inner = r;
       const outer = r + th;
+      radii.push([inner, outer]);
       r = outer + 0.015;
       const sh = new Shape();
       sh.absarc(0, 0, outer, 0, Math.PI, false);
       sh.absarc(0, 0, inner, Math.PI, 0, true);
       return new ExtrudeGeometry(sh, { depth: 1.6, bevelEnabled: false, curveSegments: 48 });
     });
+    return { geos, radii };
   }, [shown.length]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => geos.forEach((g) => g.dispose()), [geos]);
   const group = useRef<import('three').Group>(null);
-  useAim(new Vector3(0, 0.6, 0.4), new Vector3(0, -0.2, -3.2), 'wall');
+  // Kadraj: bütün kesit; doku seviyesinde vurgulanan katmana yaklaşılır (ölçek büyür).
+  const outer = radii.at(-1)?.[1] ?? 1.5;
+  const hi = highlight !== undefined ? highlight - offset : -1;
+  const layer = hi >= 0 ? radii[hi] : undefined;
+  const center = layer ? WALL_AT.clone().add(new Vector3(0, (layer[0] + layer[1]) / 2, 0)) : WALL_AT.clone().add(new Vector3(0, outer * 0.45, 0));
+  useFitted(center, layer ? Math.max(0.35, (layer[1] - layer[0]) * 2.2) : outer * 1.15, new Vector3(0, 0.35, 1), `wall${hi}`);
   useFrame(() => {
     if (group.current) group.current.rotation.y = -0.5 + Math.sin(time.current * 0.3) * 0.25;
   });
@@ -452,7 +597,8 @@ function ChambersView({ focus, time }: { focus: SceneFocus; time: { current: num
   const chamberOf = [0, -1, 1, -1, -1, 2, -1, 3, -1];
   const valveAt = [-1, 2, -1, 4, -1, -1, 9, -1, 11];
   const target = active >= 0 ? curve.getPointAt(stationU[active]!) : new Vector3(0, 0.3, 0);
-  useAim(new Vector3(target.x * 0.6, target.y * 0.5 + 0.3, active >= 0 ? 2.6 : 3.6), target, `ch${active}`);
+  // Bütün kalp ya da kan yolundaki istasyon (odacık/kapak) görünür alana sığdırılır.
+  useFitted(active >= 0 ? target : new Vector3(0, 0.45, 0), active >= 0 ? 0.75 : 1.75, new Vector3(target.x * 0.25, 0.25, 1), `ch${active}`);
   return (
     <group>
       {[CH.ra, CH.rv, CH.la, CH.lv].map((p, i) => {
@@ -591,7 +737,8 @@ function ParenchymaView({ unit, color, focus, time }: { unit: string; color: str
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   });
   const close = focus === 'units' || focus === 'secrete';
-  useAim(new Vector3(close ? 1.2 : 0.6, close ? 1.6 : 2.4, close ? 2.6 : 4.2), new Vector3(0, 0, 0), `p${focus}`);
+  // Genel bakışta bütün parankim, birim/salgı odağında yakın plan; ikisi de görünür alana sığar.
+  useFitted(new Vector3(0, 0, 0), close ? 1.25 : unit === 'layers' || unit === 'fibers' || unit === 'fascicles' ? 2.5 : 2.35, new Vector3(close ? 0.4 : 0.15, close ? 0.65 : 0.55, 1), `p${focus}`);
   return (
     <group>
       <instancedMesh ref={uRef} args={[geo, mat, layout.length]} />
@@ -690,7 +837,9 @@ function PathwayView({ signal, color, focus, stations, time }: { signal: 'sound'
     if (m.instanceColor) m.instanceColor.needsUpdate = true;
   });
   const ax = active >= 0 ? xs[Math.min(active, xs.length - 1)]! : 0;
-  useAim(new Vector3(ax, 0.6, active >= 0 ? 1.8 : 3.4), new Vector3(ax, 0, 0), `w${active}`);
+  // Bütün yol ya da sinyalin bulunduğu istasyon görünür alana sığar (dikey telefonda da taşmaz).
+  const span = (xs[xs.length - 1]! - xs[0]!) / 2 + 0.45;
+  useFitted(new Vector3(ax, 0, 0), active >= 0 ? 0.7 : span, new Vector3(0, 0.18, 1), `w${active}`);
   return (
     <group>
       {geos.map((g, i) => (
@@ -705,17 +854,16 @@ function PathwayView({ signal, color, focus, stations, time }: { signal: 'sound'
 
 /* ================================================================== KÖK */
 
-function Scene({ spec, focus, mode, layers, highlightLayer, stations, playing, reducedMotion }: InteriorSceneProps) {
+function Scene({ spec, focus, progress, wall, mode, layers, highlightLayer, stations, playing, reducedMotion }: InteriorWorldProps) {
   const time = useClock(playing, reducedMotion);
   const m = mode ?? DEFAULT_MODE;
-  if (focus === 'wall' && layers?.length && (spec.kind === 'lumen' || spec.kind === 'vessel'))
-    return <WallSection layers={layers} highlight={highlightLayer} time={time} />;
+  if (wall && layers?.length) return <WallSection layers={layers} highlight={highlightLayer} time={time} />;
   switch (spec.kind) {
     case 'lumen':
-      return <LumenView sp={spec} focus={focus} mode={m} time={time} />;
+      return <LumenView sp={spec} focus={focus} mode={m} time={time} progress={progress} />;
     case 'vessel': {
       const radius = spec.caliber === 'large' ? 1.4 : spec.caliber === 'medium' ? 1 : spec.caliber === 'small' ? 0.55 : 0.28;
-      return <LumenView sp={{ shape: 'tube', lining: 'smooth', content: 'blood', radius, wave: 0, flow: spec.pulse ? 1 : 0.5, color: spec.color, pulse: spec.pulse }} focus={focus} mode={{ ...m, content: spec.caliber === 'capillary' ? 0.15 : 0.7, motion: 0.6 }} time={time} />;
+      return <LumenView sp={{ shape: 'tube', lining: 'smooth', content: 'blood', radius, wave: 0, flow: spec.pulse ? 1 : 0.5, color: spec.color, pulse: spec.pulse }} focus={focus} mode={{ ...m, content: spec.caliber === 'capillary' ? 0.15 : 0.7, motion: 0.6 }} time={time} progress={progress} />;
     }
     case 'chambers':
       return <ChambersView focus={focus} time={time} />;
@@ -726,28 +874,24 @@ function Scene({ spec, focus, mode, layers, highlightLayer, stations, playing, r
   }
 }
 
-export default function InteriorScene(props: InteriorSceneProps) {
-  const lumenLike = props.spec.kind === 'lumen' || props.spec.kind === 'vessel';
-  const bg = props.theme === 'light' ? '#efe7e3' : lumenLike ? '#1a0c0f' : '#0d1117';
-  const fogColor = lumenLike ? (props.theme === 'light' ? '#d9c3bf' : '#2a1014') : bg;
+/**
+ * Organın iç dünyası, 3B vücut keşfinin tuvalinde (kendi Canvas'ı yok): ortam (arka plan, sis), ışık ve
+ * sahne. Kamera denetimi Explorer'ındır; sahne yalnızca çekimleri ister.
+ */
+export function InteriorWorld(props: InteriorWorldProps) {
+  const lumenLike = !props.wall && (props.spec.kind === 'lumen' || props.spec.kind === 'vessel');
+  useAtmosphere(lumenLike ? '#1a0c0f' : '#0d1117', lumenLike ? ['#2a1014', 1.5, 9] : null, lumenLike ? 0.3 : 0.45);
+  const ctx = useMemo(
+    () => ({ view: props.view, entry: props.entry, leaving: props.leaving, reducedMotion: props.reducedMotion, progress: props.progress, onSubject: props.onSubject }),
+    [props.view, props.entry, props.leaving, props.reducedMotion, props.progress, props.onSubject],
+  );
   return (
-    <Canvas
-      frameloop={props.playing ? 'always' : 'demand'}
-      dpr={Math.min(window.devicePixelRatio || 1, 1.5)}
-      gl={{ antialias: true, powerPreference: 'low-power' }}
-      camera={{ fov: lumenLike ? 70 : 42, near: 0.01, far: 60, position: [0, 0, 4] }}
-      onCreated={({ gl }) => {
-        gl.domElement.setAttribute('role', 'img');
-        gl.domElement.setAttribute('aria-label', 'Organın içinin eğitimsel 3B canlandırması. Aynı bilgi aşağıdaki basamaklarda yazılı olarak da var.');
-      }}
-    >
-      <color attach="background" args={[bg]} />
-      {lumenLike && props.focus !== 'wall' && <fog attach="fog" args={[fogColor, 1.5, 9]} />}
-      <ambientLight intensity={props.theme === 'light' ? 0.75 : 0.45} />
-      <directionalLight position={[2, 3, 2]} intensity={0.9} />
-      <pointLight position={[0, 0, 0.5]} intensity={lumenLike ? 3 : 1} distance={10} decay={1.3} color="#ffe8e0" />
-      <Scene {...props} />
-      <OrbitControls makeDefault enablePan={false} enableDamping dampingFactor={0.12} rotateSpeed={0.6} minDistance={0.05} maxDistance={8} />
-    </Canvas>
+    <WorldContext value={ctx}>
+      <group>
+        {lumenLike && <Headlight intensity={3} distance={10} />}
+        <pointLight position={[0, 2, 3]} intensity={lumenLike ? 0.5 : 1.2} distance={12} decay={1.3} color="#ffe8e0" />
+        <Scene {...props} />
+      </group>
+    </WorldContext>
   );
 }

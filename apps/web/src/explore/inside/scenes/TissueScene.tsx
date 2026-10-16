@@ -199,7 +199,7 @@ function LayerView({ p, geos, active, pick, time, edges, box, rbcGeo, rbcMat, gr
   );
 }
 
-export default function TissueScene({ state, onSelect, reducedMotion }: InsideSceneProps) {
+export default function TissueScene({ state, onSelect, reducedMotion, depth = 0 }: InsideSceneProps) {
   const profile = tissueProfile(state.scene)!;
   const layout = useMemo(() => layoutTissue(profile), [profile]);
   useAtmosphere(profile.background, [profile.background, 12, 34], 0.45);
@@ -216,9 +216,10 @@ export default function TissueScene({ state, onSelect, reducedMotion }: InsideSc
     position: sh.position.map((v, i) => sh.target[i]! + (v - sh.target[i]!) * k) as [number, number, number],
   });
   const layer = layerShot(layout, active, wide ? 2.2 : 0.4);
-  const shot = layer ? pull(layer, Math.sqrt(back)) : pull(overviewShot(layout, shift));
+  // Derinlik arttıkça (kript → epitel → hücre) kamera katmana yaklaşır: ölçek gerçekten değişir.
+  const shot = layer ? pull(layer, Math.sqrt(back) * Math.pow(0.62, depth)) : pull(overviewShot(layout, shift));
   const overview = pull(overviewShot(layout, shift));
-  useStageCamera(shot, { min: 0.8, max: 20 * back }, { position: [overview.position[0] + 2, overview.position[1] + 2, overview.position[2] + 5], target: overview.target });
+  useStageCamera(shot, { min: 0.3, max: 20 * back }, { position: [overview.position[0] + 2, overview.position[1] + 2, overview.position[2] + 5], target: overview.target });
   const time = useSimClock(state, reducedMotion);
   const pick = makePick(onSelect);
   const geos = useGeos();

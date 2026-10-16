@@ -370,6 +370,8 @@ export const DIGESTIVE: OrganInteriorDefinition[] = [
       st('regions', 'region', 'region', 'Bölümler', 'Çekum, çıkan, transvers, inen ve sigmoid kolon, rektum.', { focus: 'overview' }),
       st('wall', 'wall', 'tissue', 'Duvarı incele', 'Villussuz düz mukoza, derin kriptler, bol goblet hücresi, tenyalı kas tabakası.', { focus: 'wall', node: 'tissue.colon-wall', scene: 'kalin-bagirsak' }),
       st('mucosa', 'tissue', 'tissue', 'Kalın bağırsak mukozası', 'Düz yüzey ve tüp şeklinde kriptler (Lieberkühn).', { node: 'tissue.colon-mucosa', scene: 'kalin-bagirsak' }),
+      st('crypt', 'tissue', 'tissue', 'Kript', 'Mukozaya inen tüp biçimli bezler (Lieberkühn kriptleri); tabanındaki kök hücreler epiteli 5–7 günde bir yeniler. Kalın bağırsakta villus yoktur, yalnızca kript ağızları görülür.', { node: 'tissue.crypt', scene: 'kalin-bagirsak' }),
+      st('epithelium', 'tissue', 'tissue', 'Epitel', 'Tek sıra silindirik epitel: su ve tuz geri emen kolonositler ile bol goblet (kadeh) hücresi; goblet hücreleri kalın mukus tabakasını salgılar.', { node: 'cell.goblet', scene: 'kalin-bagirsak' }),
       st('colonocyte', 'cell', 'cell', 'Kolonosit', 'Su ve tuz geri emen yüzey hücresi.', { node: 'cell.colonocyte' }),
       st('scfa', 'molecule', 'molecule', 'Kısa zincirli yağ asitleri', 'Bütirat, asetat, propiyonat: bakteri ürünleri; kolonositi besler, bariyeri güçlendirir.', { node: 'mol.scfa' }),
     ],
