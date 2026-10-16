@@ -14,10 +14,10 @@ e2e: failure
   - Playwright (Chromium): success
   - Önizleme sunucusu: success
   - Belgeler ve kasa (smoke): success
-  - Okuma → sonuçlar → vücutta göster → simülasyon: success
-  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
-  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
-  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: failure
+  - Okuma → sonuçlar → vücutta göster → simülasyon: failure
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: skipped
+  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: skipped
+  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: skipped
   - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: skipped
   - Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR: skipped
   - İçine gir — anatomi grafiği derinliği, komşuluk (pelvis, yumurtalık, kulak, böbrek, kalp), model deposu: skipped
@@ -30,13 +30,6 @@ e2e: failure
   - Post Run actions/setup-python@v5: skipped
   - Post Run actions/setup-node@v4: skipped
   - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-dependencies: success
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 web: success
@@ -54,111 +47,66 @@ web: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
+dependencies: success
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	﻿2026-10-16T16:54:56.4685681Z ##[group]Run python tests/e2e/imaging.py "$RUNNER_TEMP/shots"
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4686281Z ^[[36;1mpython tests/e2e/imaging.py "$RUNNER_TEMP/shots"^[[0m
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4763414Z shell: /usr/bin/bash -e {0}
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4763752Z env:
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4764077Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4764581Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4765653Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4766270Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4766754Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4767249Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4767742Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:54:56.4768168Z ##[endgroup]
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6969682Z Traceback (most recent call last):
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6970394Z PASS MR seçilince klasör düğmesi görünüyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6970819Z PASS DICOMDIR ve metin dosyası atlandı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6971104Z PASS tür ve bölge başlıktan
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6971403Z PASS seri listede tek satır, 8 kesit
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6971701Z PASS MR kesiti çizildi (boş değil)
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6971982Z PASS pencere dosyadaki değerden
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6972251Z PASS görüntüleme paneli başlığı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6972486Z PASS seri açıklaması
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6972711Z PASS hasta adı ekranda yok
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6973030Z PASS sağ tıkla sürükleme kontrastı değiştiriyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6973481Z PASS 8 kesitlik seri: tam beyin MR değerlendirmesi izlenimi verilmiyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6973979Z PASS rapor yok: başlıklar için güvenilir görüntü modeli olmadığı yazıyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6974409Z PASS görüntüden analiz yapılamadığı açıkça yazıyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6975232Z PASS başlık durumları: görüntüden / belirsiz / değerlendirilemedi / raporda
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6975823Z PASS rapor yokken hiçbir başlık 'dikkat' gösterilmiyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6976156Z PASS vücutta göster → beyin
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6976432Z PASS 3B organ panelinde MR çalışması
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6976697Z PASS BT → göğüs / akciğer
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6976928Z PASS SONUÇ bölümü ayrıldı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6977132Z PASS terim: hiperintens
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6977339Z PASS terim: klinik korelasyon
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6977647Z PASS görüntüleme raporunda tahlil onayı açılmıyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6977986Z PASS rapordan çekim tarihi önerisi uygulandı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6978330Z PASS rapor ile MR serisi aynı çekim olarak bağlandı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6978953Z PASS rapordaki 6 bulgu cümlesi listeleniyor (başlık/alt bilgi hariç): 'Rapordaki bulgular (6)3 dikkat · 0 belir'
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6979460Z PASS bulgu: iki taraflı frontal lob, hiperintens
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6980195Z PASS bulgu: sağ maksiller sinüs
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6980551Z PASS olağan / izlenmedi ifadeler ayrı (difüzyon, ventriküller)
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6980908Z PASS normal ile karşılaştırma açılıyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6981247Z PASS rapor → beyin MR şeması kendiliğinden seçildi
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6981659Z PASS başlık listede: Demiyelinizan plaklarla uyumlu olabilecek odaklar
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6982102Z PASS başlık listede: Orta hat kayması ve kitle etkisi
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6982542Z PASS başlık listede: Ventriküller ve beyin omurilik sıvısı (BOS) boşlukları
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6982909Z PASS başlık listede: Kontrast tutulumu
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6983306Z PASS başlık listede: Enfarkt (inme) ile uyumlu olabilecek bulgular
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6983636Z PASS plak benzeri odaklar: rapordan dikkat
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6984032Z PASS enfarkt başlığı: rapordaki 'kısıtlanma saptanmadı' → olağan
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6984485Z PASS kontrastsız çekim: kontrast başlığı 'sekans eksik', 'yok' değil
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6985566Z PASS raporda geçmeyen başlık: değerlendirilemedi (yok denmiyor)
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6986124Z PASS teknik: sekanslar rapordan okundu
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6986614Z PASS değerlendirilemeyen başlık açıklaması
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6989815Z PASS başlığın altında rapordaki cümle
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6990373Z PASS sistematik başlıktan 3B beyne geçildi
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6991042Z PASS bulguya tıklayınca beynin frontal lobu açıldı ve vurgulandı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.6998336Z   File "/home/runner/work/kan-haritasi/kan-haritasi/tests/e2e/imaging.py", line 370, in <module>
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7018177Z PASS film fotoğrafında OCR kendiliğinden başlamadı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7018968Z     card.get_by_role("button", name="Sonuçlarıma ekle", exact=False).click()
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7019620Z PASS film fotoğrafı röntgen olarak işaretlendi
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7023411Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/sync_api/_generated.py", line 15573, in click
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7024624Z PASS fotoğrafta otomatik kontrast çalışıyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7025623Z     self._sync(
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7026196Z PASS film fotoğrafında rapor okuma kendiliğinden başlamadı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7027289Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7030208Z     return task.result()
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7030755Z PASS bölge seçilince röntgen 3B'de akciğerde görünüyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7031412Z PASS rapor fotoğrafı OCR ile okundu
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7031948Z            ^^^^^^^^^^^^^
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7032348Z PASS terim: nodül
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7033259Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_locator.py", line 160, in click
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7034152Z PASS rapor fotoğrafı BT kesitiyle bağlandı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7035064Z     return await self._frame.click(self._selector, strict=True, **params)
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7035762Z PASS Sonuçlar: MR raporunun sonucu
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7036326Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7036862Z PASS Sonuçlar: BT raporunun sonucu
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7037776Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_frame.py", line 549, in click
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7038643Z PASS Zaman: MR çalışması rapor geçmişinde
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7039325Z     await self._channel.send("click", self._timeout, locals_to_params(locals()))
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7040021Z PASS batın raporu: 2 ölçüm referans dışında
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7040908Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 69, in send
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7041700Z PASS dalak 14,5 cm → 145 mm
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7042194Z     return await self._connection.wrap_api_call(
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7042714Z PASS referans dışı ölçümde olası nedenler
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7043208Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7044018Z PASS sağ ve sol böbrek ayrı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7045044Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 559, in wrap_api_call
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7046016Z PASS elle ölçüm kaydedildi ve değerlendirildi
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7046722Z     raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7047338Z PASS BT: daire içi ortalama 40 HU
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7048069Z playwright._impl._errors.TimeoutError: Locator.click: Timeout 60000ms exceeded.
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7048778Z PASS 3B: dalak referans dışı ölçümle vurgulandı
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7049238Z Call log:
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7049704Z PASS görüntüleme filtresi: 6 belge (seri tek satır)
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7050777Z   - waiting for locator("[aria-label='Sağ-sol simetri ön kontrolü']").first.get_by_role("button", name="Sonuçlarıma ekle")
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7051648Z PASS MR fotoğrafı: bölge görüntüdeki yazılardan (beyin)
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7052091Z 
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7052466Z PASS beyin panelinde görüntüleme belgeleri listeleniyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7053259Z PASS tek simetri ön kontrolü (eski/yeni kart çiftlenmiyor)
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7054298Z FAIL kolaj 3 kesite ayrıldı, 2'si karşılaştırıldı (sagital hariç)
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7055146Z FAIL tek taraflı odak doğru kesitte ve yarıda
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7055813Z PASS ön kontrol tıbbi model olmadığını söylüyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7056561Z FAIL ön kontrol satırı gözlemi ve kesiti söylüyor (lezyon demiyor)
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7057229Z PASS asimetri lezyon diye yorumlanmıyor
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7057842Z PASS anlamsız OCR metni rapor diye kaydedilmedi
-e2e	Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler	2026-10-16T16:59:31.7303301Z ##[error]Process completed with exit code 1.
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	﻿2026-10-16T17:51:01.9893683Z ##[group]Run python tests/e2e/flow.py "$RUNNER_TEMP/shots"
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9894421Z ^[[36;1mpython tests/e2e/flow.py "$RUNNER_TEMP/shots"^[[0m
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9996711Z shell: /usr/bin/bash -e {0}
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9997203Z env:
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9997635Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9998300Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9999034Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:01.9999766Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:02.0000419Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:02.0001084Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:02.0001800Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:51:02.0002295Z ##[endgroup]
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.7997586Z Traceback (most recent call last):
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.7998469Z PASS PDF'ten 14 sonuç okundu
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8002805Z   File "/home/runner/work/kan-haritasi/kan-haritasi/tests/e2e/flow.py", line 139, in <module>
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8004916Z PASS kaydedilen raporda 5 aralık dışı sonuç (ALT, T.kolesterol, LDL, TG yüksek; ferritin düşük)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8008377Z     page.get_by_text("Eğitimsel biyolojik simülasyon").locator("visible=true").first.wait_for(timeout=20000)  # telefon ve masaüstü kopyası var: görüneni bekle
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8010248Z PASS fotoğraftan OCR ile 9 sonuç okundu
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8013813Z     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8014910Z PASS Sonuçlarım listesinde LDL
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8035099Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/sync_api/_generated.py", line 18005, in wait_for
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8036780Z PASS kişisel genel değerlendirme
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8039973Z PASS karaciğer paterni (ALT yüksek)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8040782Z PASS lipid paterni
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8042625Z PASS 90: LDL yüksek → ad ve değer yüksek tonunda (block truncate text-[15px] font-medium text-high | text-right text-sm font-semibold tabular-nums text-high)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8044777Z PASS 90: ferritin düşük → ad ve değer düşük (mavi) tonunda (block truncate text-[15px] font-medium text-low)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8046808Z PASS 91: normal glukoz nötr (block truncate text-[15px] font-medium )
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8048267Z PASS 90: pankreas sayfasında trigliserid adı/değeri/durumu aynı tonda (follow)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8049321Z PASS 90: ▲ Yüksek etiketi
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8050323Z PASS 91: normal glukoz pankreas sayfasında nötr
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8051679Z PASS 28: organ özeti 'ilişkili N sonuç referans dışında' (organ hasta denmiyor)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8052980Z PASS 46/84: fizyoloji akışında kişisel katman 'olası ilişki'
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8053871Z PASS öğren paneli
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8054550Z     self._sync(self._impl_obj.wait_for(timeout=timeout, state=state))
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8056031Z PASS kişisel yorum
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8056837Z PASS sapma derecesi (LDL 178 / 130)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8057717Z PASS LDL için vücut rotası
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8058582Z PASS LDL → koroner arterler bağlantısı
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8067016Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8068216Z     return task.result()
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8068789Z            ^^^^^^^^^^^^^
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8070009Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_locator.py", line 692, in wait_for
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8071203Z     await self._frame.wait_for_selector(
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8072527Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_frame.py", line 369, in wait_for_selector
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8073695Z     await self._channel.send(
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8074847Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 69, in send
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8076806Z     return await self._connection.wrap_api_call(
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8077488Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8078761Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 559, in wrap_api_call
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8080197Z     raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8081336Z playwright._impl._errors.TimeoutError: Locator.wait_for: Timeout 20000ms exceeded.
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8082149Z Call log:
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8083212Z   - waiting for get_by_text("Eğitimsel biyolojik simülasyon").filter(visible=True).first to be visible
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8084000Z 
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T17:52:37.8330699Z ##[error]Process completed with exit code 1.
