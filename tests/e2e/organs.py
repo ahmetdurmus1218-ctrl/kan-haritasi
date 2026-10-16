@@ -4,7 +4,7 @@ Kural: "İçine gir" = organın fiziksel/işlevsel içi (lümen · içerik · ak
 "Daha derine in" = duvar → doku → hücre → molekül. İçine girildiğinde duvara, dokuya, hücreye ya da moleküle atlanmaz.
 
 Her kabul organı için (§25):
-  - #/ic/<organ> açılır → currentLevel === interior, currentNode ∉ {wall, tissue, cell, molecule}
+  - #/ic/<organ> 3B keşifte açılır (aynı tuval ve kamera) → currentLevel === interior, currentNode ∉ {wall, tissue, cell, molecule}
   - kalıba göre içerik: hollow → lümen + içerik + hareket/akış; solid → parankim + bölgeler + süreç;
     vascular → lümen + kan akışı; chamber → odacık + kan akışı; airway → hava + akış; sensory → uyaranın yolu
   - 3B iç sahne çizilir (boş ekran yok), "Eğitimsel · Temsili anatomi" etiketi
@@ -22,6 +22,8 @@ import sys
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+
+from nav3d import action, attrs, goto_interior, settle
 
 ROOT = Path(__file__).resolve().parents[2]
 SHOTS = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "tests/e2e/.shots") / "organs"
@@ -48,50 +50,42 @@ ACCEPTANCE = {
 
 
 def check(cond, msg):
-    print(("PASS " if cond else "FAIL ") + msg)
+    print(("PASS " if cond else "FAIL ") + msg, flush=True)
     if not cond:
         problems.append(msg)
 
 
-def interior(page):
-    el = page.get_by_test_id("interior")
-    el.wait_for()
-    return el
+def norm(t):
+    return t.replace("İ", "I").replace("ı", "i").replace("i̇", "i").lower()
 
 
-def state(page):
-    el = interior(page)
-    return {k: el.get_attribute(f"data-{k}") for k in ["interior", "archetype", "current-level", "current-node"]}
-
-
-def steps(page):
-    return [(b.get_attribute("data-scale"), b.get_attribute("data-kind"), b.inner_text()) for b in page.get_by_test_id("interior-step").all()]
+def title(page):
+    return page.get_by_test_id("level-title").inner_text()
 
 
 def crumb(page):
-    return page.get_by_role("navigation", name="Şu anda neredeyim?").inner_text()
+    return page.get_by_role("navigation", name="Keşif seviyesi").inner_text()
 
 
-def assert_inside(page, label, expect_id=None):
-    """§26: currentLevel === interior; currentNode ∉ {wall, tissue, cell, molecule}; kalıba uygun içerik."""
-    s = state(page)
-    ok_level = s["current-level"] == "interior" and s["current-node"] not in NOT_FIRST
-    check(ok_level, f"{label}: İçine gir → iç dünya (seviye={s['current-level']}, düğüm={s['current-node']})")
+def assert_inside(page, a, label, expect_id=None):
+    """§26: currentLevel === interior; currentNode ∉ {wall, tissue, cell, molecule}; 3B iç sahne; eğitimsel etiket."""
+    ok_level = a.get("currentLevel") == "interior" and a.get("currentNode") not in NOT_FIRST and a.get("level") == "interior"
+    check(ok_level, f"{label}: İçine gir → iç dünya (seviye={a.get('currentLevel')}, düğüm={a.get('currentNode')})")
     if expect_id:
-        check(s["interior"] == expect_id, f"{label}: doğru organın içi ({s['interior']} == {expect_id})")
-    inside = [k for sc, k, _ in steps(page) if sc == "interior"]
-    kinds = set(inside)
-    arch = s["archetype"]
-    rule = {
-        "hollow": {"lumen", "content"} <= kinds and bool(kinds & {"motion", "flow", "process"}),
-        "solid": inside[:1] == ["parenchyma"] and bool(kinds & {"motion", "flow", "process"}),
-        "vascular": "lumen" in kinds and bool(kinds & {"flow", "content"}),
-        "chamber": "flow" in kinds,
-        "airway": bool(kinds & {"content", "lumen"}) and bool(kinds & {"flow", "process"}),
-        "sensory": bool(kinds & {"flow", "motion"}),
-    }.get(arch, False)
-    check(rule and len(inside) >= 2, f"{label}: kalıp '{arch}' içeriği ({inside})")
-    return s
+        check(a.get("interior") == expect_id, f"{label}: doğru organın içi ({a.get('interior')} == {expect_id})")
+    check(a.get("scene", "").startswith("ic:") and a.get("sceneKind") in {"lumen", "vessel", "chambers", "parenchyma", "pathway"}, f"{label}: 3B iç sahne ({a.get('scene')}, {a.get('sceneKind')})")
+    check(len(a.get("actions", [])) <= 5 and any(x.startswith("back:") for x in a["actions"]), f"{label}: yalnızca bu seviyenin eylemleri ({len(a['actions'])})")
+    return a
+
+
+def walk_titles(page, n):
+    out = [title(page)]
+    for _ in range(n - 1):
+        if not page.locator("[data-testid=level-action][data-action=forward]").count():
+            break
+        action(page, "forward")
+        out.append(title(page))
+    return out
 
 
 with sync_playwright() as p:
@@ -112,37 +106,31 @@ with sync_playwright() as p:
     page.check("input[type=checkbox]")
     page.get_by_role("button", name="Kasayı oluştur").click()
     page.get_by_role("heading", name="Vücudum nasıl?").wait_for(timeout=30000)
-    main = page.locator("main")
 
     # ------------------------------------------------------------------ tüm kabul organları
-    tested, loops = [], []
+    tested = []
     for system, ids in ACCEPTANCE.items():
         for oid in ids:
-            page.goto(URL + f"#/ic/{oid}")
-            label = f"[{system}] {oid}"
-            assert_inside(page, label, oid)
-            sc = page.get_by_test_id("interior-scene")
-            check(sc.get_attribute("data-kind") in {"lumen", "vessel", "chambers", "parenchyma", "pathway"}, f"{label}: 3B iç sahne türü ({sc.get_attribute('data-kind')})")
-            check("Eğitimsel" in page.get_by_test_id("interior-label").inner_text(), f"{label}: eğitimsel etiket")
+            a = goto_interior(page, URL, oid)
+            assert_inside(page, a, f"[{system}] {oid}", oid)
+            check("Eğitimsel" in page.get_by_test_id("interior-label").inner_text(), f"[{system}] {oid}: eğitimsel etiket")
             tested.append(oid)
-            # Organ sayfası → İçine gir döngüsü (organ sayfası olan her yapı)
-            back = page.get_by_role("button", name="Organ sayfası", exact=True)
-            if back.count():
-                back.click()
-                btn = page.get_by_test_id("organ-enter-interior")
-                btn.wait_for()
-                organ_url = page.url
-                btn.click()
-                s = assert_inside(page, f"{label} (organ sayfası → İçine gir)")
-                loops.append((organ_url.split("#")[-1], s["interior"]))
     check(len(tested) == sum(len(v) for v in ACCEPTANCE.values()), f"kabul listesindeki {len(tested)} yapının hepsi test edildi")
-    print("organ sayfası → İçine gir döngüsü:", json.dumps(loops, ensure_ascii=False))
 
-    # Canvas gerçekten çiziliyor (temsilî örneklem: her kalıptan)
-    for oid in ["large-intestine", "kidneys", "heart", "ic.artery", "lungs", "eyes", "spleen"]:
-        page.goto(URL + f"#/ic/{oid}")
-        page.get_by_test_id("interior-scene").locator("canvas").wait_for(timeout=90000)
-        check(True, f"{oid}: 3B iç sahne çizildi (canvas)")
+    # Organ sayfası → İçine gir → yine organın iç dünyası (döngü), her kalıptan
+    loops = []
+    for organ, expect_id in [("large-intestine", "large-intestine"), ("kidneys", "kidneys"), ("heart", "heart"), ("lungs", "lungs"), ("eyes", "eyes"), ("spleen", "spleen")]:
+        page.goto(URL + f"#/organ/{organ}")
+        btn = page.get_by_test_id("organ-enter-interior")
+        btn.wait_for()
+        btn.click()
+        page.wait_for_url(f"**/#/ic/{expect_id}**")
+        a, _ = settle(page, 120, want={"interior": expect_id})
+        if not a.get("scene", "").startswith("ic:"):
+            a, _ = settle(page, 120, before=a)
+        assert_inside(page, a, f"organ sayfası {organ} → İçine gir", expect_id)
+        loops.append(organ)
+    print("organ sayfası → İçine gir döngüsü:", json.dumps(loops, ensure_ascii=False))
 
     # ------------------------------------------------------------------ kalın bağırsak: zorunlu referans
     page.goto(URL + "#/vucudum")
@@ -152,62 +140,53 @@ with sync_playwright() as p:
     page.get_by_role("heading", name="Kalın bağırsak", exact=True).wait_for()
     page.get_by_test_id("organ-enter-interior").click()
     page.wait_for_url("**/#/ic/large-intestine**")
-    s = assert_inside(page, "Vücut → Sindirim → Kalın bağırsak → İçine gir", "large-intestine")
-    check(s["current-node"] == "lumen" and "Kalın bağırsağın içi" in page.get_by_test_id("interior-stage").inner_text(), "kalın bağırsak: ilk sahne lümen (duvar/mukoza/kript/epitel değil)")
-    check(page.get_by_test_id("interior-scene").get_attribute("data-focus") == "lumen", "kalın bağırsak: 3B sahnede duvara zoom yok, lümen odağı")
-    page.get_by_test_id("interior-scene").locator("canvas").wait_for(timeout=90000)
-    page.wait_for_timeout(1500)
+    a, _ = settle(page, 120, want={"interior": "large-intestine"})
+    if not a.get("scene", "").startswith("ic:"):
+        a, _ = settle(page, 120, before=a)
+    assert_inside(page, a, "Vücut → Sindirim → Kalın bağırsak → İçine gir", "large-intestine")
+    check(a.get("stage") == "lumen" and "Kalın bağırsağın içi" in title(page), "kalın bağırsak: ilk sahne lümen (duvar/mukoza/kript/epitel değil)")
+    check(a.get("focus") == "lumen", "kalın bağırsak: 3B sahnede duvara zoom yok, lümen odağı")
     page.screenshot(path=SHOTS / "01-kalin-bagirsak-lumen.png")
-    contents = page.get_by_test_id("interior").inner_text()
-    check(all(x in contents for x in ["su", "elektrolit", "sindirim artıkları", "mukus", "mikrobiyota"]), "kalın bağırsak: içerik — su, elektrolitler, sindirim artıkları, mukus, mikrobiyota (eğitimsel temsili)")
-    seen, scales = [], []
-    for _ in range(12):
-        st = page.get_by_test_id("interior-stage")
-        seen.append(st.get_attribute("data-stage"))
-        scales.append(st.get_attribute("data-scale"))
-        nxt = page.get_by_test_id("interior-next-stage")
-        if not nxt.count():
-            break
-        if nxt.get_attribute("data-crossing") == "deeper":
-            check(nxt.inner_text().startswith("Daha derine in"), f"kalın bağırsak: iç dünyadan çıkış 'Daha derine in' olarak işaretli ({nxt.inner_text()!r})")
-            c = crumb(page)
-            check(all(x in c for x in ["Vücut", "Sindirim", "Kalın bağırsak", "İçerisi", "İçerik", "Hareket", "Su ve elektrolit geri emilimi", "Dışkı → rektum"]), f"breadcrumb geçilen basamakları gösteriyor ({c!r})")
-        nxt.click()
-        page.wait_for_timeout(120)
-    check(seen[:7] == ["lumen", "contents", "motion", "water", "microbiota", "concentration", "feces"], f"kalın bağırsak: lümen → içerik → hareket → su/elektrolit → mikrobiyota → yoğunlaşma/dışkı → rektum ({seen[:7]})")
-    wall = seen.index("wall")
-    check(all(s == "interior" for s in scales[:7]) and wall > 6 and scales[wall] != "interior", f"kalın bağırsak: duvar ancak iç dünyadan SONRA ({scales})")
-    check(seen[wall:wall + 2] == ["wall", "mucosa"], f"duvar → mukoza (kript) → hücre ({seen[wall:]})")
+    seen = [a.get("stage")]
+    for _ in range(6):
+        seen.append(action(page, "forward").get("stage"))
+    check(seen == ["lumen", "contents", "motion", "water", "microbiota", "concentration", "feces"], f"kalın bağırsak: lümen → içerik → hareket → su/elektrolit → mikrobiyota → yoğunlaşma/dışkı ({seen})")
     c = crumb(page)
-    check("İçerisi" in c and "Duvarı incele" in c, f"breadcrumb: içeride mi duvarda mı belli ({c!r})")
-    page.screenshot(path=SHOTS / "02-kalin-bagirsak-derin.png", full_page=True)
-    page.goto(URL + "#/ic/large-intestine/7")
-    page.get_by_test_id("interior-next").get_by_role("button", name=re.compile("Rektuma git")).click()
+    check(all(norm(x) in norm(c) for x in ["Sindirim", "Kalın bağırsak", "İçerisi", "İçerik", "Hareket", "Su ve elektrolit geri emilimi", "Dışkı → rektum"]), f"breadcrumb geçilen basamakları gösteriyor ({c!r})")
+    a = attrs(page)
+    check(not any(x.startswith(("deeper:", "forward:")) and ("Mukoza" in x or "Hücre" in x) for x in a["actions"]), "kalın bağırsak: içeride duvar/hücreye 'İlerle' yok — ayrı 'Duvarı incele' eylemi")
+    a = action(page, "wall")
+    check(a.get("stage") == "wall" and a.get("level") == "wall" and a.get("currentLevel") != "interior", f"kalın bağırsak: duvar ancak iç dünyadan SONRA ve ayrı seviye ({a.get('stage')}, {a.get('level')})")
+    a = action(page, "deeper")
+    check(a.get("stage") == "mucosa", f"duvar → mukoza ({a.get('stage')})")
+    c = crumb(page)
+    check(all(norm(x) in norm(c) for x in ["İçerisi", "Duvar"]), f"breadcrumb: içeride mi duvarda mı belli ({c!r})")
+    page.screenshot(path=SHOTS / "02-kalin-bagirsak-derin.png")
+    a = goto_interior(page, URL, "large-intestine", 7)
+    page.locator("[data-testid=level-action][data-action=goto]", has_text="Rektuma git").click()
     page.wait_for_url("**/#/ic/large-intestine.rectum**")
-    assert_inside(page, "dışkı → rektuma ilerleme", "large-intestine.rectum")
+    a, _ = settle(page, 60, want={"interior": "large-intestine.rectum"})
+    assert_inside(page, a, "dışkı → rektuma ilerleme", "large-intestine.rectum")
 
     # ------------------------------------------------------------------ ince bağırsak, mide, özofagus
-    page.goto(URL + "#/ic/small-intestine")
-    kinds = [k for _, k, _ in steps(page)]
-    titles = [t for _, _, t in steps(page)]
-    check(kinds[0] == "lumen" and titles.index("Villus") > kinds.index("wall"), f"ince bağırsak: villus ilk ekran değil, duvardan sonra ({titles})")
-    page.goto(URL + "#/ic/stomach")
-    titles = [t for _, _, t in steps(page)]
-    check(titles[:7] == ["Midenin içi", "İçerik: yemek", "Mekanik karıştırma", "Asit", "Pepsin", "İç faktör ve B12", "Kimus → duodenum"], f"mide: lümen → içerik → karıştırma → asit → pepsin → kimus → pilor ({titles[:7]})")
-    page.goto(URL + "#/ic/esophagus")
-    titles = [t for _, _, t in steps(page)]
-    check(titles[:4] == ["Yemek borusunun içi", "İçerik: lokma", "Peristaltizm", "Alt sfinkter ve mideye geçiş"], f"özofagus: lümen → lokma → peristaltik dalga → mideye ({titles[:4]})")
+    goto_interior(page, URL, "small-intestine")
+    t = walk_titles(page, 6)
+    check(t[0].startswith("Lümen") and not any("Villus" in x for x in t), f"ince bağırsak: villus ilk ekran değil, iç dünyada yok ({t})")
+    goto_interior(page, URL, "stomach")
+    t = walk_titles(page, 7)
+    check(t == ["Midenin içi", "İçerik: yemek", "Mekanik karıştırma", "Asit", "Pepsin", "İç faktör ve B12", "Kimus → duodenum"], f"mide: lümen → içerik → karıştırma → asit → pepsin → kimus → pilor ({t})")
+    goto_interior(page, URL, "esophagus")
+    t = walk_titles(page, 4)
+    check(t == ["Yemek borusunun içi", "İçerik: lokma", "Peristaltizm", "Alt sfinkter ve mideye geçiş"], f"özofagus: lümen → lokma → peristaltik dalga → mideye ({t})")
 
     # ------------------------------------------------------------------ kalp: kanın yolu
-    page.goto(URL + "#/ic/heart")
-    s = assert_inside(page, "kalp", "heart")
-    titles = [t for sc, _, t in steps(page) if sc == "interior"]
-    check(titles == ["Kalbin içi: dört odacık", "Sağ atriyum", "Triküspit kapak", "Sağ ventrikül", "Pulmoner kapak", "Akciğer", "Sol atriyum", "Mitral kapak", "Sol ventrikül", "Aort", "Sistemik dolaşım"], f"kalp: sağ atriyum → … → aort → sistemik dolaşım ({titles})")
-    check(s["archetype"] == "chamber", "kalp: pompa/odacık kalıbı (lümen değil)")
-    page.goto(URL + "#/ic/heart/4")
-    check(page.get_by_test_id("interior-scene").get_attribute("data-focus") == "path:2", "kalp: sağ ventrikül adımında kan yolu animasyonu odağı")
-    page.get_by_test_id("interior-scene").locator("canvas").wait_for(timeout=90000)
-    page.wait_for_timeout(1500)
+    a = goto_interior(page, URL, "heart")
+    assert_inside(page, a, "kalp", "heart")
+    check(a.get("archetype") == "chamber" and a.get("sceneKind") == "chambers", "kalp: pompa/odacık kalıbı (lümen değil)")
+    t = walk_titles(page, 11)
+    check(t == ["Kalbin içi: dört odacık", "Sağ atriyum", "Triküspit kapak", "Sağ ventrikül", "Pulmoner kapak", "Akciğer", "Sol atriyum", "Mitral kapak", "Sol ventrikül", "Aort", "Sistemik dolaşım"], f"kalp: sağ atriyum → … → aort → sistemik dolaşım ({t})")
+    a = goto_interior(page, URL, "heart", 4)
+    check(a.get("focus") == "path:2", "kalp: sağ ventrikül adımında kan yolu animasyonu odağı")
     page.screenshot(path=SHOTS / "03-kalp-kan-yolu.png")
 
     # ------------------------------------------------------------------ akciğer, böbrek, karaciğer, beyin, göz, kulak, mesane, damar
@@ -223,23 +202,28 @@ with sync_playwright() as p:
     }
     arch = {"lungs": "airway", "kidneys": "solid", "liver": "solid", "brain": "solid", "eyes": "sensory", "ear": "sensory", "urinary-tract.bladder": "hollow", "ic.artery": "vascular"}
     for oid, first in expect.items():
-        page.goto(URL + f"#/ic/{oid}")
-        s = assert_inside(page, oid, oid)
-        titles = [t for _, _, t in steps(page)]
-        check(titles[: len(first)] == first and s["archetype"] == arch[oid], f"{oid}: {' → '.join(first)} · {arch[oid]} ({titles[:len(first)]}, {s['archetype']})")
+        a = goto_interior(page, URL, oid)
+        assert_inside(page, a, oid, oid)
+        t = walk_titles(page, len(first))
+        check(t == first and a.get("archetype") == arch[oid], f"{oid}: {' → '.join(first)} · {arch[oid]} ({t}, {a.get('archetype')})")
         if arch[oid] == "solid":
-            check(page.get_by_test_id("interior-no-lumen").count() == 1, f"{oid}: sahte lümen yok")
+            check(a.get("sceneKind") == "parenchyma", f"{oid}: sahte lümen yok (parankim)")
 
     # ------------------------------------------------------------------ 3B vücut paneli → İçine gir (doku sahnesi değil)
     for structure, expect_id in [("large-intestine", "large-intestine"), ("kidneys", "kidneys"), ("heart", "heart"), ("spleen", "spleen"), ("thymus", "ic.thymus")]:
+        before = attrs(page)
         page.goto(URL + f"#/vucut/yapi/{structure}")
+        settle(page, 120, before=before, want={"level": "organ"})
         panel = page.locator("aside[aria-label='Bilgi paneli']")
         btn = panel.get_by_role("button", name=re.compile("^İçine gir"))
         btn.first.wait_for(timeout=90000)
         check(panel.get_by_role("button", name=re.compile("^İçeri gir")).count() == 0, f"3B panel {structure}: belirsiz 'İçeri gir' yok; doku sahnesi 'Daha derine in' altında")
         btn.first.click()
         page.wait_for_url(f"**/#/ic/{expect_id}**")
-        assert_inside(page, f"3B vücut → {structure} → İçine gir", expect_id)
+        a, _ = settle(page, 60, want={"interior": expect_id})
+        if not a.get("scene", "").startswith("ic:"):
+            a, _ = settle(page, 60, before=a)
+        assert_inside(page, a, f"3B vücut → {structure} → İçine gir", expect_id)
 
     # ------------------------------------------------------------------ arama → İçine gir
     page.goto(URL + "#/vucudum")
@@ -248,23 +232,28 @@ with sync_playwright() as p:
     dlg = page.locator("dialog[open]")
     dlg.get_by_role("button", name="İçine gir").first.click()
     page.wait_for_url("**/#/ic/large-intestine**")
-    assert_inside(page, "arama → kalın bağırsak → İçine gir", "large-intestine")
+    a, _ = settle(page, 120, want={"interior": "large-intestine"})
+    if not a.get("scene", "").startswith("ic:"):
+        a, _ = settle(page, 120, before=a)
+    assert_inside(page, a, "arama → kalın bağırsak → İçine gir", "large-intestine")
 
     # ------------------------------------------------------------------ Benim vücudum → İçine gir
     page.goto(URL + "#/vucudum")
     page.get_by_test_id("mybody-layers").wait_for()
     page.locator("[data-testid=layer-row][data-organ=kidneys]").get_by_role("button", name=re.compile("İçine gir")).click()
     page.wait_for_url("**/#/ic/kidneys**")
-    assert_inside(page, "Benim vücudum → böbrek → İçine gir", "kidneys")
+    a, _ = settle(page, 120, want={"interior": "kidneys"})
+    if not a.get("scene", "").startswith("ic:"):
+        a, _ = settle(page, 120, before=a)
+    assert_inside(page, a, "Benim vücudum → böbrek → İçine gir", "kidneys")
 
     # ------------------------------------------------------------------ telefon genişliği
     page.set_viewport_size({"width": 390, "height": 844})
     for oid in ["large-intestine", "heart", "kidneys"]:
-        page.goto(URL + f"#/ic/{oid}")
-        interior(page)
+        goto_interior(page, URL, oid)
         overflow = page.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
         check(overflow <= 1, f"telefon: {oid} iç dünya ekranında yatay taşma yok ({overflow}px)")
-    page.screenshot(path=SHOTS / "04-telefon-bobrek.png", full_page=True)
+    page.screenshot(path=SHOTS / "04-telefon-bobrek.png")
 
     check(not external, f"harici ağ isteği yok {external[:3]}")
     check(page.evaluate("window.__csp") == [], "CSP ihlali yok")

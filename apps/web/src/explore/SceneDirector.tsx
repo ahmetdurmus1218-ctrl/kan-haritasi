@@ -9,6 +9,10 @@ import { Color, type Mesh, PlaneGeometry, ShaderMaterial } from 'three';
  * deneyinden esinlenen, bu projede sıfırdan yazılmış bir gölgelendirici): halka ekranı örter,
  * sahne perde arkasında değişir, sonra ortadan açılarak yeni sahneyi gösterir. Rengi sistemin
  * vurgu rengidir. "Hareketi azalt" açıksa kısa bir kararma kullanılır.
+ *
+ * Perde kapanmadan önce isteğe bağlı bir YAKLAŞMA evresi vardır (delay): bu sırada eski sahne görünür
+ * kalır ve kamera yeni seviyeye doğru hareket eder (organa dalma, duvara yaklaşma, dışarı çekilme).
+ * Böylece seviye değişimi "eski sahne → yeni sahne" ani kesmesi değil, kamera hareketiyle başlayan bir geçiştir.
  */
 
 const VERT = /* glsl */ `
@@ -93,14 +97,18 @@ interface Props {
   /** Geçişin başladığı nokta (NDC, -1..1). */
   origin: [number, number];
   reducedMotion: boolean;
+  /** Perde kapanmadan önce kameranın yaklaşması için beklenen süre (saniye; geçiş başladığı anda okunur). */
+  delay?: number;
   /** Perde tamamen kapandığında (sahne değişirken) çağrılır. */
   onSwap: (key: string) => void;
+  /** Geçiş evresi değişince (uçtan uca testler ve erişilebilirlik için). */
+  onPhase?: (phase: Phase) => void;
   children: (shown: string) => ReactNode;
 }
 
-type Phase = 'idle' | 'cover' | 'hold' | 'reveal';
+export type Phase = 'idle' | 'approach' | 'cover' | 'hold' | 'reveal';
 
-export function SceneDirector({ target, color, origin, reducedMotion, onSwap, children }: Props) {
+export function SceneDirector({ target, color, origin, reducedMotion, delay = 0, onSwap, onPhase, children }: Props) {
   const [shown, setShown] = useState(target);
   const phase = useRef<Phase>('idle');
   const progress = useRef(0);
@@ -110,6 +118,10 @@ export function SceneDirector({ target, color, origin, reducedMotion, onSwap, ch
   const invalidate = useThree((s) => s.invalidate);
   const targetRef = useRef(target);
   targetRef.current = target;
+  const delayRef = useRef(delay);
+  delayRef.current = delay;
+  const onPhaseRef = useRef(onPhase);
+  onPhaseRef.current = onPhase;
   const shownRef = useRef(shown);
   shownRef.current = shown;
 
@@ -157,6 +169,7 @@ export function SceneDirector({ target, color, origin, reducedMotion, onSwap, ch
     const revealTime = reducedMotion ? 0.3 : 1.0;
     const wanted = targetRef.current;
     const begin = (p: Phase, from: number) => {
+      if (phase.current !== p) onPhaseRef.current?.(p);
       phase.current = p;
       phaseStart.current = now;
       fromProgress.current = from;
@@ -164,9 +177,23 @@ export function SceneDirector({ target, color, origin, reducedMotion, onSwap, ch
 
     if (phase.current === 'idle') {
       if (wanted === shownRef.current) return;
-      begin('cover', 0);
+      const wait = reducedMotion ? Math.min(0.15, delayRef.current) : delayRef.current;
+      begin(wait > 0 ? 'approach' : 'cover', 0);
+      hold.current = wait;
       u.uColor!.value.set(color);
       u.uOrigin!.value = origin;
+    }
+    if (phase.current === 'approach') {
+      // Eski sahne görünür; kamera yeni seviyeye doğru hareket ediyor.
+      if (wanted === shownRef.current) {
+        begin('idle', 0);
+        return;
+      }
+      if (now - phaseStart.current >= hold.current) begin('cover', 0);
+      else {
+        invalidate();
+        return;
+      }
     }
     if (phase.current === 'reveal' && wanted !== shownRef.current) {
       // Açılırken yeni bir hedef geldi: bulunduğu yerden tekrar kapan.
@@ -189,7 +216,7 @@ export function SceneDirector({ target, color, origin, reducedMotion, onSwap, ch
       if (hold.current > 2 && elapsed > 0.12) begin('reveal', 1);
     } else if (phase.current === 'reveal') {
       progress.current = Math.min(2, 1 + elapsed / revealTime);
-      if (progress.current >= 2) phase.current = 'idle';
+      if (progress.current >= 2) begin('idle', 0);
     }
 
     const active = phase.current !== 'idle';

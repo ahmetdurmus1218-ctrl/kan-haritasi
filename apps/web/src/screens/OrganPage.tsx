@@ -6,10 +6,10 @@
  *   #/organ/<id>/derin/…  → doku → hücre → süreç → molekül, seviye seviye
  * Organın ilk ekranında hiçbir zaman doğrudan hücre/molekül ağacı açılmaz.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { type KNode, type OrganView, buildOrganView, flowsForOrgan, interiorFor } from '@kh/analysis';
 import { structureById } from '@kh/catalog';
-import { type OrganViewMode, go } from '../state/router';
+import { type OrganViewMode, go, hrefFor } from '../state/router';
 import { useHealthModel } from '../lib/analysisBridge';
 import { studiesForStructure } from '../lib/imagingStudies';
 import { CATEGORY_LABEL } from '../lib/imaging';
@@ -23,7 +23,6 @@ import { LabRow, Breadcrumb, Section } from './organ/common';
 import { OrganOverview } from './organ/OrganOverview';
 import { OrganInside } from './organ/OrganInside';
 import { DeepDive } from './organ/DeepDive';
-import { InteriorPage } from './InteriorPage';
 
 function Chain({ nodes, overlay }: { nodes: KNode[]; overlay?: OrganView['relations'][number]['overlay'] }) {
   return (
@@ -393,6 +392,15 @@ function StructureFallback({ id }: { id: string }) {
   );
 }
 
+/** Eski "#/organ/<id>/ic" adresi: iç dünya artık 3B keşifte (#/ic/<iç dünya>) açılır. */
+function InteriorRedirect({ id }: { id: string }) {
+  useEffect(() => {
+    history.replaceState(null, '', hrefFor({ name: 'interior', id }));
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, [id]);
+  return null;
+}
+
 export function OrganPage({ id, view, trail }: { id: string; view?: OrganViewMode; trail?: string[] }) {
   const { model, studies } = useHealthModel();
   const v = useMemo(() => buildOrganView(id, model), [id, model]);
@@ -408,7 +416,7 @@ export function OrganPage({ id, view, trail }: { id: string; view?: OrganViewMod
   if (view === 'ic') {
     // İçine gir: daima organın iç dünyası. Duvar → doku → hücre ("doku" görünümü) buraya asla yedek olarak açılmaz.
     const def = interiorFor(v.node.id);
-    return def ? <InteriorPage id={def.organId} /> : <OrganOverview v={v} model={model} />;
+    return def ? <InteriorRedirect id={def.organId} /> : <OrganOverview v={v} model={model} />;
   }
   if (view === 'doku') return <OrganInside v={v} model={model} />;
   if (view === 'derin') return <DeepDive v={v} model={model} trail={trail ?? []} />;

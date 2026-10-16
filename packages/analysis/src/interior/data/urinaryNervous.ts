@@ -221,6 +221,7 @@ export const NERVOUS: OrganInteriorDefinition[] = [
       st('hemisphere', 'region', 'region', 'Hemisfer', 'İki yarıküre vücudun karşı tarafını yönetir.', { node: 'brain.hemisphere-left' }),
       st('lobe', 'region', 'region', 'Lob', 'Her lobun öne çıkan işlevi vardır (ör. frontal: planlama, oksipital: görme).', { node: 'brain.frontal', next: [{ to: 'ic.cerebral-cortex', label: 'Kortekse gir' }] }),
       st('cortex', 'tissue', 'tissue', 'Korteks', 'Altı katmanlı gri cevher.', { node: 'tissue.cortical-layers', scene: 'noron' }),
+      st('white-matter', 'tissue', 'tissue', 'Beyaz cevher', 'Korteksin altındaki miyelinli akson demetleri: beynin bölgelerini birbirine ve omuriliğe bağlayan yollar (ör. korpus kallozum).', { node: 'tissue.white-matter', scene: 'noron' }),
       st('network', 'cell', 'cell', 'Nöron ağı', 'Her nöron binlerce başka nöronla bağlantı kurar.', { node: 'cell.pyramidal', scene: 'noron' }),
       st('synapse', 'cell', 'cell', 'Sinaps', 'İki nöron arasındaki ~20 nm aralık.', { node: 'sub.synapse', scene: 'noron', next: [{ to: 'sub.synapse', label: 'Sinapsın içine gir' }] }),
       st('neurotransmitter', 'molecule', 'molecule', 'Nörotransmitter', 'Glutamat, GABA, dopamin… keseciklerden aralığa salınır, alıcıya bağlanır.', { node: 'mol.neurotransmitter', scene: 'noron' }),

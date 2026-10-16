@@ -14,17 +14,22 @@ export interface Crumb {
 }
 
 export function Breadcrumb({ items, accent }: { items: Crumb[]; accent: string }) {
+  // Her seviye görünür (telefonda tek satır, yatay kaydırılır ve son seviye görünür kalır); üst seviyeler tıklanabilir.
+  const ref = useRef<HTMLElement>(null);
+  const key = items.map((c) => c.label).join('/');
+  useEffect(() => {
+    const el = ref.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [key]);
   return (
-    <nav aria-label="Keşif seviyesi" className="pointer-events-auto flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+    <nav ref={ref} aria-label="Keşif seviyesi" className="pointer-events-auto flex min-w-0 items-center gap-x-1.5 gap-y-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] md:flex-wrap md:overflow-visible md:whitespace-normal">
       {items.map((c, i) => {
         const last = i === items.length - 1;
-        // Dar ekranda yalnızca son üç seviye (ilk seviye her zaman "Vücut" düğmesiyle erişilebilir)
-        const compact = items.length > 3 && i > 0 && i < items.length - 2;
         return (
-          <span key={`${i}-${c.label}`} className={`items-center gap-1.5 ${compact ? 'hidden md:flex' : 'flex'}`}>
+          <span key={`${i}-${c.label}`} className="flex shrink-0 items-center gap-1.5">
             {i > 0 && <span className="font-mono text-[10.5px] text-fg-faint">/</span>}
             {c.onClick && !last ? (
-              <button type="button" onClick={c.onClick} className="rounded-sm text-fg-muted transition hover:text-fg">
+              <button type="button" onClick={c.onClick} className="min-h-[28px] rounded-sm text-fg-muted transition hover:text-fg">
                 <Caps>{c.label}</Caps>
               </button>
             ) : (
