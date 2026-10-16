@@ -136,7 +136,8 @@ with sync_playwright() as p:
     check("#/vucut/ldl" in page.url, "LDL için vücut rotası")
     check(page.locator("aside[aria-label='Bilgi paneli']").get_by_text("Koroner arterler").count() >= 1, "LDL → koroner arterler bağlantısı")
     page.locator("button:has-text('Eğitimsel simülasyonu başlat')").click()
-    page.get_by_text("Eğitimsel biyolojik simülasyon").locator("visible=true").first.wait_for(timeout=20000)  # telefon ve masaüstü kopyası var: görüneni bekle
+    # Kamera önce organa dalar (yaklaşma evresi), sonra perde; yazılımsal GPU'da kare başına ~1 sn sürebilir.
+    page.get_by_text("Eğitimsel biyolojik simülasyon").locator("visible=true").first.wait_for(timeout=90000)  # telefon ve masaüstü kopyası var: görüneni bekle
     page.wait_for_timeout(5000)
     page.screenshot(path=SHOTS / "27-simulasyon.png")
     panel = page.locator("aside[aria-label='Simülasyon paneli']").inner_text()

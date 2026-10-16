@@ -351,6 +351,7 @@ with sync_playwright() as p:
     card.get_by_text("kesit bulundu", exact=False).wait_for(timeout=30000)
     text = card.inner_text()
     check(page.locator("[aria-label='Sağ-sol simetri ön kontrolü']").count() == 1, "tek simetri ön kontrolü (eski/yeni kart çiftlenmiyor)")
+    print("simetri kartı:", " | ".join(text.split("\n"))[:400], flush=True)
     check("3 kesit bulundu · 2 tanesinde" in text, "kolaj 3 kesite ayrıldı, 2'si karşılaştırıldı (sagital hariç)")
     check(
         "Kesit 2 · görüntünün sol üst kısmı · karşı tarafa göre daha parlak" in text and "Kesit 1 ·" not in text and "Kesit 3 ·" not in text,
