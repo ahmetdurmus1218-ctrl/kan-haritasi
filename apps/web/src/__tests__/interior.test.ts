@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { INTERIORS, PHYSIO_CHAINS, interiorFor } from '@kh/analysis';
+import { GRAPH, INTERIORS, PHYSIO_CHAINS, interiorFor } from '@kh/analysis';
 import { STRUCTURES } from '@kh/catalog';
 import { hrefFor, parseHash } from '../state/router';
 import { INSIDE } from '../explore/inside/registry';
+import { insideRoute, interiorForStructure } from '../lib/anatomyNav';
+import { search } from '../lib/search';
 
 describe('İçine gir — web bağları', () => {
   it('rotalar: #/ic/<iç dünya>/<basamak>/<mod> ve #/fizyoloji/<zincir> gidiş-dönüş', () => {
@@ -23,12 +25,26 @@ describe('İçine gir — web bağları', () => {
       }
   });
 
-  it('3B kataloğundaki ana yapıların çoğu bir iç dünyaya yönlenir', () => {
-    const organs = STRUCTURES;
-    const mapped = organs.filter((s) => interiorFor(s.id));
-    expect(mapped.length / organs.length).toBeGreaterThan(0.6);
+  it('3B kataloğundaki HER yapı bir iç dünyaya yönlenir (3B vücutta "İçine gir" hiçbir organda eksik değil)', () => {
+    expect(STRUCTURES.filter((s) => !interiorForStructure(s.id)).map((s) => s.id)).toEqual([]);
     for (const id of ['heart', 'lungs', 'liver', 'kidneys', 'stomach', 'small-intestine', 'large-intestine', 'brain', 'eyes', 'ear', 'skin', 'aorta', 'veins', 'uterus', 'ovaries', 'testes', 'prostate', 'pancreas', 'thyroid', 'adrenals', 'pituitary', 'spinal-cord', 'nerves', 'bones', 'knee', 'skeletal-muscle', 'vagina', 'urinary-tract', 'gallbladder', 'esophagus', 'airways'])
       expect(interiorFor(id), id).toBeDefined();
+  });
+
+  it('"İçine gir" düğmeleri (model yapısı, bulgu, kişisel 3B) organın iç dünyasını açar — derin görünüme (doku/hücre) değil', () => {
+    expect(insideRoute('large-intestine')).toEqual({ name: 'interior', id: 'large-intestine' });
+    expect(insideRoute('liver')).toEqual({ name: 'interior', id: 'liver' });
+    expect(insideRoute('kidneys')).toEqual({ name: 'interior', id: 'kidneys' });
+    expect(insideRoute('heart')).toEqual({ name: 'interior', id: 'heart' });
+    // Organın alt bölümü (segment, kapak) de organın içine girer; mikroanatomi düğümü de en yakın iç dünyaya
+    expect(insideRoute('tissue.villus')).toEqual({ name: 'interior', id: 'small-intestine' });
+    for (const n of GRAPH.nodes.values()) if (n.kind === 'organ' || n.kind === 'region') expect(insideRoute(n.id).name, n.id).toBe('interior');
+  });
+
+  it('arama: organın "İçine gir" bağlantısı iç dünyaya gider (duvar/doku adımlarına değil)', () => {
+    const hit = search('kalın bağırsak').find((h) => h.kind === 'organ')!;
+    const link = hit.links.find((l) => l.label === 'İçine gir')!;
+    expect(link.route).toEqual({ name: 'interior', id: 'large-intestine' });
   });
 
   it('fizyoloji zincirleri boş değil', () => {

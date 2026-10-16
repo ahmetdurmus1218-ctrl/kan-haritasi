@@ -326,7 +326,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, accent }: { tabs
   );
 }
 
-export function EnterButton({ onClick, label = 'İçeri gir', accent }: { onClick: () => void; label?: string; accent: string }) {
+export function EnterButton({ onClick, label = 'Daha derine in', accent }: { onClick: () => void; label?: string; accent: string }) {
   return (
     <button
       type="button"

@@ -225,7 +225,8 @@ with sync_playwright() as p:
     page.get_by_role("heading", name="Beyin", exact=True).wait_for()
     main = page.locator("main")
     mt = main.inner_text()
-    check("1. NASIL ÇALIŞIR?" in mt.upper() and "2. BENİM DURUMUM" in mt.upper(), "78: organ ilk ekranı: önce nasıl çalışır, sonra benim durumum")
+    up = mt.upper()
+    check("2. NORMALDE NASIL ÇALIŞIR?" in up and "4. BENİM DURUMUM" in up and up.index("2. NORMALDE NASIL ÇALIŞIR?") < up.index("4. BENİM DURUMUM"), "78: organ ilk ekranı: önce nasıl çalışır, sonra benim durumum")
     check("Seviye 6" not in mt and "Detaylandır" not in mt, "48/76: ilk ekranda hücre/molekül ağacı açık değil")
     check("Belirsiz" in mt or "gözlem" in mt, "69: organ durumu 'Belirsiz' (gözlem, anormallik değil)")
     page.get_by_role("button", name="Sonuçlarımı gör").click()
@@ -272,12 +273,12 @@ with sync_playwright() as p:
     # "İçine gir" artık organın iç dünyasıdır (lümen…); duvar → doku → hücre adım adım görünümü "Daha derine in" altında
     check(page.get_by_test_id("organ-enter-interior").count() == 1, "87: ana 'İçine gir' düğmesi")
     page.get_by_role("button", name="Duvarı ve dokuyu adım adım incele").click()
-    page.get_by_text("İnce bağırsak · içi").wait_for()
+    page.get_by_text("İnce bağırsak · duvar ve doku").wait_for()
     seen = []
     villus_scene = False
     for _ in range(8):
         seen.append(page.get_by_role("region", name="Bu adım").locator("h2").inner_text())
-        villus_scene = villus_scene or page.get_by_role("button", name=re.compile("İçeri gir · Bağırsak villusları")).count() >= 1
+        villus_scene = villus_scene or page.get_by_role("button", name=re.compile("Doku sahnesi · Bağırsak villusları")).count() >= 1
         nxt = page.get_by_role("button", name=re.compile("^Bir seviye daha"))
         if not nxt.count():
             break
@@ -319,7 +320,7 @@ with sync_playwright() as p:
 
     page.goto(URL + "#/organ/pancreas")
     page.get_by_text("Normalde ne işe yarar?").first.wait_for()
-    flows = [b.inner_text() for b in page.get_by_role("region", name="1. Nasıl çalışır?").get_by_role("button").all()]
+    flows = [b.inner_text() for b in page.get_by_role("region", name="2. Normalde nasıl çalışır?").get_by_role("button").all()]
     check(any("Pankreas enzimleri" in f for f in flows) and any("Kan şekeri" in f for f in flows), f"10: pankreas: enzim ve kan şekeri akışları ({flows})")
     page.screenshot(path=SHOTS / "94-organ-pankreas.png", full_page=True)
 

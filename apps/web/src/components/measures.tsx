@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MEASURE_UNIT_LABEL, formatMeasure, formatNumber } from '@kh/catalog';
 import { go } from '../state/router';
+import { interiorForStructure } from '../lib/anatomyNav';
 import type { MeasureResult } from '../lib/imagingMeasurements';
 import { RangeBar, StatusPill } from './results';
 import { BodyIcon, ChevronRightIcon, TrashIcon } from './icons';
@@ -78,13 +79,18 @@ function MeasureRow({ m, onRemove }: { m: MeasureResult; onRemove?: (m: MeasureR
             <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => go({ name: 'body', structure: def.structure })}>
               <BodyIcon size={14} /> Vücutta göster
             </button>
+            {interiorForStructure(def.structure) && (
+              <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => go({ name: 'interior', id: interiorForStructure(def.structure)!.organId })}>
+                İçine gir
+              </button>
+            )}
             {def.inside && (
               <button
                 type="button"
                 className="btn-ghost px-3 py-1.5 text-xs"
                 onClick={() => go({ name: 'simulation', id: def.inside!, from: def.structure, mode: 'temel' })}
               >
-                ↘ İçeri gir
+                ↘ Daha derine in
               </button>
             )}
             {m.source === 'manual' && onRemove && (

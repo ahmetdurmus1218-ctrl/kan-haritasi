@@ -10,7 +10,7 @@ import { GRAPH, type ModelManifest, type Spacing, encodeRle, findingClass, spaci
 import type { DicomInfo } from '@kh/ingest';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { go } from '../state/router';
-import { insideRoute } from '../lib/anatomyNav';
+import { deepRoute, insideRoute } from '../lib/anatomyNav';
 import { type VolumeJobProgress, runVolumeAnalysis } from '../lib/analysisBridge';
 import { type StoredVolume, savePathologyVolume, saveVolume } from '../lib/imagingRecords';
 import { type StoredModel, useLocalModels } from '../lib/localModels/store';
@@ -247,9 +247,14 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
                             Görüntüde
                           </button>
                           {node && (
-                            <button type="button" className="text-xs text-accent underline" onClick={() => go(insideRoute(node))} data-testid="structure-inside">
-                              İçine gir
-                            </button>
+                            <>
+                              <button type="button" className="text-xs text-accent underline" onClick={() => go(insideRoute(node))} data-testid="structure-inside">
+                                İçine gir
+                              </button>
+                              <button type="button" className="text-xs text-accent underline" onClick={() => go(deepRoute(node))} data-testid="structure-anatomy">
+                                Anatomide konumu
+                              </button>
+                            </>
                           )}
                           {s.structure && (
                             <button type="button" className="inline-flex items-center gap-0.5 text-xs text-accent underline" aria-label={`${s.name}: 3B anatomide göster`} onClick={() => go(s.part ? { name: 'body', structure: s.structure!, part: s.part } : { name: 'body', structure: s.structure! })}>
@@ -315,9 +320,14 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
                           Görüntüde
                         </button>
                         {x.node && GRAPH.node(x.node) && (
-                          <button type="button" className="text-xs text-accent underline" onClick={() => go(insideRoute(x.node!))}>
-                            İçine gir
-                          </button>
+                          <>
+                            <button type="button" className="text-xs text-accent underline" onClick={() => go(insideRoute(x.node!))}>
+                              İçine gir
+                            </button>
+                            <button type="button" className="text-xs text-accent underline" onClick={() => go(deepRoute(x.node!))} data-testid="cascade-anatomy">
+                              Anatomide konumu
+                            </button>
+                          </>
                         )}
                       </li>
                     ))}

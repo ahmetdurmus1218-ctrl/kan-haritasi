@@ -139,7 +139,7 @@ export function PatternCard({
             className="btn-ghost px-3 py-1.5 text-xs"
             onClick={() => (onEnter ? onEnter(target.scene, target.from) : go({ name: 'simulation', id: target.scene, from: target.from }))}
           >
-            İçeri gir · {INSIDE[target.scene].title} <ChevronRightIcon size={14} />
+            Daha derine in · {INSIDE[target.scene].title} <ChevronRightIcon size={14} />
           </button>
         )}
         {compact && (p.text.length > 160 || p.ask?.length) ? (

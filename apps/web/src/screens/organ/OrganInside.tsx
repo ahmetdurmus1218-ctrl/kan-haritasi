@@ -1,12 +1,14 @@
 /**
- * "Organın içine gir": organdan hücreye, her adım kontrollü — kullanıcı hücreye bir tıkla atlamaz.
+ * "Daha derine in · duvar ve doku" (#/organ/<id>/doku): organdan hücreye, her adım kontrollü — kullanıcı hücreye bir tıkla atlamaz.
+ * Bu "İçine gir" DEĞİLDİR: İçine gir organın iç dünyasını (lümen, içerik, akış / parankim) açar (InteriorPage).
+ 
  *   1. Organın tamamı → 2. iç yapı / duvar → 3. yüzey → 4. villus … → hücre
  * Her adımda: seviye ("Seviye 3 / Doku"), kısa açıklama, aynı seviyedeki diğer yapılar, varsa eğitsel
  * iç sahne (VillusScene, AlveolusScene…) ve kişinin bu yapıyla ilişkili verisi (yaklaşık gösterim).
  * Son adımdan sonra "Daha derine in" süreç ve molekül seviyesine geçer.
  */
 import { useState } from 'react';
-import { GRAPH, type HealthModel, type KNode, type OrganView } from '@kh/analysis';
+import { GRAPH, type HealthModel, type KNode, type OrganView, interiorFor } from '@kh/analysis';
 import { go } from '../../state/router';
 import { insideLinks } from '../../anatomy/organs';
 import { INSIDE } from '../../explore/inside/registry';
@@ -31,6 +33,7 @@ export function OrganInside({ v, model }: { v: OrganView; model: HealthModel | n
   const scenes = i === 0 && v.node.structure ? insideLinks(v.node.structure).filter((l) => l.id !== 'hucre') : [];
   const mine = personalHere(node, v, model);
   const last = i === steps.length - 1;
+  const interior = interiorFor(v.node.id);
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 md:px-8 md:py-10">
@@ -38,11 +41,16 @@ export function OrganInside({ v, model }: { v: OrganView; model: HealthModel | n
         <button type="button" className="btn-ghost min-h-[40px] px-2.5 text-xs" onClick={() => go({ name: 'organ', id: v.node.id })}>
           <ChevronLeftIcon size={14} /> {v.node.nameTr}
         </button>
-        <Breadcrumb organId={v.node.id} current="İç yapı" />
+        <Breadcrumb organId={v.node.id} current="Daha derine in · duvar ve doku" />
       </div>
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{v.node.nameTr} · içi</h1>
-        <p className="mt-1 text-sm text-fg-muted">Normal yapı, adım adım. Eğitsel ve temsilidir; kişinin kendi dokusunun görüntüsü değildir.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{v.node.nameTr} · duvar ve doku</h1>
+        <p className="mt-1 text-sm text-fg-muted">Daha derine in: duvar → doku → hücre, adım adım. Eğitimsel · Temsili anatomi; kişinin kendi dokusunun görüntüsü değildir.</p>
+        {interior && (
+          <button type="button" className="mt-2 text-sm text-accent hover:underline" onClick={() => go({ name: 'interior', id: interior.organId })} data-testid="doku-back-interior">
+            ← Organın iç dünyasına dön (İçine gir · {interior.name})
+          </button>
+        )}
       </div>
 
       {/* Adımların haritası: nerede olduğunu her an görürsün */}
@@ -100,12 +108,12 @@ export function OrganInside({ v, model }: { v: OrganView; model: HealthModel | n
         <div className="flex flex-wrap gap-2">
           {scene && (
             <button type="button" className="btn-primary min-h-[44px] px-3.5 text-sm" onClick={() => go({ name: 'simulation', id: scene, from: v.node.structure, mode: 'temel' })}>
-              <LayersIcon size={15} /> İçeri gir · {INSIDE[scene].title}
+              <LayersIcon size={15} /> Doku sahnesi · {INSIDE[scene].title}
             </button>
           )}
           {scenes.map((l) => (
             <button key={l.id} type="button" className="btn-ghost min-h-[44px] px-3.5 text-sm" onClick={() => go({ name: 'simulation', id: l.id, from: v.node.structure, mode: 'temel' })}>
-              İçeri gir · {INSIDE[l.id].title}
+              Doku sahnesi · {INSIDE[l.id].title}
             </button>
           ))}
         </div>

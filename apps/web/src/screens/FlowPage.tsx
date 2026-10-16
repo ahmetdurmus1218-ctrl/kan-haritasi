@@ -4,7 +4,7 @@
  * basamaklara bağlanır; verisi olmayan basamak "sorunlu" gösterilmez, ilişki her zaman "olası"dır.
  */
 import { useEffect, useMemo } from 'react';
-import { FLOWS, FLOW_SYSTEM_LABEL, type FlowSystem, GRAPH, flowById, personalOverlay } from '@kh/analysis';
+import { FLOWS, FLOW_SYSTEM_LABEL, type FlowSystem, GRAPH, flowById, interiorFor, personalOverlay } from '@kh/analysis';
 import { structureById } from '@kh/catalog';
 import { type Route, go } from '../state/router';
 import { useHealthModel } from '../lib/analysisBridge';
@@ -85,6 +85,7 @@ export function FlowPage({ id, step = 1, personal = false }: { id?: string; step
   const labs = rel.map((r) => model?.latestLabs.find((l) => l.testKey === r.testKey)).filter((l): l is NonNullable<typeof l> => Boolean(l));
   const anatomy = s.anatomyId ? anatomyRoute(s.anatomyId) : undefined;
   const scene = s.inside && s.inside in INSIDE ? (s.inside as InsideId) : undefined;
+  const interior = s.anatomyId ? interiorFor(s.anatomyId) : undefined;
   const structure = s.anatomyId ? (GRAPH.node(s.anatomyId)?.structure ?? (structureById.has(s.anatomyId) ? s.anatomyId : undefined)) : undefined;
 
   return (
@@ -154,9 +155,14 @@ export function FlowPage({ id, step = 1, personal = false }: { id?: string; step
               {s.anatomyId ? nameOf(s.anatomyId) : 'Anatomi'} <ChevronRightIcon size={14} />
             </button>
           )}
+          {interior && (
+            <button type="button" className="btn-primary min-h-[44px] px-3.5 text-sm" onClick={() => go({ name: 'interior', id: interior.organId })}>
+              İçine gir · {interior.name}
+            </button>
+          )}
           {scene && (
             <button type="button" className="btn-ghost min-h-[44px] px-3.5 text-sm" onClick={() => go({ name: 'simulation', id: scene, ...(structure ? { from: structure } : {}), mode: personal ? 'benim' : 'temel' })}>
-              <LayersIcon size={15} /> İçeri gir · {INSIDE[scene].title}
+              <LayersIcon size={15} /> Daha derine in · {INSIDE[scene].title}
             </button>
           )}
           {structure && (

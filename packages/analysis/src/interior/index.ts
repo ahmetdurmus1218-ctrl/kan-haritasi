@@ -19,13 +19,15 @@ import type { LabObservation, MedicalFinding, ModelStructure } from '../types';
 import { isPositiveReport } from '../types';
 import { CIRCULATORY, RESPIRATORY } from './data/circulatory';
 import { DIGESTIVE } from './data/digestive';
+import { EXTRA } from './data/extra';
 import { MUSCULOSKELETAL, REPRODUCTIVE, SENSORY, SKIN } from './data/other';
 import { ENDOCRINE, NERVOUS, URINARY } from './data/urinaryNervous';
-import { type InteriorMode, type InteriorStage, type InteriorType, type OrganInteriorDefinition, SCALE_LEVEL } from './types';
+import { type InteriorArchetype, type InteriorMode, type InteriorStage, type InteriorType, type OrganInteriorDefinition, SCALE_LEVEL } from './types';
 
 export * from './types';
+export { INTERIOR_ACCEPTANCE } from './acceptance';
 
-export const INTERIORS: readonly OrganInteriorDefinition[] = [...DIGESTIVE, ...CIRCULATORY, ...RESPIRATORY, ...URINARY, ...NERVOUS, ...ENDOCRINE, ...REPRODUCTIVE, ...SENSORY, ...MUSCULOSKELETAL, ...SKIN];
+export const INTERIORS: readonly OrganInteriorDefinition[] = [...DIGESTIVE, ...CIRCULATORY, ...RESPIRATORY, ...URINARY, ...NERVOUS, ...ENDOCRINE, ...REPRODUCTIVE, ...SENSORY, ...MUSCULOSKELETAL, ...SKIN, ...EXTRA];
 
 const byId = new Map<string, OrganInteriorDefinition>();
 for (const d of INTERIORS) {
@@ -42,6 +44,36 @@ export const INTERIOR_TYPE_TR: Record<InteriorType, string> = {
   solid: 'Dolu organ (parankim; lümen yok)',
   compound: 'Bileşik yapı (birden çok iç dünya)',
 };
+
+export const ARCHETYPE_TR: Record<InteriorArchetype, string> = {
+  hollow: 'İçi boş organ: lümen → içerik → hareket → işlev',
+  solid: 'Dolu organ: parankim → fonksiyonel bölgeler → süreç',
+  vascular: 'Damar: lümen → kan akışı → kan hücreleri',
+  chamber: 'Pompa / odacık: odacıklar → kan akışı → kapaklar',
+  airway: 'Hava yolu: hava akışı → dallanma → gaz değişimi',
+  sensory: 'Duyu yolu: uyaranın ilerleyişi → algılayıcı hücre → sinir',
+};
+
+/** Organın deneyim kalıbı: açıkça verilmişse o, yoksa tür ve sahneden türetilir. */
+export function interiorArchetype(d: OrganInteriorDefinition): InteriorArchetype {
+  if (d.archetype) return d.archetype;
+  if (d.type === 'vascular') return 'vascular';
+  const sc = d.interiorScene;
+  if (sc.kind === 'chambers') return 'chamber';
+  if (sc.kind === 'pathway') return sc.signal === 'air' ? 'airway' : 'sensory';
+  if (sc.kind === 'lumen' && sc.content === 'air') return 'airway';
+  if (d.type === 'solid' || sc.kind === 'parenchyma') return 'solid';
+  return 'hollow';
+}
+
+/** "İçine gir" deneyimi: organın iç dünyası (ölçek 'interior') ile "Daha derine in" basamakları ayrı. */
+export function interiorExperience(d: OrganInteriorDefinition): { inside: InteriorStage[]; deeper: InteriorStage[] } {
+  const k = d.stages.findIndex((s) => s.scale !== 'interior');
+  return k < 0 ? { inside: [...d.stages], deeper: [] } : { inside: d.stages.slice(0, k), deeper: d.stages.slice(k) };
+}
+
+/** İlk ekranda asla açılmaması gereken basamak türleri (duvar ve mikroanatomi). */
+export const NOT_FIRST: ReadonlySet<InteriorStage['kind']> = new Set(['wall', 'tissue', 'cell', 'molecule']);
 
 /** Etiketler: hiçbir zaman karıştırılmaz. */
 export const EDUCATIONAL_LABEL = 'Eğitimsel normal anatomi/fizyoloji — kişisel görüntü değildir.';
@@ -74,6 +106,12 @@ export function interiorFor(id: string): OrganInteriorDefinition | undefined {
       }
     frontier = next;
   }
+  // Embriyonik yapı (ör. orta bağırsak, nöral tüp): yetişkinde kendi iç dünyası yoktur; ondan gelişen organınki açılır.
+  if (id.startsWith('dev.'))
+    for (const e of GRAPH.edgesTo(id, 'develops_from')) {
+      const d = interiorFor(e.from);
+      if (d) return d;
+    }
   return undefined;
 }
 
@@ -131,6 +169,36 @@ export function validateInterior(d: OrganInteriorDefinition, all: ReadonlyMap<st
     for (const s of d.stages) {
       if (ids.has(s.id)) bad('stage-id', `Yinelenen basamak ${s.id}.`);
       ids.add(s.id);
+    }
+  }
+  if (d.stages.length) {
+    const { inside } = interiorExperience(d);
+    const kinds = new Set(inside.map((s) => s.kind));
+    const has = (...k: InteriorStage['kind'][]) => k.some((x) => kinds.has(x));
+    const dynamic = has('motion', 'flow', 'process');
+    if (NOT_FIRST.has(d.stages[0]!.kind)) bad('interior-first', 'İlk sahne duvar/doku/hücre/molekül olamaz.');
+    if (inside.length < 2) bad('experience', 'İç dünya en az iki basamak olmalı (yalnızca giriş ekranı yetmez).');
+    if (!dynamic) bad('experience', 'İç dünyada organın nasıl çalıştığı (hareket / akış / süreç) gösterilmeli.');
+    switch (interiorArchetype(d)) {
+      case 'hollow':
+        if (!has('lumen') || !has('content')) bad('archetype-hollow', 'İçi boş organ: lümen ve içerik basamağı gerekli.');
+        break;
+      case 'solid':
+        if (d.stages[0]!.kind !== 'parenchyma') bad('archetype-solid', 'Dolu organ parankimden başlar.');
+        if (!d.stages.some((s) => s.kind === 'region') && !d.functionalRegions?.length) bad('archetype-solid', 'Dolu organda fonksiyonel bölgeler tanımlanmalı.');
+        break;
+      case 'vascular':
+        if (!has('lumen') || !has('flow', 'content')) bad('archetype-vascular', 'Damar: lümen ve kan akışı gerekli.');
+        break;
+      case 'chamber':
+        if (!has('flow')) bad('archetype-chamber', 'Odacıklı organ: kan akışı basamağı gerekli.');
+        break;
+      case 'airway':
+        if (!has('content', 'lumen') || !has('flow', 'process')) bad('archetype-airway', 'Hava yolu: hava ve hava akışı gerekli.');
+        break;
+      case 'sensory':
+        if (!has('flow', 'motion')) bad('archetype-sensory', 'Duyu yolu: uyaranın ilerleyişi gerekli.');
+        break;
     }
   }
   if (!VILLUS_ALLOWED(d)) {

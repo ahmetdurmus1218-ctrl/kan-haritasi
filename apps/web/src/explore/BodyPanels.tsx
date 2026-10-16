@@ -1,4 +1,4 @@
-import { GRAPH } from '@kh/analysis';
+import { GRAPH, interiorArchetype, type InteriorArchetype } from '@kh/analysis';
 import { useState } from 'react';
 import { type Interpretation, PROCESSES, type PartDef, type ProcessId, type SystemId, TESTS, formatNumber, partDef, partsOf, structureById, systemById, testByKey } from '@kh/catalog';
 import type { TestSeries } from '../lib/useReports';
@@ -13,6 +13,7 @@ import { isVein, partLabel, partLatin } from '../anatomy/names';
 import { highlightColor } from '../anatomy/palette';
 import { CriticalBanner, FindingBlock, PatternList, SeverityBar, SeverityChip } from '../components/interpretation';
 import { type SimulationMode, go } from '../state/router';
+import { interiorForStructure } from '../lib/anatomyNav';
 import { StatusPill } from '../components/results';
 import { INSIDE, type InsideId } from './inside/registry';
 import { SYSTEM_TEXT, inBody, structuresOfSystem, systemColor } from './systems';
@@ -365,6 +366,16 @@ function ImagingBlock({ studies, accent, structure }: { studies: ImagingStudy[];
   );
 }
 
+/** "İçine gir" düğmesinin altındaki kısa açıklama: organın kalıbına göre içeride ne görüleceği. */
+const INTERIOR_HINT: Record<InteriorArchetype, string> = {
+  hollow: 'lümen, içerik, hareket ve işlev',
+  solid: 'parankim, fonksiyonel bölgeler ve süreçler',
+  vascular: 'damarın içi ve kan akışı',
+  chamber: 'odacıklar, kanın yolu ve kapaklar',
+  airway: 'hava yolu, hava akışı ve gaz değişimi',
+  sensory: 'uyaranın yolu ve algılayıcı hücreler',
+};
+
 /** "Temelde nasıl çalışır" / "Sonucuma göre" düğme çifti (organ panelinde ve bulutta aynı dil). */
 export function HowItWorks({ accent, hasMine, onEnter, imaging }: { accent: string; hasMine: boolean; onEnter: (mode: SimulationMode) => void; imaging?: ImagingStudy }) {
   // Tahlil sonucu yok ama bu bölgenin görüntülemesi varsa "Sonucuma göre" o görüntülemeyi açar.
@@ -435,6 +446,8 @@ export function OrganPanel({
   const part = vessels.find((v) => v.id === selectedPart);
   const links = insideLinks(structure);
   const insides = links.map((l) => l.id);
+  // "İçine gir" organın (ya da seçili bölümün) kendi iç dünyasını açar; doku/hücre sahneleri "Daha derine in"dir.
+  const interior = interiorForStructure(structure, part?.def?.key);
   // Kalp de 'cardio' dosyasında ama damar değil; bölümleri (odacıklar, kapaklar) damar gibi etiketlenmez.
   const isVessel = s?.drill === 'vessel' || (s?.asset === 'cardio' && structure !== 'heart');
   const connections = (CONNECTIONS[structure] ?? []).filter((c) => structureById.has(c));
@@ -500,8 +513,16 @@ export function OrganPanel({
         <span className="block text-xs text-fg-muted">Normal işleyiş, tahlillerin, raporların ve görüntülerinden çıkan gözlemler kaynaklarıyla birlikte.</span>
       </button>
 
+      {!part && interior && (
+        <div className="mb-4 space-y-1.5">
+          <EnterButton accent={accent} label={`İçine gir · ${interior.name}`} onClick={() => go({ name: 'interior', id: interior.organId })} />
+          <p className="text-[11px] leading-relaxed text-fg-faint">Organın kendi iç dünyası: {INTERIOR_HINT[interiorArchetype(interior)]}. Eğitimsel · Temsili anatomi.</p>
+        </div>
+      )}
+
       {!part && insides[0] && (
         <div className="mb-6 space-y-2">
+          <Caps className="block text-[10px] text-fg-faint">Daha derine in · doku, hücre ve süreç</Caps>
           <HowItWorks accent={accent} hasMine={hasMine} imaging={imaging.find((st) => st.review) ?? imaging[0]} onEnter={(mode) => onEnter(insides[0]!, mode)} />
           <div className="flex flex-wrap gap-1.5 pt-1">
             {links.map(({ id, fit }) => (
@@ -544,7 +565,12 @@ export function OrganPanel({
                 : `${part.label}: ${s.nameTr.toLocaleLowerCase('tr')} yapısının bu bölümü.`)}
           </p>
           {isVessel && !part.def && <p className="text-xs text-fg-faint">Kaynak adı: {part.raw}</p>}
-          {insides[0] && <EnterButton accent={accent} label={`İçeri gir · ${INSIDE[insides[0]].title}`} onClick={() => onEnter(insides[0]!)} />}
+          {interior && <EnterButton accent={accent} label={`İçine gir · ${interior.name}`} onClick={() => go({ name: 'interior', id: interior.organId })} />}
+          {insides[0] && (
+            <button type="button" className="text-xs text-accent underline-offset-4 hover:underline" onClick={() => onEnter(insides[0]!)}>
+              Daha derine in · {INSIDE[insides[0]].title}
+            </button>
+          )}
           <button type="button" className="text-xs text-accent underline-offset-4 hover:underline" onClick={() => onSelectPart(null)}>
             ← {s.nameTr}
           </button>
@@ -749,6 +775,7 @@ export function TestPanel({ testKey, series, onEnter, interp }: { testKey: strin
   const system = test.systems[0];
   const accent = systemColor(system);
   const path = explorePath(testKey);
+  const pathInterior = path ? interiorForStructure(path.structure) : undefined;
   return (
     <div>
       {at >= 0 && list.length > 1 && (
@@ -816,7 +843,8 @@ export function TestPanel({ testKey, series, onEnter, interp }: { testKey: strin
           {path.simulation && (
             <EnterButton accent={accent} label="Eğitimsel simülasyonu başlat" onClick={() => onEnter(path.simulation!, path.structure)} />
           )}
-          <EnterButton accent={accent} label={`İçeri gir · ${INSIDE[path.inside].title}`} onClick={() => onEnter(path.inside!, path.structure)} />
+          {pathInterior && <EnterButton accent={accent} label={`İçine gir · ${pathInterior.name}`} onClick={() => go({ name: 'interior', id: pathInterior.organId })} />}
+          <EnterButton accent={accent} label={`Daha derine in · ${INSIDE[path.inside].title}`} onClick={() => onEnter(path.inside!, path.structure)} />
         </div>
       )}
       <p className="mt-6 text-[11px] leading-relaxed text-fg-faint">

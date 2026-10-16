@@ -76,6 +76,7 @@ export const CIRCULATORY: OrganInteriorDefinition[] = [
       st('mitral', 'flow', 'interior', 'Mitral kapak', 'İki yaprakçıklı kapak; kiriş bağları ve papiller kaslarla tutulur.', { focus: 'path:6', next: [{ to: 'heart.valves', label: 'Kapakları incele' }] }),
       st('lv', 'flow', 'interior', 'Sol ventrikül', 'En güçlü odacık: kanı ~120 mmHg basınçla pompalar.', { focus: 'path:7', next: [{ to: 'ic.ventricle', label: 'Ventrikülün içine gir' }] }),
       st('aorta', 'flow', 'interior', 'Aort', 'Aort kapağından geçen kan ana atardamarla tüm vücuda dağılır.', { focus: 'path:8', next: [{ to: 'vessel.aorta', label: 'Aortun içine gir' }] }),
+      st('systemic', 'flow', 'interior', 'Sistemik dolaşım', 'Aorttan dallanan arterler kanı organlara taşır; kılcallarda oksijen bırakılır, toplardamarlarla kan sağ atriyuma döner ve döngü yeniden başlar.', { focus: 'path:8', chain: 'oxygen', next: [{ to: 'ic.artery', label: 'Arterlere git' }, { to: 'ic.capillary', label: 'Kılcallara git' }, { to: 'ic.vein', label: 'Dönüş: toplardamarlar' }] }),
       st('wall', 'wall', 'tissue', 'Duvarı incele: endokard → miyokard → epikard', 'İçte endotel, ortada kalp kası, dışta epikard ve perikard.', { focus: 'wall', node: 'tissue.myocardium' }),
       st('endocardium', 'tissue', 'tissue', 'Endokard', 'Kanla temas eden pürüzsüz iç yüzey.', { node: 'tissue.endocardium' }),
       st('myocardium', 'tissue', 'tissue', 'Miyokard', 'Dallanan kalp kası lifleri; elektriksel olarak birbirine bağlı.', { node: 'tissue.myocardium', scene: 'kalpkasi' }),
@@ -90,6 +91,7 @@ export const CIRCULATORY: OrganInteriorDefinition[] = [
     organId: 'ic.atrium',
     name: 'Atriyum (kulakçık)',
     type: 'hollow',
+    archetype: 'chamber',
     system: 'cardiovascular',
     parent: 'heart',
     summary: 'Kanın ventriküle geçmeden önce toplandığı ince duvarlı odacık.',
@@ -114,6 +116,7 @@ export const CIRCULATORY: OrganInteriorDefinition[] = [
   },
   {
     organId: 'ic.ventricle',
+    archetype: 'chamber',
     name: 'Ventrikül (karıncık)',
     type: 'hollow',
     system: 'cardiovascular',
@@ -185,7 +188,7 @@ export const CIRCULATORY: OrganInteriorDefinition[] = [
     st('smooth-muscle', 'tissue', 'tissue', 'Düz kas', 'Kasılınca damar daralır, gevşeyince genişler.', { node: 'tissue.smooth-muscle' }),
     st('endothelial-cell', 'cell', 'cell', 'Endotel hücresi', 'Yassı, ince hücre.', { node: 'cell.endothelial', scene: 'damar' }),
     st('ldl', 'molecule', 'molecule', 'LDL ve damar duvarı', 'Kolesterol taşıyan parçacıklar ve damar duvarı ilişkisi.', { chain: 'lipids', biomarkers: ['ldl', 'hdl'], scene: 'damar' }),
-  ], { anchor: 'tissue.endothelium', aliases: ['coronary-arteries', 'carotid-arteries', 'limb-vessels', 'abdominal-vessels', 'renal-vessels'], personalDataBindings: ['ldl', 'hdl'], physiologyChains: ['oxygen', 'lipids'] }),
+  ], { anchor: 'tissue.endothelium', aliases: ['coronary-arteries', 'carotid-arteries', 'limb-vessels', 'abdominal-vessels', 'renal-vessels', 'eye-vessels', 'vessel.coronary', 'vessel.sma', 'vessel.ima', 'vessel.celiac', 'vessel.renal-artery', 'vessel.internal-iliac', 'vessel.ovarian-artery', 'vessel.uterine-artery', 'vessel.labyrinthine', 'vessel.bronchial-arteries', 'vessel.circle-of-willis'], personalDataBindings: ['ldl', 'hdl'], physiologyChains: ['oxygen', 'lipids'] }),
   vessel('ic.arteriole', 'Arteriyol', 'small', true, 'Kılcallardan hemen önceki en küçük atardamarlar; kan basıncının ana direnç noktası.', [
     ...BLOOD_STAGES('Düz kas halkası kılcal yatağa ne kadar kan gideceğini ayarlar; basınç burada en çok düşer.', [{ to: 'ic.capillary', label: 'Kılcallara git' }, { to: 'ic.artery', label: 'Öncesi: arter' }]),
     st('wall', 'wall', 'tissue', 'Duvarı incele', 'Endotel ve 1–2 kat düz kas.', { focus: 'wall' }),
@@ -208,7 +211,15 @@ export const CIRCULATORY: OrganInteriorDefinition[] = [
     st('valves', 'region', 'region', 'Ven kapakçıkları', 'Cep şeklinde endotel kıvrımları; kan yalnızca kalbe doğru akar.', { focus: 'wall' }),
     st('wall', 'wall', 'tissue', 'Duvarı incele', 'İnce media, kalın adventisya.', { focus: 'wall', scene: 'ven-duvari' }),
     st('endothelium', 'tissue', 'tissue', 'Endotel', 'İç yüzey.', { node: 'tissue.endothelium' }),
-  ], { structure: 'veins', aliases: ['veins'] }),
+  ], { structure: 'veins', aliases: ['veins', 'vessel.portal-vein', 'vessel.hepatic-veins', 'vessel.renal-vein', 'vessel.ovarian-vein', 'vessel.coronary-sinus', 'vessel.dural-sinuses'] }),
+  vessel('ic.pulmonary-vessels', 'Akciğer damarları', 'large', true, 'Küçük (pulmoner) dolaşım: pulmoner arter oksijeni azalmış kanı akciğere götürür, pulmoner venler oksijenli kanı kalbe getirir.', [
+    st('lumen', 'lumen', 'interior', 'Pulmoner arterin içi', 'Sağ ventrikülden çıkan geniş, ince duvarlı arter; içindeki kan koyu renklidir çünkü oksijeni azalmıştır.', { focus: 'lumen' }),
+    st('flow', 'flow', 'interior', 'Kan akışı: kalpten akciğere', 'Düşük basınçla (~25/10 mmHg) her atımda kalbin pompaladığı kanın tamamı akciğerden geçer; dallar bronşlara eşlik eder.', { focus: 'flow', next: [{ to: 'ic.ventricle', label: 'Kaynak: sağ ventrikül' }] }),
+    st('cells', 'content', 'interior', 'Kan hücreleri', 'Alyuvarlar oksijen yüklenmek için alveol kılcallarına ilerler.', { focus: 'contents', biomarkers: ['hemoglobin', 'rbc'], chain: 'oxygen' }),
+    st('exchange', 'process', 'interior', 'Alveol kılcallarında gaz değişimi', 'Kan alveol duvarından O₂ alır, CO₂ bırakır; oksijenlenen kan pulmoner venlerle sol atriyuma döner.', { focus: 'exchange', chain: 'oxygen', next: [{ to: 'tissue.alveolus', label: 'Alveolün içine gir' }, { to: 'ic.atrium', label: 'Dönüş: sol atriyum' }] }),
+    st('wall', 'wall', 'tissue', 'Duvarı incele', 'Sistemik arterlerden ince media; endotel ve elastik lifler.', { focus: 'wall', scene: 'damar' }),
+    st('endothelium', 'tissue', 'tissue', 'Endotel', 'Hipoksiye daralarak yanıt veren özel endotel (hipoksik vazokonstriksiyon).', { node: 'tissue.endothelium' }),
+  ], { system: 'cardiovascular', structure: 'pulmonary-vessels', aliases: ['pulmonary-vessels', 'vessel.pulmonary-artery', 'vessel.pulmonary-veins'], relatedSystems: ['cardiovascular', 'respiratory'], personalDataBindings: ['hemoglobin'] }),
 ];
 
 export const RESPIRATORY: OrganInteriorDefinition[] = [
