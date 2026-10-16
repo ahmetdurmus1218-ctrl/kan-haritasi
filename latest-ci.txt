@@ -1,8 +1,30 @@
 workflow: CI
-run: 38842520441
-sha: ff711fbd2e051f23452857bbfe31496560f9dae1
+run: 38842504125
+sha: aaef0ce4db03a3b371678c90d519c1a8dc570bb1
 conclusion: failure
 
+web: success
+  - Set up job: success
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Lint (güvenlik kuralları dahil): success
+  - Tip denetimi: success
+  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
+  - Derleme: success
+  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
+  - Post Run actions/setup-node@v4: success
+  - Post Run pnpm/action-setup@v4: success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
+dependencies: success
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 e2e: failure
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -31,71 +53,49 @@ e2e: failure
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-dependencies: success
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-web: success
-  - Set up job: success
-  - Run actions/checkout@v4: success
-  - Run pnpm/action-setup@v4: success
-  - Run actions/setup-node@v4: success
-  - Run pnpm install --frozen-lockfile: success
-  - Lint (güvenlik kuralları dahil): success
-  - Tip denetimi: success
-  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
-  - Derleme: success
-  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
-  - Post Run actions/setup-node@v4: success
-  - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
 
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	﻿2026-10-16T02:52:44.7346776Z ##[group]Run python tests/e2e/flow.py "$RUNNER_TEMP/shots"
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7347513Z ^[[36;1mpython tests/e2e/flow.py "$RUNNER_TEMP/shots"^[[0m
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7445338Z shell: /usr/bin/bash -e {0}
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7445769Z env:
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7446184Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7446853Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7447604Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7448383Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7449048Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7449976Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7450657Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:44.7451232Z ##[endgroup]
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2230983Z PASS PDF'ten 14 sonuç okundu
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2232315Z PASS kaydedilen raporda 5 aralık dışı sonuç (ALT, T.kolesterol, LDL, TG yüksek; ferritin düşük)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2233488Z PASS fotoğraftan OCR ile 9 sonuç okundu
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2234231Z PASS Sonuçlarım listesinde LDL
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2234897Z PASS kişisel genel değerlendirme
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2235583Z PASS karaciğer paterni (ALT yüksek)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2236119Z PASS lipid paterni
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2237677Z PASS 90: LDL yüksek → ad ve değer yüksek tonunda (block truncate text-[15px] font-medium text-high | text-right text-sm font-semibold tabular-nums text-high)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2240368Z PASS 90: ferritin düşük → ad ve değer düşük (mavi) tonunda (block truncate text-[15px] font-medium text-low)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2241706Z PASS 91: normal glukoz nötr (block truncate text-[15px] font-medium )
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2242889Z PASS 90: pankreas sayfasında trigliserid adı/değeri/durumu aynı tonda (follow)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2243711Z PASS 90: ▲ Yüksek etiketi
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2244368Z PASS 91: normal glukoz pankreas sayfasında nötr
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2245616Z PASS 28: organ özeti 'ilişkili N sonuç referans dışında' (organ hasta denmiyor)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2246710Z PASS 46/84: fizyoloji akışında kişisel katman 'olası ilişki'
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2247338Z PASS öğren paneli
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2247744Z PASS kişisel yorum
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2248163Z PASS sapma derecesi (LDL 178 / 130)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2248658Z PASS LDL için vücut rotası
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2249189Z PASS LDL → koroner arterler bağlantısı
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2250137Z PASS simülasyon başladı ve ilerliyor (aşama 3/8)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2250744Z PASS aşama seçimi
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2251406Z PASS simülasyonda kişisel durum (LDL değeri sahneye yansır)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2251973Z PASS nesne bilgisi (LDL)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2252421Z PASS Esc ile organa dönüş
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2253206Z FAIL 3B organ paneli: 'İçine gir' damarın iç dünyasına (doku sahnesi değil)
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2254027Z PASS içeri girişte süreç kendiliğinden başlamaz
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2254668Z PASS tipik değerlerle karşılaştırma
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2255116Z PASS CSP ihlali yok []
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2255552Z PASS konsol hatası yok []
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2255936Z PASS harici istek yok []
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2256789Z {'problems': ["3B organ paneli: 'İçine gir' damarın iç dünyasına (doku sahnesi değil)"]}
-e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:40.2478431Z ##[error]Process completed with exit code 1.
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	﻿2026-10-16T02:52:24.8174916Z ##[group]Run python tests/e2e/flow.py "$RUNNER_TEMP/shots"
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8175465Z ^[[36;1mpython tests/e2e/flow.py "$RUNNER_TEMP/shots"^[[0m
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8239511Z shell: /usr/bin/bash -e {0}
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8239848Z env:
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8240186Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8240715Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8241307Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8241895Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8242420Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8243147Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8243682Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:52:24.8244128Z ##[endgroup]
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6782617Z PASS PDF'ten 14 sonuç okundu
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6784970Z PASS kaydedilen raporda 5 aralık dışı sonuç (ALT, T.kolesterol, LDL, TG yüksek; ferritin düşük)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6787234Z PASS fotoğraftan OCR ile 9 sonuç okundu
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6788336Z PASS Sonuçlarım listesinde LDL
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6789231Z PASS kişisel genel değerlendirme
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6790207Z PASS karaciğer paterni (ALT yüksek)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6790950Z PASS lipid paterni
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6793077Z PASS 90: LDL yüksek → ad ve değer yüksek tonunda (block truncate text-[15px] font-medium text-high | text-right text-sm font-semibold tabular-nums text-high)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6795567Z PASS 90: ferritin düşük → ad ve değer düşük (mavi) tonunda (block truncate text-[15px] font-medium text-low)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6797562Z PASS 91: normal glukoz nötr (block truncate text-[15px] font-medium )
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6799003Z PASS 90: pankreas sayfasında trigliserid adı/değeri/durumu aynı tonda (follow)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6800028Z PASS 90: ▲ Yüksek etiketi
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6800891Z PASS 91: normal glukoz pankreas sayfasında nötr
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6802207Z PASS 28: organ özeti 'ilişkili N sonuç referans dışında' (organ hasta denmiyor)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6803511Z PASS 46/84: fizyoloji akışında kişisel katman 'olası ilişki'
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6804403Z PASS öğren paneli
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6805074Z PASS kişisel yorum
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6805727Z PASS sapma derecesi (LDL 178 / 130)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6806918Z PASS LDL için vücut rotası
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6807795Z PASS LDL → koroner arterler bağlantısı
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6808693Z PASS simülasyon başladı ve ilerliyor (aşama 3/8)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6809432Z PASS aşama seçimi
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6810281Z PASS simülasyonda kişisel durum (LDL değeri sahneye yansır)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6811109Z PASS nesne bilgisi (LDL)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6811805Z PASS Esc ile organa dönüş
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6812782Z FAIL 3B organ paneli: 'İçine gir' damarın iç dünyasına (doku sahnesi değil)
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6814007Z PASS içeri girişte süreç kendiliğinden başlamaz
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6815055Z PASS tipik değerlerle karşılaştırma
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6815803Z PASS CSP ihlali yok []
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6816784Z PASS konsol hatası yok []
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6817501Z PASS harici istek yok []
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.6818801Z {'problems': ["3B organ paneli: 'İçine gir' damarın iç dünyasına (doku sahnesi değil)"]}
+e2e	Okuma → sonuçlar → vücutta göster → simülasyon	2026-10-16T02:55:25.7008650Z ##[error]Process completed with exit code 1.
