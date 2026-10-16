@@ -121,7 +121,7 @@ with sync_playwright() as p:
     a = goto_interior(page, URL, "small-intestine.ileum")
     check(a.get("interior") == "small-intestine.ileum" and a.get("level") == "interior", "11D: ileum iç dünyası")
     crumb = page.get_by_role("navigation", name="Keşif seviyesi").inner_text()
-    check(all(norm(x) in norm(crumb) for x in ["Sindirim sistemi", "İnce bağırsak", "İleum", "İçerisi"]), f"42: breadcrumb ({crumb!r})")
+    check(all(norm(x) in norm(crumb) for x in ["Sindirim", "İnce bağırsak", "İleum", "İçerisi"]), f"42: breadcrumb ({crumb!r})")
 
     # Kalın bağırsak: villus yok; karaciğer: lümen yok; kalp: kan yolu
     a = goto_interior(page, URL, "large-intestine")

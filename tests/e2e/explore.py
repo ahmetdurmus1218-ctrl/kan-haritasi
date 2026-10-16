@@ -144,7 +144,9 @@ with sync_playwright() as p:
         check(cloud.get_by_role("button", name="İçine gir").count() == 1, "bulutta 'İçine gir' (organın iç dünyası) — doku sahnesinden ayrı")
         btn = cloud.get_by_role("button", name="Daha derine in")
         btn.first.click()
-        settle(page, 9000)
+        # Kamera önce organa dalar (yaklaşma evresi), sonra perde; sahne değişimi tamamlanana kadar beklenir.
+        page.wait_for_function("() => { const e = document.querySelector('[data-testid=explorer]'); return e && e.dataset.scene.startsWith('inside:') && e.dataset.transition === 'idle'; }", timeout=90000)
+        settle(page, 1500)
         check("/temel" in page.url, "Daha derine in → doku sahnesi, süreç (tipik) kipinde")
         check(page.get_by_role("button", name="Temelde nasıl çalışır (açık)").count() == 1 or page.locator("button[aria-pressed=true]:has-text('Temelde')").count() == 1, "süreç tipik değerlerle oynuyor")
         page.screenshot(path=SHOTS / "07-lobul-temel.png")

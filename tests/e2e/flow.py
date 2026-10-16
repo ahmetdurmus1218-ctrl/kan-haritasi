@@ -157,6 +157,8 @@ with sync_playwright() as p:
     page.wait_for_timeout(4000)
     check("#/vucut/yapi/coronary-arteries" in page.url, "Esc ile organa dönüş")
     # İçine gir organın iç dünyasıdır (damar lümeni, kan akışı); doku sahnesi "Daha derine in"dir
+    # (kamera önce geri çekilir, perde açılınca organ paneli gelir: geçişin bitmesi beklenir)
+    page.locator("aside[aria-label='Bilgi paneli'] button:has-text('İçine gir · Arter')").first.wait_for(state="attached", timeout=60000)
     check(page.locator("aside[aria-label='Bilgi paneli'] button:has-text('İçine gir · Arter')").count() >= 1, "3B organ paneli: 'İçine gir' damarın iç dünyasına (doku sahnesi değil)")
     # Daha derine in: önce kişisel durum; genel süreç yalnızca istenince başlar
     page.locator("button:has-text('Daha derine in · Damar içi')").first.click()
