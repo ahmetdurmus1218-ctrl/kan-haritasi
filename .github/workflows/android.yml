@@ -78,7 +78,7 @@ jobs:
           for f in index.html ocr/worker.min.js ocr/tesseract-core-simd-lstm.wasm.js ocr/tur.traineddata \
                    models/m/body.glb models/m/skeleton.glb models/m/muscles.glb models/m/cardio.glb \
                    models/f/body.glb models/f/skeleton.glb models/f/reproductive.glb models/f/cardio.glb \
-                   ai-models/index.json; do
+                   ai-models/index.json ai-models/LICENSE-Apache-2.0.txt; do
             grep -qx "assets/web/$f" apk-assets.txt || { echo "::error::APK'da eksik: $f"; exit 1; }
           done
           # Gömülü tıbbi modeller: index.json'daki her modelin dosyaları APK'da olmalı

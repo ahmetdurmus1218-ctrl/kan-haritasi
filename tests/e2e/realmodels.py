@@ -149,6 +149,11 @@ with sync_playwright() as p:
     page.locator("[data-testid=explorer][data-interior=liver]").wait_for()
     ex = page.get_by_test_id("explorer")
     check(ex.get_attribute("data-current-level") == "interior" and ex.get_attribute("data-current-node") == "parenchyma", "C: İçine gir → 3B keşifte karaciğerin içi (parankim), mikroanatomiye atlamıyor")
+    # Kişisel 3B etiketi sağlık modeli (kasadaki seri sonucu) yüklenince çıkar: anlık sayım yerine beklenir.
+    try:
+        page.get_by_test_id("interior-personal-3d").wait_for(timeout=30000)
+    except Exception:
+        pass
     check(page.get_by_test_id("interior-personal-3d").count() == 1, "C: İçine gir → organ 'Senin görüntünden' (gerçek maske)")
     page.goto(ct_url)
     panel = page.get_by_test_id("series-model-panel")
@@ -172,9 +177,9 @@ with sync_playwright() as p:
     t = page.get_by_test_id("interior-personal-3d").inner_text()
     check("Senin görüntünden oluşturuldu." in t and "eğitimsel" in t and "mL" in t, "51: İçine gir → karaciğer: organ gerçek maskeden ('Senin görüntünden'), iç seviyeler eğitimsel")
     check("eğitimsel" in page.get_by_test_id("interior-label").inner_text().lower(), "51: lobül/hepatosit seviyeleri eğitimsel etiketli (kişisel görüntü değil)")
-    page.get_by_test_id("interior-personal-3d").get_by_role("button", name=re.compile("Gerçek görüntüyü")).click()
-    page.wait_for_url(re.compile("#/belge/"), timeout=30000)
-    check(True, "51: iç dünyadan gerçek görüntüye ve kişisel 3B'ye dönüş")
+    page.get_by_test_id("interior-personal-3d").get_by_role("button", name=re.compile("gerçek 3B organına")).click()
+    page.locator("[data-testid=personal-organ][data-state=ready]").wait_for(timeout=120000)
+    check("segmentasyon maskesinden oluşturuldu" in page.get_by_test_id("personal-organ").inner_text(), "51: iç dünyadan kişinin gerçek 3B organına dönüş")
     page.goto(URL + "#/ic/heart")
     page.locator("[data-testid=explorer][data-interior=heart]").wait_for()
     check(page.get_by_test_id("interior-personal-3d").count() == 0 or "Kalp" in page.get_by_test_id("interior-personal-3d").inner_text(), "51: bölütlenmeyen yapı için kişisel 3B iddiası yok")

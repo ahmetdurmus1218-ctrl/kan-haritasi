@@ -39,6 +39,11 @@ export type Route =
    * stage: 1'den başlayan basamak; mode: eğitimsel içerik modu (ör. "sindirim").
    */
   | { name: 'interior'; id: string; stage?: number; mode?: string }
+  /**
+   * Kişisel organ: kullanıcının BT/MR serisindeki GERÇEK bölütleme maskesinden çıkarılan organ yüzeyi
+   * (iç dünya kimliği). inside: kamera gerçek mesh'in içine dalmış (sonra eğitimsel iç dünyaya geçilir).
+   */
+  | { name: 'personalOrgan'; id: string; inside?: boolean }
   /** Fizyoloji grafiği: zincir listesi ya da bir zincir (glukoz, B12, demir…). */
   | { name: 'physiology'; id?: string };
 
@@ -112,6 +117,8 @@ export function parseHash(hash: string): Route {
       const mode = arg3 && KEY.test(arg3) ? arg3 : undefined;
       return { name: 'interior', id: arg, ...(n ? { stage: n } : {}), ...(mode ? { mode } : {}) };
     }
+    case 'kisisel':
+      return arg && NODE.test(arg) ? { name: 'personalOrgan', id: arg, ...(arg2 === 'ic' ? { inside: true } : {}) } : { name: 'mybody' };
     case 'fizyoloji':
       return arg && KEY.test(arg) ? { name: 'physiology', id: arg } : { name: 'physiology' };
     default:
@@ -158,6 +165,8 @@ export function hrefFor(route: Route): string {
       return `#/sistem/${route.id}`;
     case 'interior':
       return `#/ic/${route.id}${route.stage || route.mode ? `/${route.stage ?? 1}` : ''}${route.mode ? `/${route.mode}` : ''}`;
+    case 'personalOrgan':
+      return `#/kisisel/${route.id}${route.inside ? '/ic' : ''}`;
     case 'physiology':
       return route.id ? `#/fizyoloji/${route.id}` : '#/fizyoloji';
     default:

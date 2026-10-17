@@ -112,7 +112,7 @@ export function LevelDock({
             <p className="text-[12px] text-fg-muted">{personal3D.detail}</p>
             {personal3D.onOpen && (
               <button type="button" className="text-[12px] text-accent hover:underline" onClick={personal3D.onOpen}>
-                Gerçek görüntüyü ve kişisel 3B'yi aç
+                Senin gerçek 3B organına dön (içine dalış)
               </button>
             )}
           </div>

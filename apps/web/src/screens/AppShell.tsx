@@ -36,6 +36,7 @@ function activeKey(route: Route): NavKey | 'add' {
     case 'flow':
     case 'system':
     case 'interior':
+    case 'personalOrgan':
     case 'physiology':
       return 'mybody';
     case 'timeline':
