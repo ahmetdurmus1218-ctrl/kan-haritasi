@@ -104,9 +104,9 @@ function BodyLayers({ model, onOrgan }: { model: HealthModel; onOrgan: (id: stri
                   ))}
                 {on.imaging &&
                   (prov?.personal3D ? (
-                    <span className="rounded-md border border-[#a78bfa]/40 px-1.5 py-0.5 text-fg" data-layer-item="imaging">
-                      ◆ Senin görüntünden 3B (bölütleme)
-                    </span>
+                    <button type="button" className="rounded-md border border-[#a78bfa]/40 px-1.5 py-0.5 text-fg hover:border-[#a78bfa]" data-layer-item="imaging" onClick={() => def && go({ name: 'personalOrgan', id: def.organId })}>
+                      ◆ Senin görüntünden 3B (bölütleme) ›
+                    </button>
                   ) : imaging ? (
                     <span className="rounded-md border border-caution/40 px-1.5 py-0.5 text-caution-fg" data-layer-item="imaging">
                       {imaging} görüntü/rapor bulgusu

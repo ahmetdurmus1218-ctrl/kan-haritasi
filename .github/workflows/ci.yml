@@ -81,6 +81,8 @@ jobs:
         run: python tests/e2e/organs.py "$RUNNER_TEMP/shots"
       - name: 3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon
         run: python tests/e2e/navigation3d.py "$RUNNER_TEMP/shots"
+      - name: Kişisel 3B organ — gerçek BT → maske → mesh → İçine gir (kamera gerçek mesh'in içine) → eğitimsel iç dünya
+        run: python tests/e2e/personal3d.py "$RUNNER_TEMP/shots"
       - name: Gerçek yerel modeller — röntgen skoru, BT/MR 3B anatomi bölütleme, BT patoloji (basamaklı), köken
         run: python tests/e2e/realmodels.py "$RUNNER_TEMP/shots"
       - name: Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon

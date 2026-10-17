@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Canvas, type ThreeEvent } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { GRAPH, type SurfaceMesh, findingClass, labelSurface, surfaceStep } from '@kh/analysis';
+import { GRAPH, type SurfaceMesh, findingClass, interiorFor, labelSurface, surfaceStep } from '@kh/analysis';
 import type { StoredVolume } from '../lib/imagingRecords';
 import { labelColor, setSeriesOverlay, useSeriesOverlay } from '../lib/seriesOverlay';
 import { storedLabels, structureGroup } from '../lib/volumeResults';
@@ -110,6 +110,8 @@ export default function PersonalVolume3D({ volumes, headId }: { volumes: StoredV
   const sel = items?.find((it) => it.key === selected);
   const selStruct = sel?.volume.structures.find((s) => s.labelId === sel.labelId);
   const node = selStruct?.node && GRAPH.node(selStruct.node) ? selStruct.node : undefined;
+  // Gerçek maskesi olan organ: İçine gir bu organın kendi mesh'ine dalar (sonra eğitimsel iç dünya).
+  const personalDef = node && !sel?.finding ? interiorFor(node) : undefined;
 
   if (!items)
     return (
@@ -198,7 +200,7 @@ export default function PersonalVolume3D({ volumes, headId }: { volumes: StoredV
               {isolate ? 'Hepsini göster' : 'Yalnız bunu göster'}
             </button>
             {node && (
-              <button type="button" className="text-xs text-accent underline" onClick={() => go(insideRoute(node))}>
+              <button type="button" className="text-xs text-accent underline" onClick={() => go(personalDef ? { name: 'personalOrgan', id: personalDef.organId } : insideRoute(node))} data-testid="personal-3d-enter">
                 İçine gir
               </button>
             )}

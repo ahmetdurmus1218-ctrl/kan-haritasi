@@ -10,9 +10,11 @@ import { appendFileSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { type ModelManifest, cardiothoracicRatio, cascadeBox, cascadeLabelIds, decodeRle, findingClass, multilabelScores, preprocess, rasterFromRgba, runVolumeModel, sliceLabels, validateManifest } from '@kh/analysis';
+import { type ModelManifest, cardiothoracicRatio, cascadeBox, cascadeLabelIds, decodeRle, encodeRle, findingClass, interiorById, meshVolumeMm3, voxelMm3, multilabelScores, preprocess, rasterFromRgba, runVolumeModel, sliceLabels, validateManifest } from '@kh/analysis';
 import { volumeFromDicom } from '@kh/ingest';
 import { ortEngineFactory } from '../lib/localModels/engine';
+import type { StoredVolume } from '../lib/imagingRecords';
+import { buildPersonalOrgan, planFor } from '../lib/personalOrgan';
 
 const ROOT = resolve(__dirname, '../../../..');
 const MODELS = resolve(ROOT, 'apps/web/public/ai-models');
@@ -85,6 +87,49 @@ describe('gerçek yerel modeller (cihaz içi motor) — resmi çıktıyla karş�
     const spleen = r.seg.structures.find((s) => s.key === 'spleen')!;
     expect(liver.centroid[0]).toBeLessThan(spleen.centroid[0]);
     report({ ct: { agreement: r.agreement, meanDice: r.meanDice, minDice: r.minDice, classes: r.classes, tiles: r.seg.tiles } });
+  }, 600_000);
+
+  it('Gerçek BT → maske → kişisel 3B organ → İçine gir noktası (karaciğer; içi boş organlar dürüst etiketle)', async () => {
+    const r = await anatomyCT();
+    const stored: StoredVolume = {
+      at: '2026-01-01T00:00:00.000Z',
+      model: { id: r.manifest.id, name: r.manifest.name, version: r.manifest.version, sha256: r.manifest.sha256, license: r.manifest.license, source: r.manifest.source },
+      fileIds: Array.from({ length: r.vol.slices }, (_, k) => `f${k}`),
+      geometry: { rows: r.vol.rows, cols: r.vol.cols, slices: r.vol.slices, origin: r.vol.origin, iVec: r.vol.iVec, jVec: r.vol.jVec, kVec: r.vol.kVec },
+      grid: r.seg.grid,
+      labelsRle: encodeRle(r.seg.labels),
+      structures: r.seg.structures,
+      tiles: r.seg.tiles,
+      seconds: 0,
+      modality: 'CT',
+    };
+    const out: Record<string, unknown> = {};
+    for (const id of ['liver', 'kidneys', 'spleen', 'stomach', 'large-intestine', 'small-intestine', 'urinary-tract.bladder', 'heart', 'lungs']) {
+      const def = interiorById(id)!;
+      const found = planFor(def, [stored]);
+      if (!found) {
+        out[id] = 'maske yok';
+        continue;
+      }
+      const scene = (await buildPersonalOrgan(found.volume, found.plan, []))!;
+      const organ = scene.parts.filter((p) => p.role === 'organ');
+      const maskMm3 = found.plan.target.reduce((a, l) => a + r.seg.structures.find((s) => s.labelId === l)!.voxels, 0) * voxelMm3(r.seg.grid.spacing);
+      const meshMm3 = organ.reduce((a, p) => a + meshVolumeMm3(p.mesh), 0);
+      // Gerçek geometri: yüzeyin kapattığı hacim maskenin voksel hacmine yakın (uydurma şekil yok)
+      expect(Math.abs(meshMm3 - maskMm3) / maskMm3).toBeLessThan(0.25);
+      // Kamera noktası organın (ya da maskenin kapattığı boşluğun) içinde
+      const [S, A, R] = r.seg.grid.shape;
+      const sp = typeof r.seg.grid.spacing === 'number' ? [r.seg.grid.spacing, r.seg.grid.spacing, r.seg.grid.spacing] : r.seg.grid.spacing;
+      const [x, y, z] = scene.inside.point;
+      const vr = Math.round((x - r.seg.grid.lo[0]) / sp[0]!), va = Math.round((y - r.seg.grid.lo[1]) / sp[1]!), vs = Math.round((z - r.seg.grid.lo[2]) / sp[2]!);
+      expect(vs >= 0 && vs < S && va >= 0 && va < A && vr >= 0 && vr < R).toBe(true);
+      const lab = r.seg.labels[(vs * A + va) * R + vr]!;
+      if (scene.inside.in === 'organ') expect(found.plan.target).toContain(lab);
+      else expect(found.plan.target).not.toContain(lab);
+      out[id] = { maskMl: Math.round(maskMm3 / 100) / 10, meshMl: Math.round(meshMm3 / 100) / 10, cavityMl: scene.cavityMl, inside: scene.inside.in, depthMm: Math.round(scene.inside.depthMm), neighbors: found.plan.neighbors.length, vertices: scene.stats.vertices, ms: scene.stats.ms };
+    }
+    expect(out.liver).toMatchObject({ inside: 'organ' });
+    report({ personalOrgan: out });
   }, 600_000);
 
   it('BT patoloji (basamaklı): böbrek kisti modeli anatomi sonucuna göre kırpılan bölgede çalışır; yardımcı böbrek maskesi anatomiyle örtüşür', async () => {

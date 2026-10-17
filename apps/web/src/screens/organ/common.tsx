@@ -90,7 +90,7 @@ export const systemName = (id: string) => GRAPH.node(`system:${id}`)?.nameTr ?? 
  * "Şu anda neredeyim?": Vücut › Sistem › Organ › (iç yol). Her öğe tıklanabilir; geri dönüşte kullanıcı
  * kaldığı seviyeye değil, seçtiği seviyeye döner.
  */
-export function Breadcrumb({ organId, trail = [], current }: { organId: string; trail?: string[]; current?: string }) {
+export function Breadcrumb({ organId, trail = [], current, tail = [] }: { organId: string; trail?: string[]; current?: string; tail?: Array<{ label: string; route?: Route }> }) {
   const sys = systemOf(organId);
   const organ = GRAPH.node(organId)?.nameTr ?? structureById.get(organId)?.nameTr ?? organId;
   // Bölge sayfasında (ör. Beyaz cevher) üstteki organ da görünür: Vücut › Sinir sistemi › Beyin › Beyaz cevher.
@@ -101,9 +101,10 @@ export function Breadcrumb({ organId, trail = [], current }: { organId: string; 
     ...(region ? [{ label: region.nameTr, route: { name: 'organ', id: region.id, view: 'derin', trail: [] } as Route }] : []),
     ...(sys ? [{ label: sys.name, route: { name: 'system', id: sys.id } as Route }] : []),
     ...ancestors.map((a) => ({ label: a.nameTr, route: { name: 'organ', id: a.id } as Route })),
-    { label: organ, route: trail.length || current ? { name: 'organ', id: organId } : undefined },
+    { label: organ, route: trail.length || current || tail.length ? { name: 'organ', id: organId } : undefined },
     ...trail.map((t, i) => ({ label: GRAPH.node(t)?.nameTr ?? t, route: i < trail.length - 1 ? ({ name: 'organ', id: organId, view: 'derin', trail: trail.slice(0, i + 1) } as Route) : undefined })),
     ...(current ? [{ label: current }] : []),
+    ...tail,
   ];
   return (
     <nav aria-label="Şu anda neredeyim?" className="flex flex-wrap items-center gap-1 text-xs text-fg-muted">

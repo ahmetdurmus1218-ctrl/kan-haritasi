@@ -11,7 +11,7 @@
  *   6. Daha derine in                doku → hücre → molekül (İçine gir'den ayrı: mikroanatomi)
  */
 import { useState } from 'react';
-import { GRAPH, type HealthModel, INTERIOR_TYPE_TR, type OrganView, chainsForPlace, flowsForOrgan, interiorFor, isPositiveReport, organNeighbors, physioOverlay } from '@kh/analysis';
+import { GRAPH, type HealthModel, INTERIOR_TYPE_TR, type OrganView, chainsForPlace, flowsForOrgan, interiorFor, interiorProvenance, isPositiveReport, organNeighbors, physioOverlay } from '@kh/analysis';
 import { structureById } from '@kh/catalog';
 import { type Route, go } from '../../state/router';
 import { TONE, TONE_RANK, labTone } from '../../lib/tone';
@@ -97,6 +97,7 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
   const modelN = v.personal.modelFindings.length;
   const inside = GRAPH.insidePath(v.node.id);
   const interior = interiorFor(v.node.id);
+  const personal3D = interior ? interiorProvenance(interior, model).personal3D : false;
   const chains = chainsForPlace(interior?.organId ?? v.node.id).slice(0, 4);
   const personalChains = chains.map((c) => ({ c, ov: physioOverlay(c, model) })).filter((x) => x.ov.hasData);
 
@@ -218,13 +219,31 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
                 .join(' → ')}
               .
             </p>
-            <button type="button" className="btn-primary min-h-[48px] w-full justify-between px-4 text-[15px]" onClick={() => go({ name: 'interior', id: interior.organId })} data-testid="organ-enter-interior">
-              <span className="flex items-center gap-2">
-                <LayersIcon size={16} /> İçine gir
-              </span>
-              <ChevronRightIcon size={16} />
-            </button>
-            <p className="text-[11px] text-fg-faint">Eğitimsel normal anatomi/fizyoloji — kişisel görüntü değildir.</p>
+            {personal3D ? (
+              <>
+                {/* Gerçek maske varsa İçine gir önce kişinin kendi organ mesh'ine dalar; iç dünya oradan devam eder. */}
+                <button type="button" className="btn-primary min-h-[48px] w-full justify-between px-4 text-[15px]" onClick={() => go({ name: 'personalOrgan', id: interior.organId })} data-testid="organ-enter-personal">
+                  <span className="flex items-center gap-2">
+                    <LayersIcon size={16} /> İçine gir · senin görüntünden
+                  </span>
+                  <ChevronRightIcon size={16} />
+                </button>
+                <p className="text-[11px] text-fg-faint">Organın 3B yüzeyi yüklediğin BT/MR serisinin bölütleme maskesinden; içerideki seviyeler eğitimsel normal anatomidir.</p>
+                <button type="button" className="text-xs text-accent hover:underline" onClick={() => go({ name: 'interior', id: interior.organId })} data-testid="organ-enter-interior">
+                  Yalnızca eğitimsel iç dünya
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="btn-primary min-h-[48px] w-full justify-between px-4 text-[15px]" onClick={() => go({ name: 'interior', id: interior.organId })} data-testid="organ-enter-interior">
+                  <span className="flex items-center gap-2">
+                    <LayersIcon size={16} /> İçine gir
+                  </span>
+                  <ChevronRightIcon size={16} />
+                </button>
+                <p className="text-[11px] text-fg-faint">Eğitimsel normal anatomi/fizyoloji — kişisel görüntü değildir.</p>
+              </>
+            )}
           </>
         ) : (
           <>

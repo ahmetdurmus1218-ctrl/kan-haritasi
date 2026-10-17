@@ -754,7 +754,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     ? {
         label: lvProv.organLabel,
         detail: `${lvProv.structures.map((x) => `${x.name}${x.localization.kind === 'volume' ? ` · ${x.localization.volumeMl.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} mL` : ''}`).join(' · ')}. Organın kendisi senin serinden; içerideki seviyeler (lobül, nefron, villus…) eğitimseldir.`,
-        onOpen: lvProv.structures[0]?.provenance.documentId ? () => go({ name: 'document', id: lvProv.structures[0]!.provenance.documentId! }) : undefined,
+        onOpen: () => go({ name: 'personalOrgan', id: lv!.def.organId }),
       }
     : null;
   const pickedInfo = picked && lvScene ? (INSIDE_CONTENT[lvScene.id].objects[picked] ?? null) : null;

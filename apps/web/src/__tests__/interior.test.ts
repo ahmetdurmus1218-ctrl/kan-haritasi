@@ -12,7 +12,11 @@ describe('İçine gir — web bağları', () => {
     expect(parseHash('#/ic/small-intestine/5/emilim')).toEqual({ name: 'interior', id: 'small-intestine', stage: 5, mode: 'emilim' });
     expect(parseHash('#/ic/ic.bone-marrow/2')).toEqual({ name: 'interior', id: 'ic.bone-marrow', stage: 2 });
     expect(parseHash('#/ic/<script>')).toEqual({ name: 'mybody' });
-    for (const r of [{ name: 'interior', id: 'liver', stage: 4 }, { name: 'interior', id: 'small-intestine', stage: 1, mode: 'sindirim' }, { name: 'physiology', id: 'b12' }, { name: 'physiology' }, { name: 'organ', id: 'stomach', view: 'doku' }] as const)
+    // Kişisel organ (gerçek maske) → içi
+    expect(parseHash('#/kisisel/liver')).toEqual({ name: 'personalOrgan', id: 'liver' });
+    expect(parseHash('#/kisisel/large-intestine/ic')).toEqual({ name: 'personalOrgan', id: 'large-intestine', inside: true });
+    expect(parseHash('#/kisisel/<x>')).toEqual({ name: 'mybody' });
+    for (const r of [{ name: 'interior', id: 'liver', stage: 4 }, { name: 'interior', id: 'small-intestine', stage: 1, mode: 'sindirim' }, { name: 'physiology', id: 'b12' }, { name: 'physiology' }, { name: 'organ', id: 'stomach', view: 'doku' }, { name: 'personalOrgan', id: 'kidneys' }, { name: 'personalOrgan', id: 'urinary-tract.bladder', inside: true }] as const)
       expect(parseHash(hrefFor(r))).toEqual(r);
   });
 

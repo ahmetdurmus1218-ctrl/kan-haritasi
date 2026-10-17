@@ -270,6 +270,9 @@ def write_model(out_dir: Path, onnx_path: Path, manifest: dict, notice: str) -> 
     shutil.copyfile(onnx_path, dst)
     manifest = {**manifest, "file": "model.onnx", "sha256": sha256(dst), "size": dst.stat().st_size}
     (out_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
+    # Apache-2.0 §4(a): lisans metninin kendisi de dağıtılır (ai-models/LICENSE-Apache-2.0.txt).
+    if "LICENSE-Apache-2.0" not in notice:
+        notice = notice.rstrip("\n") + "\nLisans metni: ai-models/LICENSE-Apache-2.0.txt (Apache License 2.0 tam metni, uygulamayla birlikte dağıtılır).\n"
     (out_dir / "NOTICE.txt").write_text(notice)
     print(f"yazıldı: {out_dir} ({dst.stat().st_size / 1e6:.1f} MB)")
 
