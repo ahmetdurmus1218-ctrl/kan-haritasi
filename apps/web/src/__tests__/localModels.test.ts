@@ -5,10 +5,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { LocalModelProvider, type RasterImage, defaultMedicalImageProviders, modelVersionOf, runMedicalImageModel, validateManifest } from '@kh/analysis';
+import { LocalModelProvider, MODEL_RESEARCH, type RasterImage, defaultMedicalImageProviders, modelVersionOf, runMedicalImageModel, validateManifest } from '@kh/analysis';
 import { importModelFiles, listModels, memoryBackend, modelBytes, removeModel, setModelBackend, setModelEnabled, sha256Hex } from '../lib/localModels/store';
 import { requirementsOf } from '../components/LocalModels';
-import { MODEL_INVENTORY } from '../lib/localModels/inventory';
 import { ortEngineFactory } from '../lib/localModels/engine';
 
 const DIR = resolve(__dirname, '../../../../tests/fixtures/models/mock-detector');
@@ -51,9 +50,11 @@ describe('yerel model kurulumu', () => {
     const r = requirementsOf(validateManifest(m).ok ? m : m, 1000);
     expect(r.runtime).toMatch(/WASM/);
     expect(r.ram).toMatch(/MB/);
-    expect(MODEL_INVENTORY.length).toBeGreaterThan(10);
-    for (const e of MODEL_INVENTORY) expect(e.reason.length, e.task).toBeGreaterThan(30);
-    for (const mod of ['Mamografi', 'Patoloji (WSI)', 'Endoskopi / Kolonoskopi', 'Fundus / OCT', 'EKG']) expect(MODEL_INVENTORY.some((e) => e.modality === mod), mod).toBe(true);
+    // Model araştırma kaydı (eski envanterin yerine): uygulamaya girmeyen her modelin nedeni yazılı
+    const notIn = MODEL_RESEARCH.filter((r) => r.status !== 'VERIFIED');
+    expect(notIn.length).toBeGreaterThan(10);
+    for (const r of notIn) expect(r.failureReason!.length, r.id).toBeGreaterThan(30);
+    for (const g of ['MAMMOGRAPHY', 'PATHOLOGY', 'ENDOSCOPY', 'FUNDUS', 'OCT', 'ECG'] as const) expect(MODEL_RESEARCH.some((r) => r.modality.includes(g)), g).toBe(true);
   });
 
   it('SHA-256 uyuşmazsa, manifest yoksa ya da bozuksa model kabul edilmez', async () => {

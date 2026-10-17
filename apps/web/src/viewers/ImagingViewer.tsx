@@ -8,6 +8,7 @@ import {
   autoWindow,
   buildVolume,
   mprGeometry,
+  MPR_MAX_TILT_DEG,
   reslice,
   canDecode,
   decodeFrame,
@@ -351,6 +352,11 @@ export function ImagingViewer({
       }
       const g = mprGeometry(infos);
       if (!g.ok) return setMpr({ status: 'error', reason: g.reason });
+      if (g.geometry.tiltDeg > MPR_MAX_TILT_DEG)
+        return setMpr({
+          status: 'error',
+          reason: `Seri gantri eğimiyle (${g.geometry.tiltDeg.toLocaleString('tr-TR', { maximumFractionDigits: 1 })}°) çekilmiş; kesitler birbirine göre kaymış olduğundan diğer düzlemler eğik ve bozuk görünür, bu yüzden gösterilmiyor. Eksenel kesitler ve 3B analiz (eğimi kesit konumlarıyla hesaba katar) etkilenmez.`,
+        });
       const slices: Float32Array[] = [];
       for (const [i, info] of infos.entries()) {
         if (mprCancel.current) return;

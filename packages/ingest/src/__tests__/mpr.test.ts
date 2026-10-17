@@ -123,3 +123,20 @@ describe('MPR (eksenel / sagital / koronal)', () => {
     expect(r.geometry.byRow).toBe('axial');
   });
 });
+
+describe('gantri eğimi (eğik çekim)', () => {
+  it('eğimsiz seride 0°, kesitleri düzlem içinde kayan seride eğim açısı ölçülür', () => {
+    const flat = mprGeometry(axialSeries(MPR_MIN_SLICES));
+    expect(flat.ok && flat.geometry.tiltDeg).toBe(0);
+    // Baş BT'si gibi: yönelim satırı x, sütunu y·cos − z·sin (21°); kesitler yalnızca z boyunca kayıyor
+    const t = (21 * Math.PI) / 180;
+    const o: [number, number, number, number, number, number] = [1, 0, 0, 0, Math.cos(t), -Math.sin(t)];
+    const tilted = axialSeries(MPR_MIN_SLICES, { gap: 5.356 }).map((s) => ({ ...s, imageOrientation: o }));
+    const g = mprGeometry(tilted);
+    expect(g.ok).toBe(true);
+    if (!g.ok) return;
+    expect(g.geometry.tiltDeg).toBeCloseTo(21, 1);
+    expect(g.geometry.sliceSpacing).toBeCloseTo(5.0, 1);
+  });
+});
+

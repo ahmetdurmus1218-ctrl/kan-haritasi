@@ -4,10 +4,9 @@
  * modeller ayrıca listelenir; modeli olmayan her modalite için bu açıkça gösterilir.
  */
 import { useEffect, useRef, useState } from 'react';
-import { CAPABILITY_MODALITIES, type ModelManifest, capabilitiesFor, spacingLabel } from '@kh/analysis';
+import { ADAPTER_GROUP_TR, CAPABILITY_MODALITIES, MODEL_RESEARCH, type ModelManifest, RESEARCH_ACCESS, RESEARCH_STATUSES, RESEARCH_STATUS_TR, capabilitiesFor, researchReport, spacingLabel } from '@kh/analysis';
 import { formatBytes, formatDateTime } from '../lib/format';
 import { type PackInfo, importModelFiles, loadPacks, removeModel, setModelEnabled, useAllModels } from '../lib/localModels/store';
-import { INVENTORY_ACCESS_NOTE, MODEL_INVENTORY } from '../lib/localModels/inventory';
 import { SpinnerIcon, TrashIcon, UploadIcon } from './icons';
 
 const TASK_TR: Record<string, string> = {
@@ -186,21 +185,7 @@ export function LocalModels() {
           </ul>
         </details>
       )}
-      <details className="rounded-xl border border-ink-600/60 p-3 text-sm" data-testid="model-inventory">
-        <summary className="cursor-pointer font-medium text-fg">Model envanteri: araştırılıp eklenemeyenler · {MODEL_INVENTORY.length}</summary>
-        <p className="mt-1 text-xs text-fg-muted">Bu modaliteler/görevler için gerçek modeller arandı; aşağıdaki nedenlerle eklenmedi. Bu alanlarda uygulama "model yok" der, sonuç uydurmaz.</p>
-        <p className="mt-1 text-xs text-fg-faint" data-testid="inventory-access-note">{INVENTORY_ACCESS_NOTE}</p>
-        <ul className="mt-2 space-y-1.5">
-          {MODEL_INVENTORY.map((e) => (
-            <li key={`${e.modality}-${e.task}`} className="rounded-lg border border-ink-600/60 px-2.5 py-2 text-xs" data-testid="inventory-entry">
-              <p className="font-medium text-fg">
-                {e.modality} · {e.task} <span className="font-normal text-fg-faint">— {e.candidates}</span>
-              </p>
-              <p className="text-fg-muted">Eklenemedi: {e.reason}</p>
-            </li>
-          ))}
-        </ul>
-      </details>
+      <ModelResearch />
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="btn-ghost" disabled={busy} onClick={() => input.current?.click()}>
           {busy ? <SpinnerIcon size={16} /> : <UploadIcon size={16} />} Model kur (.onnx + .json)
@@ -250,5 +235,53 @@ export function LocalModels() {
         </div>
       </details>
     </div>
+  );
+}
+
+const RESEARCH = researchReport();
+
+/**
+ * Model araştırma raporu (packages/analysis/src/modelRegistry): uygulamaya giren ve girmeyen her modelin durumu
+ * ve nedeni. Geliştirme sırasında yapılan araştırmadır; uygulama bunun için internete çıkmaz.
+ */
+function ModelResearch() {
+  const others = MODEL_RESEARCH.filter((r) => r.distribution !== 'bundled');
+  return (
+    <details className="rounded-xl border border-ink-600/60 p-3 text-sm" data-testid="model-inventory">
+      <summary className="cursor-pointer font-medium text-fg">
+        Model araştırması · {RESEARCH.total} model · {RESEARCH.counts.VERIFIED} doğrulandı · {RESEARCH.date}
+      </summary>
+      <p className="mt-1 text-xs text-fg-muted">
+        Her modalite için gerçek modeller arandı ve tek tek denetlendi (ağırlık, sürüm, özet, lisans, görev, cihaz uygunluğu, resmi çıktıyla doğrulama). Yalnızca doğrulanan modeller
+        çalışır; diğerleri için uygulama &quot;model yok&quot; der, sonuç uydurmaz.
+      </p>
+      <ul className="mt-2 grid grid-cols-2 gap-1 text-xs sm:grid-cols-4" data-testid="research-counts">
+        {RESEARCH_STATUSES.map((st) => (
+          <li key={st} className="rounded-md border border-ink-600/60 px-2 py-1" data-status={st}>
+            <span className="font-medium text-fg">{RESEARCH.counts[st]}</span> <span className="text-fg-muted">{RESEARCH_STATUS_TR[st]}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-xs text-fg-faint" data-testid="inventory-access-note">
+        Eski {RESEARCH.rechecked} &quot;eklenemedi&quot; kaydı yeniden denetlendi, {RESEARCH.recheckChanged} kaydın durumu değişti. Araştırma ortamından erişilemedi: {RESEARCH_ACCESS.blocked.join(', ')}. Erişim
+        engeli tek başına neden sayılmaz: ağırlığı yayımlanmış modeller &quot;{RESEARCH_STATUS_TR.AVAILABLE}&quot; olarak kayıtlı.
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {others.map((r) => (
+          <li key={r.id} className="rounded-lg border border-ink-600/60 px-2.5 py-2 text-xs" data-testid="inventory-entry" data-status={r.status} data-model={r.id}>
+            <p className="font-medium text-fg">
+              {r.modality.map((m) => ADAPTER_GROUP_TR[m]).join(', ')} · {r.name}{' '}
+              <span className="font-normal text-fg-muted">
+                — {RESEARCH_STATUS_TR[r.status]}
+                {r.recheck ? ' · yeniden denetlendi' : ''}
+                {r.distribution === 'pack' ? ' · isteğe bağlı paket' : ''}
+              </span>
+            </p>
+            <p className="text-fg-muted">{r.status === 'VERIFIED' ? `Doğrulama: ${r.evidence}` : `Neden: ${r.failureReason}`}</p>
+            <p className="text-fg-faint">Lisans: {r.license.license}</p>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

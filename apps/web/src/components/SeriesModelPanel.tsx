@@ -296,11 +296,19 @@ export function SeriesModelPanel({ seriesIds, dicom, stored, pathology = [], not
             const parts = res?.structures.filter((x) => x.kind === 'anatomy') ?? [];
             const findsAnything = pm.manifest.labels.some((l) => l.kind === 'finding');
             const needs = !stored;
+            // Anatomi sonucunda bu modelin bakacağı yapıların hiçbiri yoksa (ör. karın BT'sinde beyin) model bu seride çalışmaz.
+            const cascadeKeys = pm.manifest.volume?.cascade?.labels ?? [];
+            const outside = !!stored && !res && cascadeKeys.length > 0 && !stored.structures.some((x) => cascadeKeys.includes(x.key));
             return (
-              <div key={pm.manifest.id} className="space-y-1.5 rounded-lg border border-ink-700 px-2.5 py-2" data-testid="pathology-model" data-model={pm.manifest.id} data-state={res ? 'done' : needs ? 'needs-anatomy' : 'ready'}>
+              <div key={pm.manifest.id} className="space-y-1.5 rounded-lg border border-ink-700 px-2.5 py-2" data-testid="pathology-model" data-model={pm.manifest.id} data-state={res ? 'done' : needs ? 'needs-anatomy' : outside ? 'not-in-series' : 'ready'}>
                 <p className="text-sm text-fg">{pm.manifest.name}</p>
                 {needs && <p className="text-xs text-fg-muted">Önce yukarıdaki anatomi analizi çalışmalı (model, ilgili organların bulunduğu bölgeye bakar).</p>}
-                {!needs && !res && !running(pm.manifest.id) && (
+                {outside && (
+                  <p className="text-xs text-fg-muted" data-testid="pathology-not-in-series">
+                    Bu modelin baktığı yapı anatomi bölütlemesinde bu seride bulunmadı (çekim o bölgeyi içermiyor olabilir); model bu seride çalıştırılmaz ve sonuç uydurulmaz.
+                  </p>
+                )}
+                {!needs && !outside && !res && !running(pm.manifest.id) && (
                   <button type="button" className="btn-ghost px-2.5 py-1 text-xs" disabled={busy} onClick={() => void start(pm)} data-testid="run-pathology-model">
                     Bu modeli çalıştır
                   </button>

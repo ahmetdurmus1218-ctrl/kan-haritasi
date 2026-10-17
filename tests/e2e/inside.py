@@ -136,7 +136,8 @@ with sync_playwright() as p:
     inv = page.get_by_test_id("model-inventory")
     inv.locator("summary").click()
     it = inv.inner_text()
-    check(page.get_by_test_id("inventory-entry").count() >= 10 and "Mamografi" in it and "Patoloji" in it and "Eklenemedi" in it, "eklenemeyen modeller ve nedenleri listelenir")
+    check(page.get_by_test_id("inventory-entry").count() >= 10 and "Mamografi" in it and "Patoloji" in it and "Neden:" in it, "araştırılan modeller, durumları ve nedenleri listelenir")
+    check(page.get_by_test_id("research-counts").count() == 1 and "Doğrulandı" in it and "yeniden denetlendi" in it, "model araştırma raporu: durum sayıları, eski kayıtlar yeniden denetlendi")
     packs = page.get_by_test_id("model-packs")
     if packs.count():
         packs.locator("summary").click()

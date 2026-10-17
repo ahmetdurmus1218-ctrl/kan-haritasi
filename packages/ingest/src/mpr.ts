@@ -25,6 +25,12 @@ export interface MprGeometry {
   pixelSpacing: [number, number];
   /** mm: kesitler arası ortalama aralık */
   sliceSpacing: number;
+  /**
+   * Gantri eğimi (derece): kesitlerin birbirine göre düzlem içinde kayması. Eğik çekimde kesit sırası
+   * normal boyunca değil eğik bir eksen boyunca ilerler; hacim (3B analiz) bunu kesit konumlarıyla hesaba katar,
+   * ama basit yeniden dilimleme (MPR) diğer düzlemleri kaymış/eğik gösterir.
+   */
+  tiltDeg: number;
   /** Çekim düzlemi ve yeniden üretilebilen iki düzlem. */
   acquired: AnatomicalPlane;
   /** Bir sütunu sabitleyince oluşan düzlem (sütun yönüne dik). */
@@ -44,6 +50,9 @@ function planeNormalTo(v: readonly number[]): AnatomicalPlane {
   const i = ax.indexOf(Math.max(...ax));
   return i === 0 ? 'sagittal' : i === 1 ? 'coronal' : 'axial';
 }
+
+/** Bu eğimin üstünde basit yeniden dilimleme (MPR) güvenilir değildir; diğer düzlemler gösterilmez. */
+export const MPR_MAX_TILT_DEG = 1;
 
 export function mprGeometry(slices: ReadonlyArray<Pick<DicomInfo, 'rows' | 'columns' | 'frames' | 'pixelSpacing' | 'imageOrientation' | 'imagePosition'>>): MprCheck {
   const n = slices.length;
@@ -71,6 +80,13 @@ export function mprGeometry(slices: ReadonlyArray<Pick<DicomInfo, 'rows' | 'colu
   if (!(median > 1e-3)) return { ok: false, reason: 'Kesitler aynı konumda (tekrarlı ya da çok yankılı seri).' };
   if (gaps.some((g) => Math.abs(g - median) > median * 0.1)) return { ok: false, reason: 'Kesitler arası aralık düzensiz (boşluklu ya da farklı kalınlıkta kesitler).' };
   const sliceSpacing = (along[along.length - 1]!.d - along[0]!.d) / (n - 1);
+  // İlk ve son kesitin konum farkının düzlem içi bileşeni → gantri eğimi
+  const pf = slices[along[0]!.i]!.imagePosition!;
+  const pl = slices[along[along.length - 1]!.i]!.imagePosition!;
+  const dv = [pl[0] - pf[0], pl[1] - pf[1], pl[2] - pf[2]];
+  const dn = dot(dv, normal);
+  const inPlane = Math.hypot(dv[0]! - dn * normal[0]!, dv[1]! - dn * normal[1]!, dv[2]! - dn * normal[2]!);
+  const tiltDeg = (Math.atan2(inPlane, Math.abs(dn)) * 180) / Math.PI;
 
   // Görüntüde yukarısı baş (+z, LPS) olsun: normal yukarı bakıyorsa üstten en büyük konumla başla.
   const order = (normal[2]! > 0 ? [...along].reverse() : along).map((x) => x.i);
@@ -82,6 +98,7 @@ export function mprGeometry(slices: ReadonlyArray<Pick<DicomInfo, 'rows' | 'colu
       columns: first.columns,
       pixelSpacing: [ps[0], ps[1]],
       sliceSpacing,
+      tiltDeg,
       acquired: planeNormalTo(normal),
       byColumn: planeNormalTo(rowDir),
       byRow: planeNormalTo(colDir),

@@ -1,5 +1,70 @@
 {
  "schema": "kh-model-packs/1",
  "folder": "model-packs",
- "packs": []
+ "packs": [
+  {
+   "schema": "kh-model-manifest/2",
+   "id": "depthpolyp-kvasir",
+   "name": "DepthPolyp — kolonoskopi polip bölütleme",
+   "version": "DepthPolyp_Kvasir (MiT-B0, 224 × 224)",
+   "modalities": [
+    "COLONOSCOPY",
+    "ENDOSCOPY"
+   ],
+   "task": "segmentation",
+   "format": "onnx",
+   "license": "MIT (kod ve ağırlık, ReaganWu/DepthPolyp); eğitim verisi Kvasir-SEG (araştırma ve eğitim amaçlı; ticari kullanım için Simula'dan izin)",
+   "source": "https://github.com/ReaganWu/DepthPolyp",
+   "intendedUse": "Kolonoskopi görüntüsünde polip olabilecek alanın piksel maskesi. Polibin türünü (adenom/hiperplastik), boyutunu ya da kanser olup olmadığını söylemez. Tanı aracı değildir.",
+   "citation": "Wu Z. et al. DepthPolyp: pseudo-depth guided polyp segmentation (ICPR 2026).",
+   "validation": "Depodaki iki Kvasir örneğinde yazarın ONNX betiği resmi maskeleri birebir üretti (Dice 1,000). Uygulamanın ön işlemesi (çift doğrusal + kenar yumuşatma, /255) ile yazarın PIL ön işlemesi arasında maske Dice 0,998 / 0,999; polip alanı oranı 0,292 ↔ 0,291 ve 0,272 ↔ 0,272.",
+   "compatibleDevice": "Tüm cihazlar (3,6 M parametre, 0,86 GMAC; ~1 sn).",
+   "input": {
+    "name": "image",
+    "layout": "NCHW",
+    "channels": 3,
+    "width": 224,
+    "height": 224,
+    "scale": 255,
+    "mean": [
+     0,
+     0,
+     0
+    ],
+    "std": [
+     1,
+     1,
+     1
+    ],
+    "antialias": true
+   },
+   "output": {
+    "mask": "segmentation"
+   },
+   "labels": [
+    {
+     "id": 0,
+     "key": "polyp",
+     "finding": "Polip olabilecek alan (polip bölütleme modeli)",
+     "structure": "large-intestine",
+     "node": "large-intestine",
+     "kind": "finding"
+    }
+   ],
+   "scoreThreshold": 0.3,
+   "limitations": [
+    "Yalnızca Kvasir-SEG (1.000 kolonoskopi görüntüsü) ile eğitildi; farklı cihaz, ışık ya da hazırlık kalitesinde başarımı düşebilir.",
+    "Polip olmayan yapıları (kıvrım, dışkı, kabarcık, parlama) polip sanabilir; bulmaması polip olmadığını kesinleştirmez.",
+    "Endoskopi videosu değil tek kare işler; kolondaki yerini (segment) bilmez.",
+    "Klinik kullanım için onaylı tıbbi cihaz değildir."
+   ],
+   "upstream": {
+    "weights": "https://raw.githubusercontent.com/ReaganWu/DepthPolyp/main/checkpoints/DepthPolyp_Kvasir.onnx",
+    "weightsSha256": "883ff8a825a5f51f59d46a9a2c2e9f0a505519140495dfa6800e6b48297c9f5b"
+   },
+   "file": "model.onnx",
+   "sha256": "883ff8a825a5f51f59d46a9a2c2e9f0a505519140495dfa6800e6b48297c9f5b",
+   "size": 14588196
+  }
+ ]
 }

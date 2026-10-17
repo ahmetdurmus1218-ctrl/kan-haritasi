@@ -1,0 +1,96 @@
+{
+ "schema": "kh-model-manifest/2",
+ "id": "totalseg-ct-cerebral-bleed",
+ "name": "TotalSegmentator — beyin içi kanama (BT patoloji)",
+ "version": "2.0.0-weights · Dataset150 (2,83 × 0,34 × 0,34 mm)",
+ "modalities": [
+  "CT"
+ ],
+ "license": "Apache-2.0 (TotalSegmentator 'cerebral_bleed' görevi; açık görevler listesinde)",
+ "source": "https://github.com/wasserth/TotalSegmentator",
+ "intendedUse": "Kontrastsız baş BT'sinde beyin içi (intraserebral) kanama alanının bölütlenmesi ve hacmi. Önce BT anatomi modeli çalışır; beyin + 3 mm kırpılır. Tanı aracı değildir; acil durumda yerine geçmez.",
+ "compatibleDevice": "Masaüstü tarayıcı ya da ≥ 8 GB RAM'li telefon; 24 × 256 × 256 karo, karo başına ~55 sn (tek çekirdek WASM, ölçüldü); 5 mm kesitli tipik baş BT'sinde 12–24 karo (≈ 10–25 dk).",
+ "limitations": [
+  "Yalnızca beyin dokusu içindeki kanamayı hedefler (küçük bir veri kümesiyle eğitildi); subdural, epidural ve subaraknoid kanamayı güvenilir biçimde bölütlemez.",
+  "Kanamanın yaşını, nedenini ya da türünü söylemez; kalsifikasyon ve artefakt yanlış işarete yol açabilir.",
+  "Küçük odaklar (≈ 1–2 mL) kaçabilir: doğrulamada resmi TotalSegmentator'ın 1,34 mL bulduğu bir vakada sonuç kırpılan bölgeye göre değişti (resmi nnU-Net de aynı kırpmada 0 mL verdi).",
+  "Bulunmaması kanama olmadığını kesinleştirmez; baş ağrısı, bilinç değişikliği gibi durumlarda acil değerlendirme gerekir.",
+  "Önce BT anatomi modeli çalışmalıdır; beyin bölütlenemediyse model çalıştırılmaz.",
+  "Klinik kullanım için onaylı tıbbi cihaz değildir."
+ ],
+ "validation": "Karo adımı 0,5 (resmi TotalSegmentator ile aynı); ONNX ↔ PyTorch (aynı rastgele girdi) argmax uyumu ≥ %99,9999, en büyük logit farkı 0,003. CQ500'ün 5 gerçek baş BT'sinde (3 radyoloğa göre 4 kanamalı, 1 kanamasız; gantri eğimi 8,5–30°) uygulamanın kendi hattı (DICOM → BT anatomi → beyin + 3 mm → bu model) resmi TotalSegmentator cerebral_bleed ile: 35,4 ↔ 36,6 mL (Dice 0,914), 42,2 ↔ 43,2 mL (Dice 0,942), 7,2 ↔ 7,7 mL (Dice 0,870); kanamasız vakada ikisi de 0 mL. En küçük odakta (resmi 1,34 mL) bu hat 0 mL buldu; resmi nnU-Net öngörücüsü de aynı kırpılmış bölgede 0 mL veriyor (küçük odakta modelin sonucu kırpmaya duyarlı).",
+ "task": "segmentation-3d",
+ "format": "onnx",
+ "citation": "Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.",
+ "input": {
+  "name": "input",
+  "layout": "NCDHW",
+  "channels": 1,
+  "width": 256,
+  "height": 256,
+  "scale": 1,
+  "mean": [
+   0
+  ],
+  "std": [
+   1
+  ]
+ },
+ "output": {
+  "topkValues": "topk_values",
+  "topkIndices": "topk_indices"
+ },
+ "volume": {
+  "spacing": [
+   0.340803,
+   0.33567,
+   2.8262
+  ],
+  "patch": [
+   24,
+   256,
+   256
+  ],
+  "axisOrder": "SAR",
+  "normalization": {
+   "scheme": "ct",
+   "clip": [
+    30.0,
+    88.0
+   ],
+   "mean": 62.74620056152344,
+   "std": 11.999462127685547
+  },
+  "tileStep": 0.5,
+  "topK": 2,
+  "cropNonzero": true,
+  "minSlices": 10,
+  "cascade": {
+   "model": "totalseg-ct-total-3mm",
+   "labels": [
+    "brain"
+   ],
+   "addonMm": 3
+  },
+  "dropLabels": []
+ },
+ "labels": [
+  {
+   "id": 1,
+   "key": "intracerebral_hemorrhage",
+   "finding": "Beyin içinde kanama alanı (patoloji modeli)",
+   "structure": "brain",
+   "node": "brain",
+   "kind": "finding",
+   "minMl": 0.1
+  }
+ ],
+ "scoreThreshold": 0.5,
+ "upstream": {
+  "weights": "https://github.com/wasserth/TotalSegmentator/releases/download/v2.0.0-weights/Dataset150_icb_v0.zip",
+  "weightsSha256": "cd9a41917f134dd20f1aba877c7af4cabedf144f0f7aa1c1d16d6376b2425bb4"
+ },
+ "file": "model.onnx",
+ "sha256": "dfdbb83b690de65c2cce50cc8608f85cbf84bfd2c6743f795c46d8f1d581874f",
+ "size": 87127335
+}

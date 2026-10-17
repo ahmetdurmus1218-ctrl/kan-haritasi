@@ -28,3 +28,4 @@ export * from './inside';
 export * from './volumeSurface';
 export * from './physiology';
 export * from './interior';
+export * from './modelRegistry';
