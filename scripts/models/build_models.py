@@ -205,6 +205,39 @@ PATHOLOGY["liver-segments"] = {
     },
 }
 
+TS_CEREBRAL_BLEED_VALIDATION = "{cerebral_bleed_real}"
+PATHOLOGY["cerebral-bleed"] = {
+    "zip": f"{TS_URL}/v2.0.0-weights/Dataset150_icb_v0.zip",
+    "zip_sha256": "cd9a41917f134dd20f1aba877c7af4cabedf144f0f7aa1c1d16d6376b2425bb4",
+    "folder": "Dataset150_icb_v0",
+    "labels": {1: ("intracerebral_hemorrhage", "Beyin içinde kanama alanı (patoloji modeli)", "brain", "brain", "finding")},
+    "drop": [],
+    "topk": 2,
+    # ~6 mm çaplı odak ≈ 0,1 mL; daha küçüğü kalın kesitli baş BT'sinde güvenilir değil
+    "thresholds": {1: {"minMl": 0.1}},
+    # TotalSegmentator: crop=["brain"], crop_addon varsayılanı 3 mm
+    "cascade": {"model": "totalseg-ct-total-3mm", "labels": ["brain"], "addonMm": 3},
+    "manifest": {
+        "id": "totalseg-ct-cerebral-bleed",
+        "name": "TotalSegmentator — beyin içi kanama (BT patoloji)",
+        "version": "2.0.0-weights · Dataset150 (2,83 × 0,34 × 0,34 mm)",
+        "modalities": ["CT"],
+        "license": "Apache-2.0 (TotalSegmentator 'cerebral_bleed' görevi; açık görevler listesinde)",
+        "source": "https://github.com/wasserth/TotalSegmentator",
+        "intendedUse": "Kontrastsız baş BT'sinde beyin içi (intraserebral) kanama alanının bölütlenmesi ve hacmi. Önce BT anatomi modeli çalışır; beyin + 3 mm kırpılır. Tanı aracı değildir; acil durumda yerine geçmez.",
+        "validation_key": "cerebral_bleed",
+        "compatibleDevice": "Masaüstü tarayıcı ya da ≥ 8 GB RAM'li telefon; 24 × 256 × 256 karo, karo başına ~55 sn (tek çekirdek WASM, ölçüldü); 5 mm kesitli tipik baş BT'sinde 12–24 karo (≈ 10–25 dk).",
+        "limitations": [
+            "Yalnızca beyin dokusu içindeki kanamayı hedefler (küçük bir veri kümesiyle eğitildi); subdural, epidural ve subaraknoid kanamayı güvenilir biçimde bölütlemez.",
+            "Kanamanın yaşını, nedenini ya da türünü söylemez; kalsifikasyon ve artefakt yanlış işarete yol açabilir.",
+            "Küçük odaklar (≈ 1–2 mL) kaçabilir: doğrulamada resmi TotalSegmentator'ın 1,34 mL bulduğu bir vakada sonuç kırpılan bölgeye göre değişti (resmi nnU-Net de aynı kırpmada 0 mL verdi).",
+            "Bulunmaması kanama olmadığını kesinleştirmez; baş ağrısı, bilinç değişikliği gibi durumlarda acil değerlendirme gerekir.",
+            "Önce BT anatomi modeli çalışmalıdır; beyin bölütlenemediyse model çalıştırılmaz.",
+            "Klinik kullanım için onaylı tıbbi cihaz değildir.",
+        ],
+    },
+}
+
 XRV_CLS_TARGETS_TR = {
     "Atelectasis": ("Atelektazi (akciğer sönmesi) bulgusu", "lungs"),
     "Consolidation": ("Konsolidasyon bulgusu", "lungs"),
@@ -350,7 +383,7 @@ def build_pathology(work: Path, key: str, out_dir: Path, validation: dict) -> No
     labels = [{"id": i, "key": key, "finding": tr, "structure": st, **({"part": spec["parts"][i]} if spec.get("parts") else {}), "node": nd, "kind": kind, **spec.get("thresholds", {}).get(i, {})} for i, (key, tr, st, nd, kind) in spec["labels"].items()]
     m = dict(spec["manifest"])
     vkey = m.pop("validation_key")
-    m["validation"] = {"kidney": TS_KIDNEY_VALIDATION, "effusion": TS_EFFUSION_VALIDATION, "liver_lesions": TS_LIVER_LESION_VALIDATION, "liver_segments": TS_LIVER_SEGMENTS_VALIDATION}[vkey].format(**validation)
+    m["validation"] = {"kidney": TS_KIDNEY_VALIDATION, "effusion": TS_EFFUSION_VALIDATION, "liver_lesions": TS_LIVER_LESION_VALIDATION, "liver_segments": TS_LIVER_SEGMENTS_VALIDATION, "cerebral_bleed": TS_CEREBRAL_BLEED_VALIDATION}[vkey].format(**validation)
     manifest = {
         "schema": "kh-model-manifest/2",
         **m,
@@ -455,27 +488,69 @@ def build_xrv(work: Path, sample: Path, cls_dir: Path | None, seg_dir: Path | No
         write_model(seg_dir, work / "xrv-seg.fp16.onnx", manifest, notice)
 
 
+DEPTHPOLYP_URL = "https://raw.githubusercontent.com/ReaganWu/DepthPolyp/main/checkpoints/DepthPolyp_Kvasir.onnx"
+DEPTHPOLYP_SHA256 = "883ff8a825a5f51f59d46a9a2c2e9f0a505519140495dfa6800e6b48297c9f5b"
+DEPTHPOLYP_VALIDATION = "{depthpolyp_real}"
+
+
+def build_depthpolyp(work: Path, out_dir: Path, validation: dict) -> None:
+    """Kolonoskopi polip bölütleme (DepthPolyp, MIT). Yazarın kendi ONNX dışa aktarımı değiştirilmeden paketlenir."""
+    src = download(DEPTHPOLYP_URL, work / "DepthPolyp_Kvasir.onnx", DEPTHPOLYP_SHA256)
+    manifest = {
+        "schema": "kh-model-manifest/2",
+        "id": "depthpolyp-kvasir",
+        "name": "DepthPolyp — kolonoskopi polip bölütleme",
+        "version": "DepthPolyp_Kvasir (MiT-B0, 224 × 224)",
+        "modalities": ["COLONOSCOPY", "ENDOSCOPY"],
+        "task": "segmentation",
+        "format": "onnx",
+        "license": "MIT (kod ve ağırlık, ReaganWu/DepthPolyp); eğitim verisi Kvasir-SEG (araştırma ve eğitim amaçlı; ticari kullanım için Simula'dan izin)",
+        "source": "https://github.com/ReaganWu/DepthPolyp",
+        "intendedUse": "Kolonoskopi görüntüsünde polip olabilecek alanın piksel maskesi. Polibin türünü (adenom/hiperplastik), boyutunu ya da kanser olup olmadığını söylemez. Tanı aracı değildir.",
+        "citation": "Wu Z. et al. DepthPolyp: pseudo-depth guided polyp segmentation (ICPR 2026).",
+        "validation": DEPTHPOLYP_VALIDATION.format(**validation),
+        "compatibleDevice": "Tüm cihazlar (3,6 M parametre, 0,86 GMAC; ~1 sn).",
+        "input": {"name": "image", "layout": "NCHW", "channels": 3, "width": 224, "height": 224, "scale": 255, "mean": [0, 0, 0], "std": [1, 1, 1], "antialias": True},
+        "output": {"mask": "segmentation"},
+        "labels": [{"id": 0, "key": "polyp", "finding": "Polip olabilecek alan (polip bölütleme modeli)", "structure": "large-intestine", "node": "large-intestine", "kind": "finding"}],
+        # Yazarın çıkarım betiğindeki eşik (scripts/infer_onnx.py --threshold 0.3)
+        "scoreThreshold": 0.3,
+        "limitations": [
+            "Yalnızca Kvasir-SEG (1.000 kolonoskopi görüntüsü) ile eğitildi; farklı cihaz, ışık ya da hazırlık kalitesinde başarımı düşebilir.",
+            "Polip olmayan yapıları (kıvrım, dışkı, kabarcık, parlama) polip sanabilir; bulmaması polip olmadığını kesinleştirmez.",
+            "Endoskopi videosu değil tek kare işler; kolondaki yerini (segment) bilmez.",
+            "Klinik kullanım için onaylı tıbbi cihaz değildir.",
+        ],
+        "upstream": {"weights": DEPTHPOLYP_URL, "weightsSha256": DEPTHPOLYP_SHA256},
+    }
+    notice = (
+        f"{manifest['name']}\nKaynak: {manifest['source']}\nAğırlıklar: {DEPTHPOLYP_URL} (SHA-256 {DEPTHPOLYP_SHA256})\n"
+        f"Lisans: {manifest['license']}\nAtıf: {manifest['citation']}\nDeğişiklik: yok (yazarın ONNX dosyası; ikinci çıktı 'depth' sözde derinliktir ve kullanılmaz).\n"
+    )
+    write_model(out_dir, src, manifest, notice)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("work")
     ap.add_argument("--bundle", help="uygulamaya gömülecek modellerin klasörü (apps/web/public/ai-models)")
     ap.add_argument("--packs", help="isteğe bağlı model paketlerinin yazılacağı klasör")
     ap.add_argument("--xray-sample", required=True, help="doğrulama için örnek göğüs röntgeni (PNG)")
-    ap.add_argument("--only", help="yalnızca bu modeller (virgülle: totalseg-ct, totalseg-mr, xrv, kidney-cysts, effusion, liver-segments; paketler: liver-lesions, xrv-seg)")
+    ap.add_argument("--only", help="yalnızca bu modeller (virgülle: totalseg-ct, totalseg-mr, xrv, kidney-cysts, effusion, liver-segments, cerebral-bleed; paketler: liver-lesions, xrv-seg, depthpolyp)")
     ap.add_argument("--validation", help="patoloji modellerinin ölçülmüş doğrulama sonuçları (JSON: kidney_real, effusion_real)")
     a = ap.parse_args()
     work = Path(a.work)
     work.mkdir(parents=True, exist_ok=True)
     if a.bundle:
         b = Path(a.bundle)
-        want = set(a.only.split(",")) if a.only else {"totalseg-ct", "totalseg-mr", "xrv", "kidney-cysts", "effusion", "liver-segments"}
+        want = set(a.only.split(",")) if a.only else {"totalseg-ct", "totalseg-mr", "xrv", "kidney-cysts", "effusion", "liver-segments", "cerebral-bleed"}
         if "totalseg-ct" in want:
             build_totalseg(work, "totalseg-ct", b / "totalseg-ct-total-3mm")
         if "totalseg-mr" in want:
             build_totalseg(work, "totalseg-mr", b / "totalseg-mr-total-3mm")
         if "xrv" in want:
             build_xrv(work, Path(a.xray_sample), b / "xrv-densenet121-nih", None)
-        validation = {"kidney_real": "ölçülmedi", "effusion_real": "ölçülmedi", "liver_lesions_real": "ölçülmedi", "liver_segments_real": "ölçülmedi"}
+        validation = {"kidney_real": "ölçülmedi", "effusion_real": "ölçülmedi", "liver_lesions_real": "ölçülmedi", "liver_segments_real": "ölçülmedi", "cerebral_bleed_real": "ölçülmedi"}
         if a.validation:
             validation.update(json.loads(Path(a.validation).read_text()))
         if "kidney-cysts" in want:
@@ -484,20 +559,25 @@ def main() -> None:
             build_pathology(work, "effusion", b / "totalseg-ct-effusion", validation)
         if "liver-segments" in want:
             build_pathology(work, "liver-segments", b / "totalseg-ct-liver-segments", validation)
+        if "cerebral-bleed" in want:
+            build_pathology(work, "cerebral-bleed", b / "totalseg-ct-cerebral-bleed", validation)
         index = sorted(x.name for x in b.iterdir() if (x / "manifest.json").exists())
         (b / "index.json").write_text(json.dumps({"schema": "kh-model-index/1", "models": index}, indent=1))
     if a.packs:
         p = Path(a.packs)
-        validation = {"kidney_real": "ölçülmedi", "effusion_real": "ölçülmedi", "liver_lesions_real": "ölçülmedi", "liver_segments_real": "ölçülmedi"}
+        validation = {"kidney_real": "ölçülmedi", "effusion_real": "ölçülmedi", "liver_lesions_real": "ölçülmedi", "liver_segments_real": "ölçülmedi", "cerebral_bleed_real": "ölçülmedi"}
         if a.validation:
             validation.update(json.loads(Path(a.validation).read_text()))
+        validation.setdefault("depthpolyp_real", "ölçülmedi")
         # liver-lesions varsayılan pakette YOK: gerçek LiTS vakasında sonucu kırpma/karo yerleşimine aşırı duyarlı çıktı
         # (uzman etiketine göre Dice 0,14–0,71 arasında değişti); güvenilir bulgu üretmediği için dağıtılmıyor.
-        want = set(a.only.split(",")) if a.only else {"xrv-seg"}
+        want = set(a.only.split(",")) if a.only else {"xrv-seg", "depthpolyp"}
         if "liver-lesions" in want:
             build_pathology(work, "liver-lesions", p / "totalseg-ct-liver-lesions", validation)
         if "xrv-seg" in want:
             build_xrv(work, Path(a.xray_sample), None, p / "xrv-pspnet-chestxdet")
+        if "depthpolyp" in want:
+            build_depthpolyp(work, p / "depthpolyp-kvasir", validation)
         # Uygulama isteğe bağlı paketleri tanısın diye: yalnızca manifestler (model dosyası değil)
         packs = [json.loads((x / "manifest.json").read_text()) for x in sorted(p.iterdir()) if (x / "manifest.json").exists()]
         doc = json.dumps({"schema": "kh-model-packs/1", "folder": "model-packs", "packs": packs}, ensure_ascii=False, indent=1)

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { BACKUP_EXTENSION, MIN_PASSPHRASE_LENGTH, createBackup, inspectBackup, restoreBackup, type RestoreResult } from '@kh/vault';
 import { DEVICE_KEY_SCHEME } from '@kh/platform';
 import type { Sex } from '@kh/catalog';
+import { MODEL_RESEARCH } from '@kh/analysis';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { AUTO_LOCK_OPTIONS, readSetting, writeSetting, type Settings } from '../state/settings';
 import { go } from '../state/router';
@@ -15,6 +16,9 @@ import { ThemePicker } from '../components/ThemeToggle';
 import { LocalModels } from '../components/LocalModels';
 import { useSetting } from '../state/settings';
 import { CheckIcon, DownloadIcon, FingerprintIcon, LockIcon, ShieldIcon, SpinnerIcon, TrashIcon, UploadIcon } from '../components/icons';
+
+/** Uygulamayla gelen doğrulanmış model sayısı (model araştırma kaydı; ai-models/index.json ile testte eşlenir). */
+const BUNDLED_MODELS = MODEL_RESEARCH.filter((r) => r.distribution === 'bundled').length;
 
 function Section({ title, children, aside }: { title: string; children: ReactNode; aside?: ReactNode }) {
   return (
@@ -184,21 +188,30 @@ export function PrivacyPage() {
           <Fact>
             Raporların {info?.platform === 'android' ? 'bu telefonda' : 'bu tarayıcıda'} işlenir (PDF okuma, fotoğraf OCR ve MR/BT/röntgen görüntülerinin (DICOM) açılması dahil) ve hiçbir sunucuya gönderilmez.
             Güvenlik politikası (CSP) uygulamanın kendi dosyaları dışındaki adreslere bağlantıyı engeller
-            {info?.platform === 'android' ? '; Android uygulamasının internet izni de yoktur.' : '.'}
+            {info?.platform === 'android' ? '; Android uygulamasının internet izni de yoktur (INTERNET izni manifestten kaldırılır).' : '. Android uygulamasında ise internet izni hiç yoktur.'}
           </Fact>
           <Fact>
-            Ham görüntü analizi (MR/BT asimetrisi, EKG ritmi ve hızı, ultrason görüntü alanı, patoloji doku ölçümleri) de cihazda, ayrı bir iş parçacığında çalışan kural tabanlı
-            algoritmalarla yapılır. Öğrenilmiş bir yapay zekâ görüntü modeli paketlenmez ve görüntü hiçbir servise gönderilmez.
+            <strong className="text-fg">Yerel tıbbi AI modelleri:</strong> uygulamayla {BUNDLED_MODELS} doğrulanmış öğrenilmiş model gelir (BT/MR 3B anatomi bölütleme, BT patoloji modelleri,
+            göğüs röntgeni sınıflandırıcısı). Çıkarım {info?.platform === 'android' ? 'bu telefonda' : 'bu tarayıcıda'}, ayrı bir iş parçacığında (ONNX Runtime, WASM) yapılır; görüntü,
+            sonuç ve maske hiçbir sunucuya ya da yapay zekâ servisine gönderilmez.
+          </Fact>
+          <Fact>
+            Kural tabanlı ön incelemeler (MR/BT fotoğrafında sağ-sol simetri, EKG ritmi ve hızı, ultrason görüntü alanı, patoloji doku ölçümleri) yapay zekâ modeli değildir ve öyle
+            gösterilmez; bunlar da cihazda çalışır.
+          </Fact>
+          <Fact>
+            Uygulama model indirmez. Ek bir model (ör. isteğe bağlı paketler) yalnızca senin seçtiğin dosyalardan, &quot;Model kur&quot; ile kurulur; manifestteki SHA-256 özeti
+            tutmazsa model kabul edilmez. Kurulduktan sonra da çıkarım tamamen cihazda kalır.
           </Fact>
           <Fact>Reklam, analitik, takip veya çökme raporlama servisi kullanılmıyor.</Fact>
           <Fact>
-            Açıklamalar uygulamanın içindeki, önceden yazılmış bilgi kataloğundan gelir. Harici yapay zekâ: <strong className="text-fg">BAĞLI DEĞİL</strong>. İleride
-            eklenirse varsayılan kapalı olacak, ne gönderileceği önceden gösterilecek ve açık onayın istenecek.
+            Açıklamalar uygulamanın içindeki, önceden yazılmış bilgi kataloğundan gelir. Harici yapay zekâ (uzak model, bulut çıkarımı, sohbet API'leri):{' '}
+            <strong className="text-fg">BAĞLI DEĞİL</strong>. Veriyi cihaz dışına gönderecek bir sağlayıcı kod düzeyinde reddedilir; onayla bile çalıştırılmaz.
           </Fact>
           {info?.platform !== 'android' && (
             <Fact>
-              Uygulama dosyaları (kod ve 3D modeller) ilk açılışta barındırma sunucusundan indirilir; sunucu yalnızca IP adresini ve istenen dosya adlarını görür,
-              sağlık verini görmez.
+              Uygulama dosyaları (kod, 3D modeller ve yerel AI model dosyaları) barındırma sunucusundan indirilir; sunucu yalnızca IP adresini ve istenen dosya adlarını görür
+              (ör. hangi model dosyasının açıldığını), sağlık verini, görüntülerini ve sonuçlarını görmez.
             </Fact>
           )}
           <Fact ok={false}>

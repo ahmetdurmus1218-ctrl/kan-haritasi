@@ -1,7 +1,7 @@
 """Uygulamadaki 3B hacim çıkarımının (packages/analysis/src/volumeModel.ts) Python başvuru uygulaması.
 
 Aynı adımlar: dünya (RAS) eksenine hizalı 3 mm ızgara → doğrusal yeniden örnekleme → CT kırp + z-skor
-(veri kümesi parmak izi) / MR görüntü başına z-skor → kayan pencere (adım 0,8, Gauss ağırlığı) → argmax →
+(veri kümesi parmak izi) / MR görüntü başına z-skor → kayan pencere (adım: manifestteki tileStep, Gauss ağırlığı) → argmax →
 özgün ızgaraya en yakın komşu. Amaç: ONNX modelini TotalSegmentator'ın kendi çıktısıyla (Dice) doğrulamak.
 
 Kullanım: python reference_pipeline.py model.onnx manifest.json girdi.nii.gz [başvuru_seg.nii.gz]
@@ -71,7 +71,8 @@ def run(model, man, img):
     g = gaussian(patch)
     sess = ort.InferenceSession(model, providers=["CPUExecutionProvider"])
     t = time.time()
-    tiles = [(a, b, c) for a in steps(padded[0], patch[0]) for b in steps(padded[1], patch[1]) for c in steps(padded[2], patch[2])]
+    st = man["volume"].get("tileStep", 0.8)  # uygulamayla aynı karo adımı (manifestten)
+    tiles = [(a, b, c) for a in steps(padded[0], patch[0], st) for b in steps(padded[1], patch[1], st) for c in steps(padded[2], patch[2], st)]
     if K:
         # Bellek dostu birleştirme: voksel başına en fazla M aday sınıf ve birikmiş ağırlıklı değerleri.
         M = 2 * K

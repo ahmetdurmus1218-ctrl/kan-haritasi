@@ -10,7 +10,7 @@ import { appendFileSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { type ModelManifest, cardiothoracicRatio, cascadeBox, cascadeLabelIds, decodeRle, findingClass, multilabelScores, preprocess, rasterFromRgba, runVolumeModel, sliceLabels, validateManifest } from '@kh/analysis';
+import { type ModelManifest, cardiothoracicRatio, cascadeBox, cascadeInput, cascadeLabelIds, decodeRle, findingClass, multilabelScores, preprocess, rasterFromRgba, runVolumeModel, sliceLabels, validateManifest } from '@kh/analysis';
 import { volumeFromDicom } from '@kh/ingest';
 import { ortEngineFactory } from '../lib/localModels/engine';
 
@@ -160,6 +160,14 @@ describe('gerçek yerel modeller (cihaz içi motor) — resmi çıktıyla karş�
     expect(s7?.part).toBe('right-lobe');
     report({ liverSegments: { dice: dice.map((d) => Math.round(d * 1000) / 1000), mean, tiles: seg.tiles } });
   }, 900_000);
+
+  it('Beyin içi kanama modeli: beyni içermeyen seride (karın BT) çalıştırılmaz — kırpma kutusu uydurulmaz', async () => {
+    const anatomy = await anatomyCT();
+    const bleed = model('totalseg-ct-cerebral-bleed');
+    expect(bleed.manifest.volume?.cascade).toEqual({ model: 'totalseg-ct-total-3mm', labels: ['brain'], addonMm: 3 });
+    expect(anatomy.seg.structures.some((s) => s.key === 'brain')).toBe(false);
+    expect(() => cascadeInput(anatomy.vol, bleed.manifest, { manifest: anatomy.manifest, seg: anatomy.seg })).toThrow(/brain.*bulunamadı/);
+  });
 
   it('Basamaklı model anatomi sonucu olmadan çalışmaz (tahminle kırpılmaz)', async () => {
     const cyst = model('totalseg-ct-kidney-cysts');

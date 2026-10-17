@@ -666,7 +666,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
                   ['Kesit kalınlığı', dicom.sliceThickness ? `${dicom.sliceThickness.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} mm` : undefined],
                   ['Yakılmış yazı', burned ? (burned.level === 'yes' ? 'Var (başlık bildiriyor)' : burned.level === 'possible' ? (burned.pixel?.status === 'detected' ? 'Olabilir (piksel kontrolü: yazı benzeri alan)' : 'Olabilir (ikincil yakalama)') : burned.level === 'no' ? 'Yok (başlık bildiriyor)' : 'Bilinmiyor') : undefined],
                   ['Yönelim', dicom.imageOrientation ? dicom.imageOrientation.map((v) => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 })).join(' ') : undefined],
-                  ['Kodlama', dicom.codec === 'native' ? 'Sıkıştırmasız' : dicom.codec === 'rle' ? 'RLE (kayıpsız)' : dicom.codec === 'jpeg-baseline' ? 'JPEG' : 'Desteklenmeyen sıkıştırma'],
+                  ['Kodlama', dicom.codec === 'native' ? 'Sıkıştırmasız' : dicom.codec === 'rle' ? 'RLE (kayıpsız)' : dicom.codec === 'jpeg-baseline' ? 'JPEG' : dicom.codec === 'jpeg-lossless' ? 'JPEG Lossless (kayıpsız)' : 'Desteklenmeyen sıkıştırma'],
                 ] as Array<[string, string | undefined]>
               )
                 .filter(([, v]) => v)

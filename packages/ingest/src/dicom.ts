@@ -9,10 +9,12 @@
  *  - Sıkıştırmasız: örtük VR (little endian), açık VR (little/big endian)
  *  - RLE Lossless (bu dosyada çözülür)
  *  - JPEG Baseline 8 bit (çözümü tarayıcıya bırakılır: `encoded` çıktısı)
- * Diğer sıkıştırmalar (JPEG 2000, JPEG-LS, JPEG Lossless) tanınır ama çözülmez; kullanıcıya açıkça söylenir.
+ *  - JPEG Lossless (süreç 14, SV1 dahil; gri, 2–16 bit) — `jpegLossless.ts`, bit bit kayıpsız
+ * Diğer sıkıştırmalar (JPEG 2000, JPEG-LS) tanınır ama çözülmez; kullanıcıya açıkça söylenir.
  */
 
 import type { PixelTextScan } from './burnedIn';
+import { decodeJpegLossless } from './jpegLossless';
 
 export class DicomError extends Error {
   constructor(
@@ -24,7 +26,7 @@ export class DicomError extends Error {
   }
 }
 
-export type DicomCodec = 'native' | 'rle' | 'jpeg-baseline' | 'unsupported';
+export type DicomCodec = 'native' | 'rle' | 'jpeg-baseline' | 'jpeg-lossless' | 'unsupported';
 
 export interface PixelLocation {
   /** Sıkıştırmasız piksel verisinin başlangıcı ve uzunluğu. */
@@ -83,6 +85,8 @@ export const DICOM_TS = {
   deflatedLE: '1.2.840.10008.1.2.1.99',
   explicitBE: '1.2.840.10008.1.2.2',
   jpegBaseline: '1.2.840.10008.1.2.4.50',
+  jpegLossless: '1.2.840.10008.1.2.4.57',
+  jpegLosslessSV1: '1.2.840.10008.1.2.4.70',
   rle: '1.2.840.10008.1.2.5',
 } as const;
 
@@ -272,6 +276,7 @@ function codecOf(ts: string): DicomCodec {
   if (ts === DICOM_TS.implicitLE || ts === DICOM_TS.explicitLE || ts === DICOM_TS.explicitBE) return 'native';
   if (ts === DICOM_TS.rle) return 'rle';
   if (ts === DICOM_TS.jpegBaseline) return 'jpeg-baseline';
+  if (ts === DICOM_TS.jpegLossless || ts === DICOM_TS.jpegLosslessSV1) return 'jpeg-lossless';
   return 'unsupported';
 }
 
@@ -418,6 +423,7 @@ export function canDecode(info: DicomInfo): boolean {
   if (!info.pixel || info.rows <= 0 || info.columns <= 0) return false;
   if (info.codec === 'unsupported') return false;
   if (info.codec === 'jpeg-baseline') return true;
+  if (info.codec === 'jpeg-lossless') return info.samplesPerPixel === 1 && [8, 16].includes(info.bitsAllocated) && info.photometric.startsWith('MONOCHROME');
   if (![8, 16, 32].includes(info.bitsAllocated)) return false;
   if (info.samplesPerPixel === 1) return info.photometric.startsWith('MONOCHROME');
   return info.samplesPerPixel === 3 && info.bitsAllocated === 8 && ['RGB', 'YBR_FULL'].includes(info.photometric);
@@ -552,6 +558,22 @@ export function decodeFrame(bytes: Uint8Array, info: DicomInfo, frame = 0): Deco
 
   if (info.codec === 'jpeg-baseline') {
     return { kind: 'encoded', width: w, height: h, mime: 'image/jpeg', data: concatFragments(bytes, frameFragments(info, frame)) };
+  }
+
+  if (info.codec === 'jpeg-lossless') {
+    const img = decodeJpegLossless(concatFragments(bytes, frameFragments(info, frame)));
+    if (img.width !== w || img.height !== h) throw new DicomError('CORRUPT', 'jpeg size');
+    const bytesPer = info.bitsAllocated / 8;
+    const buf = new Uint8Array(n * bytesPer);
+    for (let i = 0; i < n; i++) {
+      const v = img.samples[i]!;
+      if (bytesPer === 1) buf[i] = v;
+      else {
+        buf[i * 2] = v & 0xff;
+        buf[i * 2 + 1] = v >> 8;
+      }
+    }
+    return grayFrom(info, buf, true);
   }
 
   if (info.codec === 'rle') {
