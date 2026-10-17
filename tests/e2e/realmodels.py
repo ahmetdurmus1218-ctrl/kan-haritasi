@@ -149,6 +149,11 @@ with sync_playwright() as p:
     page.locator("[data-testid=explorer][data-interior=liver]").wait_for()
     ex = page.get_by_test_id("explorer")
     check(ex.get_attribute("data-current-level") == "interior" and ex.get_attribute("data-current-node") == "parenchyma", "C: İçine gir → 3B keşifte karaciğerin içi (parankim), mikroanatomiye atlamıyor")
+    # Kişisel 3B etiketi sağlık modeli (kasadaki seri sonucu) yüklenince çıkar: anlık sayım yerine beklenir.
+    try:
+        page.get_by_test_id("interior-personal-3d").wait_for(timeout=30000)
+    except Exception:
+        pass
     check(page.get_by_test_id("interior-personal-3d").count() == 1, "C: İçine gir → organ 'Senin görüntünden' (gerçek maske)")
     page.goto(ct_url)
     panel = page.get_by_test_id("series-model-panel")
