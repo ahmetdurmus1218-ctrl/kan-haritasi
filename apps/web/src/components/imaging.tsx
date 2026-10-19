@@ -95,7 +95,7 @@ export function ImagingStudyCard({ study, compact = false }: { study: ImagingStu
 
 export function ImagingStudyList({ studies, compact }: { studies: ImagingStudy[]; compact?: boolean }) {
   return (
-    <ul className="divide-y divide-ink-700 overflow-hidden rounded-2xl border border-ink-600/60 bg-ink-850/60">
+    <ul className="divide-y divide-ink-700 overflow-hidden card">
       {studies.map((s) => (
         <ImagingStudyCard key={s.key} study={s} compact={compact} />
       ))}

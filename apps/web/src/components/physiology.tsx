@@ -148,7 +148,7 @@ export function ResultPhysiology({ testKey, model }: { testKey: string; model: H
   };
   const organName = (id: string) => GRAPH.node(id)?.nameTr ?? structureById.get(id)?.nameTr ?? id;
   return (
-    <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4 text-sm" aria-label="Vücutta" data-testid="result-physiology">
+    <section className="space-y-3 card p-4 text-sm" aria-label="Vücutta" data-testid="result-physiology">
       <h2 className="font-semibold text-fg">Vücutta: normalde ne yapıyor, bende ne söylüyor?</h2>
       {info && (
         <>

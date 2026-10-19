@@ -142,7 +142,7 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
             <p className="mt-1 text-sm text-fg-muted">İlk tahlil raporunu ya da MR, tomografi, röntgen belgeni yukarıdan yükle; PDF, fotoğraf veya CD'deki DICOM dosyaları olabilir.</p>
           </div>
         ) : (
-          <ul className="divide-y divide-ink-700 overflow-hidden rounded-2xl border border-ink-600/60 bg-ink-850/60">
+          <ul className="divide-y divide-ink-700 overflow-hidden card">
             {shown?.map((g) => (
               <DocumentRow
                 key={g.key}

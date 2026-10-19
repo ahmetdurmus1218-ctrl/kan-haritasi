@@ -124,7 +124,7 @@ export function SystematicReview({ protocol, results, steps, coverage }: { proto
     </>
   );
   return (
-    <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/40 p-4" aria-label="Sistematik değerlendirme">
+    <section className="space-y-3 card p-4" aria-label="Sistematik değerlendirme">
       <div>
         <p className="label-caps">{limited ? 'İnceleme kapsamı' : 'Sistematik değerlendirme'}</p>
         <h3 className="mt-0.5 text-base font-semibold">

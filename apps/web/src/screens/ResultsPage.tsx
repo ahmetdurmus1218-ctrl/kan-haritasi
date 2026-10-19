@@ -194,7 +194,7 @@ export function ResultsPage() {
             {[...groups.entries()].map(([group, list]) => (
               <section key={group}>
                 <h2 className="label-caps mb-2">{GROUP_LABEL[group as keyof typeof GROUP_LABEL]}</h2>
-                <ul className="divide-y divide-ink-700 overflow-hidden rounded-2xl border border-ink-600/60 bg-ink-850/60">
+                <ul className="divide-y divide-ink-700 overflow-hidden card">
                   {list.map((s) => {
                     const f = findings.get(s.test.key);
                     // Anormal sonuçta test adı ve değer aynı tonu taşır (yalnızca rozet değil).

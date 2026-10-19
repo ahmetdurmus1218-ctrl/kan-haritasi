@@ -193,7 +193,7 @@ export function SystemGrid({ interp }: { interp: Interpretation }) {
             key={s.system}
             type="button"
             onClick={() => go({ name: 'body', system: s.system })}
-            className="rounded-2xl border border-ink-600/60 bg-ink-850/60 p-3.5 text-left transition hover:border-ink-500 hover:bg-ink-800/60"
+            className="card p-3.5 text-left transition hover:border-ink-500 hover:bg-ink-800/60"
           >
             <span className="flex items-center gap-2">
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />

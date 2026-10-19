@@ -30,7 +30,7 @@ export function Sheet({ open, onClose, title, children, footer }: { open: boolea
         if (e.target === ref.current) onClose();
       }}
       aria-labelledby="sheet-title"
-      className="kh-sheet m-0 mt-auto max-h-[85dvh] w-full max-w-none rounded-t-3xl border border-ink-600 bg-ink-850 p-0 text-fg shadow-2xl shadow-black/50 backdrop:bg-ink-950/60 backdrop:backdrop-blur-[2px] md:ml-auto md:mr-0 md:mt-0 md:h-full md:max-h-none md:w-[420px] md:rounded-none md:rounded-l-3xl"
+      className="kh-sheet m-0 mt-auto max-h-[85dvh] w-full max-w-none rounded-t-[28px] border border-ink-600/70 bg-ink-850 p-0 text-fg shadow-[var(--shadow-float)] backdrop:bg-black/40 backdrop:backdrop-blur-[2px] md:ml-auto md:mr-0 md:mt-0 md:h-full md:max-h-none md:w-[420px] md:rounded-none md:rounded-l-[28px]"
     >
       {open && (
         <div className="flex max-h-[85dvh] flex-col md:h-full md:max-h-none">

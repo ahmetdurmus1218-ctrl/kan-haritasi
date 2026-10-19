@@ -70,7 +70,7 @@ export function OrganInside({ v, model }: { v: OrganView; model: HealthModel | n
         ))}
       </ol>
 
-      <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Bu adım">
+      <section className="space-y-3 card p-4" aria-label="Bu adım">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <LevelBadge node={node} />
           <span className="text-xs text-fg-faint">

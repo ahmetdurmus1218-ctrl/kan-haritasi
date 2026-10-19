@@ -61,7 +61,7 @@ function BodyLayers({ model, onOrgan }: { model: HealthModel; onOrgan: (id: stri
           </button>
         ))}
       </div>
-      <ul className="divide-y divide-ink-700 rounded-2xl border border-ink-600/60 bg-ink-850/60">
+      <ul className="divide-y divide-ink-700 card">
         {ids.map((id) => {
           const st = model.organs.get(GRAPH.node(id)?.structure ?? id) ?? model.organs.get(id);
           const def = interiorFor(id);
@@ -221,7 +221,7 @@ export function MyBodyPage() {
                 <button
                   type="button"
                   onClick={() => setSheet(o.organ)}
-                  className="flex w-full items-start gap-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4 text-left transition hover:border-ink-500"
+                  className="flex w-full items-start gap-3 card p-4 text-left transition hover:border-ink-500"
                 >
                   <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${TONE[o.tone].dot}`} aria-hidden="true" />
                   <span className="min-w-0 flex-1">
@@ -246,7 +246,7 @@ export function MyBodyPage() {
               Zamanım →
             </button>
           </div>
-          <ul className="divide-y divide-ink-700 rounded-2xl border border-ink-600/60 bg-ink-850/60">
+          <ul className="divide-y divide-ink-700 card">
             {changes.map((c, i) => (
               <li key={i}>
                 <button type="button" onClick={() => go(c.route)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
@@ -260,7 +260,7 @@ export function MyBodyPage() {
         </section>
       )}
 
-      <details className="group rounded-2xl border border-ink-600/60 bg-ink-850/40 px-4 py-1">
+      <details className="group card px-4 py-1">
         <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-1 text-sm font-medium text-fg">
           Tüm organlar <span className="text-fg-faint group-open:hidden">↓</span>
         </summary>

@@ -15,7 +15,7 @@ import { BodyIcon, ChevronRightIcon, PlusIcon, SpinnerIcon } from '../components
 function Card({ title, detail, onClick, tone }: { title: string; detail?: string; onClick: () => void; tone?: keyof typeof TONE }) {
   return (
     <li>
-      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 px-4 py-3.5 text-left transition hover:border-ink-500">
+      <button type="button" onClick={onClick} className="flex w-full items-center gap-3 card px-4 py-3.5 text-left transition hover:border-ink-500">
         {tone && tone !== 'normal' && <span className={`h-2 w-2 shrink-0 rounded-full ${TONE[tone].dot}`} aria-hidden="true" />}
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] text-fg">{title}</span>

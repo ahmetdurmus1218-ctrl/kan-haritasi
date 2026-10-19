@@ -566,7 +566,7 @@ export function AnalysisCard({
   const modelBusy = modelState.status === 'loading' || modelState.status === 'inference';
 
   return (
-    <section className="space-y-4 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4 md:p-5" aria-label="Ham görüntü analizi">
+    <section className="space-y-4 card p-4 md:p-5" aria-label="Ham görüntü analizi">
       {running ? (
         <div aria-live="polite">
           <p className="text-[15px] font-medium text-fg">Görüntün inceleniyor…</p>

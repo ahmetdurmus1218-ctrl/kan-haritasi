@@ -12,7 +12,7 @@ import { BodyIcon, ChevronRightIcon, TrashIcon } from './icons';
  */
 export function MeasureList({ measures, onRemove }: { measures: MeasureResult[]; onRemove?: (m: MeasureResult) => void }) {
   return (
-    <ul className="divide-y divide-ink-700 overflow-hidden rounded-2xl border border-ink-600/60 bg-ink-850/60">
+    <ul className="divide-y divide-ink-700 overflow-hidden card">
       {measures.map((m, i) => (
         <MeasureRow key={`${m.def.key}-${m.site ?? ''}-${m.manualId ?? i}`} m={m} onRemove={onRemove} />
       ))}
