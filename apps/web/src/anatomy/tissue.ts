@@ -241,7 +241,10 @@ const NOISE = /* glsl */ `
 varying vec3 vKhPos;
 uniform float uKhFreqScale;
 uniform float uKhBump, uKhBumpFreq, uKhMottle, uKhMottleFreq, uKhTintAmount, uKhVeinAmount, uKhVeinFreq, uKhRimAmount, uKhCut;
-uniform vec3 uKhTint, uKhVein, uKhRim, uKhCutColor;
+uniform vec3 uKhTint, uKhVein, uKhRim, uKhCutColor, uKhFat;
+#ifdef KH_FAT
+varying float vKhFat;
+#endif
 vec3 khMod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 khMod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 khPermute(vec4 x) { return khMod289(((x * 34.0) + 10.0) * x); }
@@ -310,6 +313,11 @@ float khVm = smoothstep(-0.25, 0.35, khNoise(khP * uKhVeinFreq * 0.33 + 3.1));
 diffuseColor.rgb = mix(diffuseColor.rgb, uKhVein, clamp(khV1 * khVm + 0.55 * khV2 * khVm * khVm, 0.0, 1.0) * uKhVeinAmount);
 #endif
 diffuseColor.rgb *= 1.0 + uKhMottle * khM;
+#ifdef KH_FAT
+// Epikard yağı: koroner damarların geçtiği oluklarda sarımsı, lobcuklu yağ (köşe başına uzaklıktan).
+float khFatM = 0.85 * smoothstep(0.2, 0.9, vKhFat + 0.22 * khNoise(khP * uKhMottleFreq * 3.0 + 2.0));
+diffuseColor.rgb = mix(diffuseColor.rgb, uKhFat * (0.9 + 0.2 * khM), khFatM);
+#endif
 bool khCutFace = uKhCut > 0.5 && !gl_FrontFacing;
 // Kesit yüzü: doku rengi, düzleme dik ışıkta parlamasın diye biraz koyu ve mat.
 if (khCutFace) diffuseColor.rgb = uKhCutColor * (0.78 + 0.08 * khM);
@@ -327,6 +335,11 @@ const NORMAL = /* glsl */ `
   vec3 khG2;
   khNoiseGrad(khP * uKhBumpFreq * 2.17 + 11.0, khG2);
   khG += 0.25 * khG2;
+  #endif
+  #ifdef KH_FAT
+  vec3 khG3;
+  khNoiseGrad(khP * uKhBumpFreq * 1.6 + 4.0, khG3);
+  khG += khG3 * 1.6 * khFatM;
   #endif
   vec3 khGv = (viewMatrix * vec4(khG * uKhBump * (khCutFace ? 0.3 : 1.0), 0.0)).xyz;
   normal = normalize(normal - (khGv - dot(khGv, normal) * normal));
@@ -347,6 +360,9 @@ vec4 khW = vec4(transformed, 1.0);
 khW = instanceMatrix * khW;
 #endif
 vKhPos = (modelMatrix * khW).xyz;
+#ifdef KH_FAT
+vKhFat = khFat;
+#endif
 `;
 
 export interface TissueUniforms {
@@ -364,6 +380,7 @@ export interface TissueUniforms {
   uKhRimAmount: { value: number };
   uKhCut: { value: number };
   uKhCutColor: { value: Color };
+  uKhFat: { value: Color };
 }
 
 export type TissueMaterial = MeshPhysicalMaterial & { userData: { kh: TissueUniforms } };
@@ -372,7 +389,7 @@ export type TissueMaterial = MeshPhysicalMaterial & { userData: { kh: TissueUnif
  * Gerçekçi doku malzemesi. `freqScale`: ağ ölçeklenerek çiziliyorsa (ör. atlas kesiti sahnesi) desenin
  * gerçek boyutu korunsun diye 1/ölçek verilir. Kesit gölgelendirmesi `setTissueCut` ile açılır.
  */
-export function createTissueMaterial(l: TissueLook, opts: { quality?: 'high' | 'low'; freqScale?: number } = {}): TissueMaterial {
+export function createTissueMaterial(l: TissueLook, opts: { quality?: 'high' | 'low'; freqScale?: number; fat?: boolean } = {}): TissueMaterial {
   const low = (opts.quality ?? tissueQuality()) === 'low';
   const m = new MeshPhysicalMaterial({
     color: l.color,
@@ -401,19 +418,23 @@ export function createTissueMaterial(l: TissueLook, opts: { quality?: 'high' | '
     uKhRimAmount: { value: l.rimAmount },
     uKhCut: { value: 0 },
     uKhCutColor: { value: new Color(l.cut) },
+    uKhFat: { value: new Color('#b98c3e') },
   };
   m.userData.kh = u;
   m.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
     Object.assign(shader.uniforms, u);
     if (low) shader.fragmentShader = `#define KH_LOW\n${shader.fragmentShader}`;
-    shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vKhPos;').replace('#include <begin_vertex>', VERTEX);
+    // Epikard yağı: geometride köşe başına "khFat" (0–1) özniteliği varsa (bkz. fatAttribute).
+    const fat = opts.fat ? '#define KH_FAT\n' : '';
+    shader.fragmentShader = fat + shader.fragmentShader;
+    shader.vertexShader = fat + shader.vertexShader.replace('#include <common>', `#include <common>\nvarying vec3 vKhPos;${opts.fat ? '\nattribute float khFat;\nvarying float vKhFat;' : ''}`).replace('#include <begin_vertex>', VERTEX);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${NOISE}`)
       .replace('#include <color_fragment>', COLOR)
       .replace('#include <normal_fragment_maps>', NORMAL)
       .replace('#include <opaque_fragment>', RIM);
   };
-  m.customProgramCacheKey = () => (low ? 'kh-tissue-low' : 'kh-tissue');
+  m.customProgramCacheKey = () => `kh-tissue${low ? '-low' : ''}${opts.fat ? '-fat' : ''}`;
   return m;
 }
 
