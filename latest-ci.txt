@@ -1,22 +1,58 @@
 workflow: CI
-run: 39066825994
-sha: 8fc5da67efc0687864e0a467bbb870f8e11db5f4
+run: 39228431656
+sha: 941b83260675ceccf9ce8575e812f62d07920f4d
 conclusion: cancelled
 
-e2e: cancelled
-  - Set up job: cancelled
-web: cancelled
+web: success
   - Set up job: success
-  - Run actions/checkout@v4: cancelled
-  - Run pnpm/action-setup@v4: skipped
-  - Run actions/setup-node@v4: skipped
-  - Run pnpm install --frozen-lockfile: skipped
-  - Lint (güvenlik kuralları dahil): skipped
-  - Tip denetimi: skipped
-  - Testler (kripto, kurcalama, silme, doğrulama, XSS): skipped
-  - Derleme: skipped
-  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): skipped
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Lint (güvenlik kuralları dahil): success
+  - Tip denetimi: success
+  - Testler (kripto, kurcalama, silme, doğrulama, XSS): success
+  - Derleme: success
+  - Güvenlik kapıları (CSP, izleme alan adları, test verisinde kimlik no): success
+  - Post Run actions/setup-node@v4: success
+  - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-dependencies: cancelled
+e2e: cancelled
+  - Set up job: success
+  - Run actions/checkout@v4: success
+  - Run pnpm/action-setup@v4: success
+  - Run actions/setup-node@v4: success
+  - Run pnpm install --frozen-lockfile: success
+  - Run pnpm build: success
+  - Run actions/setup-python@v5: success
+  - Playwright (Chromium): success
+  - Önizleme sunucusu: success
+  - Belgeler ve kasa (smoke): success
+  - Okuma → sonuçlar → vücutta göster → simülasyon: success
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
+  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
+  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
+  - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: success
+  - Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR: success
+  - İçine gir — anatomi grafiği derinliği, komşuluk (pelvis, yumurtalık, kulak, böbrek, kalp), model deposu: success
+  - İçine gir motoru — bağırsak kabulü (lümen → … → moleküler taşıma), B12 → fizyoloji → ileum, model yok, katmanlar: success
+  - İçine gir — her organda iç dünya (99 yapı, hollow/solid/vascular/chamber/airway/sensory), 3B panel, arama, breadcrumb: cancelled
+  - 3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon: skipped
+  - Kişisel 3B organ — gerçek BT → maske → mesh → İçine gir (kamera gerçek mesh'in içine) → eğitimsel iç dünya: skipped
+  - Gerçek yerel modeller — röntgen skoru, BT/MR 3B anatomi bölütleme, BT patoloji (basamaklı), köken: skipped
+  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: skipped
+  - Run actions/upload-artifact@v4: skipped
+  - Post Run actions/setup-python@v5: skipped
+  - Post Run actions/setup-node@v4: skipped
+  - Post Run pnpm/action-setup@v4: success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
+dependencies: success
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): success
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 
