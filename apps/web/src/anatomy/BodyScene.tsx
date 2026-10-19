@@ -4,8 +4,8 @@ import { Color, DoubleSide, FrontSide, Mesh, MeshStandardMaterial, type Plane, S
 import { partDef } from '@kh/catalog';
 import type { ModelPart } from './models';
 import { PART_OPACITY, TRANSLUCENT, colorFor, highlightColor } from './palette';
-import { createTissueMaterial, setTissueCut, tissueLook } from './tissue';
-import { hasEpicardialFat, isSurfaceVessel, studioGeometry } from './studio';
+import { type TissueDetail, createTissueMaterial, setTissueCut, setTissueDetail, tissueLook } from './tissue';
+import { hasEpicardialFat, isSurfaceVessel, studioGeometry, useStudioVersion } from './studio';
 import type { StructureHighlight } from './highlight';
 import type { SchematicPart, SchematicShape } from './schematic';
 
@@ -175,9 +175,11 @@ interface PartViewProps {
   onHover: BodySceneProps['onHover'];
   /** Stüdyo geometrisi (yumuşatılmış atlas ağı); verilmezse özgün ağ. */
   studioGeo?: BufferGeometry;
+  /** Gölgelendirici ayrıntısı: görünen organlar 'full', odak dışı soluk yapılar 'lite'. */
+  detail: TissueDetail;
 }
 
-function PartView({ part, clip, visible, color, targetOpacity, emissiveColor, emissive, pulse, pickable, visuals, onPick, onHover, studioGeo }: PartViewProps) {
+function PartView({ part, clip, visible, color, targetOpacity, emissiveColor, emissive, pulse, pickable, visuals, onPick, onHover, studioGeo, detail }: PartViewProps) {
   const invalidate = useThree((s) => s.invalidate);
   // Gerçekçi doku malzemesi (yüzey kabartısı, damar ağı, ıslak film, kalpte epikard yağı); bkz. tissue.ts
   const material = useMemo(() => {
@@ -196,6 +198,11 @@ function PartView({ part, clip, visible, color, targetOpacity, emissiveColor, em
     }
     return m;
   }, [part.structure, part.label]);
+
+  useEffect(() => {
+    setTissueDetail(material, detail);
+    invalidate();
+  }, [material, detail, invalidate]);
 
   useEffect(() => {
     // Kesit: düzlemin önü kesilir; iç yüzler dolu bir kesit yüzeyi gibi çizilir ki organın içi görünsün.
@@ -342,6 +349,8 @@ function mutedColor(hex: string, theme: 'light' | 'dark'): string {
 export function BodyScene(props: BodySceneProps) {
   const { parts, schematic, visible, isVisible, highlights, focus, focusParts, skinMode, accent, reducedMotion, onPick, onHover, hidden, isolate, innerView, clip, theme, partLevel, muted, studio } = props;
   const visuals = useRef(new Map<string, Visual>());
+  // İşçiden yumuşatılmış ağ geldikçe yeniden çizilir (gelene kadar özgün ağ).
+  useStudioVersion();
   const skinRef = useRef<ShaderMaterial | null>(null);
   const [hovered, setHovered] = useState<{ partId: string; structure: string; whole: boolean } | null>(null);
   const all: AnyPart[] = useMemo(() => [...parts.filter((p) => p.structure !== 'skin'), ...schematic], [parts, schematic]);
@@ -382,7 +391,9 @@ export function BodyScene(props: BodySceneProps) {
             pickable={inFocus && visible && targetOpacity > 0.1}
             visuals={visuals}
             onPick={onPick}
-            studioGeo={studio && focus && inFocus && shown && 'geometry' in p ? studioGeometry(p, parts) : undefined}
+            studioGeo={studio && focus && inFocus && shown && 'geometry' in p ? (studioGeometry(p, parts) ?? undefined) : undefined}
+            // Organ odaktayken arkada neredeyse saydam duran yapılar hafif gölgelendiriciyle (görünür fark yok).
+            detail={focus && !inFocus ? 'lite' : 'full'}
             onHover={(info) => {
               const id = info?.partId ?? null;
               if ((hovered?.partId ?? null) !== id) setHovered(info ? { partId: info.partId, structure: info.structure, whole: !info.label || info.structure !== partLevel } : null);

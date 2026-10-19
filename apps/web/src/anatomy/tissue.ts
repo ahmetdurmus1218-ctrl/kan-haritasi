@@ -304,8 +304,13 @@ float khNoise(vec3 v) { vec3 g; return khNoiseGrad(v, g); }
 const COLOR = /* glsl */ `
 #include <color_fragment>
 vec3 khP = vKhPos * uKhFreqScale;
+#ifdef KH_LITE
+// Hafif kip (odak dışı / genel görünüm): gürültü yok, yalnızca renk ve ışık.
+float khM = 0.0;
+#else
 float khM = khNoise(khP * uKhMottleFreq);
-#ifndef KH_LOW
+#endif
+#if !defined(KH_LOW) && !defined(KH_LITE)
 khM = khM * 0.65 + 0.35 * khNoise(khP * uKhMottleFreq * 2.3 + 5.1);
 float khT = smoothstep(0.2, 0.62, khNoise(khP * uKhMottleFreq * 0.55 + 7.3));
 diffuseColor.rgb = mix(diffuseColor.rgb, uKhTint, khT * uKhTintAmount);
@@ -319,7 +324,11 @@ diffuseColor.rgb = mix(diffuseColor.rgb, uKhVein, clamp(khV1 * khVm + 0.55 * khV
 diffuseColor.rgb *= 1.0 + uKhMottle * khM;
 #ifdef KH_FAT
 // Epikard yağı: koroner damarların geçtiği oluklarda sarımsı, lobcuklu yağ (köşe başına uzaklıktan).
+#ifdef KH_LITE
+float khFatM = 0.85 * smoothstep(0.2, 0.9, vKhFat);
+#else
 float khFatM = 0.85 * smoothstep(0.2, 0.9, vKhFat + 0.22 * khNoise(khP * uKhMottleFreq * 3.0 + 2.0));
+#endif
 diffuseColor.rgb = mix(diffuseColor.rgb, uKhFat * (0.9 + 0.2 * khM), khFatM);
 #endif
 bool khCutFace = uKhCut > 0.5 && !gl_FrontFacing;
@@ -332,6 +341,7 @@ const NORMAL = /* glsl */ `
 {
   // Kesit yüzü düzleme (kameraya) bakar; sonra her yüzeye doğal kabartı eklenir.
   if (khCutFace) normal = vec3(0.0, 0.0, 1.0);
+  #ifndef KH_LITE
   vec3 khG1;
   khNoiseGrad(khP * uKhBumpFreq, khG1);
   vec3 khG = khG1;
@@ -347,6 +357,7 @@ const NORMAL = /* glsl */ `
   #endif
   vec3 khGv = (viewMatrix * vec4(khG * uKhBump * (khCutFace ? 0.3 : 1.0), 0.0)).xyz;
   normal = normalize(normal - (khGv - dot(khGv, normal) * normal));
+  #endif
 }
 `;
 
@@ -393,6 +404,8 @@ export type TissueMaterial = MeshPhysicalMaterial & { userData: { kh: TissueUnif
  * Gerçekçi doku malzemesi. `freqScale`: ağ ölçeklenerek çiziliyorsa (ör. atlas kesiti sahnesi) desenin
  * gerçek boyutu korunsun diye 1/ölçek verilir. Kesit gölgelendirmesi `setTissueCut` ile açılır.
  */
+export type TissueDetail = 'full' | 'low' | 'lite';
+
 export function createTissueMaterial(l: TissueLook, opts: { quality?: 'high' | 'low'; freqScale?: number; fat?: boolean } = {}): TissueMaterial {
   const low = (opts.quality ?? tissueQuality()) === 'low';
   const m = new MeshPhysicalMaterial({
@@ -425,9 +438,13 @@ export function createTissueMaterial(l: TissueLook, opts: { quality?: 'high' | '
     uKhFat: { value: new Color('#b98c3e') },
   };
   m.userData.kh = u;
+  m.userData.detail = low ? 'low' : 'full';
+  m.userData.base = { clearcoat: l.clearcoat, sheen: l.sheen, low };
   m.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
     Object.assign(shader.uniforms, u);
-    if (low) shader.fragmentShader = `#define KH_LOW\n${shader.fragmentShader}`;
+    const detail = m.userData.detail as TissueDetail;
+    if (detail === 'low') shader.fragmentShader = `#define KH_LOW\n${shader.fragmentShader}`;
+    if (detail === 'lite') shader.fragmentShader = `#define KH_LITE\n${shader.fragmentShader}`;
     // Epikard yağı: geometride köşe başına "khFat" (0–1) özniteliği varsa (bkz. fatAttribute).
     const fat = opts.fat ? '#define KH_FAT\n' : '';
     shader.fragmentShader = fat + shader.fragmentShader;
@@ -438,9 +455,27 @@ export function createTissueMaterial(l: TissueLook, opts: { quality?: 'high' | '
       .replace('#include <normal_fragment_maps>', NORMAL)
       .replace('#include <opaque_fragment>', RIM);
   };
-  m.customProgramCacheKey = () => `kh-tissue${low ? '-low' : ''}${opts.fat ? '-fat' : ''}`;
+  m.customProgramCacheKey = () => `kh-tissue-${m.userData.detail as string}${opts.fat ? '-fat' : ''}`;
   return m;
 }
+
+/**
+ * Ayrıntı düzeyi (kare hızı için): 'full' ekranda görünen organlar (genel görünüm, odak, kesit); 'lite'
+ * yalnızca organ odaktayken arkada neredeyse saydam duran soluk yapılar (gürültü, ıslak film ve ipeksilik
+ * yok — görünür fark yok, piksel maliyeti çok düşük); 'low' zayıf cihaz.
+ * Cihaz zayıfsa (ya da kare hızı düştüyse) 'full' istense de 'low' kullanılır. Her düzeyin gölgelendiricisi
+ * bir kez derlenir, sonra önbellekten gelir (geçiş anlık).
+ */
+export function setTissueDetail(m: TissueMaterial, detail: TissueDetail) {
+  const base = m.userData.base as { clearcoat: number; sheen: number; low: boolean };
+  const d: TissueDetail = detail === 'full' && base.low ? 'low' : detail;
+  if (m.userData.detail === d) return;
+  m.userData.detail = d;
+  m.clearcoat = d === 'lite' ? 0 : base.clearcoat;
+  m.sheen = d === 'lite' ? 0 : base.sheen;
+  m.needsUpdate = true;
+}
+
 
 /** Kesit gölgelendirmesi: arka yüzler (kırpma düzleminin açtığı iç) dolu kesit gibi çizilir. */
 export function setTissueCut(m: TissueMaterial, on: boolean) {

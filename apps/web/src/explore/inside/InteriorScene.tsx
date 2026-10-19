@@ -37,6 +37,8 @@ import {
   Object3D,
   type PerspectiveCamera,
   Plane,
+  Quaternion,
+  Matrix4,
   Shape,
   SphereGeometry,
   TorusGeometry,
@@ -49,7 +51,7 @@ import { Headlight, bumpySphere, rbcGeometry, rng, useAtmosphere, useDisposable 
 import type { ModelPart } from '../../anatomy/models';
 import { PART_OPACITY } from '../../anatomy/palette';
 import { type TissueMaterial, contentLook, createTissueMaterial, lumenLook, setTissueCut, tissueLook } from '../../anatomy/tissue';
-import { hasEpicardialFat, studioGeometry } from '../../anatomy/studio';
+import { hasEpicardialFat, studioGeometry, useStudioVersion } from '../../anatomy/studio';
 import { type AtlasSectionDef, type PartRef, LABEL_TR, VIEW_DIR, matchesRef, splitRef } from './atlas';
 
 /** Görünür alan: tuval boyutu ve panelin sağdan/alttan kapattığı piksel. */
@@ -96,8 +98,6 @@ export interface InteriorWorldProps {
 
 const TMP = new Object3D();
 const V = new Vector3();
-const W = new Vector3();
-const U = new Vector3();
 
 /** Lümen içinde geniş açı (endoskop hissi); nesne sahnelerinde dar açı. 3B vücut 35° ile çizilir. */
 export const WORLD_FOV = { lumen: 62, object: 38, body: 35 } as const;
@@ -249,6 +249,11 @@ function lumenCurve(shape: LumenSpec['shape']): CatmullRomCurve3 {
 
 /** Yarıçap profili: şekil × astar deseni × peristaltik dalga (s: 0–1 boy, th: açı). */
 function radiusAt(sp: LumenSpec, s: number, th: number, t: number, motion: number): number {
+  return Math.max(sp.radius * 0.2, staticRadius(sp, s, th) * waveFactor(sp, s, t, motion));
+}
+
+/** Zamanla değişmeyen kısım: şekil ve astar deseni (köşe başına bir kez hesaplanır). */
+function staticRadius(sp: LumenSpec, s: number, th: number): number {
   let r = sp.radius;
   if (sp.shape === 'sac') r *= 0.32 + 0.68 * Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, s))), 0.55);
   const L = sp.shape === 'sac' ? 6 : LENGTH;
@@ -269,12 +274,17 @@ function radiusAt(sp: LumenSpec, s: number, th: number, t: number, motion: numbe
     default:
       r *= 1 + 0.025 * Math.sin(th * 9 + s * 30) * Math.sin(s * 17);
   }
-  if (sp.pulse) r *= 1 + 0.07 * Math.pow(Math.max(0, Math.sin(2 * Math.PI * (t * 1.1 - s * 1.5))), 3);
-  else if (sp.wave > 0) {
+  return r;
+}
+
+/** Zamanla değişen kısım: peristaltik dalga ya da nabız — yalnızca boy konumuna (s) bağlı, halka başına bir kez. */
+function waveFactor(sp: LumenSpec, s: number, t: number, motion: number): number {
+  if (sp.pulse) return 1 + 0.07 * Math.pow(Math.max(0, Math.sin(2 * Math.PI * (t * 1.1 - s * 1.5))), 3);
+  if (sp.wave > 0) {
     const squeeze = Math.pow(Math.max(0, Math.sin(2 * Math.PI * (s * (sp.shape === 'sac' ? 1.5 : 3) - t * 0.22))), 6);
-    r *= 1 - sp.wave * motion * 0.38 * squeeze;
+    return 1 - sp.wave * motion * 0.38 * squeeze;
   }
-  return Math.max(sp.radius * 0.2, r);
+  return 1;
 }
 
 const CONTENT: Record<string, { color: string; size: [number, number]; opacity: number; geo: 'blob' | 'sphere' | 'rbc' | 'long' }> = {
@@ -300,6 +310,52 @@ interface Particle {
   size: number;
   role: 'flow' | 'absorb' | 'secrete' | 'o2' | 'co2';
   speed: number;
+}
+
+/**
+ * Düzenli ızgaranın (halka × çevre) normalleri: komşu köşelerin farkından (merkezi fark), üçgen dolaşma
+ * yönüyle aynı yönde. computeVertexNormals'ın kare başına maliyeti olmadan aynı yumuşak sonuç; çevrede
+ * ek yeri yok.
+ */
+function gridNormals(g: BufferGeometry, rings: number, radial: number) {
+  const p = (g.attributes.position as BufferAttribute).array as Float32Array;
+  let na = g.attributes.normal as BufferAttribute | undefined;
+  if (!na) {
+    na = new BufferAttribute(new Float32Array(p.length), 3);
+    g.setAttribute('normal', na);
+  }
+  const n = na.array as Float32Array;
+  const row = radial + 1;
+  for (let i = 0; i <= rings; i++) {
+    const i0 = Math.max(0, i - 1);
+    const i1 = Math.min(rings, i + 1);
+    for (let j = 0; j <= radial; j++) {
+      const jm = j === 0 ? radial - 1 : j - 1;
+      const jp = j === radial ? 1 : j + 1;
+      const a = (i1 * row + j) * 3;
+      const b = (i0 * row + j) * 3;
+      const c = (i * row + jp) * 3;
+      const d = (i * row + jm) * 3;
+      const ux = p[a]! - p[b]!;
+      const uy = p[a + 1]! - p[b + 1]!;
+      const uz = p[a + 2]! - p[b + 2]!;
+      const vx = p[c]! - p[d]!;
+      const vy = p[c + 1]! - p[d + 1]!;
+      const vz = p[c + 2]! - p[d + 2]!;
+      let x = uy * vz - uz * vy;
+      let y = uz * vx - ux * vz;
+      let z = ux * vy - uy * vx;
+      const l = Math.hypot(x, y, z) || 1;
+      x /= l;
+      y /= l;
+      z /= l;
+      const o = (i * row + j) * 3;
+      n[o] = x;
+      n[o + 1] = y;
+      n[o + 2] = z;
+    }
+  }
+  na.needsUpdate = true;
 }
 
 function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: SceneFocus; mode: InteriorMode; time: { current: number }; progress: number }) {
@@ -382,39 +438,80 @@ function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: 
     return out.copy(c).addScaledVector(nn, Math.cos(th) * rad).addScaledVector(bb, Math.sin(th) * rad);
   };
 
+  // Kare başına iş az olsun diye zamanla değişmeyen her şey bir kez hesaplanır: halka merkezi, köşenin
+  // radyal yönü ve astar deseninin yarıçapı; villus/silin merkeze bakan yönelimi. Her karede yalnızca halka
+  // başına peristaltik dalga (s'ye bağlı) çarpılır. Sonuç önceki hesapla birebir aynıdır.
+  const grid = useMemo(() => {
+    const n = (TUBULAR + 1) * (RADIAL + 1);
+    const center = new Float32Array(n * 3);
+    const dir = new Float32Array(n * 3);
+    const stat = new Float32Array(n);
+    for (let i = 0; i <= TUBULAR; i++) {
+      const s = i / TUBULAR;
+      const c = centers[i]!;
+      const nn = frames.normals[i]!;
+      const bb = frames.binormals[i]!;
+      for (let j = 0; j <= RADIAL; j++) {
+        const th = (j / RADIAL) * Math.PI * 2;
+        const k = i * (RADIAL + 1) + j;
+        center.set([c.x, c.y, c.z], k * 3);
+        dir.set([nn.x * Math.cos(th) + bb.x * Math.sin(th), nn.y * Math.cos(th) + bb.y * Math.sin(th), nn.z * Math.cos(th) + bb.z * Math.sin(th)], k * 3);
+        stat[k] = staticRadius(sp, s, th);
+      }
+    }
+    return { center, dir, stat, wave: new Float32Array(TUBULAR + 1) };
+  }, [centers, frames, sp]);
+  const liningPose = useMemo(
+    () =>
+      lining.map((v) => {
+        const i = Math.min(TUBULAR, Math.max(0, Math.round(v.s * TUBULAR)));
+        pointAt(v.s, v.th, 1, V);
+        const d = V.clone().sub(centers[i]!).normalize();
+        // Merkeze bakan yönelim (lookAt) sabittir; her karede yalnızca sallanma açısı eklenir.
+        TMP.position.copy(centers[i]!).addScaledVector(d, staticRadius(sp, v.s, v.th));
+        TMP.up.set(0, 1, 0);
+        TMP.lookAt(centers[i]!);
+        return { ring: i, c: centers[i]!, d, stat: staticRadius(sp, v.s, v.th), q: TMP.quaternion.clone(), sc: (sp.radius / 0.9) * v.len, ph: v.ph };
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lining, centers, sp],
+  );
+  const QX = useMemo(() => ({ q: new Quaternion(), x: new Vector3(1, 0, 0), m: new Matrix4(), s: new Vector3() }), []);
+
   const color = useMemo(() => new Color(), []);
   useFrame(() => {
     const t = time.current;
     const motion = mode.motion;
-    // Duvar
+    // Duvar: halka başına dalga × köşenin sabit yarıçapı, radyal yön boyunca.
+    const minR = sp.radius * 0.2;
+    for (let i = 0; i <= TUBULAR; i++) grid.wave[i] = waveFactor(sp, i / TUBULAR, t, motion);
     const pos = wall.attributes.position as BufferAttribute;
-    for (let i = 0; i <= TUBULAR; i++) {
-      const s = i / TUBULAR;
-      for (let j = 0; j <= RADIAL; j++) {
-        const th = (j / RADIAL) * Math.PI * 2;
-        pointAt(s, th, radiusAt(sp, s, th, t, motion), V);
-        pos.setXYZ(i * (RADIAL + 1) + j, V.x, V.y, V.z);
+    const pa = pos.array as Float32Array;
+    const { center, dir, stat, wave } = grid;
+    for (let i = 0, k = 0; i <= TUBULAR; i++) {
+      const w = wave[i]!;
+      for (let j = 0; j <= RADIAL; j++, k++) {
+        const r = Math.max(minR, stat[k]! * w);
+        const o = k * 3;
+        pa[o] = center[o]! + dir[o]! * r;
+        pa[o + 1] = center[o + 1]! + dir[o + 1]! * r;
+        pa[o + 2] = center[o + 2]! + dir[o + 2]! * r;
       }
     }
     pos.needsUpdate = true;
-    wall.computeVertexNormals();
-    // Astar
+    gridNormals(wall, TUBULAR, RADIAL);
+    // Astar: sabit yönelim × sallanma; konum dalgayla.
     const lm = lRef.current;
     if (lm) {
-      lining.forEach((v, k) => {
-        const R = radiusAt(sp, v.s, v.th, t, motion);
-        pointAt(v.s, v.th, R * 0.995, V);
-        pointAt(v.s, v.th, 0, W);
-        U.copy(W).sub(V).normalize().add(V);
-        TMP.position.copy(V);
-        TMP.up.set(0, 1, 0);
-        TMP.lookAt(U);
-        TMP.rotateX(Math.PI / 2 + Math.sin(t * (sp.lining === 'cilia' ? 9 : 1.4) + v.ph) * (sp.lining === 'cilia' ? 0.5 : 0.12));
-        const sc = (sp.radius / 0.9) * v.len;
-        TMP.scale.set(sc, sc, sc);
-        TMP.updateMatrix();
-        lm.setMatrixAt(k, TMP.matrix);
-      });
+      const cil = sp.lining === 'cilia';
+      for (let k = 0; k < liningPose.length; k++) {
+        const v = liningPose[k]!;
+        const R = Math.max(minR, v.stat * wave[v.ring]!) * 0.995;
+        V.copy(v.c).addScaledVector(v.d, R);
+        QX.q.setFromAxisAngle(QX.x, Math.PI / 2 + Math.sin(t * (cil ? 9 : 1.4) + v.ph) * (cil ? 0.5 : 0.12)).premultiply(v.q);
+        QX.m.compose(V, QX.q, QX.s.set(v.sc, v.sc, v.sc));
+        lm.setMatrixAt(k, QX.m);
+      }
       lm.instanceMatrix.needsUpdate = true;
     }
     // İçerik
@@ -990,7 +1087,9 @@ function AtlasPartMesh({ part, all, sel, plane, cut, ghost, lit, accent, time, r
   useFrame(() => {
     if (lit) mat.emissiveIntensity = 0.16 + 0.1 * (0.5 + 0.5 * Math.sin(time.current * 2.4));
   });
-  return <mesh geometry={studioGeometry(part, all)} matrixAutoUpdate={false} matrix={part.matrix} material={mat} renderOrder={ghost ? 5 : 0} />;
+  // Yumuşatılmış ağ işçide hazırlanır (organ odaklanınca önceden istenir); gelene kadar özgün ağ.
+  useStudioVersion();
+  return <mesh geometry={studioGeometry(part, all) ?? part.geometry} matrixAutoUpdate={false} matrix={part.matrix} material={mat} renderOrder={ghost ? 5 : 0} />;
 }
 
 const ORIGIN = new Vector3();

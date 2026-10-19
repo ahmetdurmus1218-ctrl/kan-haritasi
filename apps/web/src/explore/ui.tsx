@@ -23,17 +23,35 @@ export function Breadcrumb({ items, accent }: { items: Crumb[]; accent: string }
   }, [key]);
   return (
     <nav ref={ref} aria-label="Keşif seviyesi" className="pointer-events-auto flex min-w-0 items-center gap-x-1.5 gap-y-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] md:flex-wrap md:overflow-visible md:whitespace-normal">
+      {/* Telefonda yalnızca son iki seviye: üst çubukta vücut seçimi ve düğmelerle üst üste binmesin.
+          "…" bir üst seviyeye çıkar; masaüstünde bütün yol görünür. */}
+      {items.length > 2 && (
+        <span className="flex shrink-0 items-center gap-1.5 md:hidden">
+          <button
+            type="button"
+            onClick={items[items.length - 3]!.onClick}
+            disabled={!items[items.length - 3]!.onClick}
+            aria-label={`Üst seviye: ${items[items.length - 3]!.label}`}
+            className="min-h-[28px] rounded-sm px-0.5 text-fg-muted transition hover:text-fg"
+          >
+            <Caps>…</Caps>
+          </button>
+        </span>
+      )}
       {items.map((c, i) => {
         const last = i === items.length - 1;
+        const early = i < items.length - 2;
+        // Telefonda üst seviye adı kısaltılır (…), bulunulan seviye her zaman tam görünür.
+        const parent = i === items.length - 2;
         return (
-          <span key={`${i}-${c.label}`} className="flex shrink-0 items-center gap-1.5">
-            {i > 0 && <span className="font-mono text-[10.5px] text-fg-faint">/</span>}
+          <span key={`${i}-${c.label}`} className={`${early ? 'hidden md:flex' : 'flex'} ${parent ? 'min-w-0 shrink md:shrink-0' : 'shrink-0'} items-center gap-1.5`}>
+            {(i > 0 || items.length > 2) && <span className={`font-mono text-[10.5px] text-fg-faint ${i === 0 ? 'md:hidden' : ''}`}>/</span>}
             {c.onClick && !last ? (
-              <button type="button" onClick={c.onClick} className="min-h-[28px] rounded-sm text-fg-muted transition hover:text-fg">
+              <button type="button" onClick={c.onClick} title={c.label} className={`min-h-[28px] rounded-sm text-fg-muted transition hover:text-fg ${parent ? 'min-w-0 max-w-[6.5rem] truncate md:max-w-none' : ''}`}>
                 <Caps>{c.label}</Caps>
               </button>
             ) : (
-              <span aria-current={last ? 'location' : undefined} style={last ? { color: accent } : undefined} className={last ? '' : 'text-fg-muted'}>
+              <span aria-current={last ? 'location' : undefined} style={last ? { color: accent } : undefined} className={last ? '' : `text-fg-muted ${parent ? 'min-w-0 max-w-[6.5rem] truncate md:max-w-none' : ''}`}>
                 <Caps>{c.label}</Caps>
               </span>
             )}
