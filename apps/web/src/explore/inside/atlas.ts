@@ -45,6 +45,8 @@ export interface AtlasStage {
   flow?: boolean;
   /** Etiketlenecek bölümler (en fazla 6; verilmezse odak). */
   labels?: PartRef[];
+  /** Saydam kılıf bu basamakta opak çizilsin (dış yüzey basamakları: hemisfer, loblar). */
+  solid?: boolean;
 }
 
 export interface AtlasSectionDef {
@@ -134,16 +136,20 @@ export const ATLAS_SECTIONS: Record<string, AtlasSectionDef> = {
       urine: { focus: ['urinary-tract|renal-pelvis'], zoom: 0.75, labels: ['kidneys|papilla', 'urinary-tract|calyces', 'urinary-tract|renal-pelvis', 'urinary-tract|ureter'] },
     },
   },
+  // Atlas beyninde korteks lobları kapalı hacim değil, ince yüzey katmanlarıdır: kesit dolu dilim gibi
+  // görünmez. Bu yüzden "cam beyin": korteks ve ak madde saydam kılıf, derin gri cevher çekirdekleri,
+  // karıncıklar ve beyin sapı opak; hemisfer/lob basamaklarında korteks opak (dış yüzey).
   brain: {
     organ: 'brain',
     structures: ['brain'],
+    ghost: ['brain|frontal', 'brain|motor', 'brain|sensory', 'brain|parietal', 'brain|temporal', 'brain|auditory', 'brain|occipital', 'brain|insula', 'brain|cingulate', 'brain|olfactory', 'brain|white-matter'],
     view: 'anterior',
-    labels: ['brain|white-matter', 'brain|ventricles', 'brain|basal-nuclei', 'brain|thalamus', 'brain|corpus-callosum', 'brain|insula'],
+    labels: ['brain|ventricles', 'brain|thalamus', 'brain|basal-nuclei', 'brain|hippocampus', 'brain|corpus-callosum', 'brain|cerebellum'],
     stages: {
-      parenchyma: { depth: -0.05 },
-      csf: { focus: ['brain|ventricles'], zoom: 0.7, labels: ['brain|ventricles', 'brain|corpus-callosum', 'brain|thalamus'] },
-      hemisphere: { cut: false, zoom: 1, labels: ['brain|frontal', 'brain|parietal', 'brain|temporal', 'brain|occipital', 'brain|cerebellum'] },
-      lobe: { cut: false, focus: ['brain|frontal'], zoom: 0.8, labels: ['brain|frontal', 'brain|motor', 'brain|temporal'] },
+      parenchyma: { cut: false },
+      csf: { cut: false, focus: ['brain|ventricles'], zoom: 0.65, labels: ['brain|ventricles', 'brain|corpus-callosum', 'brain|thalamus', 'brain|midbrain'] },
+      hemisphere: { cut: false, solid: true, zoom: 1, labels: ['brain|frontal', 'brain|parietal', 'brain|temporal', 'brain|occipital', 'brain|cerebellum'] },
+      lobe: { cut: false, solid: true, focus: ['brain|frontal'], zoom: 0.8, labels: ['brain|frontal', 'brain|motor', 'brain|temporal'] },
     },
   },
   eyes: {

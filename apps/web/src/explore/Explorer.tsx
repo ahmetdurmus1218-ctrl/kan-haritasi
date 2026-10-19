@@ -1,7 +1,7 @@
 import { type ComponentType, type LazyExoticComponent, type RefObject, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CameraControls, type CameraControlsImpl } from '@react-three/drei';
-import { Box3, MathUtils, type PerspectiveCamera, Plane, PMREMGenerator, Sphere, Vector3 } from 'three';
+import { Box3, type Group, MathUtils, Object3D, type PerspectiveCamera, Plane, PMREMGenerator, Sphere, Vector3 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { type Sex, type SystemId, structureById, systemById, testByKey } from '@kh/catalog';
 import { interiorArchetype, interiorById, interiorFor, interiorProvenance, stagePersonal } from '@kh/analysis';
@@ -874,6 +874,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 
   const light = theme === 'light';
   const studio = !!structure || shownKey !== 'body';
+  const studioLit = (shownKey === 'body' && !!structure) || (!!shownLv && shownLv.scene.kind === 'interior' && !!shownLv.scene.atlas);
   // Vücut seviyesinin arayüzü (sistem menüsü, araçlar, bilgi paneli) yalnızca vücut sahnesinde; iç dünyada seviye paneli.
   const bodyUi = shownKey === 'body' && route.name !== 'interior';
   const navLevel = lv ? lv.level : structure ? 'organ' : system ? 'system' : 'body';
@@ -965,6 +966,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                   theme={theme}
                   partLevel={structure ?? null}
                   muted={muted}
+                  studio={!!structure}
                 />
                 {shown !== 'body' && SceneComp && insideState && (
                   <Suspense fallback={<ScenePending onChange={setScenePending} />}>
@@ -1002,11 +1004,18 @@ export function Explorer({ route }: { route: ExploreRoute }) {
           <CloudAnchor point={cloud && bodyUi ? cloud.point : null} refs={cloudRefs} cover={coverRef} />
           <CameraProbe rootRef={rootRef} subjectRef={subjectRef} />
         </SceneThemeContext>
-        {/* Atlas stüdyosunda (organ odakta / organın içi) koyu zemin: ışık temadan bağımsız, organın rengi soluklaşmasın. */}
-        <ambientLight intensity={light && !studio ? 0.5 : 0.2} />
-        <directionalLight position={[1.2, 2, 2.5]} intensity={light && !studio ? 1.25 : 1.05} />
-        <directionalLight position={[-1.5, 0.5, -2]} intensity={light && !studio ? 0.55 : 0.4} color="#ffd8cc" />
-        <Env intensity={light && !studio ? 0.95 : 0.7} />
+        {/* Atlas stüdyosu (organ odakta / atlas kesiti): kameraya bağlı ana, dolgu ve arka kenar ışığı; koyu zemin.
+            Diğer sahnelerde genel ışık (temaya göre). */}
+        {studioLit ? (
+          <StudioLights />
+        ) : (
+          <>
+            <ambientLight intensity={light && !studio ? 0.5 : 0.2} />
+            <directionalLight position={[1.2, 2, 2.5]} intensity={light && !studio ? 1.25 : 1.05} />
+            <directionalLight position={[-1.5, 0.5, -2]} intensity={light && !studio ? 0.55 : 0.4} color="#ffd8cc" />
+          </>
+        )}
+        <Env intensity={studioLit ? 0.32 : light && !studio ? 0.95 : 0.7} />
         <CameraControls ref={setControls} makeDefault minDistance={0.05} maxDistance={6} smoothTime={0.55} draggingSmoothTime={0.1} dollySpeed={0.6} />
       </Canvas>
 
@@ -1306,6 +1315,35 @@ const SURFACE_COMPANIONS: Record<string, string[]> = {
   liver: ['gallbladder'],
   gallbladder: ['liver'],
 };
+
+/**
+ * Stüdyo ışığı (tıbbi atlas fotoğrafı gibi): kameraya bağlı; organ hangi yönden görülürse görülsün sol üstten
+ * sıcak ana ışık, sağdan soğuk dolgu, arkadan kenar ışığı (organın siluetini zeminden ayırır).
+ */
+function StudioLights() {
+  const camera = useThree((s) => s.camera);
+  const rig = useRef<Group>(null);
+  useFrame(() => {
+    const g = rig.current;
+    if (!g) return;
+    g.position.copy(camera.position);
+    g.quaternion.copy(camera.quaternion);
+  });
+  const target = useMemo(() => {
+    const o = new Object3D();
+    o.position.set(0, 0, -2);
+    return o;
+  }, []);
+  return (
+    <group ref={rig}>
+      <primitive object={target} />
+      <directionalLight position={[-1.4, 1.8, 0.6]} intensity={2.6} color="#fff0e4" target={target} />
+      <directionalLight position={[1.8, 0.1, 0.4]} intensity={0.5} color="#c9d8ff" target={target} />
+      <directionalLight position={[0.8, 1.4, -5]} intensity={2.2} color="#ffd2c4" target={target} />
+      <hemisphereLight args={['#ffe8e0', '#1a1010', 0.18]} />
+    </group>
+  );
+}
 
 /** Oda ışığı ortamı (ağ isteği yok; sahne içinde üretilir). */
 function Env({ intensity }: { intensity: number }) {

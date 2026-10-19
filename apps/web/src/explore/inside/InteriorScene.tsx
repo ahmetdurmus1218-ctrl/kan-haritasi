@@ -45,11 +45,11 @@ import {
 } from 'three';
 import type { InteriorMode, SceneFocus, SceneSpec } from '@kh/analysis';
 import { partDef, structureById } from '@kh/catalog';
-import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Headlight, bumpySphere, rbcGeometry, rng, useAtmosphere, useDisposable } from './kit';
 import type { ModelPart } from '../../anatomy/models';
 import { PART_OPACITY } from '../../anatomy/palette';
 import { type TissueMaterial, contentLook, createTissueMaterial, lumenLook, setTissueCut, tissueLook } from '../../anatomy/tissue';
+import { hasEpicardialFat, studioGeometry } from '../../anatomy/studio';
 import { type AtlasSectionDef, type PartRef, LABEL_TR, VIEW_DIR, matchesRef, splitRef } from './atlas';
 
 /** Görünür alan: tuval boyutu ve panelin sağdan/alttan kapattığı piksel. */
@@ -903,13 +903,13 @@ const refsMatch = (p: ModelPart, refs: PartRef[] | undefined) => !!refs?.some((r
 /** Kesitte çizilecek parçalar: organ (tek tarafı), yakınındaki bağlam yapıları ve saydam kılıf. */
 export function selectAtlasParts(def: AtlasSectionDef, parts: ModelPart[]): AtlasSelection | null {
   const sideOk = (b: Box3) => !def.side || (def.side === 'right' ? b.getCenter(V).x < 0 : b.getCenter(V).x > 0);
-  const main = parts.filter((p) => def.structures.includes(p.structure) && (!def.only?.[p.structure] || (p.label !== null && def.only[p.structure]!.includes(p.label))) && sideOk(p.box));
+  const main = parts.filter((p) => def.structures.includes(p.structure) && (!def.only?.[p.structure] || (p.label !== null && def.only[p.structure]!.includes(p.label))) && !refsMatch(p, def.ghost) && sideOk(p.box));
   if (!main.length) return null;
   const box = new Box3();
   for (const p of main) box.union(p.box);
   const near = box.clone().expandByVector(box.getSize(new Vector3()).multiplyScalar(0.35));
   const context = parts.filter((p) => !main.includes(p) && refsMatch(p, def.context) && near.intersectsBox(p.box));
-  const ghost = parts.filter((p) => refsMatch(p, def.ghost));
+  const ghost = parts.filter((p) => refsMatch(p, def.ghost) && sideOk(p.box));
   const frame = box.clone();
   for (const p of ghost) frame.union(p.box);
   const radius = frame.getSize(new Vector3()).length() / 2;
@@ -927,32 +927,6 @@ function centroidOf(parts: ModelPart[], sel: AtlasSelection, out: Vector3): Vect
   const b = new Box3();
   for (const p of parts) b.union(p.box);
   return b.getCenter(out).sub(sel.center).multiplyScalar(sel.scale);
-}
-
-const smoothCache = new WeakMap<BufferGeometry, BufferGeometry>();
-/**
- * Atlas ağları sadeleştirilmiş ve nicemlenmiştir; yakın planda yüzeyler köşeli görünmesin diye aynı
- * konumdaki köşeler birleştirilip yumuşak normaller hesaplanır (bir kez; oturum boyunca önbellekte).
- */
-function smoothGeometry(part: ModelPart): BufferGeometry {
-  let g = smoothCache.get(part.geometry);
-  if (!g) {
-    // Nicemlenmiş / iç içe (interleaved) konumlar düz Float32 dizisine açılır.
-    const pos = part.geometry.attributes.position!;
-    const flat = new Float32Array(pos.count * 3);
-    for (let i = 0; i < pos.count; i++) {
-      flat[i * 3] = pos.getX(i);
-      flat[i * 3 + 1] = pos.getY(i);
-      flat[i * 3 + 2] = pos.getZ(i);
-    }
-    const src = new BufferGeometry();
-    src.setAttribute('position', new BufferAttribute(flat, 3));
-    if (part.geometry.index) src.setIndex(Array.from(part.geometry.index.array));
-    g = mergeVertices(src, 1e-6);
-    g.computeVertexNormals();
-    smoothCache.set(part.geometry, g);
-  }
-  return g;
 }
 
 /**
@@ -990,12 +964,12 @@ function anchorOn(ps: ModelPart[], sel: AtlasSelection, dir: Vector3, plane: num
   return best;
 }
 
-function AtlasPartMesh({ part, sel, plane, cut, ghost, lit, accent, time, rank }: { part: ModelPart; sel: AtlasSelection; plane: Plane; cut: boolean; ghost: boolean; lit: boolean; accent: string; time: { current: number }; rank: number }) {
+function AtlasPartMesh({ part, all, sel, plane, cut, ghost, lit, accent, time, rank }: { part: ModelPart; all: ModelPart[]; sel: AtlasSelection; plane: Plane; cut: boolean; ghost: boolean; lit: boolean; accent: string; time: { current: number }; rank: number }) {
   const key = `${part.structure}|${part.label ?? ''}`;
   const media = PART_OPACITY[key] !== undefined && /cornea|aqueous|vitreous|conjunctiva/.test(key);
   const opacity = ghost ? 0.2 : media ? PART_OPACITY[key]! : cut ? 1 : (PART_OPACITY[key] ?? 1);
   const mat = useDisposable(() => {
-    const m = createTissueMaterial(tissueLook(part.structure, part.label), { freqScale: 1 / sel.scale });
+    const m = createTissueMaterial(tissueLook(part.structure, part.label), { freqScale: 1 / sel.scale, fat: hasEpicardialFat(part.structure, part.label) });
     m.side = ghost ? FrontSide : DoubleSide;
     return m;
   }, [part.id, sel.scale, ghost]) as TissueMaterial;
@@ -1016,7 +990,7 @@ function AtlasPartMesh({ part, sel, plane, cut, ghost, lit, accent, time, rank }
   useFrame(() => {
     if (lit) mat.emissiveIntensity = 0.16 + 0.1 * (0.5 + 0.5 * Math.sin(time.current * 2.4));
   });
-  return <mesh geometry={smoothGeometry(part)} matrixAutoUpdate={false} matrix={part.matrix} material={mat} renderOrder={ghost ? 5 : 0} />;
+  return <mesh geometry={studioGeometry(part, all)} matrixAutoUpdate={false} matrix={part.matrix} material={mat} renderOrder={ghost ? 5 : 0} />;
 }
 
 const ORIGIN = new Vector3();
@@ -1181,16 +1155,15 @@ function AtlasView({ def, stage, parts, focus: _focus, time, accent }: { def: At
   }, [labelKey, all, sel, dir, cut, target, stage]);
   return (
     <group>
-      <directionalLight position={[-3, 1.5, -3]} intensity={0.45} color="#ffc8b8" />
       <group scale={sel.scale} position={sel.center.clone().multiplyScalar(-sel.scale)}>
         {sel.main.map((p) => (
-          <AtlasPartMesh key={p.id} part={p} sel={sel} plane={plane} cut={cut} ghost={false} lit={refsMatch(p, st.focus)} accent={accent} time={time} rank={rank.get(p.id) ?? 0} />
+          <AtlasPartMesh key={p.id} part={p} all={parts} sel={sel} plane={plane} cut={cut} ghost={false} lit={refsMatch(p, st.focus)} accent={accent} time={time} rank={rank.get(p.id) ?? 0} />
         ))}
         {sel.context.map((p) => (
-          <AtlasPartMesh key={p.id} part={p} sel={sel} plane={plane} cut={cut} ghost={false} lit={refsMatch(p, st.focus)} accent={accent} time={time} rank={rank.get(p.id) ?? 0} />
+          <AtlasPartMesh key={p.id} part={p} all={parts} sel={sel} plane={plane} cut={cut} ghost={false} lit={refsMatch(p, st.focus)} accent={accent} time={time} rank={rank.get(p.id) ?? 0} />
         ))}
         {sel.ghost.map((p) => (
-          <AtlasPartMesh key={p.id} part={p} sel={sel} plane={plane} cut={false} ghost lit={false} accent={accent} time={time} rank={0} />
+          <AtlasPartMesh key={p.id} part={p} all={parts} sel={sel} plane={plane} cut={false} ghost={!st.solid} lit={refsMatch(p, st.focus)} accent={accent} time={time} rank={0} />
         ))}
       </group>
       {flow && st.flow && <instancedMesh ref={pRef} args={[pGeo, pMat, n]} frustumCulled={false} />}
@@ -1238,7 +1211,7 @@ export function InteriorWorld(props: InteriorWorldProps) {
     <WorldContext value={ctx}>
       <group>
         {lumenLike && <Headlight intensity={3} distance={10} />}
-        <pointLight position={[0, 2, 3]} intensity={lumenLike ? 0.5 : props.atlas ? 0.5 : 1.2} distance={12} decay={1.3} color="#ffe8e0" />
+        {!props.atlas && <pointLight position={[0, 2, 3]} intensity={lumenLike ? 0.5 : 1.2} distance={12} decay={1.3} color="#ffe8e0" />}
         <Scene {...props} />
       </group>
     </WorldContext>

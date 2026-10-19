@@ -79,33 +79,35 @@ const SEROSA = { clearcoat: 0.55, sheen: 0.35, roughness: 0.55, veinAmount: 0.38
 /** Kapsüllü dolu organ (karaciğer, böbrek, dalak). */
 const CAPSULE = { clearcoat: 0.7, sheen: 0.1, roughness: 0.38, bump: 0.08, bumpFreq: 260, mottle: 0.12, mottleFreq: 40, rimAmount: 0.05 };
 
-const ARTERY = look({ color: '#a3222a', clearcoat: 0.6, roughness: 0.35, bump: 0.04, mottle: 0.05, rim: '#ff5a50', rimAmount: 0.1, cut: '#c4535a' });
-const VEIN = look({ color: '#3a4f92', clearcoat: 0.55, roughness: 0.38, bump: 0.04, mottle: 0.05, rim: '#7a8cff', rimAmount: 0.08, cut: '#5a3a6a' });
+// Atlas geleneği: atardamarlar kırmızı, toplardamarlar (ve oksijensiz kan taşıyan pulmoner arterler) mavi.
+const ARTERY = look({ color: '#a01f27', clearcoat: 0.7, roughness: 0.36, bump: 0.04, mottle: 0.08, rim: '#ff5a50', rimAmount: 0.1, cut: '#c4535a' });
+const VEIN = look({ color: '#2e467f', clearcoat: 0.65, roughness: 0.38, bump: 0.04, mottle: 0.08, rim: '#7a8cff', rimAmount: 0.08, cut: '#5a3a6a' });
 
 const STRUCTURE_LOOKS: Record<string, TissueLook> = {
-  heart: look({ color: '#741d1b', ...SEROSA, clearcoat: 0.35, sheen: 0.12, bump: 0.06, bumpFreq: 110, veinAmount: 0.3, vein: '#4a0f14', veinFreq: 30, mottle: 0.1, tint: '#d9b766', tintAmount: 0.14, cut: '#9a3330', rim: '#ff5a48' }),
+  // Kalp: koyu kırmızı-kahve miyokard, ince yüzey damarları; epikard yağı damar oluklarında (KH_FAT).
+  heart: look({ color: '#6e1c1a', ...SEROSA, bump: 0.03, bumpFreq: 260, mottle: 0.12, mottleFreq: 35, tintAmount: 0, veinAmount: 0.35, vein: '#3d0b10', veinFreq: 34, clearcoat: 0.45, sheen: 0.1, roughness: 0.5, cut: '#9a3330', rim: '#ff5a48' }),
   'coronary-arteries': ARTERY,
-  aorta: look({ color: '#c99a8a', clearcoat: 0.5, roughness: 0.4, bump: 0.05, mottle: 0.06, veinAmount: 0.15, cut: '#d9b8a8' }),
+  aorta: ARTERY,
   'carotid-arteries': ARTERY,
   'abdominal-vessels': ARTERY,
   'renal-vessels': ARTERY,
   'eye-vessels': ARTERY,
   'limb-vessels': ARTERY,
   veins: VEIN,
-  lungs: look({ color: '#d4908f', roughness: 0.55, clearcoat: 0.3, sheen: 0.4, sheenColor: '#ffe0e0', bump: 0.14, bumpFreq: 210, mottle: 0.16, mottleFreq: 45, tint: '#5d4f55', tintAmount: 0.16, veinAmount: 0.12, vein: '#7a3048', cut: '#c27a7e' }),
+  lungs: look({ color: '#b9616a', roughness: 0.5, clearcoat: 0.4, sheen: 0.08, sheenColor: '#ffe0e0', bump: 0.1, bumpFreq: 210, mottle: 0.16, mottleFreq: 45, tint: '#4f3f48', tintAmount: 0.2, veinAmount: 0.4, vein: '#5e1f3a', cut: '#c27a7e' }),
   airways: look({ color: '#e3c9b8', roughness: 0.5, clearcoat: 0.3, bump: 0.18, bumpFreq: 120, mottle: 0.08, cut: '#e9d6c8' }),
   liver: look({ color: '#6b271e', ...CAPSULE, tint: '#4a1a14', tintAmount: 0.18, cut: '#7e3326' }),
   gallbladder: look({ color: '#4c7438', clearcoat: 0.8, roughness: 0.3, sheen: 0.2, sheenColor: '#d8f0c0', bump: 0.05, veinAmount: 0.18, vein: '#7a3a2a', cut: '#6a8a4a' }),
-  pancreas: look({ color: '#dcae7e', roughness: 0.55, clearcoat: 0.35, bump: 0.32, bumpFreq: 150, mottle: 0.12, mottleFreq: 70, tint: '#e8c89a', tintAmount: 0.25, veinAmount: 0.1, cut: '#e2bc90' }),
-  'small-intestine': look({ color: '#d58c78', ...SEROSA, cut: '#c46a66' }),
-  'large-intestine': look({ color: '#c68a6c', ...SEROSA, tint: '#e0c07a', tintAmount: 0.15, cut: '#b86a5e' }),
-  stomach: look({ color: '#cf8775', ...SEROSA, cut: '#c06a64' }),
-  esophagus: look({ color: '#c47e72', ...SEROSA, veinAmount: 0.18, cut: '#b8686a' }),
+  pancreas: look({ color: '#d09447', roughness: 0.55, clearcoat: 0.35, bump: 0.32, bumpFreq: 150, mottle: 0.12, mottleFreq: 70, tint: '#e2b25e', tintAmount: 0.3, veinAmount: 0.12, cut: '#e2bc90' }),
+  'small-intestine': look({ color: '#c4644e', ...SEROSA, sheen: 0.15, cut: '#c46a66' }),
+  'large-intestine': look({ color: '#b8624a', ...SEROSA, sheen: 0.15, tint: '#e0c07a', tintAmount: 0.15, cut: '#b86a5e' }),
+  stomach: look({ color: '#bb5a52', ...SEROSA, sheen: 0.15, cut: '#c06a64' }),
+  esophagus: look({ color: '#b5605a', ...SEROSA, sheen: 0.15, veinAmount: 0.18, cut: '#b8686a' }),
   kidneys: look({ color: '#78291f', ...CAPSULE, mottle: 0.1, cut: '#8a3428' }),
   'urinary-tract': look({ color: '#d7b0a0', clearcoat: 0.5, sheen: 0.3, roughness: 0.45, bump: 0.08, veinAmount: 0.25, cut: '#e0c0b0' }),
   prostate: look({ color: '#c08680', roughness: 0.5, clearcoat: 0.4, bump: 0.16, bumpFreq: 200, mottle: 0.1, veinAmount: 0.15, cut: '#caa098' }),
   // Kesitte gri cevher (korteks, çekirdekler) koyu pembe-gri, ak madde açık: atlas kesitlerindeki karşıtlık.
-  brain: look({ color: '#d3a399', roughness: 0.5, clearcoat: 0.45, sheen: 0.3, sheenColor: '#ffe6e0', bump: 0.14, bumpFreq: 170, mottle: 0.1, veinAmount: 0.5, veinFreq: 26, vein: '#9a1f2a', cut: '#a77f78' }),
+  brain: look({ color: '#c4877c', roughness: 0.5, clearcoat: 0.45, sheen: 0.12, sheenColor: '#ffe6e0', bump: 0.14, bumpFreq: 170, mottle: 0.1, veinAmount: 0.65, veinFreq: 26, vein: '#8a1520', cut: '#a77f78' }),
   'spinal-cord': look({ color: '#e9dcc2', roughness: 0.5, clearcoat: 0.4, bump: 0.06, veinAmount: 0.2, cut: '#efe4d0' }),
   spleen: look({ color: '#56202f', ...CAPSULE, cut: '#6a2a3a' }),
   thymus: look({ color: '#d4ae94', roughness: 0.55, clearcoat: 0.3, bump: 0.25, bumpFreq: 130, mottle: 0.12, tint: '#e8cc9a', tintAmount: 0.3, cut: '#dab89e' }),
@@ -156,9 +158,11 @@ const PART_LOOKS: Record<string, Partial<TissueLook>> = {
   'lungs|hilum': { color: '#c08486', tintAmount: 0 },
   'airways|tracheal-rings': { color: '#efe2d0', bump: 0.06 },
   'airways|bronchial-cartilage': { color: '#efe2d0', bump: 0.06 },
-  'brain|white-matter': { color: '#e8dccb', veinAmount: 0.05, bump: 0.04, cut: '#f6f0e6' },
-  'brain|corpus-callosum': { color: '#eee4d4', veinAmount: 0.02, bump: 0.03, cut: '#f2ebde' },
-  'brain|ventricles': { color: '#6fa6c6', clearcoat: 0.9, roughness: 0.2, veinAmount: 0, bump: 0.02, rim: '#cfeaff', rimAmount: 0.12, cut: '#7fb4d2' },
+  // Ak madde dıştan bakışta korteks örtüsü altında kalır (atlas ağında kıvrım aralarından görünür):
+  // dış yüzü korteks tonunda, kesit yüzü beyaz çizilir — kesitte gri/ak madde karşıtlığı.
+  'brain|white-matter': { color: '#bb8077', veinAmount: 0.35, cut: '#f6f0e6' },
+  'brain|corpus-callosum': { color: '#ece0d0', veinAmount: 0.03, bump: 0.03, cut: '#f2ebde' },
+  'brain|ventricles': { color: '#4f8fcf', clearcoat: 0.9, roughness: 0.2, veinAmount: 0, bump: 0.02, rim: '#cfeaff', rimAmount: 0.12, cut: '#7fb4d2' },
   'brain|thalamus': { color: '#b98a80', veinAmount: 0.15, cut: '#a87e76' },
   'brain|basal-nuclei': { color: '#b5877d', veinAmount: 0.15, cut: '#a07870' },
   'brain|hippocampus': { color: '#c99588', veinAmount: 0.2 },
@@ -195,7 +199,7 @@ const PART_LOOKS: Record<string, Partial<TissueLook>> = {
   'prostate|transition': { color: '#cc9690' },
   'prostate|central': { color: '#b87c7a' },
   'prostate|ducts': { color: '#ead8a0', bump: 0.03 },
-  'large-intestine|cecum': { color: '#c98e70' },
+  'large-intestine|cecum': { color: '#b05e48' },
   'bones|teeth': { color: '#f6f1e4', clearcoat: 0.8, roughness: 0.25, bump: 0.02, tintAmount: 0 },
   'breasts|fat': { color: '#f0d8b4' },
   'breasts|lobes': { color: '#e0a8a0' },

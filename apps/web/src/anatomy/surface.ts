@@ -5,14 +5,16 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
  * Atlas yüzeylerini yakın plana hazırlar. HRA ağları sadeleştirilmiş ve nicemlenmiştir; yakından köşeli
  * görünürler. Burada (1) nicemlenmiş konumlar dünya koordinatına (metre) açılır, (2) aynı konumdaki köşeler
  * birleştirilir, (3) hacmi küçültmeyen Taubin yumuşatması uygulanır (λ/μ adımları; şekil ve oran korunur),
- * (4) yumuşak normaller hesaplanır. Sonuç dünya koordinatındadır (birim matrisle çizilir).
+ * (4) yumuşak normaller hesaplanır. `matrix` verilirse sonuç dünya koordinatındadır (birim matrisle çizilir);
+ * null ise ağın kendi (yerel) koordinatında kalır ve aynı dünya matrisiyle çizilir.
  */
-export function smoothWorldGeometry(src: BufferGeometry, matrix: Matrix4, iterations = 6): BufferGeometry {
+export function smoothWorldGeometry(src: BufferGeometry, matrix: Matrix4 | null, iterations = 6): BufferGeometry {
   const pos = src.attributes.position!;
   const flat = new Float32Array(pos.count * 3);
   const v = new Vector3();
   for (let i = 0; i < pos.count; i++) {
-    v.fromBufferAttribute(pos, i).applyMatrix4(matrix);
+    v.fromBufferAttribute(pos, i);
+    if (matrix) v.applyMatrix4(matrix);
     flat[i * 3] = v.x;
     flat[i * 3 + 1] = v.y;
     flat[i * 3 + 2] = v.z;
@@ -77,7 +79,7 @@ export function smoothWorldGeometry(src: BufferGeometry, matrix: Matrix4, iterat
  * uzaklığından. Gerçek kalpte yağ, koroner damarların geçtiği oluklarda (atriyoventriküler ve
  * interventriküler oluk) toplanır. `near` içindeyse 1, `far` ötesinde 0 (metre).
  */
-export function addFatAttribute(g: BufferGeometry, vessels: Float32Array, near = 0.004, far = 0.013) {
+export function addFatAttribute(g: BufferGeometry, vessels: Float32Array, near = 0.004, far = 0.013, matrix: Matrix4 | null = null) {
   const cell = far;
   const grid = new Map<string, number[]>();
   const key = (x: number, y: number, z: number) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
@@ -89,10 +91,11 @@ export function addFatAttribute(g: BufferGeometry, vessels: Float32Array, near =
   }
   const p = g.attributes.position!;
   const out = new Float32Array(p.count);
+  const w = new Vector3();
   for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i);
-    const y = p.getY(i);
-    const z = p.getZ(i);
+    w.fromBufferAttribute(p, i);
+    if (matrix) w.applyMatrix4(matrix);
+    const { x, y, z } = w;
     const cx = Math.floor(x / cell);
     const cy = Math.floor(y / cell);
     const cz = Math.floor(z / cell);
@@ -129,4 +132,14 @@ export function worldPoints(parts: Array<{ geometry: BufferGeometry; matrix: Mat
     }
   }
   return out;
+}
+
+/** Yüzeyi normalleri boyunca `d` kadar şişirir (ağın kendi biriminde). */
+export function inflateGeometry(g: BufferGeometry, d: number) {
+  const p = g.attributes.position!;
+  const n = g.attributes.normal!;
+  for (let i = 0; i < p.count; i++) p.setXYZ(i, p.getX(i) + n.getX(i) * d, p.getY(i) + n.getY(i) * d, p.getZ(i) + n.getZ(i) * d);
+  p.needsUpdate = true;
+  g.computeBoundingBox();
+  g.computeBoundingSphere();
 }
