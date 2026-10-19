@@ -55,7 +55,7 @@ export function ImagesPage() {
             const region = st.region ? regionByKey.get(st.region)?.label : undefined;
             return (
               <li key={st.key}>
-                <button type="button" className="flex w-full items-start gap-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-3.5 text-left transition hover:border-accent/50" onClick={() => go({ name: 'document', id: st.head.id })} data-testid="image-study">
+                <button type="button" className="flex w-full items-start gap-3 card p-3.5 text-left transition hover:border-accent/50" onClick={() => go({ name: 'document', id: st.head.id })} data-testid="image-study">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-high/25 bg-high/8 text-high">
                     <ScanIcon size={19} />
                   </span>

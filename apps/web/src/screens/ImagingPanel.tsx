@@ -398,7 +398,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
         </section>
 
         {/* Belge bilgileri */}
-        <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Belge bilgileri">
+        <section className="space-y-3 card p-4" aria-label="Belge bilgileri">
           <div className="flex items-center justify-between">
             <p className="label-caps">Belge bilgileri</p>
             {saved && (
@@ -521,7 +521,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           </div>
 
           {mode === 'reading' ? (
-            <div className="rounded-2xl border border-ink-600/60 bg-ink-850/60">
+            <div className="card">
               <ExtractingView progress={progress} kind={info.kind} onCancel={cancelOcr} />
             </div>
           ) : mode === 'editing' ? (
@@ -646,12 +646,12 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
           </p>
         )}
 
-        <details className="rounded-2xl border border-ink-600/60 bg-ink-850/40 p-4">
+        <details className="card p-4">
           <summary className="cursor-pointer text-sm font-medium text-fg">Daha fazla bilgi · yöntem, doktora sorular{dicom ? ', DICOM bilgileri' : ''}</summary>
           <div className="mt-4 space-y-4">
         {/* DICOM bilgileri */}
         {dicom && (
-          <section className="rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Görüntü bilgileri">
+          <section className="card p-4" aria-label="Görüntü bilgileri">
             <p className="label-caps mb-2">Görüntü bilgileri (DICOM)</p>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
               {(
@@ -684,14 +684,14 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
         )}
 
         {about && (
-          <section className="rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Yöntem hakkında">
+          <section className="card p-4" aria-label="Yöntem hakkında">
             <p className="label-caps mb-1.5">{about.name} — temelde nasıl çalışır</p>
             <p className="text-sm leading-relaxed text-fg-muted">{about.how}</p>
             <p className="mt-2 text-xs text-fg-faint">{about.radiation}</p>
           </section>
         )}
 
-        <section className="rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Doktora sorulabilecekler">
+        <section className="card p-4" aria-label="Doktora sorulabilecekler">
           <p className="label-caps mb-2">Doktoruna sorabileceklerin</p>
           <ul className="list-disc space-y-1 pl-5 text-sm text-fg-muted">
             {IMAGING_QUESTIONS.map((q) => (

@@ -63,7 +63,7 @@ export function Banner({ tone = 'info', children }: { tone?: 'info' | 'warn' | '
   }[tone];
   const color = { info: 'text-accent', warn: 'text-high', error: 'text-danger' }[tone];
   return (
-    <div role={tone === 'error' ? 'alert' : 'status'} className={`flex gap-3 rounded-xl border px-3.5 py-3 text-sm ${styles}`}>
+    <div role={tone === 'error' ? 'alert' : 'status'} className={`flex gap-3 rounded-2xl border px-4 py-3 text-sm ${styles}`}>
       <span className={`mt-0.5 shrink-0 ${color}`}>{tone === 'info' ? <InfoIcon size={16} /> : <AlertIcon size={16} />}</span>
       <div className="min-w-0 leading-relaxed">{children}</div>
     </div>

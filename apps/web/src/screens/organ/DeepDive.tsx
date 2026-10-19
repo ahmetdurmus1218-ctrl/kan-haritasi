@@ -67,7 +67,7 @@ export function DeepDive({ v, model, trail }: { v: OrganView; model: HealthModel
         <Breadcrumb organId={v.node.id} trail={valid} current={valid.length ? undefined : 'İçine gir'} />
       </div>
 
-      <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label="Burada ne var?">
+      <section className="space-y-3 card p-4" aria-label="Burada ne var?">
         <div className="flex flex-wrap items-center gap-2">
           <LevelBadge node={current} />
           <span className="rounded-md border border-ink-600 px-1.5 py-0.5 text-[11px] text-fg-faint">GENEL ANATOMİ</span>
@@ -131,7 +131,7 @@ export function DeepDive({ v, model, trail }: { v: OrganView; model: HealthModel
               <h2 className="label-caps">{title === 'Bölümleri' || title.startsWith('Dokusu') ? `Daha içinde ne var? · ${title}` : title}</h2>
               <ul className="space-y-2">
                 {items.map(({ node, rel, note }) => (
-                  <li key={`${rel}-${node.id}`} className="rounded-2xl border border-ink-600/60 bg-ink-850/40 p-3.5" data-testid="deep-child" data-node={node.id}>
+                  <li key={`${rel}-${node.id}`} className="card p-3.5" data-testid="deep-child" data-node={node.id}>
                     <div className="flex flex-wrap items-center gap-2">
                       <LevelBadge node={node} />
                       <span className="text-[11px] text-fg-faint">

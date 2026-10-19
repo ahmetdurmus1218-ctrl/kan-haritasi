@@ -78,7 +78,7 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
           <h2 id="ne-degisti" className="mb-3 text-sm font-medium text-fg-muted">
             Ne değişti?
           </h2>
-          <ul className="divide-y divide-ink-700 rounded-2xl border border-ink-600/60 bg-ink-850/60">
+          <ul className="divide-y divide-ink-700 card">
             {changes.map((c, i) => (
               <li key={i}>
                 <button type="button" onClick={() => go(c.route)} className="flex w-full items-center gap-3 px-4 py-3 text-left">
@@ -144,7 +144,7 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
             Rapor geçmişi
           </h2>
           {years.map(({ year, items, kinds }, yi) => (
-          <details key={year} open={yi === 0} className="group mb-3 rounded-2xl border border-ink-600/60 bg-ink-850/40 px-4 py-3">
+          <details key={year} open={yi === 0} className="group mb-3 card px-4 py-3">
           <summary className="flex cursor-pointer list-none items-center gap-3">
             <span className="w-12 text-[15px] font-semibold tabular-nums text-fg">{year}</span>
             <span className="flex flex-1 flex-wrap gap-1.5">

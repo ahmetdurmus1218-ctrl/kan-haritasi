@@ -13,7 +13,7 @@ import { INSIDE, type InsideId } from '../../explore/inside/registry';
 
 export function Section({ title, children, hint, id }: { title: string; children: ReactNode; hint?: string; id?: string }) {
   return (
-    <section id={id} className="scroll-mt-4 space-y-2 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4" aria-label={title}>
+    <section id={id} className="scroll-mt-4 space-y-2.5 card p-5" aria-label={title}>
       <h2 className="label-caps">{title}</h2>
       {children}
       {hint && <p className="text-[11px] leading-relaxed text-fg-faint">{hint}</p>}

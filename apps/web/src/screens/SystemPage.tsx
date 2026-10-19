@@ -43,7 +43,7 @@ export function SystemPage({ id }: { id: string }) {
             const att = summary?.organs.find((x) => x.organ === o.id);
             return (
               <li key={o.id}>
-                <button type="button" className="flex w-full items-center gap-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4 text-left hover:border-ink-500" onClick={() => go({ name: 'organ', id: o.id })}>
+                <button type="button" className="flex w-full items-center gap-3 card p-4 text-left hover:border-ink-500" onClick={() => go({ name: 'organ', id: o.id })}>
                   {att && <span className={`h-2 w-2 shrink-0 rounded-full ${TONE[att.tone].dot}`} aria-hidden="true" />}
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-medium text-fg">{o.name}</span>

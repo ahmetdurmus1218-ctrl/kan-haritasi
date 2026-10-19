@@ -41,7 +41,7 @@ function FlowList() {
           <ul className="grid gap-2 sm:grid-cols-2">
             {FLOWS.filter((f) => f.system === s).map((f) => (
               <li key={f.id}>
-                <button type="button" className="flex w-full items-center gap-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4 text-left hover:border-ink-500" onClick={() => go({ name: 'flow', id: f.id, step: 1 })}>
+                <button type="button" className="flex w-full items-center gap-3 card p-4 text-left hover:border-ink-500" onClick={() => go({ name: 'flow', id: f.id, step: 1 })}>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[15px] font-medium text-fg">{f.title}</span>
                     <span className="block text-xs text-fg-muted">
@@ -143,7 +143,7 @@ export function FlowPage({ id, step = 1, personal = false }: { id?: string; step
         })}
       </ol>
 
-      <section className="space-y-3 rounded-2xl border border-ink-600/60 bg-ink-850/60 p-4 md:p-5" aria-label="Bu basamak">
+      <section className="space-y-3 card p-4 md:p-5" aria-label="Bu basamak">
         <p className="text-xs text-fg-faint">
           {index + 1} / {total} · Normalde
         </p>

@@ -6,13 +6,13 @@ export function DataTabs({ active }: { active: 'documents' | 'results' }) {
     <a
       href={hrefFor({ name: key })}
       aria-current={active === key ? 'page' : undefined}
-      className={`flex min-h-[44px] items-center rounded-lg px-4 text-sm transition ${active === key ? 'bg-ink-700 text-fg' : 'text-fg-muted hover:text-fg'}`}
+      className={`flex min-h-[44px] items-center rounded-full px-5 text-sm font-medium transition ${active === key ? 'bg-ink-850 text-fg shadow-[var(--shadow-card)]' : 'text-fg-muted hover:text-fg'}`}
     >
       {label}
     </a>
   );
   return (
-    <nav aria-label="Sonuçlar ve belgeler" className="mb-5 inline-flex rounded-xl border border-ink-600 p-1">
+    <nav aria-label="Sonuçlar ve belgeler" className="mb-5 inline-flex rounded-full bg-ink-700/70 p-1">
       {tab('documents', 'Belgeler')}
       {tab('results', 'Sonuçlar')}
     </nav>
