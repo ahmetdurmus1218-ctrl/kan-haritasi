@@ -76,7 +76,8 @@ describe('iç sahne uygunluğu (kendi dokusu / ortak / ilişkili)', () => {
 
   it('düzeltilen yanlış eşleşmeler: toplardamar, kalın bağırsak, prostat, rahim', () => {
     expect(insideLinks('veins')[0]).toEqual({ id: 'ven-duvari', fit: 'exact' });
-    expect(insideFit('large-intestine', 'villus')).toBe('related');
+    // Kalın bağırsakta villus yoktur: villus sahnesi ne kendi ne ilişkili doku olarak önerilir.
+    expect(insideFit('large-intestine', 'villus')).toBeNull();
     expect(insideLinks('prostate')[0]!.id).toBe('prostat');
     expect(insideFit('uterus', 'ovaryum')).toBe('related');
     expect(insideFit('esophagus', 'mide')).toBe('related');

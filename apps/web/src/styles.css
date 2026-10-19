@@ -175,6 +175,15 @@
     radial-gradient(1400px 900px at 50% 120%, #0b1422, transparent 60%),
     #03050a;
 }
+/* Atlas stüdyosu: organ odaktayken ve organın içindeyken, iki temada da koyu zemin ve kenar karartması
+   (tıbbi atlas görünümü; organın rengi ve dokusu öne çıkar). */
+.explore-bg[data-studio='dark'],
+[data-theme="light"] .explore-bg[data-studio='dark'] {
+  background:
+    radial-gradient(1000px 760px at 50% 42%, #1c222d, transparent 72%),
+    radial-gradient(1400px 900px at 50% 120%, #0b1422, transparent 60%),
+    #04060a;
+}
 [data-theme="light"] .explore-bg {
   background:
     radial-gradient(900px 700px at 50% 38%, color-mix(in oklab, var(--kh-accent, #0b8577) 12%, transparent), transparent 70%),
@@ -329,4 +338,47 @@
   .kh-sheet[open] {
     animation: none;
   }
+}
+
+/* Atlas kesiti etiketleri (3B sahne üzerinde, organın iki yanında sütun + kılavuz çizgi) */
+.atlas-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  line-height: 1.25;
+  font-weight: 500;
+  color: #f4efe9;
+  background: rgb(14 17 23 / 0.74);
+  border: 1px solid rgb(255 255 255 / 0.16);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.3);
+  will-change: transform;
+}
+.atlas-label-lit {
+  color: #1a1206;
+  background: var(--kh-accent, #ffcf70);
+  border-color: transparent;
+}
+.atlas-lines {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.atlas-lines line {
+  stroke: rgb(255 255 255 / 0.65);
+  stroke-width: 1;
+}
+.atlas-lines circle {
+  fill: #fff;
+  stroke: rgb(0 0 0 / 0.45);
+  stroke-width: 1;
+}
+.atlas-lines .lit line {
+  stroke: var(--kh-accent, #ffcf70);
+}
+.atlas-lines .lit circle {
+  fill: var(--kh-accent, #ffcf70);
 }

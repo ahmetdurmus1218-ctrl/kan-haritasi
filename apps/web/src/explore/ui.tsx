@@ -14,15 +14,26 @@ export interface Crumb {
 }
 
 export function Breadcrumb({ items, accent }: { items: Crumb[]; accent: string }) {
-  // Her seviye görünür (telefonda tek satır, yatay kaydırılır ve son seviye görünür kalır); üst seviyeler tıklanabilir.
+  // Her seviye görünür ve tıklanabilir (telefonda tek satır, yatay kaydırılır ve son seviye görünür kalır).
+  // Sığmadığında sol kenar yumuşakça solar: harfler yarım kesik görünmez, üst çubuktaki düğmelerle karışmaz.
   const ref = useRef<HTMLElement>(null);
+  const [clipped, setClipped] = useState(false);
   const key = items.map((c) => c.label).join('/');
   useEffect(() => {
     const el = ref.current;
-    if (el) el.scrollLeft = el.scrollWidth;
+    if (!el) return;
+    const update = () => setClipped(el.scrollLeft > 1);
+    el.scrollLeft = el.scrollWidth;
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    return () => el.removeEventListener('scroll', update);
   }, [key]);
   return (
-    <nav ref={ref} aria-label="Keşif seviyesi" className="pointer-events-auto flex min-w-0 items-center gap-x-1.5 gap-y-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] md:flex-wrap md:overflow-visible md:whitespace-normal">
+    <nav
+      ref={ref}
+      aria-label="Keşif seviyesi"
+      className={`pointer-events-auto flex min-w-0 items-center gap-x-1.5 gap-y-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] md:flex-wrap md:overflow-visible md:whitespace-normal ${clipped ? 'max-md:[mask-image:linear-gradient(to_right,transparent,black_28px)]' : ''}`}
+    >
       {items.map((c, i) => {
         const last = i === items.length - 1;
         return (

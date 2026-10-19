@@ -1,7 +1,7 @@
 import { type ComponentType, type LazyExoticComponent, type RefObject, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CameraControls, type CameraControlsImpl } from '@react-three/drei';
-import { Box3, MathUtils, type PerspectiveCamera, Plane, PMREMGenerator, Sphere, Vector3 } from 'three';
+import { Box3, DoubleSide, Group, MathUtils, Mesh, Object3D, type PerspectiveCamera, Plane, PMREMGenerator, Sphere, SphereGeometry, Vector3 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { type Sex, type SystemId, structureById, systemById, testByKey } from '@kh/catalog';
 import { interiorArchetype, interiorById, interiorFor, interiorProvenance, stagePersonal } from '@kh/analysis';
@@ -21,7 +21,7 @@ import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { partLabel, partLatin } from '../anatomy/names';
 import { interiorForStructure, routeForNode } from '../lib/anatomyNav';
-import { type BodyModel, webglAvailable } from '../anatomy/models';
+import { type BodyModel, type ModelPart, webglAvailable } from '../anatomy/models';
 import { highlightColor } from '../anatomy/palette';
 import { Banner } from '../components/ui';
 import { LayersIcon, MaximizeIcon, MinimizeIcon } from '../components/icons';
@@ -44,6 +44,10 @@ import { TISSUE_IDS, type TissueId } from './inside/tissues';
 import { useInside } from './inside/state';
 import { InsidePanel, SimulationBadge } from './inside/InsidePanel';
 import { personalFor } from './inside/personal';
+import { ATLAS_SECTIONS, atlasStructures } from './inside/atlas';
+import { SourceBadge } from '../components/SourceBadge';
+import { prewarmStudio } from '../anatomy/studio';
+import { type TissueMaterial, createTissueMaterial, setTissueCut, setTissueDetail, tissueLook } from '../anatomy/tissue';
 import { type InsideSceneProps, SceneThemeContext } from './inside/kit';
 import type { InsideState } from './inside/state';
 
@@ -251,6 +255,26 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     return withReviewHighlights(withFindings, reviewFlags(studies));
   }, [series, focusTest, weights, studies]);
   const allParts = useMemo(() => [...models.parts, ...models.schematic], [models.parts, models.schematic]);
+  // Atlas kesiti: iç dünya basamağı gerçek insan atlas ağlarıyla çizilecekse o organın (ve çevresinin) parçaları.
+  const atlasParts = useMemo(() => {
+    const out = new Map<string, ModelPart[]>();
+    for (const def of Object.values(ATLAS_SECTIONS)) {
+      const need = atlasStructures(def);
+      out.set(def.organ, models.parts.filter((p) => need.has(p.structure)));
+    }
+    return out;
+  }, [models.parts]);
+  // Organ odaklanınca: o organın stüdyo ağları ve "İçine gir" kesitinin parçaları işçide önceden hazırlanır.
+  useEffect(() => {
+    if (!structure) return;
+    const own = models.parts.filter((p) => p.structure === structure || (structure === 'heart' && p.structure === 'coronary-arteries'));
+    prewarmStudio([...own, ...(atlasParts.get(structure) ?? [])], models.parts);
+  }, [structure, models.parts, atlasParts]);
+  const atlasFor = (l: typeof lv) => {
+    if (!l || l.scene.kind !== 'interior' || !l.scene.atlas) return undefined;
+    const def = ATLAS_SECTIONS[l.def.organId];
+    return def ? { def, stage: l.scene.atlas, parts: atlasParts.get(def.organ) ?? [] } : undefined;
+  };
   const boxes = useMemo(() => structureBoxes(allParts), [allParts]);
   const vessels = useMemo(() => (structure ? vesselParts(allParts, structure) : []), [allParts, structure]);
   const part = vessels.find((v) => v.id === partKey) ?? null;
@@ -263,7 +287,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   }, [routePart, vessels]);
 
   const focus = useMemo<Set<string> | null>(() => {
-    if (structure) return new Set([structure]);
+    // Organın yüzeyindeki damarlar organla birlikte görünür (kalpte koroner arterler, karaciğerde safra kesesi).
+    if (structure) return new Set([structure, ...(SURFACE_COMPANIONS[structure] ?? [])]);
     if (system) return new Set(structuresOfSystem(system, body));
     if (focusTest) return new Set(highlights.keys());
     return null;
@@ -856,6 +881,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   }
 
   const light = theme === 'light';
+  const studio = !!structure || shownKey !== 'body';
+  const studioLit = (shownKey === 'body' && !!structure) || (!!shownLv && shownLv.scene.kind === 'interior' && !!shownLv.scene.atlas);
   // Vücut seviyesinin arayüzü (sistem menüsü, araçlar, bilgi paneli) yalnızca vücut sahnesinde; iç dünyada seviye paneli.
   const bodyUi = shownKey === 'body' && route.name !== 'interior';
   const navLevel = lv ? lv.level : structure ? 'organ' : system ? 'system' : 'body';
@@ -871,6 +898,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       data-scene={shownKey}
       data-target-scene={sceneKey}
       data-transition={phase}
+      data-studio={studio ? 'dark' : undefined}
       {...(lv
         ? {
             'data-interior': lv.def.organId,
@@ -882,6 +910,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
             'data-archetype': interiorArchetype(lv.def),
             'data-scene-kind': lv.scene.kind === 'interior' ? lv.def.interiorScene.kind : lv.scene.kind === 'wall' ? 'wall' : `inside:${lv.scene.id}`,
             'data-focus': lv.scene.kind === 'interior' ? lv.scene.focus : lv.scene.kind,
+            // Atlas kesiti: gerçek insan atlas ağları (eğitimsel; kişinin görüntüsü değil)
+            ...(lv.scene.kind === 'interior' && lv.scene.atlas ? { 'data-atlas': (atlasParts.get(lv.def.organId)?.length ?? 0) > 0 ? 'hra' : 'loading' } : {}),
           }
         : {})}
     >
@@ -944,6 +974,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                   theme={theme}
                   partLevel={structure ?? null}
                   muted={muted}
+                  studio={!!structure}
                 />
                 {shown !== 'body' && SceneComp && insideState && (
                   <Suspense fallback={<ScenePending onChange={setScenePending} />}>
@@ -966,6 +997,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                     leaving={leaving}
                     view={worldView}
                     onSubject={onSubject}
+                    atlas={atlasFor(shownLv)}
+                    accent={accent}
                   />
                 )}
                 {shown.startsWith('in:') && LvComp && lvState && (
@@ -979,10 +1012,16 @@ export function Explorer({ route }: { route: ExploreRoute }) {
           <CloudAnchor point={cloud && bodyUi ? cloud.point : null} refs={cloudRefs} cover={coverRef} />
           <CameraProbe rootRef={rootRef} subjectRef={subjectRef} />
         </SceneThemeContext>
-        <ambientLight intensity={light ? 0.5 : 0.22} />
-        <directionalLight position={[1.2, 2, 2.5]} intensity={light ? 1.25 : 1.05} />
-        <directionalLight position={[-1.5, 0.5, -2]} intensity={light ? 0.55 : 0.35} />
-        <Env intensity={light ? 0.95 : 0.75} />
+        {/* Atlas stüdyosu (organ odakta / atlas kesiti): kameraya bağlı ana, dolgu ve arka kenar ışığı; koyu zemin.
+            Diğer sahnelerde genel ışık (temaya göre). */}
+        {/* Işık sayısı hiç değişmez (yalnızca parlaklıklar): ışık düzeni değişirse ekran kartı bütün
+            malzemeleri yeniden derler ve organa odaklanırken görüntü takılır. */}
+        <StudioLights on={studioLit} />
+        <ambientLight intensity={studioLit ? 0 : light && !studio ? 0.5 : 0.2} />
+        <directionalLight position={[1.2, 2, 2.5]} intensity={studioLit ? 0 : light && !studio ? 1.25 : 1.05} />
+        <directionalLight position={[-1.5, 0.5, -2]} intensity={studioLit ? 0 : light && !studio ? 0.55 : 0.4} color="#ffd8cc" />
+        <ShaderWarmup ready={models.done} />
+        <Env intensity={studioLit ? 0.32 : light && !studio ? 0.95 : 0.7} />
         <CameraControls ref={setControls} makeDefault minDistance={0.05} maxDistance={6} smoothTime={0.55} draggingSmoothTime={0.1} dollySpeed={0.6} />
       </Canvas>
 
@@ -1007,6 +1046,16 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         <div className="min-w-0 flex-1">
           <div className="md:max-w-[34rem]">
             <Breadcrumb items={crumbs} accent={accent} />
+            {/* Kaynak sahnenin üzerinde: organın içindeki her seviye eğitimsel anatomidir (kişisel 3B ayrı ekranda). */}
+            {shownLv && shownKey !== 'body' && (
+              <div className="mt-2">
+                <SourceBadge
+                  kind="educational"
+                  detail={shownLv.scene.kind === 'interior' && shownLv.scene.atlas && (atlasParts.get(shownLv.def.organId)?.length ?? 0) > 0 ? 'Referans insan atlası (HRA) · senin görüntün değil' : 'Temsili model · senin görüntün değil'}
+                  short="senin görüntün değil"
+                />
+              </div>
+            )}
             {/* Telefonda etiket gezinme yolunun altında akar (uzun yol sarınca üst üste binmesin). */}
             {shownInside && (
               <div className="mt-2 md:hidden">
@@ -1017,7 +1066,17 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         </div>
         {bodyUi && (
           <>
-            <div className="pointer-events-auto flex rounded-full border border-ink-600/70 bg-ink-950/70 p-0.5 backdrop-blur" role="radiogroup" aria-label="Vücut modeli">
+            {/* Telefonda tek düğme (dokununca erkek ↔ kadın); masaüstünde iki seçenekli grup. */}
+            <button
+              type="button"
+              onClick={() => switchBody(body === 'male' ? 'female' : 'male')}
+              aria-label={`Vücut modeli: ${body === 'male' ? 'Erkek' : 'Kadın'} (değiştirmek için dokun)`}
+              className="pointer-events-auto flex shrink-0 items-center gap-1 rounded-full border border-ink-600/70 bg-ink-950/70 px-2.5 py-1.5 text-fg backdrop-blur md:hidden"
+            >
+              <Caps>{body === 'male' ? 'Erkek' : 'Kadın'}</Caps>
+              <span aria-hidden="true" className="text-[11px] text-fg-muted">⇄</span>
+            </button>
+            <div className="pointer-events-auto hidden shrink-0 rounded-full border border-ink-600/70 bg-ink-950/70 p-0.5 backdrop-blur md:flex" role="radiogroup" aria-label="Vücut modeli">
               {(
                 [
                   ['male', 'Erkek'],
@@ -1036,7 +1095,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                 </button>
               ))}
             </div>
-            <div className="pointer-events-auto relative">
+            <div className="pointer-events-auto relative shrink-0">
               <button
                 type="button"
                 className="flex items-center gap-2 rounded-full border border-ink-600/70 bg-ink-950/70 px-3 py-1.5 text-fg-muted backdrop-blur transition hover:text-fg"
@@ -1068,7 +1127,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
             setLayersOpen(false);
             setImmersive(true);
           }}
-          className="pointer-events-auto flex items-center rounded-full border border-ink-600/70 bg-ink-950/70 px-3 py-1.5 text-fg-muted backdrop-blur transition hover:text-fg"
+          className="pointer-events-auto flex shrink-0 items-center rounded-full border border-ink-600/70 bg-ink-950/70 px-3 py-1.5 text-fg-muted backdrop-blur transition hover:text-fg"
           aria-label="Yalnızca modeli göster"
           title="Yalnızca modeli göster: panelleri gizle (F)"
         >
@@ -1265,6 +1324,93 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       )}
     </div>
   );
+}
+
+/** Organ odaktayken onunla birlikte tam görünen yüzey yapıları (atlas görünümü). */
+const SURFACE_COMPANIONS: Record<string, string[]> = {
+  heart: ['coronary-arteries'],
+  liver: ['gallbladder'],
+  gallbladder: ['liver'],
+};
+
+/**
+ * Stüdyo ışığı (tıbbi atlas fotoğrafı gibi): kameraya bağlı; organ hangi yönden görülürse görülsün sol üstten
+ * sıcak ana ışık, sağdan soğuk dolgu, arkadan kenar ışığı (organın siluetini zeminden ayırır).
+ */
+function StudioLights({ on }: { on: boolean }) {
+  const camera = useThree((s) => s.camera);
+  const rig = useRef<Group>(null);
+  useFrame(() => {
+    const g = rig.current;
+    if (!g) return;
+    g.position.copy(camera.position);
+    g.quaternion.copy(camera.quaternion);
+  });
+  const target = useMemo(() => {
+    const o = new Object3D();
+    o.position.set(0, 0, -2);
+    return o;
+  }, []);
+  return (
+    <group ref={rig}>
+      <primitive object={target} />
+      <directionalLight position={[-1.4, 1.8, 0.6]} intensity={on ? 2.6 : 0} color="#fff0e4" target={target} />
+      <directionalLight position={[1.8, 0.1, 0.4]} intensity={on ? 0.5 : 0} color="#c9d8ff" target={target} />
+      <directionalLight position={[0.8, 1.4, -5]} intensity={on ? 2.2 : 0} color="#ffd2c4" target={target} />
+      <hemisphereLight args={['#ffe8e0', '#1a1010']} intensity={on ? 0.18 : 0} />
+    </group>
+  );
+}
+
+/**
+ * Gölgelendiricileri önceden derler (uygulama boşta beklerken, bir kez): doku malzemesinin organ, epikard
+ * yağı, soluk yapı, kesit (çift yüz + kırpma düzlemi) ve saydam kılıf türleri. Böylece organa ilk
+ * odaklanışta ve "İçine gir" kesitinde derleme beklemesi (takılma) olmaz. Malzemeler bırakılmaz: bırakılırsa
+ * derlenen program da silinir.
+ */
+const warmMaterials: TissueMaterial[] = [];
+function ShaderWarmup({ ready }: { ready: boolean }) {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const done = useRef(false);
+  useEffect(() => {
+    if (!ready || done.current) return;
+    done.current = true;
+    const run = () => {
+      const group = new Group();
+      const geo = new SphereGeometry(0.001, 4, 3);
+      const plane = new Plane(new Vector3(0, 0, -1), 0);
+      const look = tissueLook('heart', 'left-ventricle');
+      const variants: Array<{ fat?: boolean; detail?: 'lite'; side?: 'double'; clip?: boolean; transparent?: boolean }> = [
+        {},
+        { fat: true },
+        { transparent: true },
+        { detail: 'lite', transparent: true },
+        { side: 'double', clip: true },
+        { fat: true, side: 'double', clip: true },
+        { side: 'double', transparent: true },
+        { side: 'double' },
+      ];
+      for (const v of variants) {
+        const m = createTissueMaterial(look, { fat: v.fat });
+        if (v.detail) setTissueDetail(m, v.detail);
+        if (v.side) m.side = DoubleSide;
+        if (v.clip) {
+          m.clippingPlanes = [plane];
+          setTissueCut(m, true);
+        }
+        m.transparent = !!v.transparent;
+        warmMaterials.push(m);
+        group.add(new Mesh(geo, m));
+      }
+      void gl.compileAsync(group, camera, scene).catch(() => undefined);
+    };
+    const ric = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    if (ric) ric(run, { timeout: 4000 });
+    else setTimeout(run, 1500);
+  }, [ready, gl, scene, camera]);
+  return null;
 }
 
 /** Oda ışığı ortamı (ağ isteği yok; sahne içinde üretilir). */
