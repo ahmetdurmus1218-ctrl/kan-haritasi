@@ -340,7 +340,8 @@ const INSIDES: Record<string, L[]> = {
   stomach: [['mide', 'exact']],
   esophagus: [['yemek-borusu', 'exact'], ['mide', 'related']],
   'small-intestine': [['villus', 'exact']],
-  'large-intestine': [['kalin-bagirsak', 'exact'], ['villus', 'related']],
+  // Kalın bağırsakta villus YOKTUR: villus sahnesi buradan önerilmez (ince bağırsağa özgüdür).
+  'large-intestine': [['kalin-bagirsak', 'exact']],
   kidneys: [['nefron', 'exact']],
   'urinary-tract': [['mesane', 'exact'], ['nefron', 'related']],
   prostate: [['prostat', 'exact']],

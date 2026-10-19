@@ -11,6 +11,7 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { GRAPH, interiorArchetype, interiorById, interiorExperience, interiorFor, interiorPersonal, personalInteriorNote, REAL_DATA_TAG, EDUCATIONAL_TAG, spacingLabel } from '@kh/analysis';
 import { structureById } from '@kh/catalog';
+import { SourceBadge } from '../components/SourceBadge';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
 import { listImagingNotes, type StoredVolume } from '../lib/imagingRecords';
 import { type PersonalOrganScene, type PersonalPart, buildPersonalOrgan, planFor } from '../lib/personalOrgan';
@@ -160,11 +161,11 @@ export function PersonalOrganPage({ id, inside }: { id: string; inside: boolean 
                 </div>
               }
             >
-              <PersonalOrganDive scene={ready} inside={inside} organColor={organColor} reducedMotion={reduced} cut={cut} onPick={setPicked} picked={picked?.key ?? null} onDive={setDive} />
+              <PersonalOrganDive scene={ready} inside={inside} organColor={organColor} structure={def.structure && structureById.has(def.structure) ? def.structure : undefined} reducedMotion={reduced} cut={cut} onPick={setPicked} picked={picked?.key ?? null} onDive={setDive} />
             </Suspense>
             <span className="pointer-events-none absolute left-2 top-2 flex flex-col items-start gap-1 text-[10.5px]">
-              <span className="rounded bg-black/60 px-1.5 py-0.5 font-semibold text-[#ddd6fe]">◆ {REAL_DATA_TAG} · {inside ? (ready.inside.in === 'cavity' ? 'iç boşluk senin maskenden' : 'iç yüzey senin maskenden') : 'senin görüntünden'}</span>
-              {inside && <span className="rounded bg-black/60 px-1.5 py-0.5 text-white/85">Bundan sonrası: {EDUCATIONAL_TAG.toLocaleLowerCase('tr-TR')}</span>}
+              <SourceBadge kind="real" label={`${REAL_DATA_TAG} · GERÇEK BT/MR`} detail={inside ? (ready.inside.in === 'cavity' ? 'iç boşluk senin maskenden' : 'iç yüzey senin maskenden') : 'senin görüntünden segmentasyon'} />
+              {inside && <SourceBadge kind="educational" label={`Bundan sonrası: ${EDUCATIONAL_TAG.toLocaleLowerCase('tr-TR')}`} />}
             </span>
           </div>
           <p className="text-[11px] text-fg-faint">

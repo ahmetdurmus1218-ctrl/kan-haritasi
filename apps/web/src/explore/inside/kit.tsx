@@ -46,14 +46,19 @@ export function themedColor(hex: string, theme: 'light' | 'dark', amount = 0.8):
   return theme === 'light' ? c.lerp(LIGHT_FIELD, amount) : c;
 }
 
-/** Sahne ortamı: arka plan, sis ve ortam ışığı yoğunluğu; sahneden çıkınca geri alınır. */
-export function useAtmosphere(background: string, fog: [string, number, number] | null, envIntensity = 0.35) {
+/**
+ * Sahne ortamı: arka plan, sis ve ortam ışığı yoğunluğu; sahneden çıkınca geri alınır.
+ * `studio`: organın içi (atlas kesiti, lümen…) iki temada da koyu zeminde çizilir (tıbbi atlas görünümü).
+ */
+export function useAtmosphere(background: string, fog: [string, number, number] | null, envIntensity = 0.35, studio = false) {
   const scene = useThree((s) => s.scene);
   const invalidate = useThree((s) => s.invalidate);
-  const theme = useContext(SceneThemeContext);
+  const uiTheme = useContext(SceneThemeContext);
+  const theme = studio ? 'dark' : uiTheme;
   useEffect(() => {
     const prev = { bg: scene.background, fog: scene.fog, env: scene.environmentIntensity };
-    scene.background = themedColor(background, theme);
+    // Stüdyoda (sis yoksa) zemin tuvalin arkasındaki koyu, kenarı kararan degradedir (.explore-bg[data-studio]).
+    scene.background = studio && !fog ? null : themedColor(background, theme);
     scene.fog = fog ? new Fog(themedColor(fog[0], theme), fog[1] * (theme === 'light' ? 1.4 : 1), fog[2] * (theme === 'light' ? 1.4 : 1)) : null;
     scene.environmentIntensity = theme === 'light' ? envIntensity * 1.6 : envIntensity;
     invalidate();
@@ -62,7 +67,7 @@ export function useAtmosphere(background: string, fog: [string, number, number] 
       scene.fog = prev.fog;
       scene.environmentIntensity = prev.env;
     };
-  }, [scene, background, fog?.[0], fog?.[1], fog?.[2], envIntensity, invalidate, theme]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scene, background, fog?.[0], fog?.[1], fog?.[2], envIntensity, invalidate, theme, studio]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 export interface Shot {

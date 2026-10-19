@@ -4,6 +4,7 @@ import { Color, DoubleSide, FrontSide, Mesh, MeshStandardMaterial, type Plane, S
 import { partDef } from '@kh/catalog';
 import type { ModelPart } from './models';
 import { PART_OPACITY, TRANSLUCENT, colorFor, highlightColor } from './palette';
+import { createTissueMaterial, setTissueCut, tissueLook } from './tissue';
 import type { StructureHighlight } from './highlight';
 import type { SchematicPart, SchematicShape } from './schematic';
 
@@ -170,12 +171,14 @@ interface PartViewProps {
 
 function PartView({ part, clip, visible, color, targetOpacity, emissiveColor, emissive, pulse, pickable, visuals, onPick, onHover }: PartViewProps) {
   const invalidate = useThree((s) => s.invalidate);
-  const material = useMemo(() => new MeshStandardMaterial({ roughness: 0.46, metalness: 0.02, envMapIntensity: 1 }), []);
+  // Gerçekçi doku malzemesi (yüzey kabartısı, damar ağı, ıslak film); bkz. tissue.ts
+  const material = useMemo(() => createTissueMaterial(tissueLook(part.structure, part.label)), [part.structure, part.label]);
 
   useEffect(() => {
-    // Kesit: düzlemin önü kesilir; iç yüzler de çizilir ki organın içi görünsün.
+    // Kesit: düzlemin önü kesilir; iç yüzler dolu bir kesit yüzeyi gibi çizilir ki organın içi görünsün.
     material.clippingPlanes = clip ? [clip] : null;
     material.side = clip ? DoubleSide : FrontSide;
+    setTissueCut(material, !!clip);
     material.needsUpdate = true;
     invalidate();
   }, [material, clip, invalidate]);
@@ -347,7 +350,7 @@ export function BodyScene(props: BodySceneProps) {
             part={p}
             clip={clip}
             visible={shown}
-            color={isMuted && !isHovered ? mutedColor(colorFor(p.structure, p.label), theme) : colorFor(p.structure, p.label)}
+            color={isMuted && !isHovered ? mutedColor(colorFor(p.structure, p.label), theme) : tissueLook(p.structure, p.label).color}
             targetOpacity={targetOpacity}
             emissiveColor={emissiveColor}
             emissive={h ? (isHovered ? 1.25 : 0.45 + 0.22 * h.score) : isHovered ? 0.28 : 0.35}

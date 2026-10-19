@@ -21,7 +21,7 @@ import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { partLabel, partLatin } from '../anatomy/names';
 import { interiorForStructure, routeForNode } from '../lib/anatomyNav';
-import { type BodyModel, webglAvailable } from '../anatomy/models';
+import { type BodyModel, type ModelPart, webglAvailable } from '../anatomy/models';
 import { highlightColor } from '../anatomy/palette';
 import { Banner } from '../components/ui';
 import { LayersIcon, MaximizeIcon, MinimizeIcon } from '../components/icons';
@@ -44,6 +44,8 @@ import { TISSUE_IDS, type TissueId } from './inside/tissues';
 import { useInside } from './inside/state';
 import { InsidePanel, SimulationBadge } from './inside/InsidePanel';
 import { personalFor } from './inside/personal';
+import { ATLAS_SECTIONS, atlasStructures } from './inside/atlas';
+import { SourceBadge } from '../components/SourceBadge';
 import { type InsideSceneProps, SceneThemeContext } from './inside/kit';
 import type { InsideState } from './inside/state';
 
@@ -251,6 +253,20 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     return withReviewHighlights(withFindings, reviewFlags(studies));
   }, [series, focusTest, weights, studies]);
   const allParts = useMemo(() => [...models.parts, ...models.schematic], [models.parts, models.schematic]);
+  // Atlas kesiti: iç dünya basamağı gerçek insan atlas ağlarıyla çizilecekse o organın (ve çevresinin) parçaları.
+  const atlasParts = useMemo(() => {
+    const out = new Map<string, ModelPart[]>();
+    for (const def of Object.values(ATLAS_SECTIONS)) {
+      const need = atlasStructures(def);
+      out.set(def.organ, models.parts.filter((p) => need.has(p.structure)));
+    }
+    return out;
+  }, [models.parts]);
+  const atlasFor = (l: typeof lv) => {
+    if (!l || l.scene.kind !== 'interior' || !l.scene.atlas) return undefined;
+    const def = ATLAS_SECTIONS[l.def.organId];
+    return def ? { def, stage: l.scene.atlas, parts: atlasParts.get(def.organ) ?? [] } : undefined;
+  };
   const boxes = useMemo(() => structureBoxes(allParts), [allParts]);
   const vessels = useMemo(() => (structure ? vesselParts(allParts, structure) : []), [allParts, structure]);
   const part = vessels.find((v) => v.id === partKey) ?? null;
@@ -263,7 +279,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   }, [routePart, vessels]);
 
   const focus = useMemo<Set<string> | null>(() => {
-    if (structure) return new Set([structure]);
+    // Organın yüzeyindeki damarlar organla birlikte görünür (kalpte koroner arterler, karaciğerde safra kesesi).
+    if (structure) return new Set([structure, ...(SURFACE_COMPANIONS[structure] ?? [])]);
     if (system) return new Set(structuresOfSystem(system, body));
     if (focusTest) return new Set(highlights.keys());
     return null;
@@ -856,6 +873,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   }
 
   const light = theme === 'light';
+  const studio = !!structure || shownKey !== 'body';
   // Vücut seviyesinin arayüzü (sistem menüsü, araçlar, bilgi paneli) yalnızca vücut sahnesinde; iç dünyada seviye paneli.
   const bodyUi = shownKey === 'body' && route.name !== 'interior';
   const navLevel = lv ? lv.level : structure ? 'organ' : system ? 'system' : 'body';
@@ -871,6 +889,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       data-scene={shownKey}
       data-target-scene={sceneKey}
       data-transition={phase}
+      data-studio={studio ? 'dark' : undefined}
       {...(lv
         ? {
             'data-interior': lv.def.organId,
@@ -882,6 +901,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
             'data-archetype': interiorArchetype(lv.def),
             'data-scene-kind': lv.scene.kind === 'interior' ? lv.def.interiorScene.kind : lv.scene.kind === 'wall' ? 'wall' : `inside:${lv.scene.id}`,
             'data-focus': lv.scene.kind === 'interior' ? lv.scene.focus : lv.scene.kind,
+            // Atlas kesiti: gerçek insan atlas ağları (eğitimsel; kişinin görüntüsü değil)
+            ...(lv.scene.kind === 'interior' && lv.scene.atlas ? { 'data-atlas': (atlasParts.get(lv.def.organId)?.length ?? 0) > 0 ? 'hra' : 'loading' } : {}),
           }
         : {})}
     >
@@ -966,6 +987,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                     leaving={leaving}
                     view={worldView}
                     onSubject={onSubject}
+                    atlas={atlasFor(shownLv)}
+                    accent={accent}
                   />
                 )}
                 {shown.startsWith('in:') && LvComp && lvState && (
@@ -979,10 +1002,11 @@ export function Explorer({ route }: { route: ExploreRoute }) {
           <CloudAnchor point={cloud && bodyUi ? cloud.point : null} refs={cloudRefs} cover={coverRef} />
           <CameraProbe rootRef={rootRef} subjectRef={subjectRef} />
         </SceneThemeContext>
-        <ambientLight intensity={light ? 0.5 : 0.22} />
-        <directionalLight position={[1.2, 2, 2.5]} intensity={light ? 1.25 : 1.05} />
-        <directionalLight position={[-1.5, 0.5, -2]} intensity={light ? 0.55 : 0.35} />
-        <Env intensity={light ? 0.95 : 0.75} />
+        {/* Atlas stüdyosunda (organ odakta / organın içi) koyu zemin: ışık temadan bağımsız, organın rengi soluklaşmasın. */}
+        <ambientLight intensity={light && !studio ? 0.5 : 0.2} />
+        <directionalLight position={[1.2, 2, 2.5]} intensity={light && !studio ? 1.25 : 1.05} />
+        <directionalLight position={[-1.5, 0.5, -2]} intensity={light && !studio ? 0.55 : 0.4} color="#ffd8cc" />
+        <Env intensity={light && !studio ? 0.95 : 0.7} />
         <CameraControls ref={setControls} makeDefault minDistance={0.05} maxDistance={6} smoothTime={0.55} draggingSmoothTime={0.1} dollySpeed={0.6} />
       </Canvas>
 
@@ -1007,6 +1031,15 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         <div className="min-w-0 flex-1">
           <div className="md:max-w-[34rem]">
             <Breadcrumb items={crumbs} accent={accent} />
+            {/* Kaynak sahnenin üzerinde: organın içindeki her seviye eğitimsel anatomidir (kişisel 3B ayrı ekranda). */}
+            {shownLv && shownKey !== 'body' && (
+              <div className="mt-2">
+                <SourceBadge
+                  kind="educational"
+                  detail={shownLv.scene.kind === 'interior' && shownLv.scene.atlas && (atlasParts.get(shownLv.def.organId)?.length ?? 0) > 0 ? 'Referans insan atlası (HRA) · senin görüntün değil' : 'Temsili model · senin görüntün değil'}
+                />
+              </div>
+            )}
             {/* Telefonda etiket gezinme yolunun altında akar (uzun yol sarınca üst üste binmesin). */}
             {shownInside && (
               <div className="mt-2 md:hidden">
@@ -1266,6 +1299,13 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     </div>
   );
 }
+
+/** Organ odaktayken onunla birlikte tam görünen yüzey yapıları (atlas görünümü). */
+const SURFACE_COMPANIONS: Record<string, string[]> = {
+  heart: ['coronary-arteries'],
+  liver: ['gallbladder'],
+  gallbladder: ['liver'],
+};
 
 /** Oda ışığı ortamı (ağ isteği yok; sahne içinde üretilir). */
 function Env({ intensity }: { intensity: number }) {

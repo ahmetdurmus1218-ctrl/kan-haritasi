@@ -17,6 +17,7 @@ import { structureById } from '@kh/catalog';
 import { INSIDE, type InsideId } from './inside/registry';
 import { INSIDE_CONTENT } from './inside/content';
 import { TISSUES, type TissueId } from './inside/tissues';
+import { atlasStage } from './inside/atlas';
 
 /** Anatomik seviye (ölçek merdiveni). */
 export type NavLevel = 'body' | 'system' | 'organ' | 'interior' | 'region' | 'wall' | 'tissue' | 'cell' | 'molecule';
@@ -38,12 +39,13 @@ export const LEVEL_TR: Record<NavLevel, string> = {
 
 /**
  * Seviyenin 3B sahnesi:
- *   interior  organın iç dünyası (InteriorWorld: lümen / damar / odacık / parankim / yol) — odak kamerayı yönetir
+ *   interior  organın iç dünyası (InteriorWorld: lümen / damar / odacık / parankim / yol) — odak kamerayı yönetir;
+ *             `atlas` verildiyse bu basamak gerçek insan atlas ağlarının kesitiyle çizilir (inside/atlas.ts)
  *   wall      duvar kesiti (katmanlar lümenden dışa / yüzeyden derine); highlight: vurgulanan katman
  *   inside    var olan eğitsel doku/hücre sahnesi (villus, nefron, lobül, sarkomer…) ve o sahnenin aşaması
  */
 export type LevelScene =
-  | { kind: 'interior'; focus: SceneFocus; progress: number }
+  | { kind: 'interior'; focus: SceneFocus; progress: number; atlas?: string }
   | { kind: 'wall'; highlight?: number }
   | { kind: 'inside'; id: InsideId; stage: number; selected: string | null; depth: number };
 
@@ -124,7 +126,8 @@ export function resolveScenes(def: OrganInteriorDefinition): LevelScene[] {
       prev = null;
       // Bölge basamakları (>1): kamera iç dünyanın etrafında döner, her bölgede farklı açı.
       const progress = level === 'region' ? 1 + 0.25 * (i - insideCount + 1) : insideCount > 1 ? Math.min(i, insideCount - 1) / (insideCount - 1) : 0;
-      return { kind: 'interior', focus: st.focus ?? (level === 'region' ? 'overview' : 'lumen'), progress };
+      const focus = st.focus ?? (level === 'region' ? 'overview' : 'lumen');
+      return atlasStage(def.organId, st.id) ? { kind: 'interior', focus, progress, atlas: st.id } : { kind: 'interior', focus, progress };
     }
     if (level === 'wall') {
       prev = null;
@@ -154,7 +157,8 @@ export function resolveScenes(def: OrganInteriorDefinition): LevelScene[] {
 function sceneKeyOf(def: OrganInteriorDefinition, scene: LevelScene): string {
   switch (scene.kind) {
     case 'interior':
-      return `ic:${def.organId}`;
+      // Atlas kesiti ayrı sahnedir (gerçek atlas ağları); ardışık kesit basamaklarında yalnızca kamera ve kesit düzlemi hareket eder.
+      return scene.atlas ? `ic:${def.organId}:kesit` : `ic:${def.organId}`;
     case 'wall':
       return `ic:${def.organId}:duvar`;
     case 'inside':

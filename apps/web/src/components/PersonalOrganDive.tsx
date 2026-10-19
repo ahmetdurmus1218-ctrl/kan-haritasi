@@ -10,6 +10,7 @@ import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import type { PersonalOrganScene, PersonalPart } from '../lib/personalOrgan';
 import { TONE_HEX } from '../lib/tone';
+import { createTissueMaterial, setTissueCut, tissueLook } from '../anatomy/tissue';
 
 const NEIGHBOR = '#94a3b8';
 const CAVITY = '#5eead4';
@@ -94,7 +95,29 @@ function HeadLight({ intensity }: { intensity: number }) {
   return <pointLight ref={ref} intensity={intensity} decay={0} />;
 }
 
-export default function PersonalOrganDive({ scene, inside, organColor, reducedMotion, cut, onPick, picked, onDive }: { scene: PersonalOrganScene; inside: boolean; organColor: string; reducedMotion: boolean; cut: boolean; onPick: (p: PersonalPart | null) => void; picked: string | null; onDive?: (p: number) => void }) {
+/**
+ * Kişinin GERÇEK organ yüzeyi (maskeden) gerçekçi doku malzemesiyle çizilir: geometri hastanındır, yüzeyin
+ * rengi/dokusu genel doku görünümüdür (BT yoğunluğu yüzeye giydirilmez). Ağ milimetre biriminde: desen ölçeği
+ * metreye çevrilir. Kesitte maskenin dolu iç kısmı kesit yüzeyi gibi görünür.
+ */
+function OrganTissueMaterial({ structure, color, clip, cut, emissive }: { structure: string | undefined; color: string; clip: THREE.Plane[]; cut: boolean; emissive: number }) {
+  const mat = useMemo(() => {
+    const m = createTissueMaterial(structure ? tissueLook(structure, null) : { ...tissueLook('unknown', null), color }, { freqScale: 0.001 });
+    m.side = THREE.DoubleSide;
+    return m;
+  }, [structure, color]);
+  useEffect(() => () => mat.dispose(), [mat]);
+  useEffect(() => {
+    mat.clippingPlanes = clip;
+    setTissueCut(mat, cut && clip.length > 0);
+    mat.emissive.set(emissive > 0 ? '#ffffff' : '#000000');
+    mat.emissiveIntensity = emissive;
+    mat.needsUpdate = true;
+  }, [mat, clip, cut, emissive]);
+  return <primitive object={mat} attach="material" />;
+}
+
+export default function PersonalOrganDive({ scene, inside, organColor, structure, reducedMotion, cut, onPick, picked, onDive }: { scene: PersonalOrganScene; inside: boolean; organColor: string; structure?: string; reducedMotion: boolean; cut: boolean; onPick: (p: PersonalPart | null) => void; picked: string | null; onDive?: (p: number) => void }) {
   const built = useMemo<Built[]>(
     () =>
       scene.parts.map((part) => {
@@ -164,21 +187,25 @@ export default function PersonalOrganDive({ scene, inside, organColor, reducedMo
             }}
             userData={{ role }}
           >
+            {role === 'organ' ? (
+              <OrganTissueMaterial structure={structure} color={color} clip={clip} cut={cut} emissive={sel ? 0.18 : 0} />
+            ) : (
             <meshPhysicalMaterial
               color={color}
-              roughness={role === 'organ' ? 0.48 : 0.7}
-              clearcoat={role === 'organ' ? 0.35 : 0}
+              roughness={0.7}
+              clearcoat={0}
               clearcoatRoughness={0.4}
-              sheen={role === 'organ' ? 0.4 : 0}
+              sheen={0}
               sheenColor="#ffd6cc"
               transparent={opacity < 1}
               opacity={opacity}
               depthWrite={opacity >= 1}
               side={THREE.DoubleSide}
-              clippingPlanes={role === 'organ' || role === 'neighbor' ? clip : []}
+              clippingPlanes={role === 'neighbor' ? clip : []}
               emissive={sel ? '#ffffff' : '#000000'}
               emissiveIntensity={sel ? 0.18 : 0}
             />
+            )}
           </mesh>
         );
       })}

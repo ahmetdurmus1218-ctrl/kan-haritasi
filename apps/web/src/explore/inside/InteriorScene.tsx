@@ -19,8 +19,9 @@
  */
 import { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import type { CameraControlsImpl } from '@react-three/drei';
+import { type CameraControlsImpl, Html } from '@react-three/drei';
 import {
+  Box3,
   BufferAttribute,
   BufferGeometry,
   CapsuleGeometry,
@@ -29,11 +30,13 @@ import {
   CylinderGeometry,
   DoubleSide,
   ExtrudeGeometry,
+  FrontSide,
   type InstancedMesh,
   type Mesh,
   MeshStandardMaterial,
   Object3D,
   type PerspectiveCamera,
+  Plane,
   Shape,
   SphereGeometry,
   TorusGeometry,
@@ -41,7 +44,13 @@ import {
   Vector3,
 } from 'three';
 import type { InteriorMode, SceneFocus, SceneSpec } from '@kh/analysis';
+import { partDef, structureById } from '@kh/catalog';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Headlight, bumpySphere, rbcGeometry, rng, useAtmosphere, useDisposable } from './kit';
+import type { ModelPart } from '../../anatomy/models';
+import { PART_OPACITY } from '../../anatomy/palette';
+import { type TissueMaterial, contentLook, createTissueMaterial, lumenLook, setTissueCut, tissueLook } from '../../anatomy/tissue';
+import { type AtlasSectionDef, type PartRef, LABEL_TR, VIEW_DIR, matchesRef, splitRef } from './atlas';
 
 /** Görünür alan: tuval boyutu ve panelin sağdan/alttan kapattığı piksel. */
 export interface WorldView {
@@ -79,6 +88,10 @@ export interface InteriorWorldProps {
   view: WorldView;
   /** Kadraja alınan nesnenin küresi (uçtan uca testte ekrana sığma denetimi); lümen içinde null. */
   onSubject?: (s: { center: [number, number, number]; radius: number } | null) => void;
+  /** Bu basamak gerçek insan atlas ağlarının kesitiyle çizilir (parçalar yüklendiyse). */
+  atlas?: { def: AtlasSectionDef; stage: string; parts: ModelPart[] };
+  /** Vurgu rengi (seçili bölüm). */
+  accent?: string;
 }
 
 const TMP = new Object3D();
@@ -268,7 +281,7 @@ const CONTENT: Record<string, { color: string; size: [number, number]; opacity: 
   chyme: { color: '#d9b26a', size: [0.06, 0.14], opacity: 0.9, geo: 'blob' },
   bolus: { color: '#d2a46f', size: [0.08, 0.3], opacity: 0.95, geo: 'blob' },
   saliva: { color: '#e7eef3', size: [0.03, 0.07], opacity: 0.45, geo: 'sphere' },
-  feces: { color: '#7a5537', size: [0.06, 0.15], opacity: 0.95, geo: 'blob' },
+  feces: { color: '#5e3d23', size: [0.06, 0.15], opacity: 0.95, geo: 'blob' },
   bile: { color: '#7fa04a', size: [0.03, 0.07], opacity: 0.7, geo: 'sphere' },
   juice: { color: '#efe0a6', size: [0.03, 0.06], opacity: 0.6, geo: 'sphere' },
   air: { color: '#ffffff', size: [0.015, 0.04], opacity: 0.35, geo: 'sphere' },
@@ -308,7 +321,12 @@ function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: 
     g.setIndex(idx);
     return g;
   }, [curve]);
-  const wallMat = useDisposable(() => new MeshStandardMaterial({ color: new Color(sp.color), roughness: 0.55, metalness: 0, side: DoubleSide }), [sp.color]);
+  // Islak mukoza: parlak sıvı film, mukozanın altından görünen damar ağı, astara göre yüzey dokusu (tissue.ts).
+  const wallMat = useDisposable(() => {
+    const m = createTissueMaterial(lumenLook(sp.lining, sp.color));
+    m.side = DoubleSide;
+    return m;
+  }, [sp.color, sp.lining]);
 
   const cfg = CONTENT[sp.content] ?? CONTENT.none!;
   const n = sp.content === 'none' ? 0 : sp.content === 'bolus' ? 14 : Math.round(30 + 170 * mode.content);
@@ -323,8 +341,13 @@ function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: 
       speed: 0.6 + r() * 0.8,
     }));
   }, [n, cfg.size, sp.content]);
-  const pGeo = useDisposable(() => (cfg.geo === 'rbc' ? rbcGeometry(20) : cfg.geo === 'blob' ? bumpySphere(1, 0.12, 3) : cfg.geo === 'long' ? new CapsuleGeometry(0.5, 1.6, 3, 8) : new SphereGeometry(1, 10, 8)), [cfg.geo]);
-  const pMat = useDisposable(() => new MeshStandardMaterial({ color: '#ffffff', transparent: cfg.opacity < 1, opacity: cfg.opacity, roughness: 0.5 }), [cfg.opacity]);
+  const pGeo = useDisposable(() => (cfg.geo === 'rbc' ? rbcGeometry(20) : cfg.geo === 'blob' ? bumpySphere(3, 0.18, 3) : cfg.geo === 'long' ? new CapsuleGeometry(0.5, 1.6, 3, 8) : new SphereGeometry(1, 14, 10)), [cfg.geo]);
+  const pMat = useDisposable(() => {
+    const m = createTissueMaterial(contentLook(sp.content));
+    m.transparent = cfg.opacity < 1;
+    m.opacity = cfg.opacity;
+    return m;
+  }, [cfg.opacity, sp.content]);
   const pRef = useRef<InstancedMesh>(null);
 
   // Ek parçacıklar: emilen (yeşil), salgılanan (sarı), gaz değişimi (O₂ kırmızı, CO₂ mavi)
@@ -344,7 +367,10 @@ function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: 
     return Array.from({ length: liningN }, () => ({ s: 0.02 + r() * 0.96, th: r() * Math.PI * 2, len: 0.7 + r() * 0.6, ph: r() * 6.28 }));
   }, [liningN]);
   const lGeo = useDisposable(() => (sp.lining === 'villi' ? new CapsuleGeometry(0.022, 0.1, 3, 6).translate(0, 0.072, 0) : new CylinderGeometry(0.004, 0.006, 0.07, 3).translate(0, 0.035, 0)), [sp.lining]);
-  const lMat = useDisposable(() => new MeshStandardMaterial({ color: new Color(sp.color).offsetHSL(0.01, 0.05, 0.12), roughness: 0.6 }), [sp.color]);
+  const lMat = useDisposable(() => {
+    const l = lumenLook(sp.lining, `#${new Color(sp.color).offsetHSL(0.01, 0.05, 0.1).getHexString()}`);
+    return createTissueMaterial({ ...l, veinAmount: 0, bump: 0.05 });
+  }, [sp.color, sp.lining]);
   const lRef = useRef<InstancedMesh>(null);
 
   const frameAt = (s: number) => {
@@ -411,7 +437,8 @@ function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: 
         TMP.rotation.set(t * 0.3 + k, k, t * 0.2);
         const digest = sp.content === 'chyme' ? 1 - mode.digestion * 0.55 * p.s : 1;
         const sc = p.size * digest * (absorbingHere ? Math.max(0.3, 1.1 - p.rho * 0.7) : 1);
-        TMP.scale.set(sc, cfg.geo === 'rbc' ? sc : sc, sc);
+        // Dışkı yumrukları biraz uzun (bağırsak boyunca sıkışmış parçalar)
+        TMP.scale.set(sc * (sp.content === 'feces' ? 1.5 : 1), sc, sc);
         TMP.updateMatrix();
         pm.setMatrixAt(k, TMP.matrix);
         color.set(absorbingHere ? '#7ee0b0' : cfg.color);
@@ -677,7 +704,13 @@ function ParenchymaView({ unit, color, focus, time }: { unit: string; color: str
   const geo = useDisposable(() => unitGeometry(unit), [unit]);
   const layout = useMemo(() => unitLayout(unit), [unit]);
   // Renk örnek başına (instanceColor) verilir; malzeme beyaz kalır ki renkler çarpılıp kararmasın.
-  const mat = useDisposable(() => new MeshStandardMaterial({ color: '#ffffff', roughness: 0.6, transparent: unit === 'follicle' || unit === 'layers', opacity: unit === 'layers' ? 0.75 : unit === 'follicle' ? 0.6 : 1 }), [unit]);
+  const mat = useDisposable(() => {
+    // Islak doku yüzeyi (kabartı, renk dalgalanması); renk örnek başına gelir.
+    const m = createTissueMaterial({ ...contentLook('cells'), bump: 0.18, bumpFreq: 7, mottle: 0.14, mottleFreq: 2.5, clearcoat: 0.55, roughness: 0.45, rimAmount: 0.06, rim: '#ff8070' });
+    m.transparent = unit === 'follicle' || unit === 'layers';
+    m.opacity = unit === 'layers' ? 0.75 : unit === 'follicle' ? 0.6 : 1;
+    return m;
+  }, [unit]);
   const uRef = useRef<InstancedMesh>(null);
   // Kan/sinyal akışı: girişten (sol, kırmızı) çıkışa (sağ, mavi-mor); lobülde köşeden merkeze.
   const n = focus === 'flow' ? 220 : 120;
@@ -852,12 +885,328 @@ function PathwayView({ signal, color, focus, stations, time }: { signal: 'sound'
   );
 }
 
+/* ================================================================== ATLAS KESİTİ (gerçek insan anatomisi ağları) */
+
+/** Kesit sahnesinde organın yarıçapı (sahne birimi). */
+const ATLAS_R = 1.6;
+
+interface AtlasSelection {
+  main: ModelPart[];
+  context: ModelPart[];
+  ghost: ModelPart[];
+  center: Vector3;
+  scale: number;
+}
+
+const refsMatch = (p: ModelPart, refs: PartRef[] | undefined) => !!refs?.some((r) => matchesRef(p.structure, p.label, r));
+
+/** Kesitte çizilecek parçalar: organ (tek tarafı), yakınındaki bağlam yapıları ve saydam kılıf. */
+export function selectAtlasParts(def: AtlasSectionDef, parts: ModelPart[]): AtlasSelection | null {
+  const sideOk = (b: Box3) => !def.side || (def.side === 'right' ? b.getCenter(V).x < 0 : b.getCenter(V).x > 0);
+  const main = parts.filter((p) => def.structures.includes(p.structure) && (!def.only?.[p.structure] || (p.label !== null && def.only[p.structure]!.includes(p.label))) && sideOk(p.box));
+  if (!main.length) return null;
+  const box = new Box3();
+  for (const p of main) box.union(p.box);
+  const near = box.clone().expandByVector(box.getSize(new Vector3()).multiplyScalar(0.35));
+  const context = parts.filter((p) => !main.includes(p) && refsMatch(p, def.context) && near.intersectsBox(p.box));
+  const ghost = parts.filter((p) => refsMatch(p, def.ghost));
+  const frame = box.clone();
+  for (const p of ghost) frame.union(p.box);
+  const radius = frame.getSize(new Vector3()).length() / 2;
+  return { main, context, ghost, center: frame.getCenter(new Vector3()), scale: ATLAS_R / Math.max(radius, 1e-4) };
+}
+
+const nameOf = (ref: PartRef) => {
+  const [s, l] = splitRef(ref);
+  return LABEL_TR[ref] ?? (l ? partDef(s, l)?.tr : undefined) ?? structureById.get(s)?.nameTr ?? ref;
+};
+
+/** Parçaların sahnedeki (ölçeklenmiş) merkezi. */
+function centroidOf(parts: ModelPart[], sel: AtlasSelection, out: Vector3): Vector3 | null {
+  if (!parts.length) return null;
+  const b = new Box3();
+  for (const p of parts) b.union(p.box);
+  return b.getCenter(out).sub(sel.center).multiplyScalar(sel.scale);
+}
+
+const smoothCache = new WeakMap<BufferGeometry, BufferGeometry>();
+/**
+ * Atlas ağları sadeleştirilmiş ve nicemlenmiştir; yakın planda yüzeyler köşeli görünmesin diye aynı
+ * konumdaki köşeler birleştirilip yumuşak normaller hesaplanır (bir kez; oturum boyunca önbellekte).
+ */
+function smoothGeometry(part: ModelPart): BufferGeometry {
+  let g = smoothCache.get(part.geometry);
+  if (!g) {
+    // Nicemlenmiş / iç içe (interleaved) konumlar düz Float32 dizisine açılır.
+    const pos = part.geometry.attributes.position!;
+    const flat = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      flat[i * 3] = pos.getX(i);
+      flat[i * 3 + 1] = pos.getY(i);
+      flat[i * 3 + 2] = pos.getZ(i);
+    }
+    const src = new BufferGeometry();
+    src.setAttribute('position', new BufferAttribute(flat, 3));
+    if (part.geometry.index) src.setIndex(Array.from(part.geometry.index.array));
+    g = mergeVertices(src, 1e-6);
+    g.computeVertexNormals();
+    smoothCache.set(part.geometry, g);
+  }
+  return g;
+}
+
+/**
+ * Etiketin bölüm üzerindeki noktası: kesit açıksa bölümün kesit düzlemindeki köşelerinden (kesit yüzünde
+ * görünen yeri), kapalıysa kameraya bakan yüzünden; önceki etiketlerden en uzak, kendi merkezine yakın olan.
+ */
+function anchorOn(ps: ModelPart[], sel: AtlasSelection, dir: Vector3, plane: number | null, chosen: Vector3[]): Vector3 | null {
+  if (!ps.length) return null;
+  const c = centroidOf(ps, sel, new Vector3())!;
+  const front = c.dot(dir);
+  const band = ATLAS_R * 0.07;
+  let best: Vector3 | null = null;
+  let bestScore = -Infinity;
+  const q = new Vector3();
+  for (const p of ps) {
+    const pos = p.geometry.attributes.position!;
+    const step = Math.max(1, Math.floor(pos.count / 500));
+    for (let i = 0; i < pos.count; i += step) {
+      q.fromBufferAttribute(pos, i).applyMatrix4(p.matrix).sub(sel.center).multiplyScalar(sel.scale);
+      const d = q.dot(dir);
+      if (plane !== null ? Math.abs(d - plane) > band : d < front) continue;
+      const spread = chosen.length ? Math.min(...chosen.map((x) => x.distanceTo(q))) : 0;
+      const score = Math.min(spread, ATLAS_R * 0.5) - 0.6 * q.distanceTo(c);
+      if (score > bestScore) {
+        bestScore = score;
+        best = q.clone();
+      }
+    }
+  }
+  if (!best) {
+    // Bölüm kesit düzlemine ulaşmıyorsa merkezi düzleme izdüşürülür.
+    best = c.clone();
+    if (plane !== null && front > plane) best.addScaledVector(dir, plane - front);
+  }
+  return best;
+}
+
+function AtlasPartMesh({ part, sel, plane, cut, ghost, lit, accent, time, rank }: { part: ModelPart; sel: AtlasSelection; plane: Plane; cut: boolean; ghost: boolean; lit: boolean; accent: string; time: { current: number }; rank: number }) {
+  const key = `${part.structure}|${part.label ?? ''}`;
+  const media = PART_OPACITY[key] !== undefined && /cornea|aqueous|vitreous|conjunctiva/.test(key);
+  const opacity = ghost ? 0.2 : media ? PART_OPACITY[key]! : cut ? 1 : (PART_OPACITY[key] ?? 1);
+  const mat = useDisposable(() => {
+    const m = createTissueMaterial(tissueLook(part.structure, part.label), { freqScale: 1 / sel.scale });
+    m.side = ghost ? FrontSide : DoubleSide;
+    return m;
+  }, [part.id, sel.scale, ghost]) as TissueMaterial;
+  useEffect(() => {
+    mat.clippingPlanes = ghost ? null : [plane];
+    setTissueCut(mat, !ghost);
+    mat.transparent = opacity < 1;
+    mat.opacity = opacity;
+    mat.depthWrite = opacity >= 1;
+    mat.emissive.set(lit ? accent : '#000000');
+    // Atlas ağlarında komşu bölümlerin yüzeyleri çakışır (kapsül ↔ korteks, odacık duvarları): büyük (dış)
+    // bölümler derinlikte geri itilir, küçük (iç) bölüm öne çıkar — kesitte titreşen lekeler olmaz.
+    mat.polygonOffset = rank > 0;
+    mat.polygonOffsetFactor = rank * 1.5;
+    mat.polygonOffsetUnits = rank * 6;
+    mat.needsUpdate = true;
+  }, [mat, plane, ghost, opacity, lit, accent, rank]);
+  useFrame(() => {
+    if (lit) mat.emissiveIntensity = 0.16 + 0.1 * (0.5 + 0.5 * Math.sin(time.current * 2.4));
+  });
+  return <mesh geometry={smoothGeometry(part)} matrixAutoUpdate={false} matrix={part.matrix} material={mat} renderOrder={ghost ? 5 : 0} />;
+}
+
+const ORIGIN = new Vector3();
+const P = new Vector3();
+
+/**
+ * Atlas etiketleri (tıbbi atlas düzeni): bölümün kesit yüzündeki noktası + organın iki yanında sütun halinde
+ * ad ve aralarında kılavuz çizgi. Etiketler üst üste binmez; görünür alanın (panelin kapatmadığı kısım) içinde kalır.
+ */
+function Callouts({ items, center, radius }: { items: Array<{ ref: string; at: Vector3; name: string; lit: boolean }>; center: Vector3; radius: number }) {
+  const { view } = useContext(WorldContext);
+  const camera = useThree((s) => s.camera);
+  const size = useThree((s) => s.size);
+  const labels = useRef<Array<HTMLSpanElement | null>>([]);
+  const lines = useRef<Array<SVGLineElement | null>>([]);
+  const dots = useRef<Array<SVGCircleElement | null>>([]);
+  useFrame(() => {
+    // Tam ekran Html kabı, sahne kökünün ekrandaki izdüşümüne göre yerleşir: tuval koordinatına çevir.
+    P.set(0, 0, 0).project(camera);
+    const ox = ((P.x + 1) / 2) * size.width - size.width / 2;
+    const oy = ((1 - P.y) / 2) * size.height - size.height / 2;
+    P.copy(center).project(camera);
+    const cx = ((P.x + 1) / 2) * size.width;
+    const dist = camera.position.distanceTo(center);
+    const fov = ((camera as PerspectiveCamera).fov * Math.PI) / 180;
+    const rpx = (radius / Math.max(1e-3, dist * Math.tan(fov / 2))) * (size.height / 2);
+    const pts = items.map((it, i) => {
+      P.copy(it.at).project(camera);
+      return { i, x: ((P.x + 1) / 2) * size.width - ox, y: ((1 - P.y) / 2) * size.height - oy };
+    });
+    const maxX = size.width - view.right - 8;
+    for (const side of [-1, 1]) {
+      const group = pts.filter((p) => (side < 0 ? p.x < cx - ox : p.x >= cx - ox)).sort((a, b) => a.y - b.y);
+      let y = -Infinity;
+      for (const p of group) {
+        y = Math.max(p.y, y + 30);
+        const ly = Math.min(size.height - view.bottom - 16, Math.max(16, y)) - oy;
+        const el = labels.current[p.i];
+        const w = el?.offsetWidth ?? 120;
+        // Sol sütunda etiketin sağ kenarı, sağ sütunda sol kenarı kılavuz çizginin ucundadır; ikisi de tuvalin içinde kalır.
+        const lx = (side < 0 ? Math.max(8 + w, cx - rpx * 0.85 - 28) : Math.min(maxX - w, cx + rpx * 0.85 + 28)) - ox;
+        if (el) el.style.transform = `translate(${lx}px, ${ly}px) translate(${side < 0 ? '-100%' : '0'}, -50%)`;
+        lines.current[p.i]?.setAttribute('x1', String(p.x));
+        lines.current[p.i]?.setAttribute('y1', String(p.y));
+        lines.current[p.i]?.setAttribute('x2', String(lx));
+        lines.current[p.i]?.setAttribute('y2', String(ly));
+        dots.current[p.i]?.setAttribute('cx', String(p.x));
+        dots.current[p.i]?.setAttribute('cy', String(p.y));
+      }
+    }
+  });
+  if (!items.length) return null;
+  return (
+    <Html fullscreen zIndexRange={[30, 0]} style={{ pointerEvents: 'none' }}>
+      <svg className="atlas-lines" width={size.width} height={size.height} aria-hidden="true">
+        {items.map((it, i) => (
+          <g key={it.ref} className={it.lit ? 'lit' : undefined}>
+            <line ref={(el) => void (lines.current[i] = el)} />
+            <circle ref={(el) => void (dots.current[i] = el)} r={3} />
+          </g>
+        ))}
+      </svg>
+      {items.map((it, i) => (
+        <span key={it.ref} ref={(el) => void (labels.current[i] = el)} data-testid="atlas-label" data-ref={it.ref} className={`atlas-label${it.lit ? ' atlas-label-lit' : ''}`}>
+          {it.name}
+        </span>
+      ))}
+    </Html>
+  );
+}
+
+function AtlasView({ def, stage, parts, focus: _focus, time, accent }: { def: AtlasSectionDef; stage: string; parts: ModelPart[]; focus: SceneFocus; time: { current: number }; accent: string }) {
+  const { reducedMotion } = useContext(WorldContext);
+  const st = def.stages[stage] ?? {};
+  const sel = useMemo(() => selectAtlasParts(def, parts)!, [def, parts]);
+  const dir = useMemo(() => new Vector3(...VIEW_DIR[def.view]), [def.view]);
+  const all = useMemo(() => [...sel.main, ...sel.context], [sel]);
+  // Hacme göre sıra (0 = en küçük): çakışan yüzeylerde iç bölüm kazanır.
+  const rank = useMemo(() => {
+    const vol = (p: ModelPart) => {
+      const d = p.box.getSize(V);
+      return d.x * d.y * d.z;
+    };
+    const order = [...all].sort((a, b) => vol(a) - vol(b));
+    return new Map(order.map((p, i) => [p.id, Math.round((i / Math.max(1, order.length - 1)) * 8)]));
+  }, [all]);
+  const focused = useMemo(() => all.filter((p) => refsMatch(p, st.focus)), [all, st.focus]);
+  const fc = useMemo(() => centroidOf(focused, sel, new Vector3()), [focused, sel]);
+  const cut = st.cut !== false;
+  // Kesit düzlemi: bakış yönünde t'den öndeki her şey kesilir (dot(dir, p) ≤ t kalır). Girişte organ
+  // kapalıdır (düzlem önde); düzlem yüzeyden içeri ilerler ve iç yapı ortaya çıkar.
+  const open = ATLAS_R * 1.6;
+  const target = !cut ? open : st.depth !== undefined ? st.depth * ATLAS_R : fc ? fc.dot(dir) + 0.02 : 0;
+  const plane = useMemo(() => new Plane(dir.clone().negate(), open), [dir, open]);
+  const live = useRef(target);
+  live.current = target;
+  const invalidate = useThree((s) => s.invalidate);
+  useFrame((_, dt) => {
+    const d = live.current - plane.constant;
+    if (Math.abs(d) < 1e-4) return;
+    plane.constant += reducedMotion ? d : d * (1 - Math.exp(-Math.min(dt, 0.1) * 1.9));
+    invalidate();
+  });
+  // Kan yolu (kalp): bölüm merkezlerinden geçen eğri; akciğerden önce oksijeni azalmış (mavi), sonra oksijenli.
+  const flow = useMemo(() => {
+    if (!def.flow) return null;
+    const pts: Vector3[] = [];
+    for (const f of def.flow) {
+      const ps = all.filter((p) => matchesRef(p.structure, p.label, f.at));
+      const c = centroidOf(ps, sel, new Vector3());
+      if (c) pts.push(c.addScaledVector(new Vector3(...(f.off ?? [0, 0, 0])), ATLAS_R));
+    }
+    if (pts.length < 3) return null;
+    const curve = new CatmullRomCurve3(pts);
+    // Oksijenlenme noktasının eğri üzerindeki yeri
+    const ox = Math.min(pts.length - 1, def.oxygenAt ?? pts.length);
+    return { curve, oxygen: ox / (pts.length - 1) };
+  }, [def.flow, def.oxygenAt, all, sel]);
+  const n = 150;
+  const pRef = useRef<InstancedMesh>(null);
+  const pGeo = useDisposable(() => rbcGeometry(16));
+  const pMat = useDisposable(() => new MeshStandardMaterial({ roughness: 0.4 }));
+  const color = useMemo(() => new Color(), []);
+  useFrame(() => {
+    const m = pRef.current;
+    if (!m || !flow) return;
+    const t = time.current;
+    const beat = (t * 1.15) % 1;
+    const push = beat < 0.35 ? Math.sin((beat / 0.35) * Math.PI) : 0;
+    for (let k = 0; k < n; k++) {
+      const u = (k / n + t * 0.045 + push * 0.004) % 1;
+      flow.curve.getPointAt(u, V);
+      TMP.position.copy(V);
+      TMP.rotation.set(k, t * 0.8 + k, 0);
+      TMP.scale.setScalar(0.06);
+      TMP.updateMatrix();
+      m.setMatrixAt(k, TMP.matrix);
+      color.set(u < flow.oxygen ? '#4b6cc6' : '#d23a3f');
+      m.setColorAt(k, color);
+    }
+    m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  });
+  // Kadraj: bütün organ ya da odaktaki bölüm; kesit yüzüne hafif yukarıdan bakılır.
+  const camDir = useMemo(() => dir.clone().add(new Vector3(dir.x ? 0 : 0.12, dir.y ? 0 : 0.22, dir.z ? 0 : 0.1)), [dir]);
+  useFitted(fc ?? new Vector3(), ATLAS_R * (st.zoom ?? (fc ? 0.55 : 1)) * 1.05, camDir, `atlas:${stage}`);
+  // Etiketler: bölümün kesit yüzündeki yeri (kesilen yarıdaysa düzleme izdüşürülür).
+  const labelRefs = (st.labels ?? (st.focus?.length ? st.focus : def.labels) ?? []).slice(0, 6);
+  const labelKey = labelRefs.join();
+  const labels = useMemo(() => {
+    const chosen: Vector3[] = [];
+    return labelRefs
+      .map((ref) => {
+        const ps = [...all, ...sel.ghost].filter((p) => matchesRef(p.structure, p.label, ref));
+        const at = anchorOn(ps, sel, dir, cut && !ps.some((p) => sel.ghost.includes(p)) ? target : null, chosen);
+        if (!at) return null;
+        chosen.push(at);
+        return { ref, at, name: nameOf(ref), lit: refsMatch(ps[0]!, st.focus) };
+      })
+      .filter((x): x is NonNullable<typeof x> => !!x);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labelKey, all, sel, dir, cut, target, stage]);
+  return (
+    <group>
+      <directionalLight position={[-3, 1.5, -3]} intensity={0.45} color="#ffc8b8" />
+      <group scale={sel.scale} position={sel.center.clone().multiplyScalar(-sel.scale)}>
+        {sel.main.map((p) => (
+          <AtlasPartMesh key={p.id} part={p} sel={sel} plane={plane} cut={cut} ghost={false} lit={refsMatch(p, st.focus)} accent={accent} time={time} rank={rank.get(p.id) ?? 0} />
+        ))}
+        {sel.context.map((p) => (
+          <AtlasPartMesh key={p.id} part={p} sel={sel} plane={plane} cut={cut} ghost={false} lit={refsMatch(p, st.focus)} accent={accent} time={time} rank={rank.get(p.id) ?? 0} />
+        ))}
+        {sel.ghost.map((p) => (
+          <AtlasPartMesh key={p.id} part={p} sel={sel} plane={plane} cut={false} ghost lit={false} accent={accent} time={time} rank={0} />
+        ))}
+      </group>
+      {flow && st.flow && <instancedMesh ref={pRef} args={[pGeo, pMat, n]} frustumCulled={false} />}
+      <Callouts items={labels} center={fc ?? ORIGIN} radius={ATLAS_R * (st.zoom ?? (fc ? 0.55 : 1))} />
+    </group>
+  );
+}
+
 /* ================================================================== KÖK */
 
-function Scene({ spec, focus, progress, wall, mode, layers, highlightLayer, stations, playing, reducedMotion }: InteriorWorldProps) {
+function Scene({ spec, focus, progress, wall, mode, layers, highlightLayer, stations, playing, reducedMotion, atlas, accent }: InteriorWorldProps) {
   const time = useClock(playing, reducedMotion);
   const m = mode ?? DEFAULT_MODE;
   if (wall && layers?.length) return <WallSection layers={layers} highlight={highlightLayer} time={time} />;
+  // Gerçek insan atlas ağları yüklendiyse organın iç yapısı kesitle; yüklenmediyse aynı basamak prosedürel çizilir.
+  if (atlas && !wall && selectAtlasParts(atlas.def, atlas.parts)) return <AtlasView def={atlas.def} stage={atlas.stage} parts={atlas.parts} focus={focus} time={time} accent={accent ?? '#ffcf70'} />;
   switch (spec.kind) {
     case 'lumen':
       return <LumenView sp={spec} focus={focus} mode={m} time={time} progress={progress} />;
@@ -880,7 +1229,7 @@ function Scene({ spec, focus, progress, wall, mode, layers, highlightLayer, stat
  */
 export function InteriorWorld(props: InteriorWorldProps) {
   const lumenLike = !props.wall && (props.spec.kind === 'lumen' || props.spec.kind === 'vessel');
-  useAtmosphere(lumenLike ? '#1a0c0f' : '#0d1117', lumenLike ? ['#2a1014', 1.5, 9] : null, lumenLike ? 0.3 : 0.45);
+  useAtmosphere(lumenLike ? '#14080a' : '#0b0e14', lumenLike ? ['#1e0a0d', 1.5, 9] : null, lumenLike ? 0.3 : props.atlas ? 0.32 : 0.45, true);
   const ctx = useMemo(
     () => ({ view: props.view, entry: props.entry, leaving: props.leaving, reducedMotion: props.reducedMotion, progress: props.progress, onSubject: props.onSubject }),
     [props.view, props.entry, props.leaving, props.reducedMotion, props.progress, props.onSubject],
@@ -889,7 +1238,7 @@ export function InteriorWorld(props: InteriorWorldProps) {
     <WorldContext value={ctx}>
       <group>
         {lumenLike && <Headlight intensity={3} distance={10} />}
-        <pointLight position={[0, 2, 3]} intensity={lumenLike ? 0.5 : 1.2} distance={12} decay={1.3} color="#ffe8e0" />
+        <pointLight position={[0, 2, 3]} intensity={lumenLike ? 0.5 : props.atlas ? 0.5 : 1.2} distance={12} decay={1.3} color="#ffe8e0" />
         <Scene {...props} />
       </group>
     </WorldContext>
