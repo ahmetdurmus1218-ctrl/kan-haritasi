@@ -116,3 +116,17 @@ jobs:
             --target "$GITHUB_SHA" --prerelease \
             --title "Kan Haritası ${VERSION} (son derleme)" \
             --notes "main dalının son derlemesi (${GITHUB_SHA::7}). APK'yı telefondan indirip kur. Veriler yalnızca cihazda, şifreli; uygulamanın internet izni yoktur."
+
+      # Elle başlatılan (workflow_dispatch) dal derlemeleri: Actions dosya kotasına takılmadan telefondan
+      # indirilebilsin diye ayrı bir ön yayına (apk-deneme) yüklenir; main'in apk-son yayınına dokunulmaz.
+      - name: "Dal derlemesi: denemelik yayın (apk-deneme)"
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.name.outputs.version }}
+        run: |
+          gh release delete apk-deneme --yes --cleanup-tag || true
+          gh release create apk-deneme out/*.apk out/SHA256SUMS.txt \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "Kan Haritası ${VERSION} (deneme · ${GITHUB_REF_NAME})" \
+            --notes "Henüz main'e birleştirilmemiş dal derlemesi (${GITHUB_REF_NAME} · ${GITHUB_SHA::7}). APK'yı telefondan indirip kur. Veriler yalnızca cihazda, şifreli; uygulamanın internet izni yoktur."
