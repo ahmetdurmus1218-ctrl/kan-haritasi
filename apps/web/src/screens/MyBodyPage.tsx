@@ -13,7 +13,7 @@ import { TONE, labStyle, labTone } from '../lib/tone';
 import { formatDate } from '../lib/format';
 import { Banner } from '../components/ui';
 import { OrganSheet } from '../components/OrganSheet';
-import { ChevronRightIcon, LayersIcon, SpinnerIcon } from '../components/icons';
+import { BrainIcon, ChevronRightIcon, LayersIcon, SpinnerIcon } from '../components/icons';
 
 export { organName } from '../lib/summary';
 
@@ -188,6 +188,16 @@ export function MyBodyPage() {
           <span className="min-w-0 flex-1">
             <span className="block text-lg font-medium text-fg">Vücudun nasıl çalıştığını keşfet</span>
             <span className="block text-sm text-fg-muted">Sindirim, dolaşım, solunum… adım adım.</span>
+          </span>
+          <ChevronRightIcon size={18} />
+        </button>
+        <button type="button" onClick={() => go({ name: 'brain' })} className="flex w-full items-center gap-4 rounded-3xl border border-ink-600/60 bg-ink-850/60 p-5 text-left transition hover:border-ink-500 sm:col-span-2" data-testid="open-brain-map">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+            <BrainIcon size={24} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-lg font-medium text-fg">Beyin haritası</span>
+            <span className="block text-sm text-fg-muted">Beyin raporundaki her cümle beyinde nerede, ne demek — adım adım; her bölgenin içine gir.</span>
           </span>
           <ChevronRightIcon size={18} />
         </button>

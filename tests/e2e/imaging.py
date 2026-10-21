@@ -337,8 +337,8 @@ with sync_playwright() as p:
     check("Görüntülemelerin" in (page.text_content("main") or ""), "beyin panelinde görüntüleme belgeleri listeleniyor")
     page.screenshot(path=SHOTS / "72-beyin-goruntulemeler.png")
 
-    # --- Yazısız MR kolajı: kesitler ayrılır, sağ-sol karşılaştırması yapılır, dikkat bölgesi
-    # sonuçlara eklenince 3B beyin işaretlenir ve "Sonucuma göre" görüntüyü açar
+    # --- Yazısız MR kolajı: kesitler ayrılır, sağ-sol karşılaştırması yapılır (kapalı "teknik ön kontrol"),
+    # ama fotoğraftan bölge/bulgu söylenmez: sonuca eklenmez, 3B beyin işaretlenmez, okuma yolu gösterilir
     page.goto(URL + "#/belgeler")
     page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
     pick_type(page, "MR")
@@ -347,6 +347,10 @@ with sync_playwright() as p:
     page.get_by_role("button", name="Aç ve oku").click()
     # Simetri ön kontrolü artık tek analiz kartının içinde (ayrı/çift kart yok)
     analysis = page.get_by_role("region", name="Ham görüntü analizi")
+    analysis.get_by_test_id("read-guide").wait_for(timeout=60000)
+    guide = analysis.get_by_test_id("read-guide").inner_text()
+    check("sonuç çıkarılmaz" in guide and "Radyoloji raporunu ekle" in guide and "DICOM" in guide, "MR fotoğrafı: bölge uydurulmuyor, okuma yolu (rapor / DICOM) gösteriliyor")
+    analysis.get_by_test_id("symmetry-details").locator("summary").click()
     card = page.locator("[aria-label='Sağ-sol simetri ön kontrolü']").first
     card.get_by_text("kesit bulundu", exact=False).wait_for(timeout=30000)
     text = card.inner_text()
@@ -368,19 +372,14 @@ with sync_playwright() as p:
         page.get_by_text(re.compile("okunabilir bir rapor metni yok|okunabilir metin bulunamadı")).first.wait_for(timeout=120000)
         check(page.get_by_text("Görüntüden okundu (OCR)", exact=False).count() == 0, "anlamsız OCR metni rapor diye kaydedilmedi")
     analysis.screenshot(path=SHOTS / "73-mr-otomatik-inceleme.png")
-    card.get_by_role("button", name="Sonuçlarıma ekle", exact=False).click()
-    card.get_by_text("Sonuçlarına eklendi", exact=False).wait_for()
+    check(card.get_by_role("button", name="Sonuçlarıma ekle", exact=False).count() == 0, "asimetri gözlemi sonuçlara eklenemiyor (organ bulgusu değil)")
+    check("yarıküre" not in full and "lob" not in text.lower(), "asimetri bir beyin bölgesine (yarıküre/lob) eşlenmiyor")
     page.get_by_text("Kesitlerin şeklinden önerilen (kesin değil):").wait_for()
     page.get_by_role("button", name="Uygula ve vücutta göster").click()
     page.wait_for_url("**#/vucut/yapi/brain", timeout=30000)
-    page.get_by_text("Görüntü ön kontrolü (1 asimetri gözlemi)", exact=False).first.wait_for(timeout=120000)
-    mine = page.get_by_role("button", name="Sonucuma göre", exact=False).first
-    check(mine.is_enabled() and "görüntünle" in mine.inner_text(), "beyin: Sonucuma göre görüntülemeye bağlı")
+    page.wait_for_timeout(3000)
+    check(page.get_by_text("asimetri gözlemi", exact=False).count() == 0, "3B beyin: ön kontrol asimetrisi vurgu olarak gösterilmiyor")
     page.screenshot(path=SHOTS / "74-beyin-inceleme-vurgusu.png")
-    mine.click()
-    page.wait_for_url("**#/belge/**", timeout=20000)
-    page.get_by_text("Sonuçlarına eklendi", exact=False).wait_for(timeout=30000)
-    check(page.locator("[aria-label='Sağ-sol simetri ön kontrolü']").count() == 1, "Sonucuma göre → ön kontrolü kaydedilen görüntü açıldı")
 
     # --- Otomatik tür: ZIP içindeki DICOM serisi (aynı kesitler zaten yüklü → çift kayıt sayılır)
     page.goto(URL + "#/belgeler")

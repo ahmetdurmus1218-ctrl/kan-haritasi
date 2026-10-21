@@ -9,6 +9,7 @@ import { useHealthModel } from '../lib/analysisBridge';
 import { bodySummary, headlineOf, organName, whatChanged } from '../lib/summary';
 import { TONE } from '../lib/tone';
 import { formatDate } from '../lib/format';
+import { brainFindings } from '../lib/brainReport';
 import { Uploader } from '../components/Uploader';
 import { BodyIcon, ChevronRightIcon, PlusIcon, SpinnerIcon } from '../components/icons';
 
@@ -36,6 +37,7 @@ export function HomePage({ navigate }: { navigate: (r: Route) => void }) {
   const [startedEmpty, setStartedEmpty] = useState<boolean | null>(null);
   const summary = useMemo(() => (model ? bodySummary(model) : null), [model]);
   const changes = useMemo(() => (model ? whatChanged(model, studies ?? [], 6) : []), [model, studies]);
+  const brain = useMemo(() => (studies ? brainFindings(studies) : []), [studies]);
 
   if (model && summary && startedEmpty === null) setStartedEmpty(!(summary.hasData || (studies?.length ?? 0) > 0));
 
@@ -68,6 +70,15 @@ export function HomePage({ navigate }: { navigate: (r: Route) => void }) {
   const cards: Array<{ title: string; detail?: string; route: Route; tone?: keyof typeof TONE }> = [];
   const urgent = summary.urgent[0];
   if (urgent) cards.push({ title: urgent.label, detail: `${urgent.detail} · acil değerlendirme gerektirebilir`, route: urgent.route, tone: 'urgent' });
+  // Beyin raporu: cümleler beyin haritasında bölge bölge, adım adım (rapor varsa her zaman kısa yol).
+  const brainFlagged = brain.filter((b) => b.finding.status === 'abnormal' || b.finding.status === 'uncertain');
+  if (brain.length)
+    cards.push({
+      title: brainFlagged.length ? `Beyin raporun: ${brainFlagged.length} dikkat çeken cümle` : 'Beyin raporun: dikkat çeken cümle yok',
+      detail: 'Beyin haritasında bölge bölge, adım adım gör',
+      route: { name: 'brain' },
+      ...(brainFlagged.length ? { tone: 'attention' as const } : {}),
+    });
   const top = organs[0];
   if (top)
     cards.push({

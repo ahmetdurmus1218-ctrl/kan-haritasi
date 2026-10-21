@@ -328,11 +328,6 @@ function ImagingBlock({ studies, accent, structure }: { studies: ImagingStudy[];
             {st.note?.analysis && (
               <span className="mt-1 block text-[11px] text-fg-muted">Görüntü analizi ({st.note.analysis.status === 'UNAVAILABLE' ? 'bu tür için yok' : 'kısmi'}): {st.note.analysis.summary}</span>
             )}
-            {st.review && st.review.regions.length > 0 && (
-              <span className="mt-1 block text-[11px] text-caution-fg">
-                Sağ-sol ön kontrol · {st.review.regions.length} asimetri gözlemi · tanı değildir
-              </span>
-            )}
             {st.measures.some((m) => m.def.structure === structure) && (
               <span className="mt-1.5 flex flex-wrap gap-1">
                 {st.measures
@@ -523,7 +518,7 @@ export function OrganPanel({
       {!part && insides[0] && (
         <div className="mb-6 space-y-2">
           <Caps className="block text-[10px] text-fg-faint">Daha derine in · doku, hücre ve süreç</Caps>
-          <HowItWorks accent={accent} hasMine={hasMine} imaging={imaging.find((st) => st.review) ?? imaging[0]} onEnter={(mode) => onEnter(insides[0]!, mode)} />
+          <HowItWorks accent={accent} hasMine={hasMine} imaging={imaging[0]} onEnter={(mode) => onEnter(insides[0]!, mode)} />
           <div className="flex flex-wrap gap-1.5 pt-1">
             {links.map(({ id, fit }) => (
               <button

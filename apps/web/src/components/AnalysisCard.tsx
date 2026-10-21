@@ -549,10 +549,13 @@ export function AnalysisCard({
   const symmetry = run?.result.adapterId === 'cross-sectional-symmetry';
   const precheckRan = Boolean(run && run.result.status !== 'UNAVAILABLE');
   const st = analysisState({ modelRan: Boolean(modelRan), precheckRan });
+  // MR/BT fotoğrafı ya da tek kesit, yerel model çalışmadı: görüntüden bölge/bulgu söylenmez; okuma yolu gösterilir.
+  const photoOnly = symmetry && !modelRan;
+  const brainStudy = run?.anatomy?.structure === 'brain' || run?.result.extent?.headLike === true;
   const outcome = !run
     ? ''
     : asym
-      ? `${asym} görüntü asimetrisi gözlemi (tıbbi bulgu değil)`
+      ? `Sağ-sol parlaklık karşılaştırması: ${asym} görüntü asimetrisi gözlemi (tıbbi bulgu değil; bir beyin bölgesine eşlenmez).`
       : hr
         ? `Kalp hızı yaklaşık ${hr.value}/dk`
         : findings.length
@@ -612,6 +615,7 @@ export function AnalysisCard({
               {` · İnceleme kapsamı: ${run.coverage.label}`}
             </p>
             {run.modality?.conflict && <p className="mt-1 text-sm text-caution-fg">{run.modality.conflict}</p>}
+            {photoOnly && <ReadGuide brain={brainStudy} reportAvailable={reportAvailable} volumeModel={volumeModel?.manifest.name} />}
             {run.coverage.limited && <p className="mt-2 text-sm text-fg-muted">{run.coverage.limited}</p>}
             {modelRan && <p className="mt-2 text-[15px] text-fg">{modelRan.findings.length ? `Model ${modelRan.findings.length} bulgu bildirdi.` : 'Model eşik üstü bulgu bildirmedi.'}</p>}
             {(precheckRan || st !== 'model') && <p className="mt-2 text-[15px] text-fg">{st === 'model' && precheckRan ? `Ön inceleme: ${outcome}` : outcome}</p>}
@@ -647,7 +651,7 @@ export function AnalysisCard({
             )}
             {modelState.status === 'done' && modelState.result.status === 'unavailable' && <p className="mt-2 text-sm text-caution-fg">Yerel model çalıştırılamadı: {modelState.result.reason}</p>}
             <div className="mt-3 flex flex-wrap gap-2">
-              {(findings.length > 0 || (modelRan?.findings.length ?? 0) > 0) && (
+              {((findings.length > 0 && !photoOnly) || (modelRan?.findings.length ?? 0) > 0) && (
                 <button type="button" className="btn-primary px-3 py-1.5 text-sm" onClick={() => document.getElementById(`bulgular-${info.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
                   {modelRan?.findings.length ? 'Bulguları gör' : asym ? 'Gözlemleri gör' : 'Ölçümleri gör'}
                 </button>
@@ -687,14 +691,34 @@ export function AnalysisCard({
                 {modelState.model.manifest.name} bu cihazda kurulu, ancak 3B bir modeldir: yalnızca DICOM serisinde (en az {modelState.model.manifest.volume?.minSlices ?? 10} kesit) çalışır. {files > 1 ? 'Seri analizi yukarıda.' : 'Bu görüntüde (fotoğraf / tek kesit) çalıştırılmadı.'}
               </p>
             )}
-            {symmetry && gray && <SymmetryView gray={gray} sourceId={info.id} noteFileId={noteFileId} {...(storedReview ? { stored: storedReview } : {})} {...(onHeadLike ? { onHeadLike } : {})} {...(onReview ? { onReview } : {})} />}
-            {!symmetry && raster && <Overlay raster={raster} marks={obsMarks} caption="Mor kutu: ön incelemenin ölçüm yaptığı gerçek piksel alanı." />}
-            {findings.length > 0 && (
-              <ul className="space-y-2" aria-label="Görüntüden çıkan gözlemler">
-                {findings.map((o, i) => (
-                  <FindingCard key={o.id} o={o} swatch={o.kind === 'asymmetry' ? BOX_COLORS[i % BOX_COLORS.length] : undefined} modality={modalityLabel} concordance={local?.concordance.find((c) => c.observation.id === o.id)?.text} model={local} onRegion={setRegion} />
-                ))}
-              </ul>
+            {symmetry ? (
+              // Sağ-sol ön kontrolü bir sonuç değil, teknik bir kontroldür: kapalı bölümde durur.
+              <details className="rounded-xl border border-dashed border-ink-600 p-3" data-testid="symmetry-details">
+                <summary className="cursor-pointer text-sm text-fg-muted">
+                  Teknik ön kontrol: sağ-sol parlaklık karşılaştırması{asym ? ` (${asym} fark)` : ''} · tanı değildir
+                </summary>
+                <div className="mt-3 space-y-3">
+                  {gray && <SymmetryView gray={gray} sourceId={info.id} noteFileId={noteFileId} {...(storedReview ? { stored: storedReview } : {})} {...(onHeadLike ? { onHeadLike } : {})} {...(onReview ? { onReview } : {})} />}
+                  {findings.length > 0 && (
+                    <ul className="space-y-2" aria-label="Görüntüden çıkan gözlemler">
+                      {findings.map((o, i) => (
+                        <FindingCard key={o.id} o={o} swatch={o.kind === 'asymmetry' ? BOX_COLORS[i % BOX_COLORS.length] : undefined} modality={modalityLabel} concordance={local?.concordance.find((c) => c.observation.id === o.id)?.text} model={local} onRegion={setRegion} />
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </details>
+            ) : (
+              <>
+                {raster && <Overlay raster={raster} marks={obsMarks} caption="Mor kutu: ön incelemenin ölçüm yaptığı gerçek piksel alanı." />}
+                {findings.length > 0 && (
+                  <ul className="space-y-2" aria-label="Görüntüden çıkan gözlemler">
+                    {findings.map((o) => (
+                      <FindingCard key={o.id} o={o} modality={modalityLabel} concordance={local?.concordance.find((c) => c.observation.id === o.id)?.text} model={local} onRegion={setRegion} />
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </div>
 
@@ -778,6 +802,42 @@ export function AnalysisCard({
   );
 }
 
+/**
+ * MR/BT fotoğrafında (model yok) sonucun nasıl GERÇEKTEN okunacağı: rapor metni (cümle cümle, sade dil,
+ * beyin haritası) ya da DICOM serisi (yerel 3B model). Görüntüden bölge/bulgu uydurulmaz.
+ */
+function ReadGuide({ brain, reportAvailable, volumeModel }: { brain: boolean; reportAvailable: boolean; volumeModel?: string }) {
+  return (
+    <div className="mt-3 rounded-xl border border-accent/40 bg-accent/5 p-3.5" data-testid="read-guide">
+      <p className="text-[15px] font-medium text-fg">Bu fotoğraftan “şurada şu var” diye sonuç çıkarılmaz</p>
+      <p className="mt-1 text-sm text-fg-muted">
+        Bu cihazda MR/BT fotoğrafında hastalık okuyan doğrulanmış bir model yok. Fotoğraftan bölge ya da bulgu söylemek uydurma olur; bu yüzden söylemiyoruz.
+      </p>
+      <p className="mt-2 text-sm font-medium text-fg">Sonucunu okuyabilmemiz için:</p>
+      <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm text-fg">
+        <li>
+          {reportAvailable ? 'Raporun okundu' : 'Radyoloji raporunu ekle (kâğıdın fotoğrafı ya da PDF)'}: her cümle sade dille anlatılır ve {brain ? 'beynin ilgili bölgesine' : 'vücudunda ilgili organa'} yerleşir.
+        </li>
+        <li>CD/DVD'deki DICOM klasörünü ya da ZIP'ini ekle: {volumeModel ?? 'yerel 3B model'} cihazda çalışır ve organları senin görüntünden 3B çıkarır.</li>
+      </ol>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {reportAvailable ? (
+          <button type="button" className="btn-primary px-3 py-1.5 text-sm" onClick={() => go(brain ? { name: 'brain' } : { name: 'mybody' })}>
+            {brain ? 'Raporumu beyin haritasında gör' : 'Raporumu vücudumda gör'}
+          </button>
+        ) : (
+          <button type="button" className="btn-primary px-3 py-1.5 text-sm" onClick={() => go({ name: 'add' })}>
+            Raporu ekle
+          </button>
+        )}
+        <button type="button" className="btn-ghost px-3 py-1.5 text-sm" onClick={() => go({ name: 'add' })}>
+          DICOM / ZIP ekle
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function confidenceWords(c: ImageObservation['confidence']): string {
   if (c.kind === 'measured') return 'ölçüm';
   if (c.kind === 'reported') return 'raporda yazıyor';
@@ -788,15 +848,13 @@ function confidenceWords(c: ImageObservation['confidence']): string {
 function FindingCard({ o, swatch, modality, concordance, model, onRegion }: { o: ImageObservation; swatch?: string; modality?: string; concordance?: string; model: HealthModel | null; onRegion: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const last = o.location?.path[o.location.path.length - 1];
-  const place = o.location ? o.location.path.slice(1).map((id) => GRAPH.node(id)?.nameTr ?? id).join(' · ') || GRAPH.node(o.location.path[0] ?? '')?.nameTr : undefined;
-  const title = o.kind === 'asymmetry' ? (place ?? 'Görüntüde bir alan') : o.measurement ? `${o.measurement.name}: ${o.measurement.value}${o.measurement.unit}` : o.text;
+  const title = o.kind === 'asymmetry' ? o.text.replace(/^Görüntü asimetrisi gözlemi — /, '') : o.measurement ? `${o.measurement.name}: ${o.measurement.value}${o.measurement.unit}` : o.text;
   const what = o.kind === 'asymmetry' ? 'Görüntü asimetrisi gözlemi (karşı tarafa göre farklı parlaklık) · tıbbi bulgu değil' : o.kind === 'rhythm' ? o.text.split('.')[0] : undefined;
   return (
     <li className="rounded-xl border border-ink-600/60 bg-ink-900/30 p-3.5">
       <p className="text-[15px] font-medium text-fg">
         {swatch && <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: swatch }} aria-hidden="true" />}
         {title}
-        {o.kind === 'asymmetry' && o.location?.basis === 'pixel-mapped' ? <span className="font-normal text-fg-faint"> (yaklaşık)</span> : null}
       </p>
       {what && <p className="mt-0.5 text-sm text-fg-muted">{what}</p>}
       <p className="mt-1 text-xs text-fg-faint">Kaynak: {modality ?? 'görüntü'} görüntüsü (kural tabanlı ön kontrol) · {confidenceWords(o.confidence)}</p>

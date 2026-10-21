@@ -349,7 +349,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
                 {findings.filter((f) => f.status === 'abnormal').length} dikkat · {findings.filter((f) => f.status === 'uncertain').length} belirsiz
               </span>
             </div>
-            <FindingList findings={findings} />
+            <FindingList findings={findings} fileId={info.id} />
             <p className="text-[11px] leading-relaxed text-fg-faint">
               Bulgular raporda yazan cümlelerden çıkarılır: yer adı ve "izlenmedi / olağan" gibi ifadeler sözcüklere göre okunur, hatalı eşleşebilir. Görüntü
               yorumlanmaz; önem ve anlam hekim tarafından değerlendirilir.

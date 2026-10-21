@@ -103,7 +103,7 @@ describe('bağırsak bilgi grafiği ve "içine gir" yolu', () => {
     expect(GRAPH.organsForTest('albumin')[0]!.id).toBe('liver');
   });
 
-  it('görüntü asimetrisi gözlemi organı "dikkat" durumuna geçirmez (gözlem ≠ anormallik)', () => {
+  it('görüntü asimetrisi gözlemi organa yazılmaz (eski kayıtta lob tahmini olsa bile; gözlem ≠ anormallik)', () => {
     const run = {
       id: 'r',
       at: '2026-05-01T00:00:00Z',
@@ -138,7 +138,8 @@ describe('bağırsak bilgi grafiği ve "içine gir" yolu', () => {
       },
     };
     const m = buildHealthModel({ images: [{ run, documentId: 'd' }], reports: [], labs: [] });
-    expect(m.organs.get('brain')?.imageObservations.length).toBe(1);
-    expect(m.organs.get('brain')?.attention).toBe(false);
+    expect(m.organs.get('brain')).toBeUndefined();
+    expect(m.imageObservations).toHaveLength(1);
+    expect(m.timeline).toHaveLength(0);
   });
 });

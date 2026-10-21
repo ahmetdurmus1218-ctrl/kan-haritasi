@@ -180,7 +180,7 @@ describe('Diğer referans iç dünyalar', () => {
   });
 
   it('beyin doğrudan hücreye açılmaz: parankim → BOS → kanlanma → hemisfer → lob → korteks → beyaz cevher → nöron ağı → sinaps → nörotransmitter → sinyal', () => {
-    expect(interiorById('brain')!.stages.map((s) => s.scale)).toEqual(['interior', 'interior', 'interior', 'region', 'region', 'tissue', 'tissue', 'cell', 'cell', 'molecule', 'molecule']);
+    expect(interiorById('brain')!.stages.map((s) => s.scale)).toEqual(['interior', 'interior', 'interior', 'region', 'region', 'region', 'tissue', 'tissue', 'cell', 'cell', 'molecule', 'molecule']);
   });
 
   it('kulak ve göz: ses ve ışık yolu basamak basamak', () => {

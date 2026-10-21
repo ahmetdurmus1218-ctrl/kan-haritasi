@@ -71,13 +71,15 @@ jobs:
         run: python tests/e2e/imaging.py "$RUNNER_TEMP/shots"
       - name: Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası
         run: python tests/e2e/multimodal.py "$RUNNER_TEMP/shots"
+      - name: Beyin haritası (telefon) — MR fotoğrafında uydurma yok, rapor cümlesi → bölge → 7 adım → iç dünya, her bölgeye gir
+        run: python tests/e2e/brainmap.py "$RUNNER_TEMP/shots"
       - name: Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR
         run: python tests/e2e/localai.py "$RUNNER_TEMP/shots"
       - name: İçine gir — anatomi grafiği derinliği, komşuluk (pelvis, yumurtalık, kulak, böbrek, kalp), model deposu
         run: python tests/e2e/inside.py "$RUNNER_TEMP/shots"
       - name: İçine gir motoru — bağırsak kabulü (lümen → … → moleküler taşıma), B12 → fizyoloji → ileum, model yok, katmanlar
         run: python tests/e2e/interior.py "$RUNNER_TEMP/shots"
-      - name: İçine gir — her organda iç dünya (99 yapı, hollow/solid/vascular/chamber/airway/sensory), 3B panel, arama, breadcrumb
+      - name: İçine gir — her organda iç dünya (117 yapı, hollow/solid/vascular/chamber/airway/sensory), 3B panel, arama, breadcrumb
         run: python tests/e2e/organs.py "$RUNNER_TEMP/shots"
       - name: 3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon
         run: python tests/e2e/navigation3d.py "$RUNNER_TEMP/shots"

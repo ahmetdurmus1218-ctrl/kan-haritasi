@@ -256,7 +256,7 @@ const NEGATION =
 const NORMAL = /\b(olagan|dogal|normal|korunmus|simetri|duzgun|sinirlar|intakt|saglam|mevcut degil)/;
 /** "Değerlendirilemedi", "izlenemedi", "ayırt edilemedi": bilgi yok (normal DEĞİL). */
 const NOT_ASSESSED = /\b(degerlendirilemedi|degerlendirilememistir|degerlendirilemiyor|degerlendirilemez|degerlendirme disi|ayirt edilemedi|ayirt edilememistir|izlenemedi|izlenememistir|secilemedi|gorulemedi|incelenemedi)/;
-const UNCERTAIN = /\b(supheli|olasi|olasilikla|dusundurur|dusundurmektedir|ekarte edilemedi|ayirici tani|lehine|ile uyumlu olabilir|dusunulmustur|belirsiz)\b|\?/;
+const UNCERTAIN = /\b(supheli|olasi|olasilikla|dusundurur|dusundurmektedir|ekarte edilemedi|ayirici tani|lehine|ile uyumlu olabilir|ile uyumlu olabilecek|dusunulmustur|belirsiz)\b|\?/;
 const ABNORMAL =
   /\b(genis|genislemis|daralmis|daralma|kalinlasmis|kalinlasma|artmis|artis|azalmis|azalma|buyumus|bozulmus|kayb|duzlesme|egrilik|siddetli|belirgin|hafif|minimal|orta derece|ileri derece|odak|odaklar|alan|alanlar|patolojik|anormal|asimetri|yirtik|kopma|sivi|kist|kitle|nodul|tas)\b/;
 /** Patoloji, endoskopi, EKG ve solunum/kemik testlerinde dikkat çeken ifadeler (ekleriyle: "erozyonlar", "bloğu"). */

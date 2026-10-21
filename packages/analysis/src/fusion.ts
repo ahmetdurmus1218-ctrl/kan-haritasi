@@ -224,7 +224,9 @@ export function buildHealthModel(input: HealthInput): HealthModel {
     s.attention = true;
   }
   for (const st of input.images.flatMap((i) => i.run.modelStructures ?? [])) if (st.anatomicalStructure?.structure) get(st.anatomicalStructure.structure).modelStructures.push(st);
-  for (const o of imageObservations) if (o.location?.structure) {
+  // Görüntü asimetrisi (kural tabanlı ön kontrol) bir organa yazılmaz: eski kayıtlarda konum olsa bile
+  // (sürüm < 1.1 lob tahmini) organ durumuna, Vücudum'a ve özete katılmaz.
+  for (const o of imageObservations) if (o.location?.structure && o.kind !== 'asymmetry') {
     const s = get(o.location.structure);
     s.imageObservations.push(o);
     // Görüntü asimetrisi bir gözlemdir, anormallik değildir: organı "dikkat" durumuna geçirmez.
@@ -256,7 +258,7 @@ export function buildHealthModel(input: HealthInput): HealthModel {
       if (isPositiveReport(f) && r.date) timeline.push({ date: r.date, type: 'imaging-report', source: f.source, label: f.text, organs: f.location?.structure ? [f.location.structure] : [], status: f.status as 'abnormal' | 'uncertain', confidence: f.confidence, ...(r.documentId ? { ref: r.documentId } : {}) });
   for (const i of input.images)
     for (const o of i.run.result.observations)
-      if (i.date && o.kind !== 'quality' && o.kind !== 'structure-presence') timeline.push({ date: i.date, type: 'image-analysis', source: 'IMAGE_ANALYSIS', label: o.text, organs: o.location?.structure ? [o.location.structure] : [], status: 'uncertain', confidence: o.confidence, ...(i.documentId ? { ref: i.documentId } : {}) });
+      if (i.date && o.kind !== 'quality' && o.kind !== 'structure-presence' && o.kind !== 'asymmetry') timeline.push({ date: i.date, type: 'image-analysis', source: 'IMAGE_ANALYSIS', label: o.text, organs: o.location?.structure ? [o.location.structure] : [], status: 'uncertain', confidence: o.confidence, ...(i.documentId ? { ref: i.documentId } : {}) });
   timeline.sort((a, b) => a.date.localeCompare(b.date));
 
   steps.push({ step: 'merge_available_evidence', ran: true, detail: `Kaynaklar ayrı tutularak birleştirildi: ${organs.size} organ/yapı, ${patterns.length} örüntü, ${timeline.length} zaman olayı.` });
