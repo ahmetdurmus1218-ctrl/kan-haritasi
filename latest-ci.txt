@@ -1,6 +1,6 @@
 workflow: CI
-run: 39315057544
-sha: ed9b8420e907742f70d725e7e4d4686519b2dad0
+run: 39632482536
+sha: 4cfbb605d10f367301b889413d5195da2413e7de
 conclusion: failure
 
 web: success
@@ -18,7 +18,7 @@ web: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-e2e: failure
+e2e: success
   - Set up job: success
   - Run actions/checkout@v4: success
   - Run pnpm/action-setup@v4: success
@@ -34,170 +34,333 @@ e2e: failure
   - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
   - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
   - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: success
+  - Beyin haritası (telefon) — MR fotoğrafında uydurma yok, rapor cümlesi → bölge → 7 adım → iç dünya, her bölgeye gir: success
   - Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR: success
   - İçine gir — anatomi grafiği derinliği, komşuluk (pelvis, yumurtalık, kulak, böbrek, kalp), model deposu: success
   - İçine gir motoru — bağırsak kabulü (lümen → … → moleküler taşıma), B12 → fizyoloji → ileum, model yok, katmanlar: success
-  - İçine gir — her organda iç dünya (99 yapı, hollow/solid/vascular/chamber/airway/sensory), 3B panel, arama, breadcrumb: success
-  - 3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon: failure
-  - Kişisel 3B organ — gerçek BT → maske → mesh → İçine gir (kamera gerçek mesh'in içine) → eğitimsel iç dünya: skipped
-  - Gerçek yerel modeller — röntgen skoru, BT/MR 3B anatomi bölütleme, BT patoloji (basamaklı), köken: skipped
-  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: skipped
-  - Run actions/upload-artifact@v4: success
-  - Post Run actions/setup-python@v5: skipped
-  - Post Run actions/setup-node@v4: skipped
+  - İçine gir — her organda iç dünya (117 yapı, hollow/solid/vascular/chamber/airway/sensory), 3B panel, arama, breadcrumb: success
+  - 3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon: success
+  - Kişisel 3B organ — gerçek BT → maske → mesh → İçine gir (kamera gerçek mesh'in içine) → eğitimsel iç dünya: success
+  - Gerçek yerel modeller — röntgen skoru, BT/MR 3B anatomi bölütleme, BT patoloji (basamaklı), köken: success
+  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
+  - Run actions/upload-artifact@v4: skipped
+  - Post Run actions/setup-python@v5: success
+  - Post Run actions/setup-node@v4: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-dependencies: success
+dependencies: failure
   - Set up job: success
   - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
   - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
+  - Bağımlılık açıkları (OSV): failure
   - Post Run actions/checkout@v4: success
   - Complete job: success
 
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	﻿2026-10-19T21:03:03.0946614Z ##[group]Run python tests/e2e/navigation3d.py "$RUNNER_TEMP/shots"
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.0947111Z ^[[36;1mpython tests/e2e/navigation3d.py "$RUNNER_TEMP/shots"^[[0m
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.1017001Z shell: /usr/bin/bash -e {0}
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.1017285Z env:
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.1017551Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.1017945Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.1018376Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.1018809Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.1019437Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.1019819Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.1020198Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:03.1020524Z ##[endgroup]
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:16.3013114Z PASS vücut → sindirim sistemi (3B)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:24.0861581Z PASS kalın bağırsak: organ seçildi — 3B dış görünüm (organ)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:24.0886693Z PASS kalın bağırsak: sistemden organa gerçek kamera geçişi (zoom/odak)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:24.0901447Z PASS kalın bağırsak: organ dış görünüm: tuval görünür alanı kaplıyor ([0, 0, 390, 774])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:24.0909566Z PASS kalın bağırsak: organ dış görünüm: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:24.0927885Z PASS kalın bağırsak: organ dış görünüm: 3B model görünür alana sığıyor (daire 195,387 r=133; alan 390×774)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:45.6532020Z PASS kalın bağırsak: İçine gir → önce kamera organa yaklaşır (approach), sonra perde (cover) (['approach', 'cover', 'hold', 'reveal'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:45.6533445Z PASS kalın bağırsak: dalış sırasında kamera organa doğru hareket ediyor
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:51.0463116Z PASS kalın bağırsak: kamera lümene girdi — kalın bağırsak içi (ic:large-intestine, lumen)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:51.0509990Z PASS kalın bağırsak: lümen içinde geniş açılı (endoskop) kamera (fov 62.0)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:51.0511203Z PASS kalın bağırsak: sahne geçişi animasyonlu (perde kapanır, yeni sahne açılır)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:51.0512260Z PASS kalın bağırsak: içeride hücreye atlayan seçenek yok
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:51.0600199Z FAIL kalın bağırsak: breadcrumb Vücut › Sindirim › Kalın bağırsak › İçerisi ('…\n/\nKALIN BAĞIRSAK\n/\nİÇERİSİ')
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:03:56.7049886Z PASS kalın bağırsak: İlerle → içerik: 'forward' eylemi bu seviyede var (['forward:İlerle İçerik', 'wall:Duvarı incele Duvar', 'how:Nasıl çalışıyor? Hareket', 'back:Geri Kalın bağırsak · dışarı çık'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:05.1494642Z PASS kalın bağırsak: İlerle → içerik: kamera gerçekten hareket etti (Δ=2.054)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:05.1518296Z PASS kalın bağırsak: İlerle → içerik: geçiş tamamlandı (sahne ic:large-intestine)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:05.1556614Z PASS kalın bağırsak: İlerle → içerik: basamak contents == contents
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:05.1589921Z PASS kalın bağırsak: İlerle → içerik: anatomik seviye interior == interior
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:05.1621791Z PASS kalın bağırsak: İlerle → içerik: yeni seviyenin seçenekleri geldi, eskileri kayboldu
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:05.1649982Z PASS kalın bağırsak: İlerle → içerik: yalnızca bu seviyenin eylemleri (3 ≤ 5)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:05.1679856Z PASS kalın bağırsak: İlerle → içerik: tuval görünür alanı kaplıyor ([0, 64, 390, 710])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:05.1709598Z PASS kalın bağırsak: İlerle → içerik: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:11.0531286Z PASS kalın bağırsak: İlerle → hareket: 'forward' eylemi bu seviyede var (['forward:İlerle Hareket', 'wall:Duvarı incele Duvar', 'back:Geri İçerisi'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:19.7748136Z PASS kalın bağırsak: İlerle → hareket: kamera gerçekten hareket etti (Δ=3.842)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:19.7780109Z PASS kalın bağırsak: İlerle → hareket: geçiş tamamlandı (sahne ic:large-intestine)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:19.7809886Z PASS kalın bağırsak: İlerle → hareket: basamak motion == motion
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:19.7811185Z PASS kalın bağırsak: İlerle → hareket: anatomik seviye interior == interior
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:19.7840175Z PASS kalın bağırsak: İlerle → hareket: yeni seviyenin seçenekleri geldi, eskileri kayboldu
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:19.7869977Z PASS kalın bağırsak: İlerle → hareket: yalnızca bu seviyenin eylemleri (4 ≤ 5)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:19.7899815Z PASS kalın bağırsak: İlerle → hareket: tuval görünür alanı kaplıyor ([0, 64, 390, 710])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:19.7900980Z PASS kalın bağırsak: İlerle → hareket: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:25.9280770Z PASS kalın bağırsak: Duvarı incele → duvar: 'wall' eylemi bu seviyede var (['forward:İlerle Su ve elektrolit geri emilimi', 'wall:Duvarı incele Duvar', 'content:İçerik İçerik', 'back:Geri İçerik'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9333525Z PASS kalın bağırsak: Duvarı incele → duvar: kamera gerçekten hareket etti (Δ=15.800)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9351068Z PASS kalın bağırsak: Duvarı incele → duvar: geçiş tamamlandı (sahne ic:large-intestine:duvar)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9367263Z PASS kalın bağırsak: Duvarı incele → duvar: sahne geçişi animasyonlu (['approach', 'cover', 'hold', 'idle', 'reveal'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9395947Z PASS kalın bağırsak: Duvarı incele → duvar: perdeden önce kamera yeni seviyeye doğru hareket etti (approach)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9409605Z PASS kalın bağırsak: Duvarı incele → duvar: basamak wall == wall
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9411279Z PASS kalın bağırsak: Duvarı incele → duvar: anatomik seviye wall == wall
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9412664Z PASS kalın bağırsak: Duvarı incele → duvar: yeni seviyenin seçenekleri geldi, eskileri kayboldu
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9414091Z PASS kalın bağırsak: Duvarı incele → duvar: yalnızca bu seviyenin eylemleri (2 ≤ 5)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9415477Z PASS kalın bağırsak: Duvarı incele → duvar: tuval görünür alanı kaplıyor ([0, 64, 390, 710])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9416647Z PASS kalın bağırsak: Duvarı incele → duvar: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:37.9418052Z PASS kalın bağırsak: Duvarı incele → duvar: 3B model görünür alana sığıyor (daire 195,234 r=176; alan 390×468)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:40.3210995Z PASS kalın bağırsak: duvar kesiti sahnesi
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:40.3399332Z PASS kalın bağırsak: Daha derine in → mukoza: 'deeper' eylemi bu seviyede var (['deeper:Daha derine in Kalın bağırsak mukozası', 'back:Geri Bölümler'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:53.1681253Z PASS kalın bağırsak: Daha derine in → mukoza: kamera gerçekten hareket etti (Δ=24.915)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:53.1954588Z PASS kalın bağırsak: Daha derine in → mukoza: geçiş tamamlandı (sahne in:kalin-bagirsak)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:53.2203857Z PASS kalın bağırsak: Daha derine in → mukoza: sahne geçişi animasyonlu (['approach', 'cover', 'hold', 'idle', 'reveal'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:53.2205574Z PASS kalın bağırsak: Daha derine in → mukoza: perdeden önce kamera yeni seviyeye doğru hareket etti (approach)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:53.2206888Z PASS kalın bağırsak: Daha derine in → mukoza: basamak mucosa == mucosa
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:53.2208048Z PASS kalın bağırsak: Daha derine in → mukoza: anatomik seviye tissue == tissue
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:53.2209542Z PASS kalın bağırsak: Daha derine in → mukoza: yeni seviyenin seçenekleri geldi, eskileri kayboldu
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:53.2210894Z PASS kalın bağırsak: Daha derine in → mukoza: yalnızca bu seviyenin eylemleri (2 ≤ 5)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:53.2212280Z PASS kalın bağırsak: Daha derine in → mukoza: tuval görünür alanı kaplıyor ([0, 64, 390, 710])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:53.2213416Z PASS kalın bağırsak: Daha derine in → mukoza: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:04:59.4206329Z PASS kalın bağırsak: Daha derine in → kript: 'deeper' eylemi bu seviyede var (['deeper:Daha derine in Kript', 'back:Geri Duvar'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:09.9768124Z PASS kalın bağırsak: Daha derine in → kript: kamera gerçekten hareket etti (Δ=23.557)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:09.9771296Z PASS kalın bağırsak: Daha derine in → kript: geçiş tamamlandı (sahne in:kalin-bagirsak)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:09.9772631Z PASS kalın bağırsak: Daha derine in → kript: basamak crypt == crypt
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:09.9773799Z PASS kalın bağırsak: Daha derine in → kript: anatomik seviye tissue == tissue
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:09.9775133Z PASS kalın bağırsak: Daha derine in → kript: yeni seviyenin seçenekleri geldi, eskileri kayboldu
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:09.9777513Z PASS kalın bağırsak: Daha derine in → kript: yalnızca bu seviyenin eylemleri (2 ≤ 5)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:09.9795920Z PASS kalın bağırsak: Daha derine in → kript: tuval görünür alanı kaplıyor ([0, 64, 390, 710])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:09.9817593Z PASS kalın bağırsak: Daha derine in → kript: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:18.2693651Z PASS kalın bağırsak: Daha derine in → epitel: 'deeper' eylemi bu seviyede var (['deeper:Daha derine in Epitel', 'back:Geri Kalın bağırsak mukozası'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:29.8079734Z PASS kalın bağırsak: Daha derine in → epitel: kamera gerçekten hareket etti (Δ=3.030)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:29.8081214Z PASS kalın bağırsak: Daha derine in → epitel: geçiş tamamlandı (sahne in:kalin-bagirsak)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:29.8140285Z PASS kalın bağırsak: Daha derine in → epitel: basamak epithelium == epithelium
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:29.8170029Z PASS kalın bağırsak: Daha derine in → epitel: anatomik seviye tissue == tissue
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:29.8200137Z PASS kalın bağırsak: Daha derine in → epitel: yeni seviyenin seçenekleri geldi, eskileri kayboldu
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:29.8201575Z PASS kalın bağırsak: Daha derine in → epitel: yalnızca bu seviyenin eylemleri (2 ≤ 5)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:29.8230125Z PASS kalın bağırsak: Daha derine in → epitel: tuval görünür alanı kaplıyor ([0, 64, 390, 710])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:29.8259842Z PASS kalın bağırsak: Daha derine in → epitel: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:29.8290401Z PASS kalın bağırsak: Hücreye in → kolonosit: 'deeper' eylemi bu seviyede var (['deeper:Hücreye in Kolonosit', 'back:Geri Kript'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:38.1040200Z PASS kalın bağırsak: Hücreye in → kolonosit: kamera gerçekten hareket etti (Δ=2.081)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:38.1054342Z PASS kalın bağırsak: Hücreye in → kolonosit: geçiş tamamlandı (sahne in:kalin-bagirsak)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:38.1073958Z PASS kalın bağırsak: Hücreye in → kolonosit: basamak colonocyte == colonocyte
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:38.1109625Z PASS kalın bağırsak: Hücreye in → kolonosit: anatomik seviye cell == cell
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:38.1113978Z PASS kalın bağırsak: Hücreye in → kolonosit: yeni seviyenin seçenekleri geldi, eskileri kayboldu
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:38.1115521Z PASS kalın bağırsak: Hücreye in → kolonosit: yalnızca bu seviyenin eylemleri (3 ≤ 5)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:38.1116935Z PASS kalın bağırsak: Hücreye in → kolonosit: tuval görünür alanı kaplıyor ([0, 64, 390, 710])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:38.1117991Z PASS kalın bağırsak: Hücreye in → kolonosit: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:44.9540310Z FAIL kalın bağırsak: breadcrumb hücre seviyesinde (… › Kript › Epitel › Kolonosit) ('…\n/\nEPİTEL\n/\nKOLONOSİT')
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:44.9670764Z PASS kalın bağırsak: Moleküler süreç: 'deeper' eylemi bu seviyede var (['deeper:Moleküler süreç Kısa zincirli yağ asitleri', 'info:Hücrenin işlevi', 'back:Geri Epitel'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:53.6015698Z PASS kalın bağırsak: Moleküler süreç: kamera gerçekten hareket etti (Δ=1.173)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:53.6040670Z PASS kalın bağırsak: Moleküler süreç: geçiş tamamlandı (sahne in:kalin-bagirsak)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:53.6089773Z PASS kalın bağırsak: Moleküler süreç: basamak scfa == scfa
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:53.6123468Z PASS kalın bağırsak: Moleküler süreç: anatomik seviye molecule == molecule
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:53.6411049Z PASS kalın bağırsak: Moleküler süreç: yeni seviyenin seçenekleri geldi, eskileri kayboldu
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:53.6427894Z PASS kalın bağırsak: Moleküler süreç: yalnızca bu seviyenin eylemleri (3 ≤ 5)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:53.6429891Z PASS kalın bağırsak: Moleküler süreç: tuval görünür alanı kaplıyor ([0, 64, 390, 710])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:53.6430934Z PASS kalın bağırsak: Moleküler süreç: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:05:59.2252190Z PASS kalın bağırsak: Geri ← hücre: 'back' eylemi bu seviyede var (['graph:Bilgi grafiğinde incele Kısa zincirli yağ asitleri (bütirat, asetat, propiyonat)', 'organ:Organa dön Kalın bağırsak', 'back:Geri Kolonosit'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:07.5861018Z PASS kalın bağırsak: Geri ← hücre: kamera gerçekten hareket etti (Δ=1.165)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:07.5890846Z PASS kalın bağırsak: Geri ← hücre: geçiş tamamlandı (sahne in:kalin-bagirsak)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:07.5944768Z PASS kalın bağırsak: Geri ← hücre: basamak colonocyte == colonocyte
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:07.5987868Z PASS kalın bağırsak: Geri ← hücre: anatomik seviye cell == cell
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:07.6054408Z PASS kalın bağırsak: Geri ← hücre: yeni seviyenin seçenekleri geldi, eskileri kayboldu
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:07.6116260Z PASS kalın bağırsak: Geri ← hücre: yalnızca bu seviyenin eylemleri (3 ≤ 5)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:07.6150114Z PASS kalın bağırsak: Geri ← hücre: tuval görünür alanı kaplıyor ([0, 64, 390, 710])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:07.6168441Z PASS kalın bağırsak: Geri ← hücre: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:07.6179726Z PASS kalın bağırsak: Geri ← epitel: 'back' eylemi bu seviyede var (['deeper:Moleküler süreç Kısa zincirli yağ asitleri', 'info:Hücrenin işlevi', 'back:Geri Epitel'])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:16.6010730Z PASS kalın bağırsak: Geri ← epitel: kamera gerçekten hareket etti (Δ=1.885)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:16.6039979Z PASS kalın bağırsak: Geri ← epitel: geçiş tamamlandı (sahne in:kalin-bagirsak)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:16.6069800Z PASS kalın bağırsak: Geri ← epitel: basamak epithelium == epithelium
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:16.6099848Z PASS kalın bağırsak: Geri ← epitel: anatomik seviye tissue == tissue
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:16.6130004Z PASS kalın bağırsak: Geri ← epitel: yeni seviyenin seçenekleri geldi, eskileri kayboldu
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:16.6159911Z PASS kalın bağırsak: Geri ← epitel: yalnızca bu seviyenin eylemleri (2 ≤ 5)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:16.6189940Z PASS kalın bağırsak: Geri ← epitel: tuval görünür alanı kaplıyor ([0, 64, 390, 710])
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:06:16.6219782Z PASS kalın bağırsak: Geri ← epitel: tuval ekran içinde
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5081060Z Traceback (most recent call last):
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5081807Z   File "/home/runner/work/kan-haritasi/kan-haritasi/tests/e2e/navigation3d.py", line 235, in <module>
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5083761Z     page.get_by_role("navigation", name="Keşif seviyesi").get_by_role("button", name="İçerisi").click()
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5084939Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/sync_api/_generated.py", line 15573, in click
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5105375Z     self._sync(
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5106346Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_sync_base.py", line 115, in _sync
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5107277Z     return task.result()
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5107636Z            ^^^^^^^^^^^^^
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5108516Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_locator.py", line 160, in click
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5109685Z     return await self._frame.click(self._selector, strict=True, **params)
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5110378Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5111315Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_frame.py", line 549, in click
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5112357Z     await self._channel.send("click", self._timeout, locals_to_params(locals()))
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5113499Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 69, in send
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5114492Z     return await self._connection.wrap_api_call(
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5115030Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5115725Z   File "/opt/hostedtoolcache/Python/3.12.15/x64/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 559, in wrap_api_call
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5116537Z     raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5117151Z playwright._impl._errors.TimeoutError: Locator.click: Timeout 60000ms exceeded.
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5117551Z Call log:
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5118154Z   - waiting for get_by_role("navigation", name="Keşif seviyesi").get_by_role("button", name="İçerisi")
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5118542Z 
-e2e	3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon	2026-10-19T21:07:20.5342842Z ##[error]Process completed with exit code 1.
+dependencies	UNKNOWN STEP	﻿2026-10-21T16:11:08.7988579Z Current runner version: '2.338.0'
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8019860Z ##[group]Runner Image Provisioner
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8020787Z Hosted Compute Agent
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8021423Z Version: 20261015.610
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8022081Z Commit: 267fdb4e8bbec4ab5ea31367f3a00d5c480c7656
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8022930Z Build Date: 2026-10-14T17:06:54Z
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8023651Z Worker ID: {768f17e2-4989-4177-a1d0-c3819e13365e}
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8024348Z Region: eastus
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8025006Z Cloud: Azure
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8025579Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8027684Z ##[group]Operating System
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8028768Z Ubuntu
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8029312Z 24.04.5
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8029937Z LTS
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8030508Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8031113Z ##[group]Runner Image
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8031751Z Image: ubuntu-24.04
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8032324Z Version: 20261018.339.1
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8033678Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261018.339/images/ubuntu/Ubuntu2404-Readme.md
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8035778Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261018.339
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8036845Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8038230Z ##[group]GITHUB_TOKEN Permissions
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8040585Z Contents: read
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8041267Z Metadata: read
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8041984Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8044563Z Secret source: Actions
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8045613Z Cache mode: write
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8046680Z Prepare workflow directory
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8388437Z Prepare all required actions
+dependencies	UNKNOWN STEP	2026-10-21T16:11:08.8437081Z Getting action download info
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.0937272Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.2034804Z Download action repository 'google/osv-scanner-action@v2.3.8' (SHA:9a498708959aeaef5ef730655706c5a1df1edbc2)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.4415107Z Complete job name: dependencies
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.4901157Z ##[group]Pull down action image 'ghcr.io/google/osv-scanner-action:v2.3.8'
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.5064340Z ##[command]/usr/bin/docker pull ghcr.io/google/osv-scanner-action:v2.3.8
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8315026Z v2.3.8: Pulling from google/osv-scanner-action
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8315978Z 6a0ac1617861: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8316682Z 4c3aca1499f0: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8317339Z b55da06e3b41: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8318316Z 973f1b4898e9: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8319020Z 4f4fb700ef54: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8319673Z 5c20669443e2: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8320320Z e27f08571c08: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8320945Z 4f940ee30095: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8321564Z fb9c926f50e5: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8322193Z a63bb3858c11: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8322807Z 973f1b4898e9: Waiting
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8323450Z 4f940ee30095: Waiting
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8324111Z fb9c926f50e5: Waiting
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8324688Z 4f4fb700ef54: Waiting
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8325320Z 5c20669443e2: Waiting
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8325890Z a63bb3858c11: Waiting
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8326448Z e27f08571c08: Waiting
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8969632Z 4c3aca1499f0: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.8970855Z 4c3aca1499f0: Download complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.9196365Z 6a0ac1617861: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.9198360Z 6a0ac1617861: Download complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.9642862Z 973f1b4898e9: Download complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.9829577Z 4f4fb700ef54: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-21T16:11:09.9830752Z 4f4fb700ef54: Download complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.0523024Z e27f08571c08: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.0526947Z e27f08571c08: Download complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.0575072Z 5c20669443e2: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.0579861Z 5c20669443e2: Download complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.0800243Z 6a0ac1617861: Pull complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.1455226Z b55da06e3b41: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.1456534Z b55da06e3b41: Download complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.1871629Z fb9c926f50e5: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.1879609Z fb9c926f50e5: Download complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.1897971Z 4f940ee30095: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.1900298Z 4f940ee30095: Download complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.2102461Z a63bb3858c11: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.2104230Z a63bb3858c11: Download complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:10.2692757Z 4c3aca1499f0: Pull complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:15.4844554Z b55da06e3b41: Pull complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:15.5009752Z 973f1b4898e9: Pull complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:15.5101388Z 4f4fb700ef54: Pull complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:15.6693643Z 5c20669443e2: Pull complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:15.6769998Z e27f08571c08: Pull complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:15.9633244Z 4f940ee30095: Pull complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.1978488Z fb9c926f50e5: Pull complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2113038Z a63bb3858c11: Pull complete
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2146002Z Digest: sha256:48406c58197201fe55e56615ad9d414f85063da320e204d0b0ed460fb3908dba
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2162008Z Status: Downloaded newer image for ghcr.io/google/osv-scanner-action:v2.3.8
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2173010Z ghcr.io/google/osv-scanner-action:v2.3.8
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2216242Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2544569Z ##[group]Run actions/checkout@v4
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2545201Z with:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2545529Z   repository: ahmetdurmus1218-ctrl/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2548631Z   token: ***
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2548905Z   ssh-strict: true
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2549164Z   ssh-user: git
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2549429Z   persist-credentials: true
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2549722Z   clean: true
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2549994Z   sparse-checkout-cone-mode: true
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2550299Z   fetch-depth: 1
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2550547Z   fetch-tags: false
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2550802Z   show-progress: true
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2551065Z   lfs: false
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2551306Z   submodules: false
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2551567Z   set-safe-directory: true
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2551867Z   allow-unsafe-pr-checkout: false
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.2552532Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3575060Z Syncing repository: ahmetdurmus1218-ctrl/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3576985Z ##[group]Getting Git version info
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3578165Z Working directory is '/home/runner/work/kan-haritasi/kan-haritasi'
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3579321Z [command]/usr/bin/git version
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3692573Z git version 2.55.0
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3716533Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3733630Z Temporarily overriding HOME='/home/runner/work/_temp/909d74e0-54d5-423d-9f04-2e8ba476d105' before making global git config changes
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3734901Z Adding repository directory to the temporary git global config as a safe directory
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3740890Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/kan-haritasi/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3802190Z Deleting the contents of '/home/runner/work/kan-haritasi/kan-haritasi'
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3806524Z ##[group]Initializing the repository
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3812410Z [command]/usr/bin/git init /home/runner/work/kan-haritasi/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3931878Z hint: Using 'master' as the name for the initial branch. This default branch name
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3933004Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3939210Z hint: to use in all of your new repositories, which will suppress this warning,
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3939719Z hint: call:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3939964Z hint:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3940292Z hint: 	git config --global init.defaultBranch <name>
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3940665Z hint:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3941009Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3941580Z hint: 'development'. The just-created branch can be renamed via this command:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3942010Z hint:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3942262Z hint: 	git branch -m <name>
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3942566Z hint:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3942933Z hint: Disable this message with "git config set advice.defaultBranchName false"
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3944300Z Initialized empty Git repository in /home/runner/work/kan-haritasi/kan-haritasi/.git/
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.3953383Z [command]/usr/bin/git remote add origin https://github.com/ahmetdurmus1218-ctrl/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4009083Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4010149Z ##[group]Disabling automatic garbage collection
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4013204Z [command]/usr/bin/git config --local gc.auto 0
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4049778Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4050519Z ##[group]Setting up auth
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4058343Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4094930Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4579687Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4629037Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4874903Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.4920722Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.5168178Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.5218962Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.5219960Z ##[group]Fetching the repository
+dependencies	UNKNOWN STEP	2026-10-21T16:11:16.5231319Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +4854772199eb4c06f1dabe05d1676f7a1b1a5b20:refs/remotes/pull/20/merge
+dependencies	UNKNOWN STEP	2026-10-21T16:11:22.3955777Z From https://github.com/ahmetdurmus1218-ctrl/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-21T16:11:22.3956836Z  * [new ref]         4854772199eb4c06f1dabe05d1676f7a1b1a5b20 -> pull/20/merge
+dependencies	UNKNOWN STEP	2026-10-21T16:11:22.3971115Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:22.3972582Z ##[group]Determining the checkout info
+dependencies	UNKNOWN STEP	2026-10-21T16:11:22.3973787Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:22.3974320Z [command]/usr/bin/git sparse-checkout disable
+dependencies	UNKNOWN STEP	2026-10-21T16:11:22.4038488Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+dependencies	UNKNOWN STEP	2026-10-21T16:11:22.4080738Z ##[group]Checking out the ref
+dependencies	UNKNOWN STEP	2026-10-21T16:11:22.4109002Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/20/merge
+dependencies	UNKNOWN STEP	2026-10-21T16:11:23.7059248Z Updating files:   9% (53/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:23.7712495Z Updating files:  10% (56/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:23.8025356Z Updating files:  11% (62/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:23.8508560Z Updating files:  12% (68/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:23.9217525Z Updating files:  13% (73/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:23.9704070Z Updating files:  14% (79/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0065971Z Updating files:  15% (84/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0070035Z Updating files:  16% (90/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0073066Z Updating files:  17% (96/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0076904Z Updating files:  18% (101/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0080521Z Updating files:  19% (107/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0085331Z Updating files:  20% (112/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0092072Z Updating files:  21% (118/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0098503Z Updating files:  22% (123/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0104742Z Updating files:  23% (129/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0109235Z Updating files:  24% (135/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0114038Z Updating files:  25% (140/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0122581Z Updating files:  26% (146/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0127789Z Updating files:  27% (151/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0134826Z Updating files:  28% (157/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0138354Z Updating files:  29% (163/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0142692Z Updating files:  30% (168/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0146763Z Updating files:  31% (174/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0154544Z Updating files:  32% (179/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0160451Z Updating files:  33% (185/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0168046Z Updating files:  34% (191/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0174832Z Updating files:  35% (196/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0181204Z Updating files:  36% (202/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0185558Z Updating files:  37% (207/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0190877Z Updating files:  38% (213/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0196569Z Updating files:  39% (219/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0201030Z Updating files:  40% (224/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0204310Z Updating files:  41% (230/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0208313Z Updating files:  42% (235/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0211444Z Updating files:  43% (241/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0214965Z Updating files:  44% (246/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0220126Z Updating files:  45% (252/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0224435Z Updating files:  46% (258/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0231113Z Updating files:  47% (263/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0237483Z Updating files:  48% (269/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0244597Z Updating files:  49% (274/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0248512Z Updating files:  50% (280/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0253484Z Updating files:  51% (286/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0258296Z Updating files:  52% (291/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0262501Z Updating files:  53% (297/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0269923Z Updating files:  54% (302/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0277249Z Updating files:  55% (308/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0280728Z Updating files:  56% (314/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0292550Z Updating files:  57% (319/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0304610Z Updating files:  58% (325/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0315549Z Updating files:  59% (330/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0324819Z Updating files:  60% (336/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0335841Z Updating files:  61% (341/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0346864Z Updating files:  62% (347/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0356567Z Updating files:  63% (353/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0367635Z Updating files:  64% (358/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0374911Z Updating files:  65% (364/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0384971Z Updating files:  66% (369/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0394890Z Updating files:  67% (375/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0407135Z Updating files:  68% (381/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0424659Z Updating files:  69% (386/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0434029Z Updating files:  70% (392/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0440468Z Updating files:  71% (397/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0528282Z Updating files:  72% (403/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0528951Z Updating files:  73% (409/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0529522Z Updating files:  74% (414/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0530119Z Updating files:  75% (420/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0530687Z Updating files:  76% (425/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0531541Z Updating files:  77% (431/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0531931Z Updating files:  78% (437/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0532318Z Updating files:  79% (442/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0532690Z Updating files:  80% (448/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0533067Z Updating files:  81% (453/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0533458Z Updating files:  82% (459/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0533861Z Updating files:  83% (464/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0534255Z Updating files:  84% (470/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0534641Z Updating files:  85% (476/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0535010Z Updating files:  86% (481/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0535375Z Updating files:  87% (487/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0535843Z Updating files:  88% (492/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0536243Z Updating files:  89% (498/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0536664Z Updating files:  90% (504/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0541807Z Updating files:  91% (509/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0545389Z Updating files:  92% (515/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0553908Z Updating files:  93% (520/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0559354Z Updating files:  94% (526/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0563731Z Updating files:  95% (532/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0570089Z Updating files:  96% (537/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0575671Z Updating files:  97% (543/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0581638Z Updating files:  98% (548/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0584591Z Updating files:  99% (554/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0585060Z Updating files: 100% (559/559)
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0585480Z Updating files: 100% (559/559), done.
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0599939Z Note: switching to 'refs/remotes/pull/20/merge'.
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0600246Z 
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0600583Z You are in 'detached HEAD' state. You can look around, make experimental
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0601112Z changes and commit them, and you can discard any commits you make in this
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0601627Z state without impacting any branches by switching back to a branch.
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0601924Z 
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0602128Z If you want to create a new branch to retain commits you create, you may
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0602726Z do so (now or later) by using -c with the switch command. Example:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0602992Z 
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0603108Z   git switch -c <new-branch-name>
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0603289Z 
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0603391Z Or undo this operation with:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0603558Z 
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0603643Z   git switch -
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0603775Z 
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0603995Z Turn off this advice by setting config variable advice.detachedHead to false
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0604362Z 
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0604961Z HEAD is now at 4854772 Merge 4cfbb605d10f367301b889413d5195da2413e7de into 2a8aff65e94f3ff9495dd20e6fef6d033bbde867
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0681123Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0740798Z [command]/usr/bin/git log -1 --format=%H
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.0774906Z 4854772199eb4c06f1dabe05d1676f7a1b1a5b20
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.1008871Z ##[group]Run google/osv-scanner-action/osv-scanner-action@v2.3.8
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.1009276Z with:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.1009496Z   scan-args: -r
+dependencies	UNKNOWN STEP	./
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.1009715Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.1119988Z ##[command]/usr/bin/docker run --name ghcriogoogleosvscanneractionv238_bbc610 --label 2bd17d --workdir /github/workspace --rm -e "INPUT_SCAN-ARGS" -e "HOME" -e "GITHUB_JOB" -e "GITHUB_REF" -e "GITHUB_SHA" -e "GITHUB_REPOSITORY" -e "GITHUB_REPOSITORY_OWNER" -e "GITHUB_REPOSITORY_OWNER_ID" -e "GITHUB_RUN_ID" -e "GITHUB_RUN_NUMBER" -e "GITHUB_RETENTION_DAYS" -e "GITHUB_RUN_ATTEMPT" -e "GITHUB_ACTOR_ID" -e "GITHUB_ACTOR" -e "GITHUB_WORKFLOW" -e "GITHUB_HEAD_REF" -e "GITHUB_BASE_REF" -e "GITHUB_EVENT_NAME" -e "GITHUB_SERVER_URL" -e "GITHUB_API_
+dependencies	UNKNOWN STEP	./"
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.8620870Z Scanning dir ./
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.8622158Z Starting filesystem walk for root: /
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.8710290Z Scanned /github/workspace/pnpm-lock.yaml file and found 406 packages
+dependencies	UNKNOWN STEP	2026-10-21T16:11:24.8787426Z End status: 109 dirs visited, 696 inodes visited, 1 Extract calls, 16.816456ms elapsed, 16.816596ms wall time
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6908703Z 
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6936189Z Total 1 package affected by 3 known vulnerabilities (0 Critical, 1 High, 2 Medium, 0 Low, 0 Unknown) from 1 ecosystem.
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6937108Z 3 vulnerabilities can be fixed.
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6937403Z 
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6938265Z +-------------------------------------+------+-----------+---------+---------+---------------+----------------+
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6940014Z | OSV URL                             | CVSS | ECOSYSTEM | PACKAGE | VERSION | FIXED VERSION | SOURCE         |
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6940997Z +-------------------------------------+------+-----------+---------+---------+---------------+----------------+
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6942056Z | https://osv.dev/GHSA-587h-7wmj-h5pm | 7.5  | npm       | vite    | 8.3.1   | 8.3.3         | pnpm-lock.yaml |
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6943198Z | https://osv.dev/GHSA-698v-4r3x-3vcv | 6.3  | npm       | vite    | 8.3.1   | 8.3.3         | pnpm-lock.yaml |
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6944205Z | https://osv.dev/GHSA-r825-w8mm-5pxw | 6.3  | npm       | vite    | 8.3.1   | 8.3.3         | pnpm-lock.yaml |
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6945144Z +-------------------------------------+------+-----------+---------+---------+---------------+----------------+
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.6945838Z Exit code: 1
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.8211912Z Post job cleanup.
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9102857Z [command]/usr/bin/git version
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9153639Z git version 2.55.0
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9194506Z Temporarily overriding HOME='/home/runner/work/_temp/764363a3-eaa1-4556-9acb-67235b593478' before making global git config changes
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9195883Z Adding repository directory to the temporary git global config as a safe directory
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9202657Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/kan-haritasi/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9245056Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9287732Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9554720Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9585683Z http.https://github.com/.extraheader
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9598138Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9644387Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9934250Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+dependencies	UNKNOWN STEP	2026-10-21T16:11:25.9985828Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+dependencies	UNKNOWN STEP	2026-10-21T16:11:26.0438990Z Cleaning up orphan processes
+dependencies	UNKNOWN STEP	2026-10-21T16:11:26.0821852Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
