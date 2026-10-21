@@ -15,8 +15,8 @@ export interface ManualMeasurement {
 }
 
 /**
- * Sağ-sol simetri ön kontrolünün kaydedilen özeti. Yalnızca kullanıcı
- * "sonuçlarıma ekle" dediğinde `confirmed` olur ve 3B vurgulara katılır. Tanı değildir.
+ * Sağ-sol simetri ön kontrolünün kaydedilen özeti (eski sürümlerde "sonuçlarıma ekle" ile `confirmed`).
+ * Artık sonuçlara, özete ve 3B vurgulara katılmaz; ön kontrol ekranında kaldırılabilir. Tanı değildir.
  */
 export interface StoredReview {
   at: string;

@@ -82,31 +82,31 @@ describe('A — yalnızca MR görüntüsü, rapor yok (en önemli kabul testi)',
     expect(run.quality.usable).toBe(true);
     expect(run.quality.metrics.edgeWidth).toBeGreaterThan(0);
     // 4. görüntü analiz modeli çağrıldı (sürümüyle)
-    expect(run.result.model).toMatchObject({ id: 'kh-lr-symmetry', version: '1.0.0', local: true });
-    // 5–7. görülebilir aday gözlem, güven, anatomik konum
+    expect(run.result.model).toMatchObject({ id: 'kh-lr-symmetry', version: '1.1.0', local: true });
+    // 5–7. görülebilir aday gözlem ve güven; fotoğraftaki parlaklık farkı bir loba EŞLENMEZ (sahte konum yok)
     expect(run.result.observations.length).toBeGreaterThanOrEqual(1);
     const o = run.result.observations[0]!;
     expect(o.source).toBe('IMAGE_ANALYSIS');
     expect(o.confidence.kind).toBe('score');
-    expect(o.location!.path[0]).toBe('brain');
-    expect(o.location!.path[1]).toMatch(/^brain\.hemisphere-(left|right)$/);
-    expect(o.location!.path).toHaveLength(3);
-    // 8. 3B modele bağlanır (yapı + bölüm)
-    expect(o.location!.structure).toBe('brain');
-    expect(o.location!.part).toBeTruthy();
+    expect(o.location).toBeUndefined();
+    // 8. 3B modele yalnızca görüntünün bölgesi (beyin) bağlanır, bölüm değil
+    const region = run.anatomy!.location!;
+    expect(region.structure).toBe('brain');
     // 9–10. gerçek görüntü üzerinde piksel konumu
     expect(o.localization.kind).toBe('pixel');
     // 11–13. normal anatomi, işlev, olası anlam zinciri
     const model = buildHealthModel({ images: [{ run, date: '2026-05-01', structure: 'brain', modality: 'MRI' }], reports: [], labs: [] });
     const view = buildOrganView('brain', model)!;
     expect(view.normal.parts.map((p) => p.id)).toEqual(expect.arrayContaining(['brain.hemisphere-left', 'brain.hemisphere-right']));
-    const why = explainWhy(o.location, model);
+    const why = explainWhy(region, model);
     expect(why.map((s) => s.title)).toEqual(expect.arrayContaining(['Etkilenen anatomi', 'Normalde ne yapar', 'Olası etkilenen süreçler', 'Senin ilişkili verilerin']));
     // 14–17. diğer sonuçlar ve eski görüntüler arandı (bulunmadı, açıkça)
     expect(model.steps.find((s) => s.step === 'analyze_labs')!.ran).toBe(false);
     expect(model.steps.find((s) => s.step === 'compare_temporally')!.ran).toBe(false);
     // 18. belirsizlik
-    expect(view.uncertainty.probabilistic.length).toBeGreaterThan(0);
+    // Fotoğraftan olasılık bildiren bir organ gözlemi üretilmez; eksik olan açıkça yazılır.
+    expect(view.uncertainty.probabilistic).toHaveLength(0);
+    expect(view.uncertainty.missing).toContain('Bu organ için okunmuş bir rapor ya da tıbbi model sonucu yok');
     // 19–20. analizin yalnızca görüntüye dayandığı ve rapor olmadığı
     expect(run.statements.join(' ')).toMatch(/Rapor: yok/);
     expect(model.statements.join(' ')).toMatch(/yalnızca görüntünün kendisine dayanıyor/);
@@ -243,9 +243,11 @@ describe('İkinci kabul testi — MR + radyoloji raporu + kan + önceki MR', () 
     ]);
     expect(model.trends.get('hba1c')!.direction).toBe('rising');
     const brain = model.organs.get('brain')!;
-    expect(brain.imageObservations.length).toBeGreaterThan(0);
+    // Sağ-sol ön kontrol asimetrisi organa ve zaman çizelgesine yazılmaz; rapor bulgusu yazılır.
+    expect(brain.imageObservations).toHaveLength(0);
+    expect(model.imageObservations.length).toBeGreaterThan(0);
     expect(brain.reportFindings.length).toBeGreaterThan(0);
-    expect(new Set(model.timeline.map((e) => e.source))).toEqual(new Set(['LAB', 'RADIOLOGY_REPORT', 'IMAGE_ANALYSIS']));
+    expect(new Set(model.timeline.map((e) => e.source))).toEqual(new Set(['LAB', 'RADIOLOGY_REPORT']));
     expect(model.concordance.length).toBeGreaterThan(0);
   });
 });

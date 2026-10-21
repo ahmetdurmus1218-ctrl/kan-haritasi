@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   GRAPH,
+  brainPath,
   type HealthModel,
   type ImageAnalysisRun,
   type ImageContext,
@@ -319,8 +320,7 @@ export function reportFindingsFrom(findings: ImagingFinding[], meta: { date?: st
   return findings.map((f, i) => {
     const node = f.structure ? GRAPH.nodeForStructure(f.structure, f.part) : undefined;
     const side = f.side;
-    const sideNode = f.structure === 'brain' && (side === 'left' || side === 'right') ? `brain.hemisphere-${side}` : undefined;
-    const path = node ? GRAPH.pathTo(node.id, sideNode).map((n) => n.id) : f.structure ? [f.structure] : [];
+    const path = node ? (f.structure === 'brain' ? brainPath(node.id, side) : GRAPH.pathTo(node.id).map((n) => n.id)) : f.structure ? [f.structure] : [];
     return {
       id: `${meta.documentId ?? 'doc'}-${i}`,
       source: meta.ocr ? 'OCR' : 'RADIOLOGY_REPORT',

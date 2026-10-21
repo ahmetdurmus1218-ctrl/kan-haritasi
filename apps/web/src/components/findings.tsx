@@ -139,6 +139,11 @@ export function FindingList({ findings }: { findings: ImagingFinding[] }) {
       {flagged.length === 0 && (
         <p className="rounded-xl border border-accent/25 bg-accent/5 p-3 text-sm text-fg-muted">Raporda dikkat çeken bir bulgu cümlesi bulunmadı; yazılanlar olağan ifadeler.</p>
       )}
+      {findings.some((f) => f.structure === 'brain') && (
+        <button type="button" className="btn-primary w-full justify-center py-2.5 text-sm sm:w-auto" onClick={() => go({ name: 'brain' })} data-testid="report-brain-map">
+          Beyin haritasında adım adım gör
+        </button>
+      )}
       <ul className="space-y-2">
         {flagged.map((f, i) => (
           <FindingItem key={`${f.text}-${i}`} f={f} />

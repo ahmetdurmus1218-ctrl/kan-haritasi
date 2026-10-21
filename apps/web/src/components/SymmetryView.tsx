@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type ImageReview, borderValue, rotateImage } from '@kh/ingest';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
-import { type GrayImage, describeRegion, runReview, toStored } from '../lib/imageReview';
+import { type GrayImage, describeRegion, runReview } from '../lib/imageReview';
 import { type StoredReview, saveReview } from '../lib/imagingRecords';
 import { userMessage } from '../lib/messages';
-import { CheckIcon } from './icons';
 
 const BOX = ['#f472b6', '#fbbf24', '#38bdf8', '#a78bfa'];
 
@@ -159,22 +158,13 @@ export function SymmetryView({
           ))}
         </ul>
       )}
-      {regions.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          {confirmed ? (
-            <>
-              <span className="flex items-center gap-1 text-xs text-accent">
-                <CheckIcon size={12} /> Sonuçlarına eklendi · 3B'de ilgili bölge işaretli
-              </span>
-              <button type="button" className="btn-ghost px-2.5 py-1 text-xs" disabled={busy} onClick={() => void save(null)}>
-                Kaldır
-              </button>
-            </>
-          ) : (
-            <button type="button" className="btn-primary px-3 py-1.5 text-xs" disabled={busy} onClick={() => void save(toStored(review, sourceId, true))}>
-              Sonuçlarıma ekle ({regions.length} asimetri gözlemi)
-            </button>
-          )}
+      {confirmed && (
+        // Eski sürümde "Sonuçlarıma ekle" ile kaydedilmiş ön kontrol: artık sonuçlara/3B'ye katılmıyor; kaldırılabilir.
+        <div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
+          <span>Bu ön kontrol eski bir sürümde sonuçlarına eklenmişti; artık sonuç sayılmıyor.</span>
+          <button type="button" className="btn-ghost px-2.5 py-1 text-xs" disabled={busy} onClick={() => void save(null)}>
+            Kaydı kaldır
+          </button>
         </div>
       )}
       {error && <p className="text-xs text-high">{error}</p>}

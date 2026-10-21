@@ -92,7 +92,7 @@ export function buildOrganView(organId: string, model: HealthModel | null, graph
   const missing = [
     ...biomarkers.filter((b) => b.testKey && !have.has(b.testKey)).map((b) => `${b.nameTr} sonucu yok`),
     ...biomarkers.filter((b) => !b.testKey && b.note).map((b) => `${b.nameTr}: ${b.note}`),
-    ...(state.reportFindings.length || state.imageObservations.length ? [] : ['Bu organa ait görüntüleme ya da rapor yok']),
+    ...(state.reportFindings.length || state.imageObservations.length || state.modelFindings.length || state.modelStructures.length ? [] : ['Bu organ için okunmuş bir rapor ya da tıbbi model sonucu yok']),
   ];
 
   return {

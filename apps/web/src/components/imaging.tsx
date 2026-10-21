@@ -61,11 +61,6 @@ export function ImagingStudyCard({ study, compact = false }: { study: ImagingStu
               {study.findings.some((f) => f.status === 'uncertain') ? ` · ${study.findings.filter((f) => f.status === 'uncertain').length} belirsiz` : ''}
             </span>
           )}
-          {study.review && study.review.regions.length > 0 && (
-            <span className="mt-1.5 inline-block rounded-full border border-caution/40 px-2 py-0.5 text-[11px] text-caution-fg">
-              Sağ-sol ön kontrol · {study.review.regions.length} asimetri gözlemi · tanı değildir
-            </span>
-          )}
           {!compact && study.terms.length > 0 && (
             <span className="mt-1.5 flex flex-wrap gap-1">
               {study.terms.slice(0, 5).map((t) => (

@@ -18,6 +18,7 @@ import { physioChain } from '../physiology';
 import type { LabObservation, MedicalFinding, ModelStructure } from '../types';
 import { isPositiveReport } from '../types';
 import { CIRCULATORY, RESPIRATORY } from './data/circulatory';
+import { BRAIN } from './data/brain';
 import { DIGESTIVE } from './data/digestive';
 import { EXTRA } from './data/extra';
 import { MUSCULOSKELETAL, REPRODUCTIVE, SENSORY, SKIN } from './data/other';
@@ -26,8 +27,9 @@ import { type InteriorArchetype, type InteriorMode, type InteriorStage, type Int
 
 export * from './types';
 export { INTERIOR_ACCEPTANCE } from './acceptance';
+export { BRAIN_REGIONS } from './data/brain';
 
-export const INTERIORS: readonly OrganInteriorDefinition[] = [...DIGESTIVE, ...CIRCULATORY, ...RESPIRATORY, ...URINARY, ...NERVOUS, ...ENDOCRINE, ...REPRODUCTIVE, ...SENSORY, ...MUSCULOSKELETAL, ...SKIN, ...EXTRA];
+export const INTERIORS: readonly OrganInteriorDefinition[] = [...DIGESTIVE, ...CIRCULATORY, ...RESPIRATORY, ...URINARY, ...NERVOUS, ...BRAIN, ...ENDOCRINE, ...REPRODUCTIVE, ...SENSORY, ...MUSCULOSKELETAL, ...SKIN, ...EXTRA];
 
 const byId = new Map<string, OrganInteriorDefinition>();
 for (const d of INTERIORS) {

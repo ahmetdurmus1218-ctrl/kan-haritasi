@@ -45,7 +45,12 @@ export type Route =
    */
   | { name: 'personalOrgan'; id: string; inside?: boolean }
   /** Fizyoloji grafiği: zincir listesi ya da bir zincir (glukoz, B12, demir…). */
-  | { name: 'physiology'; id?: string };
+  | { name: 'physiology'; id?: string }
+  /**
+   * Beyin haritası: beynin bütün bölümleri, rapordan okunan cümleler bölgesine yerleşmiş hâlde.
+   * region: bilgi grafiği düğümü (ör. "brain.frontal") → o bölgenin sayfası ve her rapor cümlesi adım adım.
+   */
+  | { name: 'brain'; region?: string };
 
 /** ic: İçine gir (iç dünya); doku: duvar → doku → hücre adım adım; derin: bilgi grafiğinde serbest iniş. */
 export type OrganViewMode = 'normal' | 'benim' | 'fark' | 'ic' | 'doku' | 'derin';
@@ -121,6 +126,8 @@ export function parseHash(hash: string): Route {
       return arg && NODE.test(arg) ? { name: 'personalOrgan', id: arg, ...(arg2 === 'ic' ? { inside: true } : {}) } : { name: 'mybody' };
     case 'fizyoloji':
       return arg && KEY.test(arg) ? { name: 'physiology', id: arg } : { name: 'physiology' };
+    case 'beyin':
+      return arg && NODE.test(arg) ? { name: 'brain', region: arg } : { name: 'brain' };
     default:
       return { name: 'home' };
   }
@@ -169,6 +176,8 @@ export function hrefFor(route: Route): string {
       return `#/kisisel/${route.id}${route.inside ? '/ic' : ''}`;
     case 'physiology':
       return route.id ? `#/fizyoloji/${route.id}` : '#/fizyoloji';
+    case 'brain':
+      return route.region ? `#/beyin/${route.region}` : '#/beyin';
     default:
       return '#/belgeler';
   }

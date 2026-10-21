@@ -5,7 +5,7 @@ import { type Route, go, hrefFor } from '../state/router';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Sheet } from '../components/Sheet';
 import { SearchSheet } from '../components/SearchSheet';
-import { BodyIcon, ChartIcon, DropIcon, FolderIcon, HomeIcon, LayersIcon, ListIcon, LockIcon, MoreIcon, PlusIcon, ScanIcon, SearchIcon, ShieldIcon, UserIcon } from '../components/icons';
+import { BodyIcon, BrainIcon, ChartIcon, DropIcon, FolderIcon, HomeIcon, LayersIcon, ListIcon, LockIcon, MoreIcon, PlusIcon, ScanIcon, SearchIcon, ShieldIcon, UserIcon } from '../components/icons';
 
 /**
  * Sade bilgi mimarisi: beş ana yer (Özet, Vücudum, Sonuçlar, Görüntüler, Zamanım) ve tek giriş noktası
@@ -38,6 +38,7 @@ function activeKey(route: Route): NavKey | 'add' {
     case 'interior':
     case 'personalOrgan':
     case 'physiology':
+    case 'brain':
       return 'mybody';
     case 'timeline':
       return 'timeline';
@@ -202,6 +203,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
               ['Görüntüler', 'MR, BT, röntgen, ultrason, EKG…', ScanIcon, { name: 'images' }],
               ['Zamanım', 'Sonuçların zaman içinde', ChartIcon, { name: 'timeline' }],
               ['Belgelerim', 'Yüklediğin tüm dosyalar', FolderIcon, { name: 'documents' }],
+              ['Beyin haritası', 'Raporundaki her cümle beyinde nerede, adım adım', BrainIcon, { name: 'brain' }],
               ['3B vücut', 'Organları döndür, içine gir', LayersIcon, { name: 'body' }],
               ['Ayarlar ve gizlilik', 'Kilit, yedek, verilerimi indir', ShieldIcon, { name: 'privacy' }],
             ] as const

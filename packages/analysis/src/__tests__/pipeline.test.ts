@@ -87,7 +87,7 @@ describe('modalite sınıflandırması (rapor yok, yalnızca görüntü)', () =>
 });
 
 describe('analiz hattı', () => {
-  it('rapor olmadan beyin MR fotoğrafından kaynaklı, güvenli, konumlu gözlem üretir', () => {
+  it('rapor olmadan beyin MR fotoğrafından kaynaklı gözlem üretir; parlaklık farkını bir beyin lobuna EŞLEMEZ', () => {
     const run = analyzeImage(brainPhoto(), { fileName: 'brain_mri.jpg' });
     expect(run.route).toBe('image-analysis');
     expect(run.reportAvailable).toBe(false);
@@ -97,10 +97,11 @@ describe('analiz hattı', () => {
     expect(o.source).toBe('IMAGE_ANALYSIS');
     expect(o.localization.kind).toBe('pixel');
     expect(o.confidence.kind).toBe('score');
-    expect(o.model.version).toBe('1.0.0');
-    // Görüntünün solu → hastanın sağı (radyolojik düzen); üst kısım → frontal
-    expect(o.location?.path).toEqual(['brain', 'brain.hemisphere-right', 'brain.frontal']);
-    expect(o.location?.basis).toBe('pixel-mapped');
+    expect(o.model.version).toBe('1.1.0');
+    // Fotoğraftaki parlaklık farkı "sağ alın lobu" gibi bir konuma dönüştürülmez (sahte kesinlik).
+    expect(o.location).toBeUndefined();
+    expect(o.limitations.join(' ')).toMatch(/hangi bölgesine \(lob\) düştüğü söylenemez/);
+    expect(run.result.capabilities.find((c) => c.key === 'anatomy')?.status).toBe('not-implemented');
     // Uygulanmamış yetenekler dürüstçe listelenir
     const lesion = run.result.capabilities.find((c) => c.key === 'lesion-detection')!;
     expect(lesion.status).toBe('not-implemented');

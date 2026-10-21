@@ -244,6 +244,12 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
                 <p className="text-[11px] text-fg-faint">Eğitimsel normal anatomi/fizyoloji — kişisel görüntü değildir.</p>
               </>
             )}
+            {(v.node.id === 'brain' || v.node.id.startsWith('brain.')) && (
+              <button type="button" className="btn-ghost min-h-[44px] w-full justify-between px-4 text-sm" onClick={() => go(v.node.id === 'brain' ? { name: 'brain' } : { name: 'brain', region: v.node.id })} data-testid="organ-brain-map">
+                <span>Beyin haritası: raporundaki cümleler bölge bölge, adım adım</span>
+                <ChevronRightIcon size={16} />
+              </button>
+            )}
           </>
         ) : (
           <>

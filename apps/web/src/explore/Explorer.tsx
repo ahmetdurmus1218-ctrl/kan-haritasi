@@ -13,10 +13,10 @@ import { useResolvedTheme } from '../state/theme';
 import { buildSeries, useReports } from '../lib/useReports';
 import { loadSex } from '../lib/reports';
 import { severityWeights, useInterpretation } from '../lib/interpretation';
-import { reviewFlags, studiesForStructure, useImagingStudies } from '../lib/imagingStudies';
+import { studiesForStructure, useImagingStudies } from '../lib/imagingStudies';
 import { CATEGORY_SHORT } from '../lib/imaging';
 import { formatDate } from '../lib/format';
-import { highlightName, highlightsFrom, withFindingHighlights, withImagingHighlights, withReviewHighlights } from '../anatomy/highlight';
+import { highlightName, highlightsFrom, withFindingHighlights, withImagingHighlights } from '../anatomy/highlight';
 import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene';
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { partLabel, partLatin } from '../anatomy/names';
@@ -247,8 +247,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     const base = highlightsFrom(series, focusTest, weights);
     if (focusTest || !studies) return base;
     const withMeasures = withImagingHighlights(base, studies.flatMap((st) => st.abnormal));
-    const withFindings = withFindingHighlights(withMeasures, studies.flatMap((st) => st.findings.map((f) => ({ ...f, fileId: st.head.id }))));
-    return withReviewHighlights(withFindings, reviewFlags(studies));
+    // Sağ-sol ön kontrolü (fotoğraf asimetrisi) 3B'de vurgulanmaz: bir organ bulgusu değildir.
+    return withFindingHighlights(withMeasures, studies.flatMap((st) => st.findings.map((f) => ({ ...f, fileId: st.head.id }))));
   }, [series, focusTest, weights, studies]);
   const allParts = useMemo(() => [...models.parts, ...models.schematic], [models.parts, models.schematic]);
   const boxes = useMemo(() => structureBoxes(allParts), [allParts]);

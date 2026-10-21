@@ -27,6 +27,7 @@ const FlowPage = lazy(() => import('./screens/FlowPage').then((m) => ({ default:
 const SystemPage = lazy(() => import('./screens/SystemPage').then((m) => ({ default: m.SystemPage })));
 const PersonalOrganPage = lazy(() => import('./screens/PersonalOrganPage').then((m) => ({ default: m.PersonalOrganPage })));
 const PhysiologyPage = lazy(() => import('./screens/PhysiologyPage').then((m) => ({ default: m.PhysiologyPage })));
+const BrainMapPage = lazy(() => import('./screens/BrainMapPage').then((m) => ({ default: m.BrainMapPage })));
 
 function ExplorerFallback() {
   return (
@@ -116,6 +117,10 @@ function Gate() {
           ) : route.name === 'physiology' ? (
             <Suspense fallback={<PageFallback />}>
               <PhysiologyPage key={route.id ?? 'list'} id={route.id} />
+            </Suspense>
+          ) : route.name === 'brain' ? (
+            <Suspense fallback={<PageFallback />}>
+              <BrainMapPage key={route.region ?? 'map'} region={route.region} />
             </Suspense>
           ) : (
             <DocumentsPage navigate={navigate} />

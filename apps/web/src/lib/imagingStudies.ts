@@ -30,7 +30,7 @@ export interface ImagingStudy extends DocGroup {
   /** Rapordan okunan ve elle yapılan ölçümler, genel referansa göre değerlendirilmiş. */
   measures: MeasureResult[];
   abnormal: MeasureResult[];
-  /** Kullanıcının sonuçlarına eklediği otomatik görüntü incelemesi (sağ-sol farkı). */
+  /** Eski sürümde sonuçlara eklenmiş sağ-sol ön kontrolü (yalnızca kaldırmak için; sonuç sayılmaz). */
   review?: StoredReview;
   /** Rapor cümlelerinden çıkarılan bulgular (konum ve olağan/dikkat ayrımıyla). */
   findings: ImagingFinding[];
@@ -101,14 +101,6 @@ export function relatedStudies(study: Pick<ImagingStudy, 'key' | 'category' | 'r
       o.category === study.category &&
       (o.date === study.date || (study.region !== undefined && o.region === study.region && days(o.date, study.date) <= 7)),
   );
-}
-
-/** Sonuçlara eklenmiş, asimetri gözlemi içeren ön incelemeler ve ilgili 3B yapıları. */
-export function reviewFlags(all: ImagingStudy[]): Array<{ structure: string; fileId: string; count: number }> {
-  return all.flatMap((st) => {
-    const structure = st.region ? regionByKey.get(st.region)?.structure : undefined;
-    return st.review?.confirmed && st.review.regions.length && structure ? [{ structure, fileId: st.head.id, count: st.review.regions.length }] : [];
-  });
 }
 
 /** Bir 3B yapıyla ilgili çalışmalar (bölgenin yapısı eşleşenler). */
