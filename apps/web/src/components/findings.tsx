@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { structureById } from '@kh/catalog';
 import { go } from '../state/router';
 import { interiorForStructure } from '../lib/anatomyNav';
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { INSIDE } from '../explore/inside/registry';
 import { type FindingStatus, type ImagingFinding, normalInfo } from '../lib/imagingFindings';
+import { useImagingStudies } from '../lib/imagingStudies';
+import { sentencesOf } from '../lib/reportSteps';
 import { BodyIcon } from './icons';
 
 export const FINDING_TONE: Record<FindingStatus, { label: string; cls: string }> = {
@@ -41,7 +43,7 @@ export function openFinding(f: ImagingFinding) {
   go(f.part ? { name: 'body', structure: f.structure, part: f.part } : { name: 'body', structure: f.structure });
 }
 
-function FindingItem({ f }: { f: ImagingFinding }) {
+function FindingItem({ f, onSteps }: { f: ImagingFinding; onSteps?: () => void }) {
   const [open, setOpen] = useState(false);
   const tone = findingTone(f);
   const s = f.structure ? structureById.get(f.structure) : undefined;
@@ -70,6 +72,11 @@ function FindingItem({ f }: { f: ImagingFinding }) {
         </div>
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5 pl-[3.25rem]">
+        {onSteps && (
+          <button type="button" className="btn-primary px-2.5 py-1 text-xs" onClick={onSteps} data-testid="sentence-steps">
+            Adım adım gör
+          </button>
+        )}
         {s && (
           <button type="button" className="btn-ghost px-2.5 py-1 text-xs" onClick={() => openFinding(f)}>
             <BodyIcon size={13} /> {f.located === 'text' ? 'Vücutta göster' : 'Vücutta göster (yaklaşık)'}
@@ -129,8 +136,15 @@ function FindingItem({ f }: { f: ImagingFinding }) {
 }
 
 /** Rapordan çıkarılan bulgular: dikkat ve belirsiz olanlar önce; olağan ifadeler katlanır. */
-export function FindingList({ findings }: { findings: ImagingFinding[] }) {
+export function FindingList({ findings, fileId }: { findings: ImagingFinding[]; fileId?: string }) {
   const [showNormal, setShowNormal] = useState(false);
+  // Her cümle kendi adım adım sayfasına açılır (#/cumle/<çalışma>/<sıra>): çalışmadaki aynı cümle bulunur.
+  const studies = useImagingStudies();
+  const refs = useMemo(() => (studies && fileId ? sentencesOf(studies, fileId) : []), [studies, fileId]);
+  const stepsFor = (f: ImagingFinding) => {
+    const r = refs.find((x) => x.finding.text === f.text && x.finding.section === f.section);
+    return r ? () => go({ name: 'sentence', file: r.fileId, n: r.index + 1 }) : undefined;
+  };
   const sorted = [...findings].sort((a, b) => ORDER[a.status] - ORDER[b.status]);
   const flagged = sorted.filter((f) => f.status === 'abnormal' || f.status === 'uncertain');
   const normal = sorted.filter((f) => f.status === 'normal' || f.status === 'not-assessed');
@@ -146,7 +160,7 @@ export function FindingList({ findings }: { findings: ImagingFinding[] }) {
       )}
       <ul className="space-y-2">
         {flagged.map((f, i) => (
-          <FindingItem key={`${f.text}-${i}`} f={f} />
+          <FindingItem key={`${f.text}-${i}`} f={f} onSteps={stepsFor(f)} />
         ))}
       </ul>
       {normal.length > 0 && (
@@ -157,7 +171,7 @@ export function FindingList({ findings }: { findings: ImagingFinding[] }) {
           {showNormal && (
             <ul className="space-y-2">
               {normal.map((f, i) => (
-                <FindingItem key={`${f.text}-${i}`} f={f} />
+                <FindingItem key={`${f.text}-${i}`} f={f} onSteps={stepsFor(f)} />
               ))}
             </ul>
           )}

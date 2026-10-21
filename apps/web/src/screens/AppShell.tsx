@@ -48,6 +48,7 @@ function activeKey(route: Route): NavKey | 'add' {
     case 'result':
       return 'results';
     case 'images':
+    case 'sentence':
       return 'images';
     case 'privacy':
     case 'about':

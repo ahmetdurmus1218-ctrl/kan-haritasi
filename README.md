@@ -276,7 +276,7 @@ DICOM seri → hacim (kesit sırası, yönelim, aralık, LPS → RAS) → yerel 
 
 ### Beyin haritası (`#/beyin`, `#/beyin/<bölge>`) — rapordan beynin her yerine
 
-Telefonda tek sütun; Vücudum'dan, "Daha" menüsünden, beyin organ sayfasından ve rapor bulgularının altındaki "Beyin haritasında adım adım gör" düğmesinden açılır.
+Telefonda tek sütun; Özet'teki "Beyin raporun" kartından, Vücudum'dan, "Daha" menüsünden, aramadan ("beyin haritası", lob adları), beyin organ sayfasından ve rapor bulgularının altındaki "Beyin haritasında adım adım gör" düğmesinden açılır.
 
 ```
 Radyoloji raporu (PDF / kâğıt fotoğrafı → OCR) → cümleler (Bulgular / Sonuç) → olağan · dikkat · belirsiz · değerlendirilemedi
@@ -290,6 +290,10 @@ Radyoloji raporu (PDF / kâğıt fotoğrafı → OCR) → cümleler (Bulgular / 
 - **Beynin her yerine girilir:** yarıküreler, beş lob (alın, yan kafa, şakak, arka kafa, insula), limbik sistem, hipokampus, amigdala, talamus, bazal çekirdekler, karıncıklar (BOS dolu gerçek boşluk: lümen → BOS → koroid pleksus → BOS akışı → ependim), korpus kallozum, beyin zarları, orta beyin, pons, soğancık ve Willis halkası kendi iç dünyalarına sahiptir (`packages/analysis/src/interior/data/brain.ts`); beyin, beyaz cevher, beyin sapı ve beyincik iç dünyaları bunlara bağlanır. Dolu bölgelerde lümen yoktur (kurallar `validateInterior` ile her test koşusunda denetlenir).
 - **Kaynak yalnızca rapor metnidir:** konum "rapor metninden yaklaşık konum"dur, görüntü pikselinden ölçülmez. Taraf yalnızca raporda yazıyorsa yola eklenir ("her iki frontal lob" → Beyin › Uç beyin › Alın lobu; tek bir yarıküreye yazılmaz — `brainPath`). Sinüs, kulak gibi beyin dışı cümleler haritaya girmez.
 - **Sade dil** (`apps/web/src/lib/brainReport.ts`): sözlük terimleri (hiperintens, gliozis, iskemik…) ve beyin raporlarına özgü sözcükler (milimetrik, nonspesifik, odak, FLAIR, T2, periventriküler, perivasküler aralık, laküner, Fazekas…) cümlede geçiyorsa anlamıyla; ölçü, derece, sayı, önceki çekimle karşılaştırma ve radyoloğun önerisi yalnızca cümlede yazıyorsa. "Kısıtlanma saptanmadı" gibi olumsuzlamalar "bu bir bulgu değil" diye anlatılır. Tanı konmaz; anlamını hekim değerlendirir.
+- **Her organda aynı 7 adım** (`#/cumle/<belge>/<n>`): beyin dışındaki raporlarda da (bel MR'ı, karın ultrasonu, akciğer BT…) her cümlenin "Adım adım gör" düğmesi vardır; cümleler arasında ileri/geri gidilir (`components/ReportSteps.tsx`, `lib/reportSteps.ts`).
+- **OCR uyarısı:** rapor kâğıdın/ekranın fotoğrafından okunduysa 1. adımda "bir harf ya da sayı yanlış okunmuş olabilir; özellikle ölçü ve taraf" uyarısı çıkar.
+- **Kendi 3B beynin:** beyin bir DICOM MR/BT serisinde yerel modelle gerçek maskeyle bölütlendiyse haritada "Senin MR serinden 3B beyin" (hacim, `#/kisisel/brain`); yoksa DICOM eklemenin yolu yazılır.
+- **Hekime götür:** dikkat çeken cümleler, yerleri, sade anlamları ve tekrarsız sorular düz metin olarak sistem paylaş ekranıyla paylaşılır ya da panoya kopyalanır (`lib/share.ts`); uygulama kendisi hiçbir yere göndermez.
 - **Model eğitimi yok, bilinçli olarak:** etiketli beyin MR verisi ve doğrulama olmadan cihazda "eğitilmiş" bir lezyon modeli, fotoğraftaki parlaklık farkını hastalık gibi gösteren eski davranıştan daha güvenilir olmazdı. Güvenilir okuma yolu raporun kendisi (cümle cümle) ve DICOM serisinde doğrulanmış yerel 3B modeldir (TotalSegmentator MRI).
 
 ### Anatomi grafiği ve derin anatomi
@@ -357,7 +361,7 @@ Olmayan veya bağlanmamış her şey arayüzde açıkça yazar: harici yapay zek
   - `tests/e2e/smoke.py`: kasa, belgeler, görüntüleyici, indirme, silme, kilit.
   - `tests/e2e/flow.py`: PDF ve fotoğraf okuma, onay, sonuçlar, renk kabulü (90/91: yüksek LDL adı ve değeri aynı tonda, düşük ferritin mavi, normal glukoz nötr; pankreas sayfasında trigliserid adı/değeri/▲ aynı tonda), vücutta göster, simülasyon, nesne seçimi, Esc ile dönüş.
   - `tests/e2e/data.py`: zaman çizelgesi, şifreli yedek → yeni kasaya geri yükleme, ZIP doğrulaması.
-  - `tests/e2e/brainmap.py` (**telefon, 390×844**): MR fotoğrafında bölge/bulgu uydurulmaz (okuma yolu gösterilir, asimetri kapalı teknik bölümde); beyin MR raporu → Beyin haritası (sinüs cümlesi beyne yazılmaz, alın lobu "dikkat") → "her iki" bulgusu tek yarıküreye yazılmaz → 7 adım → alın lobunun iç dünyasında "Benim verim"; haritadaki 20 bölgenin her birinin iç dünyası açılır; yatay taşma ve dış istek yok.
+  - `tests/e2e/brainmap.py` (**telefon, 390×844**): MR fotoğrafında bölge/bulgu uydurulmaz (okuma yolu gösterilir, asimetri kapalı teknik bölümde); rapor cümlesi → `#/cumle` adım adım ve sonraki cümle; Özet'te beyin raporu kartı; hekime götür; beyin MR raporu → Beyin haritası (sinüs cümlesi beyne yazılmaz, alın lobu "dikkat") → "her iki" bulgusu tek yarıküreye yazılmaz → 7 adım → alın lobunun iç dünyasında "Benim verim"; haritadaki 20 bölgenin her birinin iç dünyası açılır; yatay taşma ve dış istek yok.
   - `tests/e2e/multimodal.py`: rapor olmadan MR fotoğrafı, EKG, ultrason ve patoloji görüntüsünün ön incelemesi; Vücudum → organ alt sayfası → organ sayfası, "Neden?" zinciri; kabul senaryoları 87 (Vücudum → Sindirim → İnce bağırsak: nasıl çalışır → içini göster → fizyoloji adım adım → benim durumum → derinleş), 88 (beyin MR fotoğrafı: ✓ kesit/orta hat/simetri, ◻ lezyon/segmentasyon/sekans, vücutta göster → beyin), 95 (2 kesit: tam MR değerlendirmesi denmez), keşif modu (10 sistem), breadcrumb ve geri dönüş. Ayrıca:
     - "Veri ekle" ve "Vücudum" ilk ekranda görünür; gezinmede teknik öğe yoktur.
     - MR sonucunda en fazla 8 görünür düğme bulunur; model ayrıntıları "Nasıl analiz edildi?" bölümünde.

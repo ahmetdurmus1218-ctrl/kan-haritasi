@@ -39,9 +39,12 @@ function organEntry(id: string, title: string, subtitle: string | undefined, ext
     words: [title, ...extra].map(normalizeText),
     build: () => {
       const interior = interiorFor(id);
+      // Beyin ve bölümleri: rapordaki cümleler beyin haritasında bölge bölge (adım adım).
+      const brain = id === 'brain' || id.startsWith('brain.');
       return {
         route: { name: 'organ', id },
         links: [
+          ...(brain ? [{ label: 'Beyin haritası', route: (id === 'brain' ? { name: 'brain' } : { name: 'brain', region: id }) as Route }] : []),
           { label: 'Sonuçlar', route: { name: 'organ', id, view: 'benim' } },
           { label: 'Görüntüler ve bulgular', route: { name: 'organ', id, view: 'benim' } },
           { label: 'Normalde nasıl çalışır?', route: { name: 'organ', id } },
@@ -66,6 +69,13 @@ function buildIndex(): Entry[] {
     if (seen.has(s.id)) continue;
     out.push(organEntry(s.id, s.nameTr, s.latin, s.latin ? [s.latin] : []));
   }
+  out.push({
+    kind: 'organ',
+    title: 'Beyin haritası',
+    subtitle: 'Beyin raporundaki her cümle bölgesinde, adım adım',
+    words: ['Beyin haritası', 'beyin MR raporu', 'MR raporu', 'beyin raporu'].map(normalizeText),
+    build: () => ({ route: { name: 'brain' }, links: [{ label: 'Alın lobu', route: { name: 'brain', region: 'brain.frontal' } }, { label: 'Karıncıklar', route: { name: 'brain', region: 'brain.ventricles' } }] }),
+  });
   for (const f of FLOWS)
     out.push({
       kind: 'flow',

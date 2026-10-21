@@ -3,20 +3,20 @@
  * yerleşir; her cümle adım adım açılır: Raporda ne yazıyor → Sade dille → Beyinde nerede → Bölge normalde
  * ne yapar → İçine gir → Daha derine in → Hekimine sor. Konum rapor metninden gelir (görüntüden değil).
  */
-import { type ReactNode, useMemo, useState } from 'react';
-import { GRAPH, brainPath, interiorById } from '@kh/analysis';
+import { useMemo, useState } from 'react';
+import { GRAPH, brainPath, interiorById, interiorProvenance } from '@kh/analysis';
 import { go } from '../state/router';
 import { useImagingStudies } from '../lib/imagingStudies';
-import { type BrainFinding, REGION_STATUS_TEXT, type RegionStatus, brainFindings, brainRegions, deeperTrail, doctorQuestions, findingsAt, interiorStep, plainReading, regionStatus } from '../lib/brainReport';
+import { useHealthModel } from '../lib/analysisBridge';
+import { doctorNote, shareOrCopy } from '../lib/share';
+import { type BrainFinding, REGION_STATUS_TEXT, type RegionStatus, brainFindings, brainRegions, findingsAt, regionStatus } from '../lib/brainReport';
+import { interiorStep } from '../lib/reportSteps';
+import { ReportSteps } from '../components/ReportSteps';
 import { TONE, TONE_VAR, type Tone } from '../lib/tone';
-import { formatDate } from '../lib/format';
-import { BodyIcon, BrainIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from '../components/icons';
+import { BodyIcon, BrainIcon, ChevronRightIcon, PlusIcon } from '../components/icons';
 
 const STATUS_TONE: Record<RegionStatus, Tone | null> = { attention: 'attention', uncertain: 'uncertain', normal: 'normal', 'not-assessed': 'not-assessed', none: null };
-const SECTION: Record<string, string> = { bulgular: 'Bulgular', sonuc: 'Sonuç', diger: 'Rapor' };
 const name = (id: string) => (id === 'brain' ? 'Beyin (genel)' : (GRAPH.node(id)?.nameTr ?? id));
-/** Yoldaki ad: "Beyin" (bölge başlığındaki "genel" eki yolda yazılmaz). */
-const pathName = (id: string) => GRAPH.node(id)?.nameTr ?? id;
 
 function StatusChip({ status }: { status: RegionStatus }) {
   const tone = STATUS_TONE[status];
@@ -47,6 +47,12 @@ function MapView({ all }: { all: BrainFinding[] }) {
   const flagged = all.filter((b) => b.finding.status === 'abnormal' || b.finding.status === 'uncertain');
   const calm = all.filter((b) => !flagged.includes(b));
   const docs = new Set(all.map((b) => b.fileId)).size;
+  const { model } = useHealthModel();
+  const [shared, setShared] = useState<string | null>(null);
+  // Beyin bir DICOM MR/BT serisinde yerel modelle gerçek maskeyle bölütlendiyse: kişinin kendi 3B beyni.
+  const brainDef = interiorById('brain');
+  const prov = brainDef ? interiorProvenance(brainDef, model) : null;
+  const personalMl = prov?.structures.reduce((sum, x) => sum + (x.localization.kind === 'volume' ? x.localization.volumeMl : 0), 0) ?? 0;
   const groups = [...new Set(regions.map((r) => r.group))];
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-8 md:py-10">
@@ -86,6 +92,18 @@ function MapView({ all }: { all: BrainFinding[] }) {
 
       <BrainSketch statusOf={statusOf} />
 
+      {prov?.personal3D ? (
+        <button type="button" className="flex w-full items-center gap-3 card p-4 text-left hover:border-ink-500" onClick={() => go({ name: 'personalOrgan', id: 'brain' })} data-testid="brain-personal-3d">
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-medium text-fg">Senin MR serinden 3B beyin</span>
+            <span className="block text-xs text-fg-muted">Gerçek bölütleme maskesi · {personalMl.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} mL · döndür, içine dal</span>
+          </span>
+          <ChevronRightIcon size={16} />
+        </button>
+      ) : (
+        <p className="text-xs text-fg-faint">Kendi beyninin 3B modeli için CD/DVD'deki MR serisini (DICOM klasörü ya da ZIP) ekle; yerel model cihazda bölütler.</p>
+      )}
+
       {flagged.length > 0 && (
         <section aria-label="Raporundan okunanlar" className="space-y-2">
           <h2 className="text-sm font-medium text-fg-muted">Raporunda dikkat çekenler</h2>
@@ -95,6 +113,18 @@ function MapView({ all }: { all: BrainFinding[] }) {
             ))}
           </ul>
         </section>
+      )}
+      {flagged.length > 0 && (
+        <div className="space-y-1">
+          <button type="button" className="btn-ghost min-h-[44px] w-full justify-center text-sm" data-testid="share-brain" onClick={() => void shareOrCopy('Hekimime soracaklarım', doctorNote(flagged)).then(setShared)}>
+            Hekime götür: dikkat çeken cümleler, anlamları ve sorular
+          </button>
+          {shared && (
+            <p className="text-center text-xs text-fg-muted" role="status">
+              {shared}
+            </p>
+          )}
+        </div>
       )}
       {calm.length > 0 && (
         <details className="rounded-2xl border border-ink-600/60 p-3">
@@ -279,7 +309,7 @@ function RegionView({ region, all }: { region: string; all: BrainFinding[] }) {
                   </span>
                   <ChevronRightIcon size={16} className={`mt-1 shrink-0 transition ${open === i ? 'rotate-90' : ''}`} />
                 </button>
-                {open === i && <FindingSteps b={b} region={region} />}
+                {open === i && <ReportSteps s={b} region={region} />}
               </li>
             ))}
           </ul>
@@ -316,163 +346,6 @@ function RegionView({ region, all }: { region: string; all: BrainFinding[] }) {
           </ul>
         </section>
       )}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ adım adım */
-
-function FindingSteps({ b, region }: { b: BrainFinding; region: string }) {
-  const [step, setStep] = useState(0);
-  const plain = plainReading(b.finding);
-  const target = GRAPH.node(b.node);
-  const fns = GRAPH.functionsOf(b.node).slice(0, 4);
-  const inside = interiorStep(region, b);
-  const insideDef = inside ? interiorById(inside.interior) : undefined;
-  const insideStage = insideDef?.stages[inside!.stage - 1];
-  const deeperStage = inside?.deeperStage ? insideDef?.stages[inside.deeperStage - 1] : undefined;
-  const deeper = deeperTrail(b);
-  const questions = doctorQuestions(b.finding);
-  const steps: Array<{ title: string; body: ReactNode }> = [
-    {
-      title: 'Raporda ne yazıyor?',
-      body: (
-        <>
-          <blockquote className="border-l-2 border-ink-500 pl-3 text-[15px] italic text-fg">{b.finding.text}</blockquote>
-          <p className="text-xs text-fg-faint">
-            {SECTION[b.finding.section] ?? 'Rapor'} bölümü · {b.docName}
-            {b.dateKnown ? ` · ${formatDate(b.date)}` : ''} · Kaynak: RAPOR (radyoloğun yazdığı metin)
-          </p>
-        </>
-      ),
-    },
-    {
-      title: 'Sade dille',
-      body: (
-        <>
-          <p className="text-[15px] text-fg">{plain.headline}</p>
-          {plain.lines.length > 0 && (
-            <ul className="space-y-1.5 text-sm text-fg-muted">
-              {plain.lines.map((l, i) => (
-                <li key={i}>• {l}</li>
-              ))}
-            </ul>
-          )}
-        </>
-      ),
-    },
-    {
-      title: 'Beyinde nerede?',
-      body: (
-        <>
-          <p className="text-[15px] text-fg">{b.path.map(pathName).join(' › ')}</p>
-          <ul className="space-y-1 text-sm text-fg-muted">
-            {plain.side && <li>• Taraf: {plain.side}</li>}
-            {plain.depth && <li>• Katman: {plain.depth.text}</li>}
-            <li>• Konum rapor metninden okundu (yaklaşık); görüntü üzerinde ölçülmedi.</li>
-          </ul>
-          <button type="button" className="btn-ghost min-h-[44px] px-3.5 text-sm" onClick={() => go(target?.part ? { name: 'body', structure: 'brain', part: target.part } : { name: 'body', structure: 'brain' })}>
-            <BodyIcon size={15} /> 3B'de göster
-          </button>
-        </>
-      ),
-    },
-    {
-      title: 'Bu bölge normalde ne yapar?',
-      body: (
-        <>
-          <p className="text-[15px] text-fg">{target?.summary}</p>
-          {fns.length > 0 && (
-            <ul className="space-y-1 text-sm text-fg-muted">
-              {fns.map((f) => (
-                <li key={f.id}>• {f.nameTr}</li>
-              ))}
-            </ul>
-          )}
-          <p className="text-xs text-fg-faint">Genel anatomi bilgisidir; bu cümlenin bu işlevleri etkileyip etkilemediğini hekimin değerlendirir.</p>
-        </>
-      ),
-    },
-    {
-      title: 'İçine gir',
-      body: insideDef ? (
-        <>
-          <p className="text-[15px] text-fg">
-            {insideDef.name} iç dünyasında bu cümle “{insideStage?.title}” basamağında “Senin verin” olarak görünür.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-primary min-h-[44px] px-4 text-sm" data-testid="finding-enter" onClick={() => go({ name: 'interior', id: insideDef.organId, stage: inside!.stage })}>
-              İçine gir
-            </button>
-            {deeperStage && (
-              <button type="button" className="btn-ghost min-h-[44px] px-3.5 text-sm" onClick={() => go({ name: 'interior', id: insideDef.organId, stage: inside!.deeperStage })}>
-                {deeperStage.title}
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-fg-faint">İç dünya eğitimsel normal anatomidir; senin beyninin görüntüsü değildir.</p>
-        </>
-      ) : (
-        <p className="text-sm text-fg-muted">Bu bölge için iç dünya yok.</p>
-      ),
-    },
-    {
-      title: 'Daha derine in',
-      body: (
-        <>
-          <p className="text-[15px] text-fg">{deeper.label}</p>
-          <p className="text-sm text-fg-muted">Bu katmanın dokusuna, hücresine ve molekülüne seviye seviye in.</p>
-          <button type="button" className="btn-ghost min-h-[44px] px-3.5 text-sm" onClick={() => go({ name: 'organ', id: deeper.organ, view: 'derin', trail: deeper.trail })}>
-            Derinlemesine incele
-          </button>
-          <p className="text-xs text-fg-faint">Genel anatomi; “bu hücrede şu var” denmez.</p>
-        </>
-      ),
-    },
-    {
-      title: 'Hekimine sor',
-      body: (
-        <ul className="space-y-1.5 text-[15px] text-fg">
-          {questions.map((q) => (
-            <li key={q}>• {q}</li>
-          ))}
-        </ul>
-      ),
-    },
-  ];
-  const cur = steps[step]!;
-  return (
-    <div className="space-y-3 border-t border-ink-700 p-4" data-testid="finding-steps" data-step={step + 1}>
-      <ol className="flex flex-wrap gap-1.5" aria-label="Adımlar">
-        {steps.map((s, i) => (
-          <li key={s.title}>
-            <button
-              type="button"
-              aria-current={i === step ? 'step' : undefined}
-              aria-label={`${i + 1}. ${s.title}`}
-              className={`flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-xs ${i === step ? 'border-accent bg-accent/10 text-accent' : i < step ? 'border-ink-500 text-fg-muted' : 'border-ink-600 text-fg-faint'}`}
-              onClick={() => setStep(i)}
-            >
-              {i + 1}
-            </button>
-          </li>
-        ))}
-      </ol>
-      <h3 className="text-[15px] font-semibold text-fg">
-        {step + 1}. {cur.title}
-      </h3>
-      <div className="space-y-2">{cur.body}</div>
-      <div className="flex items-center justify-between gap-2 pt-1">
-        <button type="button" className="btn-ghost min-h-[44px] px-3 text-sm" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>
-          <ChevronLeftIcon size={15} /> Önceki
-        </button>
-        <span className="text-xs text-fg-faint">
-          {step + 1} / {steps.length}
-        </span>
-        <button type="button" className="btn-primary min-h-[44px] px-3 text-sm" disabled={step === steps.length - 1} onClick={() => setStep((s) => s + 1)}>
-          Sonraki <ChevronRightIcon size={15} />
-        </button>
-      </div>
     </div>
   );
 }

@@ -50,7 +50,9 @@ export type Route =
    * Beyin haritası: beynin bütün bölümleri, rapordan okunan cümleler bölgesine yerleşmiş hâlde.
    * region: bilgi grafiği düğümü (ör. "brain.frontal") → o bölgenin sayfası ve her rapor cümlesi adım adım.
    */
-  | { name: 'brain'; region?: string };
+  | { name: 'brain'; region?: string }
+  /** Bir rapor cümlesi adım adım (her organ): file = belge kimliği, n = cümlenin rapordaki sırası (1'den). */
+  | { name: 'sentence'; file: string; n: number };
 
 /** ic: İçine gir (iç dünya); doku: duvar → doku → hücre adım adım; derin: bilgi grafiğinde serbest iniş. */
 export type OrganViewMode = 'normal' | 'benim' | 'fark' | 'ic' | 'doku' | 'derin';
@@ -128,6 +130,10 @@ export function parseHash(hash: string): Route {
       return arg && KEY.test(arg) ? { name: 'physiology', id: arg } : { name: 'physiology' };
     case 'beyin':
       return arg && NODE.test(arg) ? { name: 'brain', region: arg } : { name: 'brain' };
+    case 'cumle': {
+      const n = Number(arg2);
+      return arg && UUID.test(arg) && Number.isInteger(n) && n >= 1 && n <= 500 ? { name: 'sentence', file: arg, n } : { name: 'images' };
+    }
     default:
       return { name: 'home' };
   }
@@ -178,6 +184,8 @@ export function hrefFor(route: Route): string {
       return route.id ? `#/fizyoloji/${route.id}` : '#/fizyoloji';
     case 'brain':
       return route.region ? `#/beyin/${route.region}` : '#/beyin';
+    case 'sentence':
+      return `#/cumle/${route.file}/${route.n}`;
     default:
       return '#/belgeler';
   }

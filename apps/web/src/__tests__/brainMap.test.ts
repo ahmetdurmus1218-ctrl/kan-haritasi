@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { BRAIN_REGIONS, INTERIOR_ACCEPTANCE, brainPath, interiorById, interiorFor, stagePersonal, validateInterior } from '@kh/analysis';
 import { extractFindings } from '../lib/imagingFindings';
-import { brainNodeOf, deeperTrail, depthOf, doctorQuestions, findingsAt, interiorStep, plainReading, regionStatus } from '../lib/brainReport';
+import { brainNodeOf, findingsAt, regionStatus } from '../lib/brainReport';
+import { deeperTrail, depthOf, doctorQuestions, interiorStep, plainReading, sentenceLocation } from '../lib/reportSteps';
+import { doctorNote } from '../lib/share';
+import { search } from '../lib/search';
+import { hrefFor, parseHash } from '../state/router';
 import { reportFindingsFrom } from '../lib/analysisBridge';
 
 const REPORT = `KRANİAL MR İNCELEMESİ
@@ -17,7 +21,7 @@ const findings = extractFindings(REPORT, 'beyin');
 const byText = (frag: string) => findings.find((f) => f.text.includes(frag))!;
 const brain = findings.flatMap((f) => {
   const loc = brainNodeOf(f);
-  return loc ? [{ finding: f, ...loc, fileId: 'd', docName: 'rapor', date: '2026-03-15', dateKnown: true }] : [];
+  return loc ? [{ finding: f, ...loc, fileId: 'd', index: 0, docName: 'rapor', date: '2026-03-15', dateKnown: true, ocr: false }] : [];
 });
 
 describe('beyin haritası: rapor cümlesi → bölge', () => {
@@ -108,5 +112,54 @@ describe('beynin her bölgesine girilir', () => {
     const brainDef = interiorById('brain')!;
     const lobe = brainDef.stages.find((s) => s.id === 'lobe')!;
     expect(lobe.next?.map((n) => n.to)).toEqual(['brain.frontal', 'brain.temporal', 'brain.parietal', 'brain.occipital']);
+  });
+});
+
+describe('her organda rapor cümlesi adım adım', () => {
+  const LUMBAR = `LOMBER MR
+BULGULAR:
+L4-5 disk aralığında santral protrüzyon izlenmiştir, belirgin spinal kanal stenozu izlenmedi.
+SONUÇ: L4-5 santral protrüzyon.`;
+  const ABDOMEN = `ÜST BATIN USG
+BULGULAR:
+Karaciğer boyutu normal, parankim ekojenitesi artmıştır (grade 1 hepatosteatoz ile uyumlu).`;
+
+  it('beyin dışı cümleler de konum, sade anlam, iç dünya ve derin seviye alır', () => {
+    const liver = extractFindings(ABDOMEN, 'batin').find((f) => f.text.includes('Karaciğer'))!;
+    const loc = sentenceLocation(liver);
+    expect(loc.node).toBe('liver');
+    const ref = { finding: liver, ...loc, fileId: 'd', index: 0, docName: 'usg', date: '2026-01-01', dateKnown: false, ocr: true };
+    expect(plainReading(liver).lines.join(' ')).toMatch(/Hepatosteatoz/);
+    expect(interiorStep('liver', ref)?.interior).toBe('liver');
+    expect(deeperTrail(ref)).toMatchObject({ organ: 'liver', trail: [] });
+    const lumbar = extractFindings(LUMBAR, 'lomber').find((f) => f.text.startsWith('L4-5'))!;
+    expect(sentenceLocation(lumbar).path.length).toBeGreaterThan(0);
+    expect(plainReading(lumbar).lines.join(' ')).toMatch(/Protrüzyon/);
+  });
+
+  it('hekime götür notu: cümle, yer, sade anlam ve tekrarsız sorular; OCR bilgisi korunur', () => {
+    const note = doctorNote(brain.filter((b) => b.finding.status !== 'normal'));
+    expect(note).toMatch(/“Her iki frontal lob subkortikal/);
+    expect(note).toMatch(/Milimetrik: milimetre boyutunda/);
+    expect(note).toMatch(/Sorularım:/);
+    const qs = note.split('Sorularım:')[1]!.split('\n').filter((l) => l.startsWith('• '));
+    expect(new Set(qs).size).toBe(qs.length);
+    expect(note).toMatch(/tanı değildir/);
+  });
+
+  it('arama: "beyin haritası" ve lob adları haritaya götürür', () => {
+    const hit = search('beyin haritası')[0]!;
+    expect(hit.route).toEqual({ name: 'brain' });
+    const lobe = search('alın lobu').find((h) => h.title.startsWith('Alın'))!;
+    expect(lobe.links.find((l) => l.label === 'Beyin haritası')?.route).toEqual({ name: 'brain', region: 'brain.frontal' });
+  });
+
+  it('cümle rotası: #/cumle/<belge>/<n> ayrıştırılır, geçersizler reddedilir', () => {
+    const id = '0f8fad5b-d9cb-469f-a165-70867728950e';
+    expect(parseHash(`#/cumle/${id}/3`)).toEqual({ name: 'sentence', file: id, n: 3 });
+    expect(hrefFor({ name: 'sentence', file: id, n: 3 })).toBe(`#/cumle/${id}/3`);
+    expect(parseHash(`#/cumle/${id}/0`).name).toBe('images');
+    expect(parseHash('#/cumle/../1').name).toBe('images');
+    expect(parseHash('#/beyin/brain.frontal')).toEqual({ name: 'brain', region: 'brain.frontal' });
   });
 });
