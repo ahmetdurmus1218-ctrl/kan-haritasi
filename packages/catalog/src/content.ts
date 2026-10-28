@@ -270,6 +270,14 @@ export const CONTENT: Record<string, LearnContent> = {
     actions: ['Kalsiyum ve D vitamini takviyelerini hekiminle konuşmadan artırmamak'],
     askDoctor: ['Albümine göre düzeltilmiş kalsiyum ne?', 'Parathormon veya D vitamini ölçümü gerekir mi?', ...GENERAL_ASK],
   },
+  'calcium-ionized': {
+    what: 'İyonize kalsiyum, kanda proteine bağlı olmayan, kas ve sinirde doğrudan iş gören kalsiyumdur; çoğunlukla kan gazı cihazında ölçülür.',
+    high: 'Paratiroid, D vitamini veya böbrek ile ilişkili olabilir; toplam kalsiyumla birlikte değerlendirilir.',
+    low: 'Kanın asit-baz durumu, D vitamini, paratiroid veya magnezyum ile ilişkili olabilir.',
+    factors: ['Kanın pH değeri', 'Örneğin bekleme süresi', 'Kan gazı ile serum ölçümü arasındaki fark'],
+    actions: ['Toplam kalsiyum, albümin ve D vitamini sonuçlarıyla birlikte hekimine danış'],
+    askDoctor: GENERAL_ASK,
+  },
   magnesium: {
     what: 'Magnezyum, kas-sinir işlevi, kalp ritmi ve yüzlerce enzim için gereklidir.',
     high: 'Genellikle böbrek işlevi veya magnezyum içeren ilaç/takviyelerle ilişkilidir.',

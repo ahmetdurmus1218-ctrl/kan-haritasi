@@ -474,6 +474,150 @@ def make_enabiz_png(path: Path) -> None:
     img.save(path, optimize=True)
 
 
+# e-Nabız "Tahlillerim" tablosunun telefondan alınmış dört ekran görüntüsünün 2×2 birleştirilmiş hâli (resmi
+# arayüz değildir; yalnızca düzeni taklit eder). Zorluklar: yan yana iki tablo, ~13 px yazı, satır başında
+# onay/ünlem simgeleri, referans dışı satırların pembe zemini, kan gazı gibi katalogda olmayan testler,
+# "Ca++" (iyonize kalsiyum), "Spot Kreatinin (İdrar)" (serum kreatinini değildir).
+# Satır: (ad, değer, birim, referans, test anahtarı ya da None, beklenen durum) · bölüm: ("#", tarih, saat, başlık)
+KOLAJ = [
+    [
+        ("#", "14.04.2026", "09:12", ""),
+        ("ALT", "96", "U/L", "0 - 50", "alt", "high"),
+        ("AST", "71", "U/L", "0 - 50", "ast", "high"),
+        ("CK", "133.4", "U/L", "0 - 190", "ck", "normal"),
+        ("CRP", "3.48", "mg/L", "0 - 5", "crp", "normal"),
+        ("Glukoz", "88", "mg/dL", "74 - 106", "glucose", "normal"),
+        ("Hemoliz", "12", "", "0 - 100", None, None),
+        ("İkterik", "2", "", "", None, None),
+        ("Kreatinin", "0.91", "mg/dL", "0.70 - 1.20", "creatinine", "normal"),
+        ("Lipemi", "14", "", "0 - 400", None, None),
+        ("t GFH (CKD-EPİ formülü ile)", "104", "ml/dk/1.73m²", ">60", "egfr", "normal"),
+        ("#", "14.04.2026", "10:05", ""),
+        ("Spot Kreatinin (İdrar)", "132.6", "mg/dL", "39 - 259", None, None),
+        ("Spot Mikroalbumin (İdrar)", "0.41", "mg/dL", "0 - 2", None, None),
+        ("Spot Protein (İdrar)", "9.7", "mg/dL", "0 - 15", None, None),
+        ("#", "14.04.2026", "14:40", "Kan Gazi Ve Kooksimetre"),
+        ("Base(Ecf)", "2.6", "mmol/L", "", None, None),
+        ("Ca++", "1.09", "mmol/L", "1.15 - 1.29", "calcium-ionized", "low"),
+        ("COHb", "1.1", "%", "0 - 1.5", None, None),
+    ],
+    [
+        ("HCO3-(p,st)", "27.4", "mmol/L", "21.8 - 26.9", None, None),
+        ("Lac", "1.2", "mmol/L", "0.5 - 1.6", None, None),
+        ("MetHb", "0.6", "%", "", None, None),
+        ("O2Hb", "81.2", "%", "94 - 98", None, None),
+        ("pCO2", "47.9", "mmHg", "32 - 48", None, None),
+        ("pH", "7.380", "", "7.32 - 7.42", None, None),
+        ("pO2", "52.1", "mmHg", "80 - 108", None, None),
+        ("sO2", "83.5", "%", "95 - 99", None, None),
+        ("tHb", "15.8", "g/dL", "11.5 - 17.4", None, None),
+        ("#", "14.04.2026", "14:40", "Tam Kan (Hemogram)"),
+        ("BASO#", "0.04", "10^3/µL", "0.01 - 0.07", "basophil-abs", "normal"),
+        ("BASO%", "0.5", "%", "0.01 - 1.2", "basophil-pct", "normal"),
+        ("EOS#", "0.18", "10^3/µL", "0.01 - 0.82", "eosinophil-abs", "normal"),
+        ("EOS%", "2.1", "%", "0.02 - 7.6", "eosinophil-pct", "normal"),
+        ("HCT", "43.8", "%", "35 - 55", "hematocrit", "normal"),
+        ("HGB", "14.7", "g/dL", "11.7 - 18", "hemoglobin", "normal"),
+    ],
+    [
+        ("IG#", "0.03", "", "", None, None),
+        ("LYMPH#", "2.21", "10^3/µL", "1 - 4.5", "lymphocyte-abs", "normal"),
+        ("LYMPH%", "27.9", "%", "10 - 47.4", "lymphocyte-pct", "normal"),
+        ("MCH", "30.2", "pg", "24.5 - 34", "mch", "normal"),
+        ("MCHC", "33.6", "g/dL", "30 - 37", "mchc", "normal"),
+        ("MCV", "89.7", "fL", "78 - 101", "mcv", "normal"),
+        ("MONO#", "0.71", "10^3/µL", "0.19 - 0.94", "monocyte-abs", "normal"),
+        ("MONO%", "9.4", "%", "4.3 - 18.3", "monocyte-pct", "normal"),
+        ("MPV", "9.8", "fL", "8.1 - 13.1", "mpv", "normal"),
+        ("NEU#", "4.87", "10^3/µL", "2.0 - 7.7", "neutrophil-abs", "normal"),
+        ("NEU%", "61.3", "%", "14 - 54.6", "neutrophil-pct", "high"),
+        ("PDW", "11.6", "", "", None, None),
+        ("PLT", "233", "10^3/µL", "150 - 450", "platelet", "normal"),
+        ("RBC", "4.97", "10^6/µL", "4.0 - 6.2", "rbc", "normal"),
+        ("RDW-SD", "39.4", "fL", "35 - 50", None, None),
+        ("WBC", "7.96", "10^3/µL", "4.0 - 11", "wbc", "normal"),
+        ("#", "14.04.2026", "16:22", ""),
+        ("Alkalen Fosfataz", "104", "U/L", "40 - 129", "alp", "normal"),
+        ("Amilaz", "58", "U/L", "20 - 131", "amylase", "normal"),
+        ("Bilirubin, Direkt", "0.21", "mg/dL", "0 - 0.4", "bilirubin-direct", "normal"),
+        ("Bilirubin,Total", "0.64", "mg/dL", "0 - 1.2", "bilirubin-total", "normal"),
+    ],
+    [
+        ("Fosfor", "3.41", "mg/dL", "2.3 - 4.5", "phosphorus", "normal"),
+        ("K (Potasyum)", "4.12", "mmol/L", "3.5 - 5.5", "potassium", "normal"),
+        ("Kalsiyum", "9.38", "mg/dL", "8.6 - 10.5", "calcium", "normal"),
+        ("Klor", "102.3", "mmol/L", "95 - 110", "chloride", "normal"),
+        ("LDH", "284", "U/L", "135 - 225", "ldh", "high"),
+        ("Magnezyum", "2.04", "mg/dL", "1.6 - 2.6", "magnesium", "normal"),
+        ("Na (Sodyum)", "139.2", "mmol/L", "135 - 145", "sodium", "normal"),
+        ("Üre", "31.6", "mg/dL", "10 - 50", "urea", "normal"),
+    ],
+]
+
+
+def out_of_range(value: str, ref: str) -> bool:
+    v = float(value)
+    if " - " in ref:
+        lo, hi = (float(x) for x in ref.split(" - "))
+        return v < lo or v > hi
+    if ref.startswith(">"):
+        return v <= float(ref[1:])
+    return False
+
+
+def draw_kolaj_panel(rows, *, header: bool = True) -> Image.Image:
+    f = ImageFont.truetype(FONT, 13)
+    fh = ImageFont.truetype(FONT, 16)
+    cols = [(0, 104), (110, 384), (390, 490), (496, 600), (606, 694)]
+    head_h, row_h, sec_h, gap = (52 if header else 0), 25, 40, 4
+    height = head_h + gap + sum((sec_h if r[0] == "#" else row_h) + gap for r in rows)
+    img = Image.new("RGB", (694, height), "white")
+    d = ImageDraw.Draw(img)
+    y = 0
+    if header:
+        for (x0, x1), title in zip(cols, ["Tarih", "Tahlil", "Sonuç", "Sonuç\nBirimi", "Referans\nDeğeri"]):
+            d.rectangle((x0, 0, x1, head_h), fill=(98, 120, 176))
+            lines = title.split("\n")
+            for i, t in enumerate(lines):
+                d.text((x0 + 10 if x0 else 34, head_h / 2 - 9 * len(lines) + 18 * i), t, font=fh, fill="white")
+        y = head_h + gap
+    for r in rows:
+        if r[0] == "#":
+            _, date, time, title = r
+            d.rectangle((0, y, cols[0][1], y + sec_h), fill=(226, 230, 240))
+            d.rectangle((cols[1][0], y, cols[4][1], y + sec_h), fill=(226, 230, 240))
+            d.text((18, y + 4), date, font=f, fill=(40, 40, 40))
+            d.text((36, y + 21), time, font=f, fill=(40, 40, 40))
+            if title:
+                d.text((cols[1][0] + 10, y + 4), title, font=f, fill=(40, 40, 40))
+            y += sec_h + gap
+            continue
+        name, value, unit, ref, *_ = r
+        bad = bool(ref) and out_of_range(value, ref)
+        bg = (242, 202, 212) if bad else (242, 242, 242)
+        for x0, x1 in cols:
+            d.rectangle((x0, y, x1, y + row_h), fill=(255, 255, 255) if x0 == 0 and not bad else bg)
+        cx, cy = 52, y + row_h // 2
+        d.ellipse((cx - 8, cy - 8, cx + 8, cy + 8), fill=(214, 48, 49) if bad else (52, 168, 120))
+        if bad:
+            d.line((cx, cy - 4, cx, cy + 1), fill="white", width=2)
+            d.point([(cx, cy + 4), (cx + 1, cy + 4)], fill="white")
+        else:
+            d.line((cx - 4, cy, cx - 1, cy + 3, cx + 4, cy - 3), fill="white", width=2)
+        for (x0, _), text in zip(cols[1:], [name, value, unit, ref]):
+            d.text((x0 + 10, y + 5), text, font=f, fill=(30, 30, 30))
+        y += row_h + gap
+    return img
+
+
+def make_enabiz_kolaj_jpg(path: Path) -> None:
+    """Dört ekran görüntüsü 2×2; sağdaki ve alttaki görüntüler biraz kaymış (elle birleştirilmiş kolaj)."""
+    img = Image.new("RGB", (1500, 2000), "white")
+    for (x, y), rows in zip([(42, 116), (776, 116), (40, 1102), (766, 1060)], KOLAJ):
+        img.paste(draw_kolaj_panel(rows), (x, y))
+    img.save(path, quality=88)
+
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     pdf_fonts()
@@ -512,6 +656,9 @@ if __name__ == "__main__":
         "kind": "image", "sex": "male", "date": "2026-08-25", "patterns": [],
         "rows": [{"key": r[4], "value": value_number(r[2]), "status": r[5]} for r in ENABIZ + [ENABIZ_TSH]],
     }
+
+    make_enabiz_kolaj_jpg(OUT / "enabiz-kolaj.jpg")
+    expect("enabiz-kolaj.jpg", [r for panel in KOLAJ for r in panel if r[0] != "#" and r[4]], kind="image", sex="male", patterns=[], date=None)
 
     (OUT / "expected.json").write_text(json.dumps(EXPECTED, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print("ok", len(EXPECTED), "rapor")

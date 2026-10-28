@@ -2,7 +2,7 @@
 görüntüsü) uygulamanın kendisiyle okunur, onaylanır ve yorumlanır.
 
 Kapsam: hemogram, biyokimya, hormon (kadın/erkek), vitamin-mineral, lipid ve çoklu anormallik
-raporları; OCR ile okunan görüntüler; evreye göre verilen hormon aralıkları; çoklu bulgunun ayrı
+raporları; OCR ile okunan görüntüler (yan yana tablolu ekran görüntüsü kolajı dâhil); evreye göre verilen hormon aralıkları; çoklu bulgunun ayrı
 ayrı listelenmesi, doğrulama listesi, tek organa özgü olmayan testler ve 3B'ye geçiş.
 
 Kullanım: pnpm build && pnpm preview (ayrı terminal), sonra
@@ -37,6 +37,8 @@ UPLOADS = [
     ("enabiz-ekran.png", 6),
     ("hemogram-foto.jpg", 18),
     ("coklu-anormallik.pdf", 27),
+    # Dört ekran görüntüsünden 2×2 kolaj: yan yana tablolar, küçük yazı (39 tanınabilir sonuç)
+    ("enabiz-kolaj.jpg", 30),
 ]
 
 

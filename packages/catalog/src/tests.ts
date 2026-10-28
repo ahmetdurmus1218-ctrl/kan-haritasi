@@ -323,6 +323,13 @@ export const TESTS: readonly LabTestDef[] = [
     plausible: [3, 20], decimals: 1, processes: ['bone-mineral'], structures: ['bones', 'kidneys', 'small-intestine', 'thyroid'], systems: ['musculoskeletal', 'urinary'],
   },
   {
+    // Kan gazı cihazlarında "Ca++": toplam kalsiyumdan ayrı bir ölçüm (birimi ve aralığı farklı).
+    key: 'calcium-ionized', loinc: '1994-3', nameTr: 'İyonize kalsiyum', group: 'electrolyte',
+    aliases: ['Iyonize kalsiyum', 'Kalsiyum (iyonize)', 'Iyonize Ca', 'iCa', 'Ca++', 'Ca2+', 'Serbest kalsiyum'],
+    unit: 'mmol/L', conversions: { 'mmol/l': [1], 'mg/dl': [1 / 4.008] }, ranges: [{ min: 1.15, max: 1.33 }],
+    plausible: [0.3, 3], decimals: 2, processes: ['bone-mineral', 'electrolyte-balance'], structures: ['bones', 'kidneys', 'heart'], systems: ['musculoskeletal', 'urinary'],
+  },
+  {
     key: 'magnesium', loinc: '19123-9', nameTr: 'Magnezyum', group: 'electrolyte',
     aliases: ['Magnezyum', 'Mg', 'Magnezyum (Mg)'],
     unit: 'mg/dL', conversions: { 'mg/dl': [1], 'mmol/l': [2.431] }, ranges: [{ min: 1.6, max: 2.6 }],
@@ -345,7 +352,7 @@ export const TESTS: readonly LabTestDef[] = [
   },
   {
     key: 'egfr', loinc: '62238-1', nameTr: 'eGFR (tahmini süzme hızı)', group: 'kidney',
-    aliases: ['eGFR', 'GFR', 'Tahmini GFR', 'eGFR (CKD-EPI)', 'eGFR CKD EPI', 'Glomeruler filtrasyon hizi', 'Tahmini glomeruler filtrasyon hizi'],
+    aliases: ['eGFR', 'GFR', 'Tahmini GFR', 'GFH', 'eGFH', 't GFH', 'tGFH', 'Tahmini GFH', 'eGFR (CKD-EPI)', 'eGFR CKD EPI', 'Glomeruler filtrasyon hizi', 'Tahmini glomeruler filtrasyon hizi'],
     unit: 'mL/dk/1,73m²', conversions: { 'ml/min/1.73m2': [1] }, ranges: [{ min: 60 }],
     plausible: [1, 200], decimals: 0, processes: ['glomerular-filtration'], structures: ['kidneys', 'renal-vessels'], systems: ['urinary'],
   },

@@ -65,7 +65,8 @@ export function matchTestName(tokens: string[], userAliases?: ReadonlyMap<string
   const rawCounts: number[] = [];
   // Ham kelime → normalleştirilmiş kelime(ler). "LDL-Kolesterol" iki kelimeye açılabilir.
   for (const t of tokens.slice(0, 10)) {
-    const n = normalizeText(t);
+    // "Ca++" / "Ca2+" (OCR'da "Catt") normalleşince "ca" (toplam kalsiyum) olurdu; iyonize kalsiyumdur.
+    const n = /^ca(\+\+|2\+|tt|\+t|t\+)$/i.test(t) ? 'ica' : normalizeText(t);
     const parts = n ? n.split(' ') : [];
     normTokens.push(...parts);
     rawCounts.push(parts.length);
