@@ -121,7 +121,7 @@ export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
     },
   },
   alveol: {
-    tests: ['hemoglobin', 'hematocrit', 'rbc'],
+    tests: ['po2', 'pco2', 'so2', 'o2hb', 'ph', 'cohb', 'hemoglobin', 'hematocrit', 'rbc'],
     stages: [
       { title: 'Hava kesecikleri', text: 'En ince hava yolları, üzüm salkımı gibi alveol keseciklerinde sonlanır. İki akciğerde yüz milyonlarca alveol vardır.' },
       { title: 'Kılcal ağ', text: 'Her alveolün çevresi ince bir kılcal damar ağıyla sarılıdır. Alyuvarlar bu kılcallardan neredeyse tek sıra halinde geçer.' },
@@ -141,7 +141,7 @@ export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
     },
   },
   nefron: {
-    tests: ['creatinine', 'egfr', 'urea', 'bun', 'uric-acid', 'sodium', 'potassium', 'albumin'],
+    tests: ['creatinine', 'egfr', 'urea', 'bun', 'uric-acid', 'sodium', 'potassium', 'albumin', 'urine-microalbumin', 'urine-protein', 'urine-creatinine', 'hco3'],
     caution: 'Kreatinin düzeyi kas kütlesi, sıvı durumu ve bazı ilaçlardan da etkilenir; tek bir değer böbrek hastalığı anlamına gelmez.',
     stages: [
       { title: 'Nefron', text: 'Böbreğin süzme birimi: bir kılcal yumağı (glomerül), onu saran Bowman kapsülü ve uzun bir tübülden oluşur.' },
@@ -229,7 +229,7 @@ export const INSIDE_CONTENT: Record<InsideId, SceneContent> = {
     },
   },
   kan: {
-    tests: ['hemoglobin', 'hematocrit', 'rbc', 'mcv', 'mch', 'mchc', 'rdw', 'wbc', 'neutrophil-pct', 'lymphocyte-pct', 'monocyte-pct', 'eosinophil-pct', 'basophil-pct', 'platelet', 'mpv'],
+    tests: ['hemoglobin', 'hematocrit', 'rbc', 'mcv', 'mch', 'mchc', 'rdw', 'rdw-sd', 'wbc', 'neutrophil-pct', 'lymphocyte-pct', 'monocyte-pct', 'eosinophil-pct', 'basophil-pct', 'ig-pct', 'platelet', 'mpv', 'pdw', 'plateletcrit'],
     caution:
       'Bu sahne EĞİTİMSEL ve temsilidir: hücre sayıları senin hemogramından türetilen oranlarla çizilir ama gerçek sayılar değildir (gerçekte her akyuvara yaklaşık 700 alyuvar düşer). Hücre görünümleri boyanmış yayma görüntülerinden esinlenmiştir.',
     stages: [

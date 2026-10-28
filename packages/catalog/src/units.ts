@@ -66,6 +66,8 @@ export function normalizeUnit(raw: string): string | null {
     'u/ml': 'iu/ml',
     'kiu/l': 'iu/ml',
     'mmol/mol': 'mmol/mol',
+    'mmhg': 'mmhg',
+    'kpa': 'kpa',
     'ratio': 'ratio',
     'oran': 'ratio',
     'inr': 'ratio',

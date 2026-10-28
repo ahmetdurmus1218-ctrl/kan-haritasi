@@ -70,6 +70,8 @@ export const ISSUE_TEXT: Record<IssueCode, string> = {
   RANGE_CATEGORIES: 'Raporda normal aralık yerine risk/eksiklik kategorileri yazıyor; değerlendirme genel referans aralığıyla yapıldı.',
   RANGE_PHASE_SPECIFIC: 'Aralık döngü evresine, menopoza veya gebeliğe göre veriliyor. Hangisinin sana uyduğunu bilemeyiz; rapordaki uygun aralığı elle gir.',
   FLAG_CONFLICT: 'Rapordaki H/L işareti hesaplanan durumla çelişiyor; değeri ve aralığı kontrol et.',
+  RANGE_GENERIC: 'Raporda bu test için referans aralığı yok. Değer genel aralığın dışında görünüyor ama laboratuvarlar farklı aralık kullanır; bu yüzden "yüksek/düşük" denmedi. Belgedeki işarete bak.',
+  MARK_CONFLICT: 'Raporda bu satırın işareti (kırmızı ünlem / yeşil onay) okunan değerle uyuşmuyor; durum rapordaki işarete göre gösteriliyor. Değeri ve aralığı belgeyle karşılaştır.',
   IMPLAUSIBLE: 'Değer bu test için olağandışı; okuma veya birim hatası olabilir.',
   AMBIGUOUS_DECIMAL: 'Ondalık ayırıcı belirsiz (ör. 1,234); değeri belgeyle karşılaştır.',
   LOW_OCR_CONFIDENCE: 'Fotoğraftan okuma güveni düşük; değeri belgeyle karşılaştır.',

@@ -950,8 +950,73 @@
     "status": "normal"
    },
    {
+    "key": "urine-creatinine",
+    "value": 132.6,
+    "status": "normal"
+   },
+   {
+    "key": "urine-microalbumin",
+    "value": 0.41,
+    "status": "normal"
+   },
+   {
+    "key": "urine-protein",
+    "value": 9.7,
+    "status": "normal"
+   },
+   {
+    "key": "base-excess",
+    "value": 4.1,
+    "status": "normal"
+   },
+   {
     "key": "calcium-ionized",
     "value": 1.09,
+    "status": "low"
+   },
+   {
+    "key": "cohb",
+    "value": 1.1,
+    "status": "normal"
+   },
+   {
+    "key": "hco3",
+    "value": 27.4,
+    "status": "high"
+   },
+   {
+    "key": "lactate",
+    "value": 1.2,
+    "status": "normal"
+   },
+   {
+    "key": "methb",
+    "value": 0.6,
+    "status": "normal"
+   },
+   {
+    "key": "o2hb",
+    "value": 81.2,
+    "status": "low"
+   },
+   {
+    "key": "pco2",
+    "value": 47.9,
+    "status": "normal"
+   },
+   {
+    "key": "ph",
+    "value": 7.38,
+    "status": "normal"
+   },
+   {
+    "key": "po2",
+    "value": 52.1,
+    "status": "low"
+   },
+   {
+    "key": "so2",
+    "value": 83.5,
     "status": "low"
    },
    {
@@ -982,6 +1047,11 @@
    {
     "key": "hemoglobin",
     "value": 14.7,
+    "status": "normal"
+   },
+   {
+    "key": "ig-abs",
+    "value": 0.03,
     "status": "normal"
    },
    {
@@ -1035,6 +1105,11 @@
     "status": "high"
    },
    {
+    "key": "pdw",
+    "value": 11.6,
+    "status": "normal"
+   },
+   {
     "key": "platelet",
     "value": 233.0,
     "status": "normal"
@@ -1042,6 +1117,11 @@
    {
     "key": "rbc",
     "value": 4.97,
+    "status": "normal"
+   },
+   {
+    "key": "rdw-sd",
+    "value": 39.4,
     "status": "normal"
    },
    {

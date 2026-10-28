@@ -5,15 +5,17 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createWorker, OEM, type Worker } from 'tesseract.js';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { mergeOcrDrafts, parseReport } from '@kh/parser';
+import { applyReportMarks, mergeOcrDrafts, parseReport } from '@kh/parser';
 import { ocrLinesToItems, type OcrLine } from '../lib/ocrItems';
 import { estimateTextHeight, luminanceOf, textUpscale } from '../lib/ocrPrep';
+import { type RgbaImage, markInRegion } from '../lib/rowMarks';
 import { VERIFY_ISSUES } from '../lib/reports';
 
 /**
  * Görüntü raporları gerçek Tesseract (uygulamayla aynı Türkçe model) ile okunur ve ayrıştırılır.
  * Uygulamadaki ön işleme (bkz. prepareImage) kâğıt kırpma dışında burada da uygulanır: küçük yazı büyütülür,
- * görüntü gri tona çevrilir; ekran görüntüsü olmayanlarda kontrast artırılır. Uçtan uca test (tests/e2e/reports.py)
+ * görüntü gri tona çevrilir; ekran görüntüsü olmayanlarda kontrast artırılır. Satırların renkli işaretleri (kırmızı ünlem,
+ * yeşil onay) özgün renkli görüntüden okunup sonuçlara uygulanır (bkz. rowMarks.ts). Uçtan uca test (tests/e2e/reports.py)
  * aynı dosyaları uygulamanın kendisiyle okur. Asıl güvence: yanlış okunan her değer "doğrulaman gerekiyor" diye işaretlenmelidir.
  */
 const dir = fileURLToPath(new URL('../../../../fixtures/reports/', import.meta.url));
@@ -35,17 +37,20 @@ const MIN_CORRECT: Record<string, number> = {
   'hormon-erkek.png': 8,
   // "LY%" adı "YY" okunuyor → tanınamaz; kullanıcı elle ekler.
   'enabiz-ekran.png': 6,
-  // Dört ekran görüntüsünden 2×2 kolaj, ~11 px yazı (büyütülerek okunur): 39 satırın 35'i; "t GFH" adı ve
-  // birkaç değer okunamıyor.
-  'enabiz-kolaj.jpg': 33,
+  // Dört ekran görüntüsünden 2×2 kolaj, ~11 px yazı (büyütülerek okunur), kan gazı ve spot idrar testleri: 55
+  // satırın 51'i; "t GFH" adı ve birkaç ad ("LYMPH%", "O2Hb", "sO2") okunamıyor. Aralığı olmayan "Base(Ecf)"
+  // satırının durumu satırdaki yeşil onaydan gelir.
+  'enabiz-kolaj.jpg': 49,
 };
 
 /** Uygulamadaki gibi: yazı küçükse büyüt; gri ton, kâğıt fotoğrafında kontrast (canvas filter "contrast(1.35)"). */
-async function prepare(path: string): Promise<{ image: Buffer; scale: number }> {
+async function prepare(path: string): Promise<{ image: Buffer; scale: number; colors: RgbaImage }> {
   const src = await loadImage(readFileSync(path));
   const probe = createCanvas(src.width, src.height).getContext('2d');
   probe.drawImage(src, 0, 0);
-  const lum = luminanceOf(probe.getImageData(0, 0, src.width, src.height).data as unknown as Uint8ClampedArray);
+  const rgba = probe.getImageData(0, 0, src.width, src.height).data as unknown as Uint8ClampedArray;
+  const colors = { data: rgba, width: src.width, height: src.height };
+  const lum = luminanceOf(rgba);
   const scale = textUpscale(estimateTextHeight(lum, src.width, src.height), Math.max(src.width, src.height));
   const canvas = createCanvas(Math.round(src.width * scale), Math.round(src.height * scale));
   const ctx = canvas.getContext('2d');
@@ -58,7 +63,7 @@ async function prepare(path: string): Promise<{ image: Buffer; scale: number }> 
     px[i] = px[i + 1] = px[i + 2] = screen ? l : (l - 127.5) * 1.35 + 127.5;
   }
   ctx.putImageData(img, 0, 0);
-  return { image: canvas.toBuffer('image/png'), scale };
+  return { image: canvas.toBuffer('image/png'), scale, colors };
 }
 
 let worker: Worker;
@@ -77,14 +82,14 @@ describe('görüntü raporları (gerçek OCR)', () => {
       const exp = EXPECTED[name]!;
       // Uygulamadaki gibi: iki bölütleme kipi (tek blok, otomatik) okunur ve birleştirilir.
       const drafts = [];
-      const { image, scale } = await prepare(dir + name);
+      const { image, scale, colors } = await prepare(dir + name);
       for (const psm of ['6', '3']) {
         await worker.setParameters({ tessedit_pageseg_mode: psm as never });
         const { data } = await worker.recognize(image, {}, { blocks: true, text: false });
         const lines = (data.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines)) as unknown as OcrLine[];
         drafts.push(parseReport(ocrLinesToItems(lines, 1, scale), { method: 'ocr', sex: exp.sex }));
       }
-      const draft = mergeOcrDrafts(drafts[0]!, drafts[1]!);
+      const draft = applyReportMarks(mergeOcrDrafts(drafts[0]!, drafts[1]!), (box) => markInRegion(colors, box));
       const byKey = new Map(exp.rows.map((r) => [r.key, r]));
       let correct = 0;
       const silentErrors: string[] = [];
