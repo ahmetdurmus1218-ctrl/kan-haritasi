@@ -65,6 +65,7 @@ export const ISSUE_TEXT: Record<IssueCode, string> = {
   RANGE_MISSING: 'Raporda referans aralığı bulunamadı; genel (yaklaşık) aralık kullanıldı.',
   RANGE_SEX_SPECIFIC: 'Aralık cinsiyete göre veriliyor; cinsiyet seçersen doğru aralık uygulanır.',
   OCR_DISAGREE: 'Görüntü iki farklı yöntemle okundu ve bu değer farklı çıktı. Belgedeki değerle karşılaştır.',
+  RANGE_DECIMAL_GUESSED: 'Referans aralığındaki ondalık noktası okunamadı (ör. 4.0 - 6.2 → 40 - 62); aralık değere göre düzeltildi. Belgedeki aralıkla karşılaştır.',
   PERCENT_GUESSED: 'Görüntüde “%” işareti okunamadı (başka bir karakter sanıldı); testin adına göre yüzde varsayıldı. Adı ve birimi kontrol et.',
   RANGE_CATEGORIES: 'Raporda normal aralık yerine risk/eksiklik kategorileri yazıyor; değerlendirme genel referans aralığıyla yapıldı.',
   RANGE_PHASE_SPECIFIC: 'Aralık döngü evresine, menopoza veya gebeliğe göre veriliyor. Hangisinin sana uyduğunu bilemeyiz; rapordaki uygun aralığı elle gir.',

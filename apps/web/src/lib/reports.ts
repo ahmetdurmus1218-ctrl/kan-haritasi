@@ -44,7 +44,7 @@ export interface StoredResult {
 }
 
 /** Kullanıcının belgeyle karşılaştırması gereken okuma sorunları. */
-export const VERIFY_ISSUES: IssueCode[] = ['LOW_OCR_CONFIDENCE', 'IMPLAUSIBLE', 'FLAG_CONFLICT', 'AMBIGUOUS_DECIMAL', 'UNIT_MISSING', 'UNIT_UNKNOWN', 'NAME_FUZZY', 'DUPLICATE', 'RANGE_SEX_SPECIFIC', 'RANGE_PHASE_SPECIFIC', 'PERCENT_GUESSED', 'OCR_DISAGREE'];
+export const VERIFY_ISSUES: IssueCode[] = ['LOW_OCR_CONFIDENCE', 'IMPLAUSIBLE', 'FLAG_CONFLICT', 'AMBIGUOUS_DECIMAL', 'UNIT_MISSING', 'UNIT_UNKNOWN', 'NAME_FUZZY', 'DUPLICATE', 'RANGE_SEX_SPECIFIC', 'RANGE_PHASE_SPECIFIC', 'PERCENT_GUESSED', 'OCR_DISAGREE', 'RANGE_DECIMAL_GUESSED'];
 
 /** Kaydedilmiş ama okuma güveni düşük / sorunlu ve kullanıcının henüz doğrulamadığı sonuç mu? */
 export function needsVerification(r: StoredResult): boolean {

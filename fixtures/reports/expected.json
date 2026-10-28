@@ -908,5 +908,208 @@
     "status": "normal"
    }
   ]
+ },
+ "enabiz-kolaj.jpg": {
+  "kind": "image",
+  "sex": "male",
+  "date": null,
+  "rows": [
+   {
+    "key": "alt",
+    "value": 96.0,
+    "status": "high"
+   },
+   {
+    "key": "ast",
+    "value": 71.0,
+    "status": "high"
+   },
+   {
+    "key": "ck",
+    "value": 133.4,
+    "status": "normal"
+   },
+   {
+    "key": "crp",
+    "value": 3.48,
+    "status": "normal"
+   },
+   {
+    "key": "glucose",
+    "value": 88.0,
+    "status": "normal"
+   },
+   {
+    "key": "creatinine",
+    "value": 0.91,
+    "status": "normal"
+   },
+   {
+    "key": "egfr",
+    "value": 104.0,
+    "status": "normal"
+   },
+   {
+    "key": "calcium-ionized",
+    "value": 1.09,
+    "status": "low"
+   },
+   {
+    "key": "basophil-abs",
+    "value": 0.04,
+    "status": "normal"
+   },
+   {
+    "key": "basophil-pct",
+    "value": 0.5,
+    "status": "normal"
+   },
+   {
+    "key": "eosinophil-abs",
+    "value": 0.18,
+    "status": "normal"
+   },
+   {
+    "key": "eosinophil-pct",
+    "value": 2.1,
+    "status": "normal"
+   },
+   {
+    "key": "hematocrit",
+    "value": 43.8,
+    "status": "normal"
+   },
+   {
+    "key": "hemoglobin",
+    "value": 14.7,
+    "status": "normal"
+   },
+   {
+    "key": "lymphocyte-abs",
+    "value": 2.21,
+    "status": "normal"
+   },
+   {
+    "key": "lymphocyte-pct",
+    "value": 27.9,
+    "status": "normal"
+   },
+   {
+    "key": "mch",
+    "value": 30.2,
+    "status": "normal"
+   },
+   {
+    "key": "mchc",
+    "value": 33.6,
+    "status": "normal"
+   },
+   {
+    "key": "mcv",
+    "value": 89.7,
+    "status": "normal"
+   },
+   {
+    "key": "monocyte-abs",
+    "value": 0.71,
+    "status": "normal"
+   },
+   {
+    "key": "monocyte-pct",
+    "value": 9.4,
+    "status": "normal"
+   },
+   {
+    "key": "mpv",
+    "value": 9.8,
+    "status": "normal"
+   },
+   {
+    "key": "neutrophil-abs",
+    "value": 4.87,
+    "status": "normal"
+   },
+   {
+    "key": "neutrophil-pct",
+    "value": 61.3,
+    "status": "high"
+   },
+   {
+    "key": "platelet",
+    "value": 233.0,
+    "status": "normal"
+   },
+   {
+    "key": "rbc",
+    "value": 4.97,
+    "status": "normal"
+   },
+   {
+    "key": "wbc",
+    "value": 7.96,
+    "status": "normal"
+   },
+   {
+    "key": "alp",
+    "value": 104.0,
+    "status": "normal"
+   },
+   {
+    "key": "amylase",
+    "value": 58.0,
+    "status": "normal"
+   },
+   {
+    "key": "bilirubin-direct",
+    "value": 0.21,
+    "status": "normal"
+   },
+   {
+    "key": "bilirubin-total",
+    "value": 0.64,
+    "status": "normal"
+   },
+   {
+    "key": "phosphorus",
+    "value": 3.41,
+    "status": "normal"
+   },
+   {
+    "key": "potassium",
+    "value": 4.12,
+    "status": "normal"
+   },
+   {
+    "key": "calcium",
+    "value": 9.38,
+    "status": "normal"
+   },
+   {
+    "key": "chloride",
+    "value": 102.3,
+    "status": "normal"
+   },
+   {
+    "key": "ldh",
+    "value": 284.0,
+    "status": "high"
+   },
+   {
+    "key": "magnesium",
+    "value": 2.04,
+    "status": "normal"
+   },
+   {
+    "key": "sodium",
+    "value": 139.2,
+    "status": "normal"
+   },
+   {
+    "key": "urea",
+    "value": 31.6,
+    "status": "normal"
+   }
+  ],
+  "patterns": []
  }
 }

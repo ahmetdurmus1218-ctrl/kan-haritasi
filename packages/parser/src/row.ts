@@ -148,9 +148,9 @@ const GLUED_RANGE = /^\d+(?:[.,]\d+)?[-–—]\d+(?:[.,]\d+)?$/;
 const NOISE_TOKEN = /^(v|nv|va|vv|ww|✓|✔|«|\|)$/i;
 
 // OCR'ın "%" işaretini okuyamadığı durumlar (Türkçe modelde sık): "Yo", "Vo", "Ve", "Y", "V", "96", "00".
-const PCT_LOOKALIKE = /^(yo|vo|ve|ke|ko|y|v|96|9o|o\/o|0\/0|00|%o|°\/o|»)$/i;
+const PCT_LOOKALIKE = /^(yo|vo|ve|ke|ko|y|v|da|9|96|9o|o\/o|0\/0|00|%o|°\/o|»)$/i;
 const DIFF_WORD = /^(notrofil|lenfosit|monosit|eozinofil|bazofil|neu|neut|ne|lym|lymph|ly|mon|mono|mo|eos|eo|bas|baso|ba)$/;
-const GLUED_DIFF_PCT = /^(ne|neu|neut|ly|lym|lymph|mo|mon|mono|eo|eos|ba|bas|baso)(y|yo|vo|96|9o)$/i;
+const GLUED_DIFF_PCT = /^(ne|neu|neut|ly|lym|lymph|mo|mon|mono|eo|eos|ba|bas|baso)(y|yo|vo|96|9o|94|9»|»|,|x|36|3x|x6|3x6|%6)$/i;
 /** Adı yüzde türünde bir testi gösteren sözcükler. */
 const PCT_NAME = /(%|notrofil|lenfosit|monosit|eozinofil|bazofil|hematokrit|\bhct\b|\brdw|hba1c|saturasyon)/;
 
@@ -179,7 +179,8 @@ function fixPercent(raw: string[]): boolean {
   if (!PCT_NAME.test(name)) return changed;
   // Değerden (veya e-Nabız'da aralıktan sonraki değerden) hemen sonra gelen benzer belirteç
   for (let i = nameEnd; i < raw.length - 1 && i < nameEnd + 4; i++) {
-    if (/^\d/.test(raw[i]!) && !/[-–—]\d/.test(raw[i]!) && PCT_LOOKALIKE.test(raw[i + 1]!)) {
+    // Ardından tire geliyorsa benzer belirteç aralığın başıdır ("10.2 9 - 15"), "%" değil.
+    if (/^\d/.test(raw[i]!) && !/[-–—]\d/.test(raw[i]!) && PCT_LOOKALIKE.test(raw[i + 1]!) && !/^[-–—~]/.test(raw[i + 2] ?? '')) {
       raw[i + 1] = '%';
       changed = true;
       break;
@@ -188,8 +189,25 @@ function fixPercent(raw: string[]): boolean {
   return changed;
 }
 
+/**
+ * Satır başındaki durum simgesinin OCR kırıntısı (e-Nabız/hastane tablolarındaki yeşil onay ve kırmızı ünlem
+ * yuvarlakları): "o", "©", "|", "(|)", "(v)", "7)". Adın parçası sanılırsa test yanlış eşleşir
+ * ("o Bilirubin" → "İ. Bilirubin").
+ */
+const STATUS_ICON = /^(?:[([{]?[oO0©®@|!¡✓✔•·“”"'‘’vVwW]{1,2}[)\]}]?|[([{]?[^\s()]{0,2}\)|\([^\s()]{0,2})$/;
+
 export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineResult {
+  let lead = 0;
+  while (lead < line.tokens.length - 1 && STATUS_ICON.test(line.tokens[lead]!.text)) lead++;
+  // Yalnızca ardından harfle başlayan bir ad geliyorsa: "0 LDH 316" simgedir, "0 - 50" aralıktır.
+  if (!/^[A-Za-zÇĞİÖŞÜçğıöşü]/.test(line.tokens[lead]?.text ?? '')) lead = 0;
+  if (lead) line = { ...line, tokens: line.tokens.slice(lead), text: line.tokens.slice(lead).map((t) => t.text).join(' ') };
   const raw = line.tokens.map((t) => t.text);
+  // OCR "Ca++" adını ikiye bölebilir ("Cat t"); katalog birleşik biçimi iyonize kalsiyum olarak tanır.
+  if (ctx.ocr && raw.length > 2 && /^ca[t+]{0,2}$/i.test(raw[0]!) && /^[t+]{1,2}$/i.test(raw[1]!) && raw[0]!.length + raw[1]!.length === 4) {
+    raw.splice(0, 2, 'Ca++');
+    line = { ...line, tokens: [{ ...line.tokens[0]!, text: 'Ca++', w: line.tokens[1]!.x + line.tokens[1]!.w - line.tokens[0]!.x }, ...line.tokens.slice(2)] };
+  }
   const percentGuessed = ctx.ocr && fixPercent(raw);
   const normLine = normalizeText(line.text);
   if (!normLine || PII_LINE.test(normLine)) return { kind: 'none' };
@@ -329,9 +347,25 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     else if (FLAG_LOW.test(n)) reportFlag = 'L';
   }
 
-  const parsedValue = parseNumber(valueText, isCountUnit(unitKey));
+  // OCR küçük yazıda ondalık noktasını kaçırır: "0.3" → "03", "0.01-1.2" → "001-12". Baştaki sıfırdan sonra
+  // gelen rakamlar ondalıktır; değer belirsiz sayılır ve doğrulamaya düşer.
+  const lostPoint = ctx.ocr && /^0\d+$/.test(valueText);
+  if (lostPoint) valueText = `0.${valueText.slice(1)}`;
+  let parsedValue = parseNumber(valueText, isCountUnit(unitKey));
   if (!parsedValue) return { kind: 'none' };
-  const { range: reportRange, sexSpecific, phaseSpecific, categories } = parseRange(rangeBefore ? rangeBefore.text : tailText, ctx.sex);
+  if (lostPoint) parsedValue = { ...parsedValue, ambiguous: true };
+  const rangeSource = rangeBefore ? rangeBefore.text : tailText;
+  const { range: reportRange, sexSpecific, phaseSpecific, categories } = parseRange(ctx.ocr ? rangeSource.replace(/(^|[^\d.,])0(\d+)/g, (_, pre: string, rest: string) => `${pre}0.${rest}`) : rangeSource, ctx.sex);
+  {
+    // Ondalıklı aralığın (ör. 0.02 - 7.6) dışında kalan tamsayı değer onda birinde aralığa giriyorsa
+    // ("2.3" → "23") nokta kaybolmuştur: değer düzeltilir, satır doğrulamaya düşer.
+    const { min, max } = reportRange;
+    const v = parsedValue.value;
+    if (ctx.ocr && min !== undefined && max !== undefined && /^\d{2,}$/.test(valueText) && /[.,]/.test(reportRange.text ?? '') && (v < min || v > max) && v / 10 >= min && v / 10 <= max) {
+      parsedValue = { ...parsedValue, value: v / 10, ambiguous: true };
+      valueText = `${valueText.slice(0, -1)}.${valueText.slice(-1)}`;
+    }
+  }
 
   if (!match) {
     // Tanınmayan satır: adı harf içeren ve değer + (birim veya aralık) taşıyan satırlar listelenir.
@@ -375,9 +409,21 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
   }
 
   let range: RangeValue;
+  let reportText = reportRange.text;
   if (reportRange.source === 'report' && (reportRange.min !== undefined || reportRange.max !== undefined)) {
     range = reportRange;
     confidence += 0.2;
+    // OCR küçük yazıda aralığın ondalık noktasını kaçırabilir ("4.0 - 6.2" → "40-62"); değer ondalıklıyken
+    // aralığın dışında ama onda birinin içindeyse aralık düzeltilir ve satır doğrulamaya düşer. Aksi halde
+    // normal değer "düşük" görünürdü.
+    const { min, max } = range;
+    const v = parsedValue.value;
+    if (ctx.ocr && min !== undefined && max !== undefined && /[.,]/.test(valueText) && !/[.,]/.test(reportText ?? '') && (v < min || v > max) && v >= min / 10 && v <= max / 10) {
+      range = { ...range, min: min / 10, max: max / 10 };
+      reportText = rangeText(min / 10, max / 10, Math.max(1, test.decimals));
+      issues.push('RANGE_DECIMAL_GUESSED');
+      confidence -= 0.2;
+    }
   } else {
     if (sexSpecific) issues.push('RANGE_SEX_SPECIFIC');
     else if (phaseSpecific) issues.push('RANGE_PHASE_SPECIFIC');
@@ -415,6 +461,9 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     storedRange = { source: 'report', text: reportRange.text };
     status = 'unknown';
   }
+  // Fizyolojik olarak olanaksız değer neredeyse her zaman okuma hatasıdır (ör. "1.08" → "108"): "yüksek/düşük"
+  // denmez; kullanıcı belgeyle karşılaştırıp düzeltir.
+  if (issues.includes('IMPLAUSIBLE')) status = 'unknown';
 
   if (reportFlag && status !== 'unknown') {
     const expected = reportFlag === 'H' ? 'high' : 'low';
@@ -445,7 +494,7 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     refMax: storedRange.max,
     ...(storedRange.minExclusive ? { refMinExclusive: true } : {}),
     ...(storedRange.maxExclusive ? { refMaxExclusive: true } : {}),
-    refText: storedRange.source === 'catalog' ? storedRange.text ?? '' : reportRange.text ?? rangeText(storedRange.min, storedRange.max, test.decimals),
+    refText: storedRange.source === 'catalog' ? storedRange.text ?? '' : reportText ?? rangeText(storedRange.min, storedRange.max, test.decimals),
     refSource: storedRange.source,
     status,
     ...(reportFlag ? { reportFlag } : {}),

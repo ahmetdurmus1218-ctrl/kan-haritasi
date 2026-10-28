@@ -1,6 +1,7 @@
 import type { TextItem } from '@kh/parser';
 import type { PSM, Worker as TesseractWorker } from 'tesseract.js';
 import { ocrLinesToItems } from './ocrItems';
+import { estimateTextHeight, luminanceOf, textUpscale } from './ocrPrep';
 
 /**
  * Cihaz içi OCR (Tesseract.js, Türkçe). Worker, çekirdek (WASM) ve dil verisi uygulamayla
@@ -283,6 +284,7 @@ export async function looksLikeScreenshot(bytes: Uint8Array<ArrayBuffer>, mimeTy
  *  - 'document': kâğıt fotoğrafı — yön (EXIF), kâğıdı kırp, gri ton + kontrast, küçükse büyüt.
  *  - 'screen': ekran görüntüsü (e-Nabız, hastane uygulaması) — kırpma yok, yalnızca gri ton; açık gri
  *    yazılar kontrastla silinmesin, büyütme harfleri bulanıklaştırmasın.
+ * İki kipte de yazı küçükse (ör. birkaç ekran görüntüsünün birleştirildiği kolaj) görüntü büyütülür (bkz. ocrPrep.ts).
  */
 export async function prepareImage(
   bytes: Uint8Array<ArrayBuffer>,
@@ -294,9 +296,11 @@ export async function prepareImage(
   const paper = mode === 'document' ? paperBounds(bitmap) : null;
   const crop = paper ?? full;
   const longEdge = Math.max(crop.w, crop.h);
+  const textHeight = measureTextHeight(bitmap, crop);
   // Küçük görselleri büyüt (doğruluk), büyükleri 2400 px'e indir (telefonda bellek ve hız).
-  const scale =
+  let scale =
     mode === 'screen' ? (longEdge < 1000 ? 1000 / longEdge : Math.min(1, 3200 / longEdge)) : longEdge < 1600 ? 1600 / longEdge : Math.min(1, 2400 / longEdge);
+  scale *= textUpscale(textHeight === null ? null : textHeight * scale, longEdge * scale);
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(crop.w * scale);
   canvas.height = Math.round(crop.h * scale);
@@ -308,4 +312,22 @@ export async function prepareImage(
   bitmap.close();
   // Koordinatlar orijinal görsel pikseline göre tutulur (görüntüleyicideki kutu için).
   return { canvas, width: full.w, height: full.h, scale, offset: { x: crop.x, y: crop.y }, cropped: paper !== null };
+}
+
+/** Yazı satırı yüksekliği (özgün piksel); en fazla 2000 px'lik bir kopyada ölçülür. */
+function measureTextHeight(bitmap: ImageBitmap, crop: { x: number; y: number; w: number; h: number }): number | null {
+  const k = Math.min(1, 2000 / Math.max(crop.w, crop.h));
+  const w = Math.max(1, Math.round(crop.w * k));
+  const h = Math.max(1, Math.round(crop.h * k));
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(bitmap, crop.x, crop.y, crop.w, crop.h, 0, 0, w, h);
+  const lum = luminanceOf(ctx.getImageData(0, 0, w, h).data);
+  c.width = 0;
+  c.height = 0;
+  const text = estimateTextHeight(lum, w, h);
+  return text === null ? null : text / k;
 }
