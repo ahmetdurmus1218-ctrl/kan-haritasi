@@ -1,0 +1,7 @@
+TotalSegmentator — BT anatomi (117 yapı)
+Kaynak: https://github.com/wasserth/TotalSegmentator
+Ağırlıklar: https://github.com/wasserth/TotalSegmentator/releases/download/v2.0.0-weights/Dataset297_TotalSegmentator_total_3mm_1559subj.zip (SHA-256 0baa2c8de2975600eb31801dd5c1825cd2b356f794498659cf3348714c073394)
+Lisans: Apache-2.0 (TotalSegmentator kodu ve 'total' görevinin ağırlıkları; eğitim verisi CC BY 4.0)
+Atıf: Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.
+Değişiklik: PyTorch → ONNX (opset 17), ağırlıklar float16 saklanır, çıktıya TopK(4) eklendi.
+Lisans metni: ai-models/LICENSE-Apache-2.0.txt (Apache License 2.0 tam metni, uygulamayla birlikte dağıtılır).

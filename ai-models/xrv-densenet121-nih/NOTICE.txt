@@ -1,0 +1,6 @@
+TorchXRayVision — göğüs röntgeni sınıflandırıcı (NIH, 14 bulgu)
+Kaynak: https://github.com/mlmed/torchxrayvision
+Lisans: Apache-2.0 (TorchXRayVision kodu ve ağırlıkları); eğitim verisi NIH ChestX-ray14 (kısıtlamasız kullanım, NIH Clinical Center'a atıfla)
+Atıf: Cohen J.P. et al. TorchXRayVision: A library of chest X-ray datasets and models. MIDL 2022. Wang X. et al. ChestX-ray8, CVPR 2017 (NIH Clinical Center).
+Değişiklik: PyTorch → ONNX; sigmoid çıktısı (çalışma noktası normalizasyonu uygulamada aynı formülle), ağırlıklar float16 saklanır.
+Lisans metni: ai-models/LICENSE-Apache-2.0.txt (Apache License 2.0 tam metni, uygulamayla birlikte dağıtılır).

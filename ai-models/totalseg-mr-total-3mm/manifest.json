@@ -1,0 +1,470 @@
+{
+ "schema": "kh-model-manifest/2",
+ "id": "totalseg-mr-total-3mm",
+ "name": "TotalSegmentator MRI — MR anatomi (50 yapı)",
+ "version": "2.5.0-weights · Dataset852 (3 mm, fast)",
+ "modalities": [
+  "MRI"
+ ],
+ "license": "Apache-2.0 (TotalSegmentator kodu ve 'total_mr' görevinin ağırlıkları)",
+ "source": "https://github.com/wasserth/TotalSegmentator",
+ "intendedUse": "MR serisinde (sekanstan bağımsız) organ, kemik, damar ve kasların bölütlenmesi (3 mm). Tanı aracı değildir.",
+ "citation": "Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.",
+ "validation": "Resmi TotalSegmentator --fast (total_mr) çıktısıyla karşılaştırma (aynı ağırlıklar): örnek MR ortalama Dice 1,000, voksel uyumu %99,98.",
+ "compatibleDevice": "Masaüstü tarayıcı ya da ≥ 6 GB RAM'li telefon; karo başına ~30 sn (tek çekirdek WASM).",
+ "limitations": [
+  "3 mm çözünürlükte çalışır; küçük yapılar kaba bölütlenir.",
+  "Beyin içi yapıları ayırmaz (beyin tek yapı).",
+  "Bölütleme normal anatomiyi gösterir; patoloji tespiti yapmaz.",
+  "Klinik kullanım için onaylı tıbbi cihaz değildir."
+ ],
+ "task": "segmentation-3d",
+ "format": "onnx",
+ "input": {
+  "name": "input",
+  "layout": "NCDHW",
+  "channels": 1,
+  "width": 128,
+  "height": 96,
+  "scale": 1,
+  "mean": [
+   0
+  ],
+  "std": [
+   1
+  ]
+ },
+ "output": {
+  "topkValues": "topk_values",
+  "topkIndices": "topk_indices"
+ },
+ "volume": {
+  "spacing": 3.0,
+  "patch": [
+   96,
+   96,
+   128
+  ],
+  "axisOrder": "SAR",
+  "normalization": {
+   "scheme": "zscore"
+  },
+  "tileStep": 0.8,
+  "topK": 4,
+  "cropNonzero": true,
+  "minSlices": 10
+ },
+ "labels": [
+  {
+   "id": 1,
+   "key": "spleen",
+   "finding": "Dalak",
+   "structure": "spleen",
+   "kind": "anatomy"
+  },
+  {
+   "id": 2,
+   "key": "kidney_right",
+   "finding": "Sağ böbrek",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "kind": "anatomy"
+  },
+  {
+   "id": 3,
+   "key": "kidney_left",
+   "finding": "Sol böbrek",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "kind": "anatomy"
+  },
+  {
+   "id": 4,
+   "key": "gallbladder",
+   "finding": "Safra kesesi",
+   "structure": "gallbladder",
+   "part": "gallbladder",
+   "kind": "anatomy"
+  },
+  {
+   "id": 5,
+   "key": "liver",
+   "finding": "Karaciğer",
+   "structure": "liver",
+   "node": "liver",
+   "kind": "anatomy"
+  },
+  {
+   "id": 6,
+   "key": "stomach",
+   "finding": "Mide",
+   "structure": "stomach",
+   "node": "stomach",
+   "kind": "anatomy"
+  },
+  {
+   "id": 7,
+   "key": "pancreas",
+   "finding": "Pankreas",
+   "structure": "pancreas",
+   "node": "pancreas",
+   "kind": "anatomy"
+  },
+  {
+   "id": 8,
+   "key": "adrenal_gland_right",
+   "finding": "Sağ böbreküstü bezi",
+   "structure": "adrenals",
+   "part": "right",
+   "kind": "anatomy"
+  },
+  {
+   "id": 9,
+   "key": "adrenal_gland_left",
+   "finding": "Sol böbreküstü bezi",
+   "structure": "adrenals",
+   "part": "left",
+   "kind": "anatomy"
+  },
+  {
+   "id": 10,
+   "key": "lung_left",
+   "finding": "Sol akciğer",
+   "structure": "lungs",
+   "node": "lungs",
+   "kind": "anatomy"
+  },
+  {
+   "id": 11,
+   "key": "lung_right",
+   "finding": "Sağ akciğer",
+   "structure": "lungs",
+   "node": "lungs",
+   "kind": "anatomy"
+  },
+  {
+   "id": 12,
+   "key": "esophagus",
+   "finding": "Yemek borusu",
+   "structure": "esophagus",
+   "kind": "anatomy"
+  },
+  {
+   "id": 13,
+   "key": "small_bowel",
+   "finding": "İnce bağırsak",
+   "structure": "small-intestine",
+   "node": "small-intestine",
+   "kind": "anatomy"
+  },
+  {
+   "id": 14,
+   "key": "duodenum",
+   "finding": "On iki parmak bağırsağı (duodenum)",
+   "structure": "small-intestine",
+   "part": "duodenum",
+   "node": "small-intestine.duodenum",
+   "kind": "anatomy"
+  },
+  {
+   "id": 15,
+   "key": "colon",
+   "finding": "Kalın bağırsak (kolon)",
+   "structure": "large-intestine",
+   "node": "large-intestine",
+   "kind": "anatomy"
+  },
+  {
+   "id": 16,
+   "key": "urinary_bladder",
+   "finding": "Mesane",
+   "structure": "urinary-tract",
+   "part": "bladder",
+   "kind": "anatomy"
+  },
+  {
+   "id": 17,
+   "key": "prostate",
+   "finding": "Prostat",
+   "structure": "prostate",
+   "kind": "anatomy"
+  },
+  {
+   "id": 18,
+   "key": "sacrum",
+   "finding": "Sakrum",
+   "structure": "bones",
+   "part": "pelvis",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 19,
+   "key": "vertebrae",
+   "finding": "Omurlar",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 20,
+   "key": "intervertebral_discs",
+   "finding": "Omurlar arası diskler",
+   "structure": "bones",
+   "part": "spine",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 21,
+   "key": "spinal_cord",
+   "finding": "Omurilik",
+   "structure": "spinal-cord",
+   "kind": "anatomy"
+  },
+  {
+   "id": 22,
+   "key": "heart",
+   "finding": "Kalp",
+   "structure": "heart",
+   "node": "heart",
+   "kind": "anatomy"
+  },
+  {
+   "id": 23,
+   "key": "aorta",
+   "finding": "Aort",
+   "structure": "aorta",
+   "kind": "anatomy"
+  },
+  {
+   "id": 24,
+   "key": "inferior_vena_cava",
+   "finding": "Alt ana toplardamar",
+   "structure": "veins",
+   "kind": "anatomy"
+  },
+  {
+   "id": 25,
+   "key": "portal_vein_and_splenic_vein",
+   "finding": "Kapı ve dalak toplardamarı",
+   "structure": "abdominal-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 26,
+   "key": "iliac_artery_left",
+   "finding": "Sol iliak arter",
+   "structure": "abdominal-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 27,
+   "key": "iliac_artery_right",
+   "finding": "Sağ iliak arter",
+   "structure": "abdominal-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 28,
+   "key": "iliac_vena_left",
+   "finding": "Sol iliak ven",
+   "structure": "abdominal-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 29,
+   "key": "iliac_vena_right",
+   "finding": "Sağ iliak ven",
+   "structure": "abdominal-vessels",
+   "kind": "anatomy"
+  },
+  {
+   "id": 30,
+   "key": "humerus_left",
+   "finding": "Sol üst kol kemiği",
+   "structure": "bones",
+   "part": "humerus-l",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 31,
+   "key": "humerus_right",
+   "finding": "Sağ üst kol kemiği",
+   "structure": "bones",
+   "part": "humerus-r",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 32,
+   "key": "scapula_left",
+   "finding": "Sol kürek kemiği",
+   "structure": "bones",
+   "part": "shoulder-l",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 33,
+   "key": "scapula_right",
+   "finding": "Sağ kürek kemiği",
+   "structure": "bones",
+   "part": "shoulder-r",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 34,
+   "key": "clavicula_left",
+   "finding": "Sol köprücük kemiği",
+   "structure": "bones",
+   "part": "shoulder-l",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 35,
+   "key": "clavicula_right",
+   "finding": "Sağ köprücük kemiği",
+   "structure": "bones",
+   "part": "shoulder-r",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 36,
+   "key": "femur_left",
+   "finding": "Sol uyluk kemiği",
+   "structure": "bones",
+   "part": "femur-l",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 37,
+   "key": "femur_right",
+   "finding": "Sağ uyluk kemiği",
+   "structure": "bones",
+   "part": "femur-r",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 38,
+   "key": "hip_left",
+   "finding": "Sol kalça kemiği",
+   "structure": "bones",
+   "part": "pelvis",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 39,
+   "key": "hip_right",
+   "finding": "Sağ kalça kemiği",
+   "structure": "bones",
+   "part": "pelvis",
+   "node": "bones",
+   "kind": "anatomy"
+  },
+  {
+   "id": 40,
+   "key": "gluteus_maximus_left",
+   "finding": "Sol büyük kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-l",
+   "kind": "anatomy"
+  },
+  {
+   "id": 41,
+   "key": "gluteus_maximus_right",
+   "finding": "Sağ büyük kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-r",
+   "kind": "anatomy"
+  },
+  {
+   "id": 42,
+   "key": "gluteus_medius_left",
+   "finding": "Sol orta kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-l",
+   "kind": "anatomy"
+  },
+  {
+   "id": 43,
+   "key": "gluteus_medius_right",
+   "finding": "Sağ orta kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-r",
+   "kind": "anatomy"
+  },
+  {
+   "id": 44,
+   "key": "gluteus_minimus_left",
+   "finding": "Sol küçük kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-l",
+   "kind": "anatomy"
+  },
+  {
+   "id": 45,
+   "key": "gluteus_minimus_right",
+   "finding": "Sağ küçük kalça kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-r",
+   "kind": "anatomy"
+  },
+  {
+   "id": 46,
+   "key": "autochthon_left",
+   "finding": "Sol sırt (otokton) kasları",
+   "structure": "skeletal-muscle",
+   "part": "back",
+   "kind": "anatomy"
+  },
+  {
+   "id": 47,
+   "key": "autochthon_right",
+   "finding": "Sağ sırt (otokton) kasları",
+   "structure": "skeletal-muscle",
+   "part": "back",
+   "kind": "anatomy"
+  },
+  {
+   "id": 48,
+   "key": "iliopsoas_left",
+   "finding": "Sol iliopsoas kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-l",
+   "kind": "anatomy"
+  },
+  {
+   "id": 49,
+   "key": "iliopsoas_right",
+   "finding": "Sağ iliopsoas kası",
+   "structure": "skeletal-muscle",
+   "part": "hip-r",
+   "kind": "anatomy"
+  },
+  {
+   "id": 50,
+   "key": "brain",
+   "finding": "Beyin",
+   "structure": "brain",
+   "node": "brain",
+   "kind": "anatomy"
+  }
+ ],
+ "scoreThreshold": 0.5,
+ "upstream": {
+  "weights": "https://github.com/wasserth/TotalSegmentator/releases/download/v2.5.0-weights/Dataset852_TotalSegMRI_total_3mm_1088subj.zip",
+  "weightsSha256": "6d0d0691e5b09c9faf3a70198ce0d0ccbb8ee1271a72af8f9452565c8df6461b"
+ },
+ "file": "model.onnx",
+ "sha256": "26f7d064be5a46a85060d8ae5b80b29cca933cc0902d281096a33f7ac02d4f1e",
+ "size": 33142942
+}

@@ -1,0 +1,156 @@
+{
+ "schema": "kh-model-manifest/2",
+ "id": "totalseg-ct-liver-segments",
+ "name": "TotalSegmentator — karaciğer segmentleri (Couinaud I–VIII)",
+ "version": "2.5.0-weights · Dataset570 (0,8 × 0,8 × 1,5 mm)",
+ "modalities": [
+  "CT"
+ ],
+ "license": "Apache-2.0 (TotalSegmentator 'liver_segments' görevi; açık görevler listesinde)",
+ "source": "https://github.com/wasserth/TotalSegmentator",
+ "intendedUse": "BT serisinde karaciğerin 8 Couinaud segmentine ayrılması (ayrıntılı anatomi; bir lezyonun hangi segmentte olduğunu göstermek için). Bulgu değildir.",
+ "compatibleDevice": "Masaüstü tarayıcı; karo başına ~60–120 sn, tipik karaciğerde 4–12 karo.",
+ "limitations": [
+  "Normal anatomi bölütlemesidir; hastalık tespiti yapmaz.",
+  "Segment sınırları damar dallanmasına göre tanımlıdır ve kişiden kişiye değişir; model yaklaşık sınır çizer.",
+  "Klinik kullanım için onaylı tıbbi cihaz değildir."
+ ],
+ "validation": "Karo adımı 0,5. Uygulamanın TypeScript hattı (anizotropik ızgara + basamaklı kırpma) örnek BT'de resmi liver_segments çıktısıyla: segment Dice 0,941–0,964 (ort. 0,951). Gerçek karaciğer BT'sinde (MSD Task03 liver_77, LiTS, CC BY-SA 4.0; 5 mm kesit): Dice 0,86–0,97; segment I–IV ve VII–VIII hacimleri ±%2, V/VI sınırı farklı (Dice 0,86/0,90).",
+ "task": "segmentation-3d",
+ "format": "onnx",
+ "citation": "Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.",
+ "input": {
+  "name": "input",
+  "layout": "NCDHW",
+  "channels": 1,
+  "width": 192,
+  "height": 192,
+  "scale": 1,
+  "mean": [
+   0
+  ],
+  "std": [
+   1
+  ]
+ },
+ "output": {
+  "topkValues": "topk_values",
+  "topkIndices": "topk_indices"
+ },
+ "volume": {
+  "spacing": [
+   0.804688,
+   0.804688,
+   1.5
+  ],
+  "patch": [
+   64,
+   192,
+   192
+  ],
+  "axisOrder": "SAR",
+  "normalization": {
+   "scheme": "ct",
+   "clip": [
+    -50.0,
+    193.0
+   ],
+   "mean": 105.92510986328125,
+   "std": 38.52954864501953
+  },
+  "tileStep": 0.5,
+  "topK": 4,
+  "cropNonzero": true,
+  "minSlices": 10,
+  "cascade": {
+   "model": "totalseg-ct-total-3mm",
+   "labels": [
+    "liver"
+   ],
+   "addonMm": 10
+  },
+  "dropLabels": []
+ },
+ "labels": [
+  {
+   "id": 1,
+   "key": "liver_segment_1",
+   "finding": "Karaciğer segment I",
+   "structure": "liver",
+   "part": "caudate",
+   "node": "liver.segment-1",
+   "kind": "anatomy"
+  },
+  {
+   "id": 2,
+   "key": "liver_segment_2",
+   "finding": "Karaciğer segment II",
+   "structure": "liver",
+   "part": "left-lobe",
+   "node": "liver.segment-2",
+   "kind": "anatomy"
+  },
+  {
+   "id": 3,
+   "key": "liver_segment_3",
+   "finding": "Karaciğer segment III",
+   "structure": "liver",
+   "part": "left-lobe",
+   "node": "liver.segment-3",
+   "kind": "anatomy"
+  },
+  {
+   "id": 4,
+   "key": "liver_segment_4",
+   "finding": "Karaciğer segment IV",
+   "structure": "liver",
+   "part": "left-lobe",
+   "node": "liver.segment-4",
+   "kind": "anatomy"
+  },
+  {
+   "id": 5,
+   "key": "liver_segment_5",
+   "finding": "Karaciğer segment V",
+   "structure": "liver",
+   "part": "right-lobe",
+   "node": "liver.segment-5",
+   "kind": "anatomy"
+  },
+  {
+   "id": 6,
+   "key": "liver_segment_6",
+   "finding": "Karaciğer segment VI",
+   "structure": "liver",
+   "part": "right-lobe",
+   "node": "liver.segment-6",
+   "kind": "anatomy"
+  },
+  {
+   "id": 7,
+   "key": "liver_segment_7",
+   "finding": "Karaciğer segment VII",
+   "structure": "liver",
+   "part": "right-lobe",
+   "node": "liver.segment-7",
+   "kind": "anatomy"
+  },
+  {
+   "id": 8,
+   "key": "liver_segment_8",
+   "finding": "Karaciğer segment VIII",
+   "structure": "liver",
+   "part": "right-lobe",
+   "node": "liver.segment-8",
+   "kind": "anatomy"
+  }
+ ],
+ "scoreThreshold": 0.5,
+ "upstream": {
+  "weights": "https://github.com/wasserth/TotalSegmentator/releases/download/v2.5.0-weights/Dataset570_ct_liver_segments.zip",
+  "weightsSha256": "76f3bf368cbae7756729bf2971cb1b25a1ee8993a18495f2d563d5edfead8aac"
+ },
+ "file": "model.onnx",
+ "sha256": "b7a192e7569fb3f1923fdd6381ba4574e40a6a2d933ac1cffde8ffabe885c453",
+ "size": 61630590
+}

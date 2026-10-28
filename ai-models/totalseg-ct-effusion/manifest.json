@@ -1,0 +1,115 @@
+{
+ "schema": "kh-model-manifest/2",
+ "id": "totalseg-ct-effusion",
+ "name": "TotalSegmentator — plevral ve perikardiyal efüzyon (BT patoloji)",
+ "version": "2.0.0-weights · Dataset315 (1,5 mm)",
+ "modalities": [
+  "CT"
+ ],
+ "license": "Apache-2.0 (TotalSegmentator 'pleural_pericard_effusion' görevi; açık görevler listesinde)",
+ "source": "https://github.com/wasserth/TotalSegmentator",
+ "intendedUse": "Göğüs BT'sinde akciğer zarları arasındaki (plevral) ve kalp zarındaki (perikardiyal) sıvının bölütlenmesi. Önce BT anatomi modeli çalışır; akciğerler + 5 cm çevresi kırpılır. Tanı aracı değildir.",
+ "compatibleDevice": "Masaüstü tarayıcı ya da ≥ 8 GB RAM'li telefon; 1,5 mm ızgarada karo başına ~45–60 sn (tek çekirdek WASM), tam göğüs BT'sinde 12–20 karo (10–20 dk).",
+ "limitations": [
+  "Sıvının türünü (transüda/eksüda/kan) ayırmaz; yalnızca hacmini ve yerini verir.",
+  "Akciğerlerin yalnızca bir kısmını içeren kesitlerde (ör. üst batın BT'sinin akciğer tabanları) sonuç güvenilir değildir.",
+  "Önce BT anatomi modeli çalışmalıdır; akciğerler bölütlenemediyse model çalıştırılmaz.",
+  "Klinik kullanım için onaylı tıbbi cihaz değildir."
+ ],
+ "validation": "Karo adımı 0,5 (resmi TotalSegmentator ile aynı). Gerçek göğüs BT'sinde (MSD Task06 lung_053, TCIA, CC BY-SA 4.0) resmi pleural_pericard_effusion çıktısıyla (aynı ağırlıklar): akciğer (yardımcı sınıf) Dice 0,988; perikard sıvısı resmi 3,09 mL ↔ bu hat 3,14 mL (Dice 0,81); plevral efüzyon resmi 0 ↔ bu hat 0,19 mL (1 mL gösterim eşiğinin altında, bulgu olarak gösterilmez). Belirgin efüzyonlu bir vaka üzerinde ayrıca doğrulanmadı.",
+ "task": "segmentation-3d",
+ "format": "onnx",
+ "citation": "Wasserthal J. et al. TotalSegmentator: Robust Segmentation of 104 Anatomic Structures in CT Images. Radiology: AI 2023; D'Antonoli T.A. et al. TotalSegmentator MRI. Radiology 2025.",
+ "input": {
+  "name": "input",
+  "layout": "NCDHW",
+  "channels": 1,
+  "width": 128,
+  "height": 128,
+  "scale": 1,
+  "mean": [
+   0
+  ],
+  "std": [
+   1
+  ]
+ },
+ "output": {
+  "topkValues": "topk_values",
+  "topkIndices": "topk_indices"
+ },
+ "volume": {
+  "spacing": 1.5,
+  "patch": [
+   128,
+   128,
+   128
+  ],
+  "axisOrder": "SAR",
+  "normalization": {
+   "scheme": "ct",
+   "clip": [
+    -962.0,
+    110.0
+   ],
+   "mean": -721.3034057617188,
+   "std": 262.6121826171875
+  },
+  "tileStep": 0.5,
+  "topK": 4,
+  "cropNonzero": true,
+  "minSlices": 10,
+  "cascade": {
+   "model": "totalseg-ct-total-3mm",
+   "labels": [
+    "lung_upper_lobe_left",
+    "lung_lower_lobe_left",
+    "lung_upper_lobe_right",
+    "lung_middle_lobe_right",
+    "lung_lower_lobe_right"
+   ],
+   "addonMm": 50
+  },
+  "dropLabels": [
+   1
+  ]
+ },
+ "labels": [
+  {
+   "id": 1,
+   "key": "lung_pleural",
+   "finding": "Akciğer (yardımcı sınıf)",
+   "structure": "lungs",
+   "node": "lungs",
+   "kind": "anatomy"
+  },
+  {
+   "id": 2,
+   "key": "pleural_effusion",
+   "finding": "Plevral efüzyon — akciğer zarı arasında sıvı (patoloji modeli)",
+   "structure": "lungs",
+   "node": "lungs",
+   "kind": "finding",
+   "minMl": 1.0
+  },
+  {
+   "id": 3,
+   "key": "pericardial_effusion",
+   "finding": "Perikardiyal efüzyon — kalp zarında sıvı (patoloji modeli)",
+   "structure": "heart",
+   "node": "heart",
+   "kind": "finding",
+   "minMl": 1.0,
+   "normalMaxMl": 50,
+   "normalNote": "kalp zarı yaprakları arasında normalde 15–50 mL kaydırıcı sıvı bulunur"
+  }
+ ],
+ "scoreThreshold": 0.5,
+ "upstream": {
+  "weights": "https://github.com/wasserth/TotalSegmentator/releases/download/v2.0.0-weights/Dataset315_thoraxCT.zip",
+  "weightsSha256": "974fd151df6b6755e86b34e3c7a9a11dfcee7351393f09d8621278c0aa2a5a75"
+ },
+ "file": "model.onnx",
+ "sha256": "7fd61631544b5134a02a68e2d977c79319762ec6fdbed78ecab721f9432264ca",
+ "size": 62449131
+}

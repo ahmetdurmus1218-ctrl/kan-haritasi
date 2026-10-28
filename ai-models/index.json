@@ -1,0 +1,11 @@
+{
+ "schema": "kh-model-index/1",
+ "models": [
+  "totalseg-ct-effusion",
+  "totalseg-ct-kidney-cysts",
+  "totalseg-ct-liver-segments",
+  "totalseg-ct-total-3mm",
+  "totalseg-mr-total-3mm",
+  "xrv-densenet121-nih"
+ ]
+}
