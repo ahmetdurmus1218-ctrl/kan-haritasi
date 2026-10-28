@@ -1,7 +1,7 @@
 workflow: CI
-run: 39633047366
-sha: b39d7e6f4b78dd7de1b539858b9e719a8af99955
-conclusion: success
+run: 40687400853
+sha: ed1db128b437164e799ca3f35f775708483f4da5
+conclusion: failure
 
 e2e: success
   - Set up job: success
@@ -34,6 +34,13 @@ e2e: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
+dependencies: failure
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): failure
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 web: success
   - Set up job: success
   - Run actions/checkout@v4: success
@@ -49,11 +56,313 @@ web: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
-dependencies: success
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
 
+dependencies	UNKNOWN STEP	﻿2026-10-28T12:23:32.3558596Z Current runner version: '2.338.0'
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3583694Z ##[group]Runner Image Provisioner
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3584690Z Hosted Compute Agent
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3585400Z Version: 20261021.618
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3586011Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3586680Z Build Date: 2026-10-21T00:45:21Z
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3587600Z Worker ID: {5d2e1fa4-330d-4221-8b42-0f316d4a1ece}
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3588331Z Region: centralus
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3588900Z Cloud: Azure
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3589456Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3590758Z ##[group]Operating System
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3591400Z Ubuntu
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3591942Z 24.04.5
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3592517Z LTS
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3593049Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3593599Z ##[group]Runner Image
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3594257Z Image: ubuntu-24.04
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3594848Z Version: 20261025.353.1
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3596131Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261025.353/images/ubuntu/Ubuntu2404-Readme.md
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3597778Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261025.353
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3598754Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3599844Z ##[group]GITHUB_TOKEN Permissions
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3602235Z Contents: read
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3602824Z Metadata: read
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3603358Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3605883Z Secret source: Actions
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3606804Z Cache mode: write
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3608054Z Prepare workflow directory
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.3974911Z Prepare all required actions
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.4024034Z Getting action download info
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.6702684Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:32.7757893Z Download action repository 'google/osv-scanner-action@v2.3.8' (SHA:9a498708959aeaef5ef730655706c5a1df1edbc2)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:33.2878394Z Complete job name: dependencies
+dependencies	UNKNOWN STEP	2026-10-28T12:23:33.3401998Z ##[group]Pull down action image 'ghcr.io/google/osv-scanner-action:v2.3.8'
+dependencies	UNKNOWN STEP	2026-10-28T12:23:33.3514202Z ##[command]/usr/bin/docker pull ghcr.io/google/osv-scanner-action:v2.3.8
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0312953Z v2.3.8: Pulling from google/osv-scanner-action
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0315349Z 6a0ac1617861: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0316665Z 4c3aca1499f0: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0318585Z b55da06e3b41: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0319916Z 973f1b4898e9: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0321278Z 4f4fb700ef54: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0322629Z 5c20669443e2: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0323988Z e27f08571c08: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0325310Z 4f940ee30095: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0326735Z fb9c926f50e5: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0328400Z a63bb3858c11: Pulling fs layer
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0329715Z e27f08571c08: Waiting
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0331063Z 4f940ee30095: Waiting
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0332639Z fb9c926f50e5: Waiting
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0334342Z a63bb3858c11: Waiting
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0335916Z 973f1b4898e9: Waiting
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0337683Z 4f4fb700ef54: Waiting
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.0338944Z 5c20669443e2: Waiting
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.2655557Z 4c3aca1499f0: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.2657606Z 4c3aca1499f0: Download complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.3117010Z 6a0ac1617861: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.3119496Z 6a0ac1617861: Download complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.4371168Z 973f1b4898e9: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.4374088Z 973f1b4898e9: Download complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.4523136Z 6a0ac1617861: Pull complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.4705687Z b55da06e3b41: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.4708443Z b55da06e3b41: Download complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.4959145Z 4f4fb700ef54: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.4961359Z 4f4fb700ef54: Download complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.6472500Z e27f08571c08: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.6474992Z e27f08571c08: Download complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.6965152Z 5c20669443e2: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.6968952Z 5c20669443e2: Download complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.8113753Z 4f940ee30095: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.8115801Z 4f940ee30095: Download complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.9303222Z a63bb3858c11: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-28T12:23:34.9305580Z a63bb3858c11: Download complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:35.0448604Z fb9c926f50e5: Verifying Checksum
+dependencies	UNKNOWN STEP	2026-10-28T12:23:35.0450301Z fb9c926f50e5: Download complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:35.2286764Z 4c3aca1499f0: Pull complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:40.6172873Z b55da06e3b41: Pull complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:40.6282006Z 973f1b4898e9: Pull complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:40.6417080Z 4f4fb700ef54: Pull complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:40.8735989Z 5c20669443e2: Pull complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:40.8955052Z e27f08571c08: Pull complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:41.5547906Z 4f940ee30095: Pull complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.0599834Z fb9c926f50e5: Pull complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.0708938Z a63bb3858c11: Pull complete
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.0763836Z Digest: sha256:48406c58197201fe55e56615ad9d414f85063da320e204d0b0ed460fb3908dba
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.0782976Z Status: Downloaded newer image for ghcr.io/google/osv-scanner-action:v2.3.8
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.0796500Z ghcr.io/google/osv-scanner-action:v2.3.8
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.0825993Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1134445Z ##[group]Run actions/checkout@v4
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1135004Z with:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1135418Z   repository: ahmetdurmus1218-ctrl/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1138587Z   token: ***
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1138956Z   ssh-strict: true
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1139314Z   ssh-user: git
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1139642Z   persist-credentials: true
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1139993Z   clean: true
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1140361Z   sparse-checkout-cone-mode: true
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1140723Z   fetch-depth: 1
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1141043Z   fetch-tags: false
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1141386Z   show-progress: true
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1141731Z   lfs: false
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1142098Z   submodules: false
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1142453Z   set-safe-directory: true
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1142833Z   allow-unsafe-pr-checkout: false
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.1143348Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4009070Z Syncing repository: ahmetdurmus1218-ctrl/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4011213Z ##[group]Getting Git version info
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4011955Z Working directory is '/home/runner/work/kan-haritasi/kan-haritasi'
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4012657Z [command]/usr/bin/git version
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4096955Z git version 2.56.0
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4120678Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4136227Z Temporarily overriding HOME='/home/runner/work/_temp/9db20cca-ff0b-4a53-8f56-8cbe16958aed' before making global git config changes
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4137605Z Adding repository directory to the temporary git global config as a safe directory
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4141959Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/kan-haritasi/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4192412Z Deleting the contents of '/home/runner/work/kan-haritasi/kan-haritasi'
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4197831Z ##[group]Initializing the repository
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4202195Z [command]/usr/bin/git init /home/runner/work/kan-haritasi/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4312709Z hint: Using 'master' as the name for the initial branch. This default branch name
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4313725Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4314745Z hint: to use in all of your new repositories, which will suppress this warning,
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4315443Z hint: call:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4315843Z hint:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4316372Z hint: 	git config --global init.defaultBranch <name>
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4316810Z hint:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4317419Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4318404Z hint: 'development'. The just-created branch can be renamed via this command:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4319046Z hint:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4319517Z hint: 	git branch -m <name>
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4319938Z hint:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4320326Z hint: Disable this message with "git config set advice.defaultBranchName false"
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4331448Z Initialized empty Git repository in /home/runner/work/kan-haritasi/kan-haritasi/.git/
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4342599Z [command]/usr/bin/git remote add origin https://github.com/ahmetdurmus1218-ctrl/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4393664Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4394498Z ##[group]Disabling automatic garbage collection
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4398857Z [command]/usr/bin/git config --local gc.auto 0
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4433230Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4443855Z ##[group]Setting up auth
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4444469Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4483169Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4856184Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.4888190Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.5097857Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.5131604Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.5327749Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.5371252Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.5372507Z ##[group]Fetching the repository
+dependencies	UNKNOWN STEP	2026-10-28T12:23:42.5385590Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +753c7cc2a543b3183a21f733c2280024aea2f8fc:refs/remotes/pull/21/merge
+dependencies	UNKNOWN STEP	2026-10-28T12:23:49.7477126Z From https://github.com/ahmetdurmus1218-ctrl/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-28T12:23:49.7478577Z  * [new ref]         753c7cc2a543b3183a21f733c2280024aea2f8fc -> pull/21/merge
+dependencies	UNKNOWN STEP	2026-10-28T12:23:49.7482447Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:49.7483578Z ##[group]Determining the checkout info
+dependencies	UNKNOWN STEP	2026-10-28T12:23:49.7484994Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:49.7503828Z [command]/usr/bin/git sparse-checkout disable
+dependencies	UNKNOWN STEP	2026-10-28T12:23:49.7558247Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+dependencies	UNKNOWN STEP	2026-10-28T12:23:49.7589777Z ##[group]Checking out the ref
+dependencies	UNKNOWN STEP	2026-10-28T12:23:49.7592841Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/21/merge
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.0379636Z Updating files:   8% (50/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.4944555Z Updating files:   9% (51/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.5821664Z Updating files:  10% (57/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.6232252Z Updating files:  11% (62/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.6942541Z Updating files:  12% (68/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.7822288Z Updating files:  13% (74/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8493782Z Updating files:  14% (79/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8954931Z Updating files:  15% (85/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8956443Z Updating files:  16% (91/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8959865Z Updating files:  17% (96/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8961820Z Updating files:  18% (102/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8964730Z Updating files:  19% (107/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8968732Z Updating files:  20% (113/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8973846Z Updating files:  21% (119/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8979706Z Updating files:  22% (124/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8984838Z Updating files:  23% (130/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8988870Z Updating files:  24% (136/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.8994079Z Updating files:  25% (141/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9001477Z Updating files:  26% (147/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9008602Z Updating files:  27% (153/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9012179Z Updating files:  28% (158/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9014846Z Updating files:  29% (164/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9018966Z Updating files:  30% (169/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9023395Z Updating files:  31% (175/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9030422Z Updating files:  32% (181/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9035158Z Updating files:  33% (186/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9044983Z Updating files:  34% (192/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9050697Z Updating files:  35% (198/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9057825Z Updating files:  36% (203/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9061814Z Updating files:  37% (209/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9067371Z Updating files:  38% (214/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9073499Z Updating files:  39% (220/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9076028Z Updating files:  40% (226/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9079221Z Updating files:  41% (231/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9082535Z Updating files:  42% (237/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9084864Z Updating files:  43% (243/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9087376Z Updating files:  44% (248/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9090480Z Updating files:  45% (254/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9094883Z Updating files:  46% (259/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9100981Z Updating files:  47% (265/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9107775Z Updating files:  48% (271/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9113672Z Updating files:  49% (276/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9116325Z Updating files:  50% (282/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9122376Z Updating files:  51% (288/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9127459Z Updating files:  52% (293/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9132144Z Updating files:  53% (299/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9138212Z Updating files:  54% (305/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9146183Z Updating files:  55% (310/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9148105Z Updating files:  56% (316/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9162006Z Updating files:  57% (321/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9177070Z Updating files:  58% (327/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9198085Z Updating files:  59% (333/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9218107Z Updating files:  60% (338/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9228636Z Updating files:  61% (344/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9232353Z Updating files:  62% (350/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9245294Z Updating files:  63% (355/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9254710Z Updating files:  64% (361/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9264232Z Updating files:  65% (366/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9277669Z Updating files:  66% (372/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9287745Z Updating files:  67% (378/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9315465Z Updating files:  68% (383/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9336378Z Updating files:  69% (389/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9346592Z Updating files:  70% (395/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9352015Z Updating files:  71% (400/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9354650Z Updating files:  72% (406/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9358101Z Updating files:  73% (411/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9362708Z Updating files:  74% (417/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9366046Z Updating files:  75% (423/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9378708Z Updating files:  76% (428/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9388612Z Updating files:  77% (434/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9393252Z Updating files:  78% (440/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9399051Z Updating files:  79% (445/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9404092Z Updating files:  80% (451/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9406779Z Updating files:  81% (457/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9413539Z Updating files:  82% (462/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9420575Z Updating files:  83% (468/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9423621Z Updating files:  84% (473/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9426577Z Updating files:  85% (479/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9431940Z Updating files:  86% (485/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9435146Z Updating files:  87% (490/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9437940Z Updating files:  88% (496/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9439968Z Updating files:  89% (502/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9443313Z Updating files:  90% (507/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9446519Z Updating files:  91% (513/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9457670Z Updating files:  92% (518/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9458478Z Updating files:  93% (524/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9462201Z Updating files:  94% (530/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9465529Z Updating files:  95% (535/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9470891Z Updating files:  96% (541/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9475949Z Updating files:  97% (547/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9480955Z Updating files:  98% (552/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9482842Z Updating files:  99% (558/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9483757Z Updating files: 100% (563/563)
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9484280Z Updating files: 100% (563/563), done.
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9500087Z Note: switching to 'refs/remotes/pull/21/merge'.
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9500593Z 
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9500817Z You are in 'detached HEAD' state. You can look around, make experimental
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9501449Z changes and commit them, and you can discard any commits you make in this
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9502077Z state without impacting any branches by switching back to a branch.
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9502392Z 
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9502720Z If you want to create a new branch to retain commits you create, you may
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9503400Z do so (now or later) by using -c with the switch command. Example:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9503916Z 
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9504081Z   git switch -c <new-branch-name>
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9504402Z 
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9504582Z Or undo this operation with:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9504882Z 
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9505183Z   git switch -
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9505371Z 
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9505695Z Turn off this advice by setting config variable advice.detachedHead to false
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9506129Z 
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9506852Z HEAD is now at 753c7cc Merge ed1db128b437164e799ca3f35f775708483f4da5 into 0a2afa27e9aa28478fe6cbe4eb65ea9b317e9158
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9599281Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9602743Z [command]/usr/bin/git log -1 --format=%H
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9630315Z 753c7cc2a543b3183a21f733c2280024aea2f8fc
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9854654Z ##[group]Run google/osv-scanner-action/osv-scanner-action@v2.3.8
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9855157Z with:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9855507Z   scan-args: -r
+dependencies	UNKNOWN STEP	./
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9855808Z ##[endgroup]
+dependencies	UNKNOWN STEP	2026-10-28T12:23:51.9968362Z ##[command]/usr/bin/docker run --name ghcriogoogleosvscanneractionv238_96351b --label 519fb1 --workdir /github/workspace --rm -e "INPUT_SCAN-ARGS" -e "HOME" -e "GITHUB_JOB" -e "GITHUB_REF" -e "GITHUB_SHA" -e "GITHUB_REPOSITORY" -e "GITHUB_REPOSITORY_OWNER" -e "GITHUB_REPOSITORY_OWNER_ID" -e "GITHUB_RUN_ID" -e "GITHUB_RUN_NUMBER" -e "GITHUB_RETENTION_DAYS" -e "GITHUB_RUN_ATTEMPT" -e "GITHUB_ACTOR_ID" -e "GITHUB_ACTOR" -e "GITHUB_WORKFLOW" -e "GITHUB_HEAD_REF" -e "GITHUB_BASE_REF" -e "GITHUB_EVENT_NAME" -e "GITHUB_SERVER_URL" -e "GITHUB_API_
+dependencies	UNKNOWN STEP	./"
+dependencies	UNKNOWN STEP	2026-10-28T12:23:54.0887314Z Scanning dir ./
+dependencies	UNKNOWN STEP	2026-10-28T12:23:54.0887887Z Starting filesystem walk for root: /
+dependencies	UNKNOWN STEP	2026-10-28T12:23:54.1016020Z Scanned /github/workspace/pnpm-lock.yaml file and found 406 packages
+dependencies	UNKNOWN STEP	2026-10-28T12:23:54.1029360Z End status: 109 dirs visited, 700 inodes visited, 1 Extract calls, 14.247848ms elapsed, 14.247987ms wall time
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5077808Z 
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5079002Z Total 2 packages affected by 3 known vulnerabilities (0 Critical, 1 High, 2 Medium, 0 Low, 0 Unknown) from 1 ecosystem.
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5079919Z 3 vulnerabilities can be fixed.
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5080752Z 
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5081143Z +-------------------------------------+------+-----------+----------------+---------+---------------+----------------+
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5082110Z | OSV URL                             | CVSS | ECOSYSTEM | PACKAGE        | VERSION | FIXED VERSION | SOURCE         |
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5083421Z +-------------------------------------+------+-----------+----------------+---------+---------------+----------------+
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5084422Z | https://osv.dev/GHSA-qxg6-89mg-rqv8 | 4.7  | npm       | @vitest/mocker | 5.0.2   | 5.0.3         | pnpm-lock.yaml |
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5085525Z | https://osv.dev/GHSA-xp26-3454-mjgp | 5.9  | npm       | @vitest/mocker | 5.0.2   | 5.0.3         | pnpm-lock.yaml |
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5086656Z | https://osv.dev/GHSA-mrhx-c7xc-m3w5 | 8.2  | npm       | zod            | 4.6.5   | 4.6.6         | pnpm-lock.yaml |
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5087799Z +-------------------------------------+------+-----------+----------------+---------+---------------+----------------+
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.5098266Z Exit code: 1
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.6070502Z Post job cleanup.
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.6909487Z [command]/usr/bin/git version
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.6946686Z git version 2.56.0
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.6985967Z Temporarily overriding HOME='/home/runner/work/_temp/4ed8bfa1-19df-499c-af57-0e6c4ffc32b8' before making global git config changes
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.6987387Z Adding repository directory to the temporary git global config as a safe directory
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.6991951Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/kan-haritasi/kan-haritasi
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.7032206Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.7068582Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.7288764Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.7320842Z http.https://github.com/.extraheader
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.7332240Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.7374084Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.7602949Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.7645756Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.8002874Z Cleaning up orphan processes
+dependencies	UNKNOWN STEP	2026-10-28T12:23:55.8376254Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
