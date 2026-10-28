@@ -131,7 +131,8 @@ with sync_playwright() as p:
         check(title in body, f"örüntü: {title}")
     for test in ["Östradiol", "Progesteron", "Serbest T4", "Ürik asit", "25-OH D vitamini", "HDL dışı kolesterol", "Homosistein", "pO₂ (oksijen basıncı)", "İdrar kreatinini (spot)"]:
         check(test in body, f"listede: {test}")
-    check("Katalogda olmayan testler" in body and "tHb" in body, "katalogda olmayan testler sonuç listesinde")
+    # Başlık CSS ile büyük harfe çevrilir ("label-caps").
+    check("katalogda olmayan testler" in body.lower() and "tHb" in body, "katalogda olmayan testler sonuç listesinde")
     verify_box = page.locator("section[aria-labelledby='dogrula']")
     vtxt = verify_box.inner_text() if verify_box.count() else ""
     # Progesteron yalnızca kadın hormon raporunda var; aralığı döngü evresine göre verilmiş
