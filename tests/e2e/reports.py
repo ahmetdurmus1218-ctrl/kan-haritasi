@@ -2,7 +2,8 @@
 görüntüsü) uygulamanın kendisiyle okunur, onaylanır ve yorumlanır.
 
 Kapsam: hemogram, biyokimya, hormon (kadın/erkek), vitamin-mineral, lipid ve çoklu anormallik
-raporları; OCR ile okunan görüntüler (yan yana tablolu ekran görüntüsü kolajı dâhil); evreye göre verilen hormon aralıkları; çoklu bulgunun ayrı
+raporları; OCR ile okunan görüntüler (yan yana tablolu ekran görüntüsü kolajı dâhil); katalogda olmayan testlerin
+raporun kendi aralığıyla kaydedilmesi; evreye göre verilen hormon aralıkları; çoklu bulgunun ayrı
 ayrı listelenmesi, doğrulama listesi, tek organa özgü olmayan testler ve 3B'ye geçiş.
 
 Kullanım: pnpm build && pnpm preview (ayrı terminal), sonra
@@ -37,8 +38,8 @@ UPLOADS = [
     ("enabiz-ekran.png", 6),
     ("hemogram-foto.jpg", 18),
     ("coklu-anormallik.pdf", 27),
-    # Dört ekran görüntüsünden 2×2 kolaj: yan yana tablolar, küçük yazı (39 tanınabilir sonuç)
-    ("enabiz-kolaj.jpg", 30),
+    # Dört ekran görüntüsünden 2×2 kolaj: yan yana tablolar, küçük yazı, kan gazı ve spot idrar (55 tanınabilir sonuç)
+    ("enabiz-kolaj.jpg", 45),
 ]
 
 
@@ -92,6 +93,10 @@ with sync_playwright() as p:
         if exp["date"]:
             got = page.locator("input[type=date]").first.input_value()
             check(got == exp["date"], f"{name}: rapor tarihi {got} (beklenen {exp['date']})")
+        if name == "enabiz-kolaj.jpg":
+            # Katalogda olmayan testler (ör. tHb) raporun kendi aralığıyla değerlendirilip kaydedilir.
+            other = page.locator("div.rounded-xl:has(p:text-is('tHb'))").first
+            check(other.count() == 1 and "Normal" in other.inner_text(), "kolaj: katalogda olmayan tHb kendi aralığıyla 'Normal'")
         page.screenshot(path=SHOTS / f"40-onay-{Path(name).stem}.png")
         page.locator("button:has-text('Onayla ve kaydet')").click()
         page.get_by_role("heading", name="Sonuçlar").wait_for(timeout=15000)
@@ -124,8 +129,9 @@ with sync_playwright() as p:
         "Homosistein yüksek",
     ]:
         check(title in body, f"örüntü: {title}")
-    for test in ["Östradiol", "Progesteron", "Serbest T4", "Ürik asit", "25-OH D vitamini", "HDL dışı kolesterol", "Homosistein"]:
+    for test in ["Östradiol", "Progesteron", "Serbest T4", "Ürik asit", "25-OH D vitamini", "HDL dışı kolesterol", "Homosistein", "pO₂ (oksijen basıncı)", "İdrar kreatinini (spot)"]:
         check(test in body, f"listede: {test}")
+    check("Katalogda olmayan testler" in body and "tHb" in body, "katalogda olmayan testler sonuç listesinde")
     verify_box = page.locator("section[aria-labelledby='dogrula']")
     vtxt = verify_box.inner_text() if verify_box.count() else ""
     # Progesteron yalnızca kadın hormon raporunda var; aralığı döngü evresine göre verilmiş

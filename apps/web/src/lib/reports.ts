@@ -10,7 +10,7 @@ import {
   statusFor,
   testByKey,
 } from '@kh/catalog';
-import type { IssueCode, ParsedRow, ReportDraft, SourceBox } from '@kh/parser';
+import { type IssueCode, type ParsedRow, type ReportDraft, type ReportMark, type SourceBox, type UnrecognizedRow, statusWithMark } from '@kh/parser';
 import { type Vault, randomId } from '@kh/vault';
 import { deleteImagingNotes } from './imagingRecords';
 
@@ -34,6 +34,8 @@ export interface StoredResult {
   refSource: 'report' | 'catalog' | 'none';
   status: ResultStatus;
   reportFlag?: 'H' | 'L';
+  /** Raporun satıra koyduğu renkli işaret (aralık dışı/içi). */
+  reportMark?: ReportMark;
   userEdited: boolean;
   source?: SourceBox;
   /** Okuma güveni (0–1) ve okuma sırasında görülen sorunlar; elle girilen/düzeltilen değerlerde yok sayılır. */
@@ -43,8 +45,27 @@ export interface StoredResult {
   verified?: boolean;
 }
 
+/**
+ * Katalogda olmayan test: raporun kendi aralığıyla (rapor biriminde) değerlendirilir. Organa bağlanamaz;
+ * sonuç listesinde ve özette durumuyla gösterilir.
+ */
+export interface StoredOther {
+  rawName: string;
+  value: number;
+  qualifier?: '<' | '>' | '<=' | '>=';
+  unit: string;
+  refText: string;
+  refMin?: number;
+  refMax?: number;
+  refMinExclusive?: boolean;
+  refMaxExclusive?: boolean;
+  status: ResultStatus;
+  reportMark?: ReportMark;
+  source?: SourceBox;
+}
+
 /** Kullanıcının belgeyle karşılaştırması gereken okuma sorunları. */
-export const VERIFY_ISSUES: IssueCode[] = ['LOW_OCR_CONFIDENCE', 'IMPLAUSIBLE', 'FLAG_CONFLICT', 'AMBIGUOUS_DECIMAL', 'UNIT_MISSING', 'UNIT_UNKNOWN', 'NAME_FUZZY', 'DUPLICATE', 'RANGE_SEX_SPECIFIC', 'RANGE_PHASE_SPECIFIC', 'PERCENT_GUESSED', 'OCR_DISAGREE', 'RANGE_DECIMAL_GUESSED'];
+export const VERIFY_ISSUES: IssueCode[] = ['LOW_OCR_CONFIDENCE', 'IMPLAUSIBLE', 'FLAG_CONFLICT', 'MARK_CONFLICT', 'AMBIGUOUS_DECIMAL', 'UNIT_MISSING', 'UNIT_UNKNOWN', 'NAME_FUZZY', 'DUPLICATE', 'RANGE_SEX_SPECIFIC', 'RANGE_PHASE_SPECIFIC', 'PERCENT_GUESSED', 'OCR_DISAGREE', 'RANGE_DECIMAL_GUESSED', 'RANGE_GENERIC'];
 
 /** Kaydedilmiş ama okuma güveni düşük / sorunlu ve kullanıcının henüz doğrulamadığı sonuç mu? */
 export function needsVerification(r: StoredResult): boolean {
@@ -76,6 +97,8 @@ export interface StoredReport {
   parserVersion: string;
   createdAt: string;
   results: StoredResult[];
+  /** Katalogda olmayan testler (eski kayıtlarda yok). */
+  others?: StoredOther[];
 }
 
 /** Onay ekranındaki düzenlenebilir satır. */
@@ -178,8 +201,20 @@ export function reevaluate(row: ReviewRow, edit: NonNullable<ReviewRow['edit']>,
   }
   const storedMin = range.source === 'report' && conv && min !== undefined ? convert(min, conv) : range.min;
   const storedMax = range.source === 'report' && conv && max !== undefined ? convert(max, conv) : range.max;
-  const issues: IssueCode[] = row.issues.filter((i) => i === 'DUPLICATE');
-  if (canonicalValue !== null && (canonicalValue < test.plausible[0] || canonicalValue > test.plausible[1])) issues.push('IMPLAUSIBLE');
+  const issues: IssueCode[] = row.issues.filter((i) => i === 'DUPLICATE' || i === 'RANGE_CATEGORIES');
+  const implausible = canonicalValue !== null && (canonicalValue < test.plausible[0] || canonicalValue > test.plausible[1]);
+  if (implausible) issues.push('IMPLAUSIBLE');
+  // Aralık girilmediyse: raporun kendi işareti varsa o; yoksa genel aralığa göre "yüksek/düşük" denmez
+  // (bkz. parser row.ts, RANGE_GENERIC).
+  if (range.source !== 'report' && !implausible) {
+    const generic = range.source === 'catalog' && (status === 'high' || status === 'low') && !issues.includes('RANGE_CATEGORIES');
+    if (row.reportMark) {
+      status = statusWithMark({ status: generic ? 'unknown' : status, value: canonicalValue ?? value, refMin: range.min, refMax: range.max, generic, fromReport: false }, row.reportMark).status;
+    } else if (generic) {
+      status = 'unknown';
+    }
+    if (generic && status === 'unknown') issues.push('RANGE_GENERIC');
+  }
   return {
     ...row,
     edit,
@@ -227,6 +262,8 @@ const UNIT_LABELS: Record<string, string> = {
   'iu/ml': 'IU/mL',
   'mmol/mol': 'mmol/mol',
   ratio: '(oran)',
+  mmhg: 'mmHg',
+  kpa: 'kPa',
   '10^3/ul': '10³/µL',
   '10^6/ul': '10⁶/µL',
   '10^9/l': '10⁹/L',
@@ -258,6 +295,7 @@ export function toStoredResult(row: ReviewRow): StoredResult {
     refSource: row.refSource,
     status: row.status,
     ...(row.reportFlag ? { reportFlag: row.reportFlag } : {}),
+    ...(row.reportMark ? { reportMark: row.reportMark } : {}),
     userEdited: row.userEdited,
     source: row.source,
     ...(row.userEdited ? {} : { confidence: Math.round(row.confidence * 100) / 100, ...(row.issues.length ? { issues: row.issues } : {}) }),
@@ -267,6 +305,42 @@ export function toStoredResult(row: ReviewRow): StoredResult {
 /** Bir satırın kaydedilebilmesi için asgari koşul: sayısal değer ve bilinen birim. */
 export function isSavable(row: ReviewRow): boolean {
   return Number.isFinite(row.value) && row.canonicalValue !== null;
+}
+
+export function toStoredOther(u: UnrecognizedRow): StoredOther {
+  return {
+    rawName: u.rawName,
+    value: u.value,
+    ...(u.qualifier ? { qualifier: u.qualifier } : {}),
+    unit: u.unit,
+    refText: u.refText,
+    ...(u.refMin !== undefined ? { refMin: u.refMin } : {}),
+    ...(u.refMax !== undefined ? { refMax: u.refMax } : {}),
+    ...(u.refMinExclusive ? { refMinExclusive: true } : {}),
+    ...(u.refMaxExclusive ? { refMaxExclusive: true } : {}),
+    status: u.status,
+    ...(u.reportMark ? { reportMark: u.reportMark } : {}),
+    source: u.source,
+  };
+}
+
+/** Kayıtlı "diğer" sonucu onay ekranına geri taşır (düzenleme). */
+export function fromStoredOther(o: StoredOther): UnrecognizedRow {
+  return {
+    rawName: o.rawName,
+    valueText: String(o.value).replace('.', ','),
+    value: o.value,
+    ...(o.qualifier ? { qualifier: o.qualifier } : {}),
+    unit: o.unit,
+    refText: o.refText,
+    refMin: o.refMin,
+    refMax: o.refMax,
+    refMinExclusive: o.refMinExclusive,
+    refMaxExclusive: o.refMaxExclusive,
+    status: o.status,
+    reportMark: o.reportMark,
+    source: o.source ?? { page: 1, x: 0, y: 0, w: 0, h: 0 },
+  };
 }
 
 export function draftToReview(draft: ReportDraft): ReviewRow[] {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { type LabTestDef, testByKey } from '@kh/catalog';
+import { type LabTestDef, normalizeText, testByKey } from '@kh/catalog';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
-import { type StoredReport, type StoredResult, listReports } from './reports';
+import { type StoredOther, type StoredReport, type StoredResult, listReports } from './reports';
 
 export interface ResultPoint {
   result: StoredResult;
@@ -41,6 +41,26 @@ export function buildSeries(reports: StoredReport[]): TestSeries[] {
     out.push({ test, points, latest, previous: points[points.length - 2] });
   }
   return out;
+}
+
+export interface OtherPoint {
+  result: StoredOther;
+  report: StoredReport;
+  date: string;
+}
+
+/** Katalogda olmayan testler: rapordaki adına göre, en yeni sonuç. */
+export function buildOthers(reports: StoredReport[]): OtherPoint[] {
+  const latest = new Map<string, OtherPoint>();
+  for (const report of reports) {
+    for (const result of report.others ?? []) {
+      const key = normalizeText(result.rawName);
+      const point = { result, report, date: reportDate(report) };
+      const prev = latest.get(key);
+      if (!prev || point.date > prev.date || (point.date === prev.date && report.createdAt > prev.report.createdAt)) latest.set(key, point);
+    }
+  }
+  return [...latest.values()].sort((a, b) => a.result.rawName.localeCompare(b.result.rawName, 'tr'));
 }
 
 /** Kilit açıkken tüm onaylanmış raporları yükler; kasa değişince yenilenir. */

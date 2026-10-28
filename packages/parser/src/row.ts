@@ -148,9 +148,9 @@ const GLUED_RANGE = /^\d+(?:[.,]\d+)?[-–—]\d+(?:[.,]\d+)?$/;
 const NOISE_TOKEN = /^(v|nv|va|vv|ww|✓|✔|«|\|)$/i;
 
 // OCR'ın "%" işaretini okuyamadığı durumlar (Türkçe modelde sık): "Yo", "Vo", "Ve", "Y", "V", "96", "00".
-const PCT_LOOKALIKE = /^(yo|vo|ve|ke|ko|y|v|da|9|96|9o|o\/o|0\/0|00|%o|°\/o|»)$/i;
+const PCT_LOOKALIKE = /^(yo|vo|ve|ke|ko|y|v|da|ba|9|96|9o|o\/o|0\/0|00|%o|°\/o|»)$/i;
 const DIFF_WORD = /^(notrofil|lenfosit|monosit|eozinofil|bazofil|neu|neut|ne|lym|lymph|ly|mon|mono|mo|eos|eo|bas|baso|ba)$/;
-const GLUED_DIFF_PCT = /^(ne|neu|neut|ly|lym|lymph|mo|mon|mono|eo|eos|ba|bas|baso)(y|yo|vo|96|9o|94|9»|»|,|x|36|3x|x6|3x6|%6)$/i;
+const GLUED_DIFF_PCT = /^(ne|neu|neut|ly|lym|lymph|mo|mon|mono|eo|eos|ba|bas|baso)(y|yo|vo|96|9o|94|9»|9,|9\.|»|,|x|36|3x|x6|3x6|%6)$/i;
 /** Adı yüzde türünde bir testi gösteren sözcükler. */
 const PCT_NAME = /(%|notrofil|lenfosit|monosit|eozinofil|bazofil|hematokrit|\bhct\b|\brdw|hba1c|saturasyon)/;
 
@@ -199,8 +199,10 @@ const STATUS_ICON = /^(?:[([{]?[oO0©®@|!¡✓✔•·“”"'‘’vVwW]{1,2}[
 export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineResult {
   let lead = 0;
   while (lead < line.tokens.length - 1 && STATUS_ICON.test(line.tokens[lead]!.text)) lead++;
-  // Yalnızca ardından harfle başlayan bir ad geliyorsa: "0 LDH 316" simgedir, "0 - 50" aralıktır.
-  if (!/^[A-Za-zÇĞİÖŞÜçğıöşü]/.test(line.tokens[lead]?.text ?? '')) lead = 0;
+  // Yalnızca ardından bir ad geliyorsa: "0 LDH 316" simgedir, "0 - 50" aralıktır. Ad rakamla da başlayabilir
+  // ("02Hb": OCR'ın O yerine okuduğu sıfır).
+  const next = line.tokens[lead]?.text ?? '';
+  if (!/^[A-Za-zÇĞİÖŞÜçğıöşü]/.test(next) && !(lead && matchTestName(line.tokens.slice(lead).map((t) => t.text), ctx.userAliases))) lead = 0;
   if (lead) line = { ...line, tokens: line.tokens.slice(lead), text: line.tokens.slice(lead).map((t) => t.text).join(' ') };
   const raw = line.tokens.map((t) => t.text);
   // OCR "Ca++" adını ikiye bölebilir ("Cat t"); katalog birleşik biçimi iyonize kalsiyum olarak tanır.
@@ -371,9 +373,26 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     // Tanınmayan satır: adı harf içeren ve değer + (birim veya aralık) taşıyan satırlar listelenir.
     const rawName = raw.slice(0, Math.max(1, valueIdx)).join(' ');
     if (!/[a-zA-ZçğıöşüÇĞİÖŞÜ]{2,}/.test(rawName) || (!unitFound && reportRange.source === 'none')) return { kind: 'none' };
+    // Katalogda olmasa da raporun kendi aralığıyla değerlendirilir (rapor biriminde).
+    let status = statusFor(parsedValue.value, reportRange, parsedValue.qualifier);
+    if (status === 'unknown' && reportFlag) status = reportFlag === 'H' ? 'high' : 'low';
     return {
       kind: 'unrecognized',
-      row: { rawName, valueText, unit: unitFound?.unit ?? '', refText: reportRange.text ?? '', source: line.box },
+      row: {
+        rawName,
+        valueText,
+        value: parsedValue.value,
+        ...(parsedValue.qualifier ? { qualifier: parsedValue.qualifier } : {}),
+        unit: unitFound?.unit ?? '',
+        refText: reportRange.text ?? '',
+        ...(reportRange.min !== undefined ? { refMin: reportRange.min } : {}),
+        ...(reportRange.max !== undefined ? { refMax: reportRange.max } : {}),
+        ...(reportRange.minExclusive ? { refMinExclusive: true } : {}),
+        ...(reportRange.maxExclusive ? { refMaxExclusive: true } : {}),
+        status,
+        ...(reportFlag ? { reportFlag } : {}),
+        source: line.box,
+      },
     };
   }
 
@@ -388,6 +407,8 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     const unitMismatch = unitFound !== null && !(unitKey && unitKey in test.conversions);
     if (between.some((t) => /\d/.test(t)) || unitMismatch) return parseLine(line, ctx, true);
   }
+  // Aynı adlı başka bir test: kan gazındaki pH "7.39" diye yazılır, idrar pH'ı "6.0".
+  if (test.minDecimals && !new RegExp(String.raw`[.,]\d{${test.minDecimals},}$`).test(valueText)) return parseLine(line, ctx, true);
 
   const issues: IssueCode[] = [];
   let confidence = match.score >= 1 ? 0.55 : 0.4;
@@ -401,7 +422,9 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
   if (!unitFound) {
     // Birim yazılmamış: kanonik birim varsayılır ama düşük güvenle.
     canonicalValue = parsedValue.value;
-    issues.push('UNIT_MISSING');
+    // Birimsiz testlerde (pH, INR) birim zaten yazılmaz.
+    if (test.unit) issues.push('UNIT_MISSING');
+    else confidence += 0.2;
   } else {
     canonicalValue = toCanonical(test, parsedValue.value, unitKey);
     if (canonicalValue === null) issues.push('UNIT_UNKNOWN');
@@ -432,6 +455,12 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     range = { source: 'none' };
   }
 
+  // "7.390" binlik ayırıcıyla 7390 da okunabilir; yalnızca biri fizyolojik olarak mümkünse belirsizlik yoktur.
+  if (parsedValue.ambiguous && !lostPoint && /^\d+[.,]\d{3}$/.test(valueText) && canonicalValue !== null) {
+    const [lo, hi] = test.plausible;
+    const thousands = unitFound ? toCanonical(test, parsedValue.value * 1000, unitKey) : parsedValue.value * 1000;
+    if (canonicalValue >= lo && canonicalValue <= hi && thousands !== null && (thousands < lo || thousands > hi)) parsedValue = { ...parsedValue, ambiguous: false };
+  }
   if (parsedValue.ambiguous) {
     issues.push('AMBIGUOUS_DECIMAL');
     confidence -= 0.25;
@@ -455,6 +484,14 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     if (fallback.source === 'catalog') {
       storedRange = fallback;
       status = statusFor(canonicalValue, fallback, parsedValue.qualifier);
+      // Raporda aralık yokken yalnızca genel aralığa bakıp "yüksek/düşük" denmez: laboratuvarlar farklı
+      // aralık kullanır (ör. kan gazındaki total bilirubin). Raporun kendi işareti (renkli simge) varsa
+      // durum ona göre belirlenir (bkz. marks.ts); yoksa kullanıcı belgeyle karşılaştırır. Risk
+      // kategorileri veren raporlar (D vitamini) bu kurala girmez.
+      if ((status === 'high' || status === 'low') && !categories) {
+        status = 'unknown';
+        issues.push('RANGE_GENERIC');
+      }
     }
   }
   if (sexSpecific || phaseSpecific) {
@@ -473,6 +510,9 @@ export function parseLine(line: Line, ctx: RowContext, noMatch = false): LineRes
     }
   } else if (reportFlag && status === 'unknown') {
     status = reportFlag === 'H' ? 'high' : 'low';
+    // Raporun kendi H/L işareti varsa genel aralık uyarısına gerek yok.
+    const generic = issues.indexOf('RANGE_GENERIC');
+    if (generic >= 0) issues.splice(generic, 1);
   }
 
   if (ctx.ocr && line.conf !== undefined) {

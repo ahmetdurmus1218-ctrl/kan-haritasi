@@ -77,6 +77,24 @@ export async function buildExport(
       durum: STATUS_LABEL[res.status],
       kullaniciDuzeltti: res.userEdited ? 'evet' : 'hayır',
     })),
+  ).concat(
+    reports.flatMap((r) =>
+      (r.others ?? []).map((o) => ({
+        raporTarihi: r.reportDate ?? '',
+        laboratuvar: r.labName ?? '',
+        belge: fileNames.get(r.fileId) ?? '',
+        test: o.rawName,
+        testKodu: '',
+        loinc: '',
+        raporlananAd: o.rawName,
+        deger: o.qualifier ? `${o.qualifier}${o.value}` : String(o.value),
+        birim: o.unit,
+        referans: o.refText,
+        referansKaynagi: o.refText ? 'rapor' : 'yok',
+        durum: STATUS_LABEL[o.status],
+        kullaniciDuzeltti: 'hayır',
+      })),
+    ),
   );
 
   const notes = await listImagingNotes(vault);
@@ -133,6 +151,16 @@ export async function buildExport(
         referansKaynagi: res.refSource,
         durum: res.status,
         kullaniciDuzeltti: res.userEdited,
+      })),
+      katalogDisi: (r.others ?? []).map((o) => ({
+        raporlananAd: o.rawName,
+        deger: o.value,
+        niteleyici: o.qualifier ?? null,
+        birim: o.unit,
+        referansMin: o.refMin ?? null,
+        referansMax: o.refMax ?? null,
+        referans: o.refText,
+        durum: o.status,
       })),
     })),
   };

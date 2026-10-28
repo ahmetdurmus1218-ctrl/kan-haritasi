@@ -2,7 +2,7 @@ import type { ProcessId, SystemId } from './anatomy';
 import type { Conversion } from './units';
 
 /**
- * Test kataloğu: ~75 rutin test. Her test LOINC koduyla tanımlanır.
+ * Test kataloğu: ~100 rutin test (kan gazı ve spot idrar testleri dahil). Her test LOINC koduyla tanımlanır.
  *
  * Referans aralıkları: sonuçlar her zaman RAPORUN KENDİ aralığıyla değerlendirilir.
  * Aşağıdaki `ranges` yalnızca raporda aralık yoksa kullanılan, yaklaşık, genel yetişkin
@@ -23,6 +23,7 @@ export type TestGroup =
   | 'pancreas'
   | 'hormone'
   | 'coagulation'
+  | 'bloodgas'
   | 'other';
 
 export const GROUP_LABEL: Record<TestGroup, string> = {
@@ -39,6 +40,7 @@ export const GROUP_LABEL: Record<TestGroup, string> = {
   pancreas: 'Pankreas',
   hormone: 'Hormonlar',
   coagulation: 'Pıhtılaşma',
+  bloodgas: 'Kan gazı',
   other: 'Diğer',
 };
 
@@ -69,6 +71,11 @@ export interface LabTestDef {
   decimals: number;
   /** Aynı ada sahip mutlak sayım ve yüzde testlerini ayırmak için. */
   kind?: 'count' | 'percent';
+  /**
+   * Değer en az bu kadar ondalık basamakla yazılmalı; daha azı aynı adlı başka bir testtir
+   * (kan gazındaki pH "7.39" iken idrar pH'ı "6.0").
+   */
+  minDecimals?: number;
   processes: ProcessId[];
   structures: string[];
   systems: SystemId[];
@@ -123,6 +130,8 @@ function diff(prefix: string, loincAbs: string, loincPct: string, nameTr: string
 
 export const TESTS: readonly LabTestDef[] = [
   // ---------------------------------------------------------------- Hemogram
+  // Not: bazı takma adlar küçük ekran yazısında OCR'ın sık yaptığı karışıklıklardır: "Het" (Hct), "Nat"
+  // (Na+; "+" → "t"), "CI-" (Cl-), "BaselEcf" (Base(Ecf); "(" → "l"), "02Hb" (O2Hb).
   {
     key: 'hemoglobin', loinc: '718-7', nameTr: 'Hemoglobin', group: 'hemogram',
     aliases: ['Hemoglobin', 'HGB', 'Hb', 'Hemoglobin (HGB)'],
@@ -132,7 +141,7 @@ export const TESTS: readonly LabTestDef[] = [
   },
   {
     key: 'hematocrit', loinc: '4544-3', nameTr: 'Hematokrit', group: 'hemogram',
-    aliases: ['Hematokrit', 'HCT', 'Htc', 'Hematokrit (HCT)'],
+    aliases: ['Hematokrit', 'HCT', 'Htc', 'Hematokrit (HCT)', 'Het'],
     unit: '%', conversions: { '%': [1], 'l/l': [100] },
     ranges: [{ sex: 'female', min: 36, max: 46 }, { sex: 'male', min: 41, max: 53 }],
     plausible: [8, 75], decimals: 1, processes: ['oxygen-transport', 'erythropoiesis'], ...BLOOD,
@@ -191,6 +200,26 @@ export const TESTS: readonly LabTestDef[] = [
   ...diff('monocyte', '742-7', '5905-5', 'Monosit', ['MONO', 'MO'], [0.2, 1.0], [2, 10]),
   ...diff('eosinophil', '711-2', '713-8', 'Eozinofil', ['EOS', 'EO'], [0.0, 0.5], [0, 6]),
   ...diff('basophil', '704-7', '706-2', 'Bazofil', ['BASO', 'BA'], [0.0, 0.1], [0, 2]),
+  ...diff('ig', '51584-1', '38518-7', 'İmmatür granülosit', ['IG'], [0, 0.06], [0, 0.6]),
+  {
+    key: 'rdw-sd', loinc: '21000-5', nameTr: 'RDW-SD (alyuvar dağılım genişliği, fL)', group: 'hemogram',
+    aliases: ['RDW-SD', 'RDW SD', 'RDW (SD)'],
+    unit: 'fL', conversions: { fl: [1] }, ranges: [{ min: 37, max: 54 }],
+    plausible: [15, 150], decimals: 1, processes: ['erythropoiesis', 'iron-metabolism'], ...BLOOD,
+  },
+  {
+    key: 'pdw', loinc: '32207-3', nameTr: 'PDW (trombosit dağılım genişliği)', group: 'hemogram',
+    aliases: ['PDW', 'Trombosit dagilim genisligi'],
+    unit: 'fL', conversions: { fl: [1] }, ranges: [{ min: 9, max: 17 }],
+    plausible: [3, 40], decimals: 1, processes: ['hemostasis'], structures: ['bones', 'spleen'], systems: ['hematologic'],
+  },
+  {
+    // "PCT" prokalsitonin için de kullanılır; birimi (ng/mL) uyuşmazsa kısa ad eşleşmesi reddedilir.
+    key: 'plateletcrit', loinc: '51637-7', nameTr: 'Plateletkrit (PCT)', group: 'hemogram',
+    aliases: ['Plateletkrit', 'Trombositokrit', 'PCT'],
+    unit: '%', conversions: PCT, ranges: [{ min: 0.15, max: 0.4 }],
+    plausible: [0.01, 3], decimals: 2, processes: ['hemostasis'], structures: ['bones', 'spleen'], systems: ['hematologic'],
+  },
 
   // ---------------------------------------------------------------- Karaciğer
   {
@@ -300,7 +329,7 @@ export const TESTS: readonly LabTestDef[] = [
   // ---------------------------------------------------------------- Elektrolit / mineral
   {
     key: 'sodium', loinc: '2951-2', nameTr: 'Sodyum', group: 'electrolyte',
-    aliases: ['Sodyum', 'Na', 'Na+', 'Sodyum (Na)'],
+    aliases: ['Sodyum', 'Na', 'Na+', 'Sodyum (Na)', 'Nat'],
     unit: 'mmol/L', conversions: { 'mmol/l': [1] }, ranges: [{ min: 136, max: 145 }],
     plausible: [100, 190], decimals: 0, processes: ['electrolyte-balance'], structures: ['kidneys', 'brain', 'adrenals'], systems: ['urinary', 'nervous'],
   },
@@ -312,7 +341,7 @@ export const TESTS: readonly LabTestDef[] = [
   },
   {
     key: 'chloride', loinc: '2075-0', nameTr: 'Klor', group: 'electrolyte',
-    aliases: ['Klor', 'Klorur', 'Cl', 'Cl-', 'Klor (Cl)'],
+    aliases: ['Klor', 'Klorur', 'Cl', 'Cl-', 'Klor (Cl)', 'CI-'],
     unit: 'mmol/L', conversions: { 'mmol/l': [1] }, ranges: [{ min: 98, max: 107 }],
     plausible: [60, 150], decimals: 0, processes: ['electrolyte-balance'], structures: ['kidneys'], systems: ['urinary'],
   },
@@ -374,6 +403,88 @@ export const TESTS: readonly LabTestDef[] = [
     unit: 'mg/dL', conversions: { 'mg/dl': [1], 'umol/l': [1 / 59.48] },
     ranges: [{ sex: 'female', min: 2.4, max: 5.7 }, { sex: 'male', min: 3.4, max: 7.0 }],
     plausible: [0.3, 25], decimals: 1, processes: ['uric-acid-metabolism'], structures: ['kidneys'], systems: ['urinary'],
+  },
+
+  {
+    // Spot idrar testleri: serum kreatininiyle karıştırılmamalı (birimi aynı, aralığı yüz kat farklı).
+    key: 'urine-creatinine', loinc: '2161-8', nameTr: 'İdrar kreatinini (spot)', group: 'kidney',
+    aliases: ['Spot kreatinin (idrar)', 'Spot idrar kreatinin', 'Spot idrar kreatinini', 'Idrar kreatinin', 'Idrar kreatinini', 'Kreatinin (idrar)', 'Kreatinin (spot idrar)', 'Kreatinin, idrar', 'Kreatinin idrar', 'Urine creatinine'],
+    unit: 'mg/dL', conversions: { 'mg/dl': [1], 'mmol/l': [11.312], 'umol/l': [0.011312] }, ranges: [{ min: 20, max: 300 }],
+    plausible: [1, 1000], decimals: 1, processes: ['glomerular-filtration'], structures: ['kidneys', 'urinary-tract'], systems: ['urinary'],
+  },
+  {
+    key: 'urine-microalbumin', loinc: '14957-5', nameTr: 'İdrarda mikroalbümin (spot)', group: 'kidney',
+    aliases: ['Spot mikroalbumin (idrar)', 'Spot idrar mikroalbumin', 'Mikroalbumin', 'Mikroalbumin (idrar)', 'Mikroalbumin (spot idrar)', 'Idrar mikroalbumin', 'Idrarda mikroalbumin', 'Urine microalbumin', 'Microalbumin'],
+    unit: 'mg/L', conversions: { 'mg/l': [1], 'mg/dl': [10] }, ranges: [{ min: 0, max: 20 }],
+    plausible: [0, 5000], decimals: 1, processes: ['glomerular-filtration'], structures: ['kidneys', 'renal-vessels'], systems: ['urinary'],
+  },
+  {
+    key: 'urine-protein', loinc: '2888-6', nameTr: 'İdrarda protein (spot)', group: 'kidney',
+    aliases: ['Spot protein (idrar)', 'Spot idrar protein', 'Spot idrar proteini', 'Idrar protein', 'Idrar proteini', 'Idrarda protein', 'Protein (idrar)', 'Protein (spot idrar)', 'Urine protein'],
+    unit: 'mg/dL', conversions: { 'mg/dl': [1], 'g/l': [100], 'mg/l': [0.1] }, ranges: [{ min: 0, max: 15 }],
+    plausible: [0, 2000], decimals: 1, processes: ['glomerular-filtration'], structures: ['kidneys', 'urinary-tract'], systems: ['urinary'],
+  },
+
+  // ---------------------------------------------------------------- Kan gazı ve ko-oksimetri
+  {
+    key: 'ph', loinc: '11558-4', nameTr: 'pH (kan gazı)', group: 'bloodgas',
+    aliases: ['pH', 'Kan pH', 'Kan pH degeri'],
+    unit: '', conversions: { ratio: [1] }, ranges: [{ min: 7.35, max: 7.45 }],
+    plausible: [6.8, 7.8], decimals: 2, minDecimals: 2, processes: ['gas-exchange', 'electrolyte-balance'], structures: ['lungs', 'kidneys'], systems: ['respiratory', 'urinary'],
+  },
+  {
+    key: 'pco2', loinc: '11557-6', nameTr: 'pCO₂ (karbondioksit basıncı)', group: 'bloodgas',
+    aliases: ['pCO2', 'Karbondioksit basinci', 'Parsiyel CO2 basinci', 'Kan CO2 basinci'],
+    unit: 'mmHg', conversions: { mmhg: [1], kpa: [7.50062] }, ranges: [{ min: 35, max: 45 }],
+    plausible: [5, 200], decimals: 1, processes: ['gas-exchange'], structures: ['lungs', 'airways'], systems: ['respiratory'],
+  },
+  {
+    key: 'po2', loinc: '11556-8', nameTr: 'pO₂ (oksijen basıncı)', group: 'bloodgas',
+    aliases: ['pO2', 'Oksijen basinci', 'Parsiyel O2 basinci', 'Kan O2 basinci'],
+    unit: 'mmHg', conversions: { mmhg: [1], kpa: [7.50062] }, ranges: [{ min: 80, max: 100 }],
+    plausible: [5, 700], decimals: 1, processes: ['gas-exchange', 'oxygen-transport'], structures: ['lungs', 'pulmonary-vessels'], systems: ['respiratory'],
+  },
+  {
+    key: 'hco3', loinc: '1959-6', nameTr: 'Bikarbonat (HCO₃)', group: 'bloodgas',
+    aliases: ['HCO3', 'HCO3-', 'cHCO3', 'HCO3(p)', 'HCO3-(p)', 'HCO3(p,st)', 'HCO3-(p,st)', 'HCO3 std', 'HCO3 act', 'Bikarbonat', 'Standart bikarbonat', 'Aktuel bikarbonat'],
+    unit: 'mmol/L', conversions: { 'mmol/l': [1] }, ranges: [{ min: 22, max: 26 }],
+    plausible: [2, 60], decimals: 1, processes: ['electrolyte-balance', 'gas-exchange'], structures: ['kidneys', 'lungs'], systems: ['urinary', 'respiratory'],
+  },
+  {
+    key: 'base-excess', loinc: '11555-0', nameTr: 'Baz fazlası (BE)', group: 'bloodgas',
+    aliases: ['Base(Ecf)', 'BaselEcf', 'cBase(Ecf)', 'BE(ecf)', 'Base(B)', 'cBase(B)', 'BE(B)', 'Base excess', 'BE', 'ABE', 'SBE', 'Baz fazlasi', 'Baz acigi'],
+    unit: 'mmol/L', conversions: { 'mmol/l': [1] }, ranges: [{ min: -2, max: 3 }],
+    plausible: [-30, 30], decimals: 1, processes: ['electrolyte-balance', 'gas-exchange'], structures: ['kidneys', 'lungs'], systems: ['urinary', 'respiratory'],
+  },
+  {
+    key: 'so2', loinc: '20564-1', nameTr: 'sO₂ (oksijen satürasyonu)', group: 'bloodgas',
+    aliases: ['sO2', 'SaO2', 'Oksijen saturasyonu', 'O2 saturasyonu', 'Oksijen doygunlugu'],
+    unit: '%', conversions: PCT, ranges: [{ min: 95, max: 99 }],
+    plausible: [10, 100], decimals: 1, processes: ['oxygen-transport', 'gas-exchange'], structures: ['lungs', 'pulmonary-vessels'], systems: ['respiratory', 'hematologic'],
+  },
+  {
+    key: 'o2hb', loinc: '11559-2', nameTr: 'Oksihemoglobin (O₂Hb)', group: 'bloodgas',
+    aliases: ['O2Hb', '02Hb', 'FO2Hb', 'Oksihemoglobin', 'Fraksiyonel oksihemoglobin'],
+    unit: '%', conversions: PCT, ranges: [{ min: 94, max: 98 }],
+    plausible: [10, 100], decimals: 1, processes: ['oxygen-transport', 'gas-exchange'], structures: ['lungs', 'pulmonary-vessels'], systems: ['respiratory', 'hematologic'],
+  },
+  {
+    key: 'cohb', loinc: '20563-3', nameTr: 'Karboksihemoglobin (COHb)', group: 'bloodgas',
+    aliases: ['COHb', 'FCOHb', 'HbCO', 'Karboksihemoglobin'],
+    unit: '%', conversions: PCT, ranges: [{ min: 0, max: 1.5 }],
+    plausible: [0, 80], decimals: 1, processes: ['oxygen-transport'], structures: ['lungs', 'heart'], systems: ['respiratory', 'hematologic'],
+  },
+  {
+    key: 'methb', loinc: '2614-5', nameTr: 'Methemoglobin (MetHb)', group: 'bloodgas',
+    aliases: ['MetHb', 'FMetHb', 'Methemoglobin'],
+    unit: '%', conversions: PCT, ranges: [{ min: 0, max: 1.5 }],
+    plausible: [0, 80], decimals: 1, processes: ['oxygen-transport'], structures: ['bones', 'spleen'], systems: ['hematologic'],
+  },
+  {
+    key: 'lactate', loinc: '32693-4', nameTr: 'Laktat', group: 'bloodgas',
+    aliases: ['Laktat', 'Lac', 'cLac', 'Lactate', 'Laktik asit'],
+    unit: 'mmol/L', conversions: { 'mmol/l': [1], 'mg/dl': [1 / 9.008] }, ranges: [{ min: 0.5, max: 2.2 }],
+    plausible: [0.1, 30], decimals: 1, processes: ['cell-energy', 'circulation'], structures: ['skeletal-muscle', 'liver', 'heart'], systems: ['musculoskeletal', 'cardiovascular'],
   },
 
   // ---------------------------------------------------------------- Demir
@@ -629,7 +740,7 @@ const NON_SPECIFIC: Record<string, string> = {
 };
 
 for (const t of TESTS as LabTestDef[]) {
-  const diffKind = /^(neutrophil|lymphocyte|monocyte|eosinophil|basophil)-/.exec(t.key);
+  const diffKind = /^(neutrophil|lymphocyte|monocyte|eosinophil|basophil|ig)-/.exec(t.key);
   t.nonSpecific ??= NON_SPECIFIC[t.key] ?? (diffKind ? 'Akyuvar alt türleri enfeksiyon, alerji, stres ve kemik iliği işleviyle ilişkilidir; tek bir organı göstermez.' : undefined);
 }
 

@@ -39,6 +39,10 @@ export type IssueCode =
   | 'PERCENT_GUESSED'
   | 'OCR_DISAGREE'
   | 'RANGE_DECIMAL_GUESSED'
+  /** Raporda aralık yok; genel aralığın dışında görünüyor ama "yüksek/düşük" denmez. */
+  | 'RANGE_GENERIC'
+  /** Raporun kendi işareti (renkli simge, pembe zemin) okunan değer/aralıkla uyuşmuyor. */
+  | 'MARK_CONFLICT'
   | 'FLAG_CONFLICT'
   | 'IMPLAUSIBLE'
   | 'AMBIGUOUS_DECIMAL'
@@ -65,16 +69,34 @@ export interface ParsedRow {
   refSource: 'report' | 'catalog' | 'none';
   status: ResultStatus;
   reportFlag?: 'H' | 'L';
+  /** Raporun satıra koyduğu görsel işaret: aralık dışı (kırmızı/pembe) ya da içi (yeşil). */
+  reportMark?: ReportMark;
   confidence: number;
   issues: IssueCode[];
   source: SourceBox;
 }
 
+/** Raporun satıra koyduğu görsel işaret (e-Nabız'da kırmızı ünlem + pembe zemin / yeşil onay). */
+export type ReportMark = 'in' | 'out';
+
+/**
+ * Katalogda olmayan test satırı. Raporun kendi aralığıyla (rapor biriminde) değerlendirilir; organa
+ * bağlanamaz ama sonuç listesinde durumuyla gösterilir.
+ */
 export interface UnrecognizedRow {
   rawName: string;
   valueText: string;
+  value: number;
+  qualifier?: '<' | '>' | '<=' | '>=';
   unit: string;
   refText: string;
+  refMin?: number;
+  refMax?: number;
+  refMinExclusive?: boolean;
+  refMaxExclusive?: boolean;
+  status: ResultStatus;
+  reportFlag?: 'H' | 'L';
+  reportMark?: ReportMark;
   source: SourceBox;
 }
 

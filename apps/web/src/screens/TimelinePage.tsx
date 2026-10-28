@@ -180,7 +180,8 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
                   );
                 }
                 const { r } = e;
-                const abnormal = r.results.filter((x) => x.status === 'high' || x.status === 'low').length;
+                const all = [...r.results, ...(r.others ?? [])];
+                const abnormal = all.filter((x) => x.status === 'high' || x.status === 'low').length;
                 return (
                   <li key={r.id} className="relative pb-5">
                     <span className="absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-ink-950 bg-ink-500" aria-hidden="true" />
@@ -190,7 +191,7 @@ export function TimelinePage({ testKey }: { testKey?: string }) {
                         {r.labName ? ` · ${r.labName}` : ''}
                       </span>
                       <span className="text-xs text-fg-muted">
-                        {r.results.length} sonuç{abnormal ? ` · ${abnormal} aralık dışı` : ''}
+                        {all.length} sonuç{abnormal ? ` · ${abnormal} aralık dışı` : ''}
                         {r.reportDate ? '' : ' · rapor tarihi okunamadı (onay tarihi)'}
                       </span>
                     </button>

@@ -21,6 +21,7 @@ import {
   type StoredReport,
   addAlias,
   draftToReview,
+  fromStoredOther,
   isSavable,
   loadAliases,
   loadSex,
@@ -28,6 +29,7 @@ import {
   reportForFile,
   saveReport,
   saveSex,
+  toStoredOther,
   toStoredResult,
   unitLabel,
 } from '../lib/reports';
@@ -220,11 +222,12 @@ export function ReportPanel({
       reportFlag: r.reportFlag,
       confidence: r.userEdited || r.verified ? 1 : (r.confidence ?? 1),
       issues: r.userEdited || r.verified ? [] : (r.issues ?? []),
+      reportMark: r.reportMark,
       source: r.source ?? { page: 1, x: 0, y: 0, w: 0, h: 0 },
       include: true,
       userEdited: r.userEdited,
     }));
-    setDraft({ rows, unrecognized: [], meta: { reportDate: saved.reportDate, labName: saved.labName, method: saved.method === 'manual' ? 'text' : saved.method } });
+    setDraft({ rows, unrecognized: (saved.others ?? []).map(fromStoredOther), meta: { reportDate: saved.reportDate, labName: saved.labName, method: saved.method === 'manual' ? 'text' : saved.method } });
     setMode('review');
   };
 
@@ -374,7 +377,8 @@ interface ReviewProps {
   onCancel?: () => void;
 }
 
-type UnrecState = UnrecognizedRow & { linkKey: string; remember: boolean; linked: boolean };
+/** `include`: katalogda olmayan sonuç olarak (raporun kendi aralığıyla) kaydedilsin mi. */
+type UnrecState = UnrecognizedRow & { linkKey: string; remember: boolean; linked: boolean; include: boolean };
 
 function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight, onSaved, onCancel }: ReviewProps) {
   const vault = useUnlockedVault();
@@ -386,12 +390,13 @@ function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight
       return r;
     }),
   );
-  const [unrec, setUnrec] = useState<UnrecState[]>(() => initial.unrecognized.map((u) => ({ ...u, linkKey: '', remember: true, linked: false })));
+  const [unrec, setUnrec] = useState<UnrecState[]>(() => initial.unrecognized.map((u) => ({ ...u, linkKey: '', remember: true, linked: false, include: Number.isFinite(u.value) })));
   const [date, setDate] = useState(initial.meta.reportDate ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const included = rows.filter((r) => r.include);
+  const others = unrec.filter((u) => !u.linked && u.include && Number.isFinite(u.value));
   const invalid = included.filter((r) => !isSavable(r));
   const reviewCount = rows.filter((r) => r.include && needsReview(r)).length;
   const needsSex = rows.some((r) => r.issues.includes('RANGE_SEX_SPECIFIC') || (r.refSource === 'catalog' && (testByKey.get(r.testKey)?.ranges.some((x) => x.sex) ?? false)));
@@ -469,13 +474,13 @@ function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight
       userEdited: true,
     };
     const f = (v: number | undefined) => (v === undefined ? '' : v.toLocaleString('tr-TR', { useGrouping: false, maximumFractionDigits: 6 }));
-    const row = reevaluate(base, { value: u.valueText, unitKey: useUnit, refMin: f(range.min), refMax: f(range.max) }, sex);
+    const row = reevaluate({ ...base, reportMark: u.reportMark }, { value: u.valueText, unitKey: useUnit, refMin: f(range.min), refMax: f(range.max) }, sex);
     setRows((rs) => [...rs, row]);
     setUnrec((us) => us.map((x, j) => (j === idx ? { ...x, linked: true } : x)));
   };
 
   async function save() {
-    if (!included.length || invalid.length) return;
+    if ((!included.length && !others.length) || invalid.length) return;
     setSaving(true);
     setError(null);
     try {
@@ -486,6 +491,7 @@ function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight
         labName: initial.meta.labName,
         method: initial.rows.length === 0 ? 'manual' : initial.meta.method,
         results: included.map(toStoredResult),
+        ...(others.length ? { others: others.map(toStoredOther) } : {}),
       });
       onSaved(report);
     } catch (e) {
@@ -504,7 +510,7 @@ function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight
         <p className="text-sm leading-relaxed text-fg-muted">
           {rows.length} sonuç okundu{reviewCount ? `, ${reviewCount} tanesi kontrol istiyor` : ''}
           {missing.length ? `, ${missing.length} testin değeri okunamadı` : ''}
-          {unrec.filter((u) => !u.linked).length ? `, ${unrec.filter((u) => !u.linked).length} satır tanınmadı` : ''}. Değerleri belgeyle karşılaştır; onaylamadığın hiçbir şey kaydedilmez veya vücut modeline uygulanmaz.
+          {unrec.filter((u) => !u.linked).length ? `, ${unrec.filter((u) => !u.linked).length} test katalogda yok (kendi aralığıyla değerlendirildi)` : ''}. Değerleri belgeyle karşılaştır; onaylamadığın hiçbir şey kaydedilmez veya vücut modeline uygulanmaz.
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-xs text-fg-muted">
@@ -569,17 +575,30 @@ function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight
 
         {unrec.some((u) => !u.linked) && (
           <section className="mt-4 space-y-2">
-            <p className="label-caps">Tanınmayan satırlar</p>
+            <p className="label-caps">Katalogda olmayan testler</p>
+            <p className="text-xs leading-relaxed text-fg-muted">
+              Bu testler raporun kendi referans aralığıyla (ve varsa rapordaki işaretle) değerlendirildi ve sonuçlarına eklenir. Vücut haritasında bir organa
+              bağlanamazlar; listedeki bir teste karşılık geliyorsa bağlayabilirsin.
+            </p>
             {unrec.map((u, idx) =>
               u.linked ? null : (
-                <div key={`${u.rawName}-${idx}`} className="rounded-xl border border-ink-600/70 bg-ink-850/70 p-3 text-sm">
+                <div key={`${u.rawName}-${idx}`} className={`rounded-xl border border-ink-600/70 bg-ink-850/70 p-3 text-sm ${u.include ? '' : 'opacity-55'}`}>
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                      checked={u.include}
+                      disabled={!Number.isFinite(u.value)}
+                      onChange={(e) => setUnrec((us) => us.map((x, j) => (j === idx ? { ...x, include: e.target.checked } : x)))}
+                      aria-label="Bu sonucu kaydet"
+                    />
+                    <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{u.rawName}</p>
                       <p className="text-xs text-fg-muted">
-                        {u.valueText} {u.unit} {u.refText && `· ${u.refText}`}
+                        {u.valueText} {u.unit} {u.refText ? `· ${u.refText}` : '· raporda aralık yok'}
                       </p>
                     </div>
+                    <StatusPill status={u.status} />
                     <button type="button" className="icon-btn h-8 w-8" onClick={() => onHighlight({ key: `u-${idx}`, box: u.source })} aria-label="Belgede göster">
                       <EyeIcon size={16} />
                     </button>
@@ -610,8 +629,8 @@ function ReviewPanel({ fileId, initial, sex, onSexChange, highlight, onHighlight
               Vazgeç
             </button>
           )}
-          <button type="button" className="btn-primary flex-1" disabled={!included.length || invalid.length > 0 || saving} onClick={save}>
-            {saving ? <SpinnerIcon size={16} /> : <CheckIcon size={16} />} Onayla ve kaydet ({included.length})
+          <button type="button" className="btn-primary flex-1" disabled={(!included.length && !others.length) || invalid.length > 0 || saving} onClick={save}>
+            {saving ? <SpinnerIcon size={16} /> : <CheckIcon size={16} />} Onayla ve kaydet ({included.length + others.length})
           </button>
         </div>
       </div>
@@ -766,7 +785,8 @@ function SavedResults({
   onReanalyze: () => void;
   onEdit: () => void;
 }) {
-  const abnormal = report.results.filter((r) => r.status === 'high' || r.status === 'low').length;
+  const others = report.others ?? [];
+  const abnormal = [...report.results, ...others].filter((r) => r.status === 'high' || r.status === 'low').length;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="space-y-1 border-b border-ink-700 p-4">
@@ -775,7 +795,7 @@ function SavedResults({
           <span className="text-xs text-fg-muted">{report.reportDate ? formatDate(report.reportDate) : 'tarih yok'}</span>
         </div>
         <p className="text-sm text-fg-muted">
-          {report.results.length} sonuç{abnormal ? ` · ${abnormal} tanesi aralık dışı` : ' · hepsi aralık içinde'}
+          {report.results.length + others.length} sonuç{abnormal ? ` · ${abnormal} tanesi aralık dışı` : ' · hepsi aralık içinde'}
           {report.labName ? ` · ${report.labName}` : ''}
         </p>
       </div>
@@ -800,6 +820,26 @@ function SavedResults({
               <button type="button" className="icon-btn h-8 w-8" onClick={() => go({ name: 'result', key: r.testKey })} aria-label="Ayrıntı ve açıklama">
                 <ChevronRightIcon size={16} />
               </button>
+            </li>
+          );
+        })}
+        {others.map((o, i) => {
+          const key = `other-${i}`;
+          return (
+            <li key={key} className={`flex items-center gap-2 px-4 py-2.5 ${highlight?.key === key ? 'bg-accent/5' : ''}`}>
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left"
+                onClick={() => (o.source && o.source.w > 0 ? onHighlight({ key, box: o.source }) : undefined)}
+                aria-label={`${o.rawName}: kaynağı göster`}
+              >
+                <span className="block truncate text-sm font-medium">{o.rawName}</span>
+                <span className="block text-xs tabular-nums text-fg-muted">
+                  {formatNumber(o.value, 4)} {o.unit} {o.refText && <span className="text-fg-faint">· {o.refText}</span>}
+                  <span className="text-fg-faint"> · katalogda yok</span>
+                </span>
+              </button>
+              <StatusPill status={o.status} />
             </li>
           );
         })}

@@ -2,7 +2,7 @@ import { DataTabs } from '../components/DataTabs';
 import { useMemo, useState, type ReactNode } from 'react';
 import { CONTENT, GROUP_LABEL, MEDICAL_DISCLAIMER, PROCESSES, type ResultStatus, structureById, systemById, formatNumber, testByKey } from '@kh/catalog';
 import { go } from '../state/router';
-import { type TestSeries, buildSeries, useReports } from '../lib/useReports';
+import { type OtherPoint, type TestSeries, buildOthers, buildSeries, useReports } from '../lib/useReports';
 import { formatDate } from '../lib/format';
 import { labStyle } from '../lib/tone';
 import { Banner } from '../components/ui';
@@ -37,6 +37,7 @@ export function ResultsPage() {
   const { reports, error } = useReports();
   const [filter, setFilter] = useState<'all' | 'abnormal' | 'borderline'>('all');
   const series = useMemo(() => (reports ? buildSeries(reports) : []), [reports]);
+  const others = useMemo(() => (reports ? buildOthers(reports) : []), [reports]);
   const sex = useSex();
   const interp = useInterpretation(series, sex);
   const findings = useMemo(() => findingMap(interp), [interp]);
@@ -52,6 +53,8 @@ export function ResultsPage() {
   }
 
   const abnormal = series.filter((s) => s.latest.result.status === 'high' || s.latest.result.status === 'low');
+  const othersAbnormal = others.filter((o) => o.result.status === 'high' || o.result.status === 'low');
+  const othersShown = filter === 'abnormal' ? othersAbnormal : filter === 'borderline' ? [] : others;
   const toVerify = series.filter((s) => needsVerification(s.latest.result));
   const involved = interp.systems.filter((x) => x.status !== 'ok');
   const borderline = series.filter((s) => findings.get(s.test.key)?.severity === 'borderline');
@@ -72,13 +75,19 @@ export function ResultsPage() {
         <p className="label-caps mb-1.5">Sonuçlarım</p>
         <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">{studies?.length ? 'Tahlil ve görüntüleme sonuçların' : 'Tahlil sonuçların'}</h1>
         <p className="mt-1.5 text-sm text-fg-muted">
-          {series.length ? `${series.length} test · ${reports.length} rapor${lastDate ? ` · son rapor ${formatDate(lastDate)}` : ''}` : 'Henüz onaylanmış tahlil sonucu yok.'}
+          {series.length + others.length
+            ? `${series.length + others.length} test · ${reports.length} rapor${lastDate ? ` · son rapor ${formatDate(lastDate)}` : ''}`
+            : 'Henüz onaylanmış tahlil sonucu yok.'}
           {studies?.length ? ` · ${studies.length} görüntüleme` : ''}
         </p>
-        {series.length > 0 && (
+        {series.length + others.length > 0 && (
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <SummaryTile label="Aralık dışı" value={abnormal.length} tone="text-high" />
-            <SummaryTile label="Aralıkta" value={series.filter((s) => s.latest.result.status === 'normal').length} tone="text-accent" />
+            <SummaryTile label="Aralık dışı" value={abnormal.length + othersAbnormal.length} tone="text-high" />
+            <SummaryTile
+              label="Aralıkta"
+              value={series.filter((s) => s.latest.result.status === 'normal').length + others.filter((o) => o.result.status === 'normal').length}
+              tone="text-accent"
+            />
             <SummaryTile label="Doğrulaman gereken" value={toVerify.length} tone={toVerify.length ? 'text-[#f5b14c]' : 'text-fg-faint'} />
             <SummaryTile label="İlgili sistem" value={involved.length} tone="text-fg" />
           </div>
@@ -121,7 +130,7 @@ export function ResultsPage() {
         </section>
       )}
 
-      {series.length === 0 ? (
+      {series.length === 0 && others.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
           <p className="font-medium">{studies?.length ? 'Tahlil sonucu yok' : 'Sonuç yok'}</p>
           <p className="mt-1 text-sm text-fg-muted">Bir tahlil raporu ekle; okunan değerleri onayladığında burada görünür.</p>
@@ -171,7 +180,7 @@ export function ResultsPage() {
             {(
               [
                 ['all', 'Tümü'],
-                ['abnormal', `Aralık dışı (${abnormal.length})`],
+                ['abnormal', `Aralık dışı (${abnormal.length + othersAbnormal.length})`],
                 ['borderline', `Sınırda (${borderline.length})`],
               ] as const
             ).map(([k, label]) => (
@@ -242,11 +251,52 @@ export function ResultsPage() {
                 </ul>
               </section>
             ))}
+            {othersShown.length > 0 && <OtherList points={othersShown} />}
           </div>
           <p className="mt-8 text-xs leading-relaxed text-fg-faint">{MEDICAL_DISCLAIMER}</p>
         </>
       )}
     </div>
+  );
+}
+
+/** Katalogda olmayan testler: raporun kendi aralığıyla değerlendirilir, organa bağlanamaz. */
+function OtherList({ points }: { points: OtherPoint[] }) {
+  const sorted = [...points].sort((a, b) => ORDER[a.result.status] - ORDER[b.result.status] || a.result.rawName.localeCompare(b.result.rawName, 'tr'));
+  return (
+    <section aria-labelledby="diger-testler">
+      <h2 id="diger-testler" className="label-caps mb-1">
+        Katalogda olmayan testler ({points.length})
+      </h2>
+      <p className="mb-2 text-[11px] leading-relaxed text-fg-faint">
+        Raporun kendi referans aralığına (ve varsa rapordaki işarete) göre değerlendirildi. Açıklaması ve vücut haritasında yeri yok.
+      </p>
+      <ul className="divide-y divide-ink-700 overflow-hidden card">
+        {sorted.map((o) => {
+          const r = o.result;
+          return (
+            <li key={`${o.report.id}-${r.rawName}`}>
+              <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-ink-800/60" onClick={() => go({ name: 'document', id: o.report.fileId })}>
+                <span className="min-w-0 flex-1">
+                  <span className={`block truncate text-[15px] font-medium ${r.status === 'high' || r.status === 'low' ? STATUS_TEXT[r.status] : ''}`}>{r.rawName}</span>
+                  <span className="block text-xs text-fg-muted">
+                    {formatDate(o.date)}
+                    {r.refText ? ` · aralık ${r.refText}` : ' · raporda aralık yok'}
+                  </span>
+                </span>
+                <span className="flex flex-col items-end gap-1">
+                  <span className={`text-right text-sm font-semibold tabular-nums ${STATUS_TEXT[r.status]}`}>
+                    {r.qualifier ?? ''}
+                    {formatNumber(r.value, 4)} {r.unit}
+                  </span>
+                  <StatusPill status={r.status} />
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

@@ -1,8 +1,9 @@
 import type { FileInfo } from '@kh/vault';
 import type { Sex } from '@kh/catalog';
-import { type ReportDraft, type TextItem, buildLines, draftScore, extractReportDate, mergeOcrDrafts, parseReport, pdfTextToItems } from '@kh/parser';
+import { type ReportDraft, type TextItem, applyReportMarks, buildLines, draftScore, extractReportDate, mergeOcrDrafts, parseReport, pdfTextToItems } from '@kh/parser';
 import { openPdf } from './pdf';
 import { type OcrStage, looksLikeScreenshot, prepareImage, recognizeCanvas } from './ocr';
+import { imageMarks, pdfMarks } from './rowMarks';
 
 export interface ExtractProgress {
   phase: 'text' | 'ocr' | 'parse';
@@ -79,6 +80,19 @@ export async function extractDraft(
         canvas.width = 0;
         canvas.height = 0;
       }
+      options.onProgress?.({ phase: 'parse', page: pageCount, pages: pageCount });
+      const opts = {
+        sex: options.sex,
+        method: (usedOcr && usedText ? 'mixed' : usedOcr ? 'ocr' : 'text') as ReportDraft['method'],
+        pageSizes,
+        pageCount,
+        userAliases: options.userAliases,
+      };
+      const parsed = parseReport(items, opts);
+      const draft = usedOcr ? mergeOcrDrafts(parsed, parseReport(altItems, opts)) : parsed;
+      // Satırların renkli işaretleri (aralık dışı/içi) okunan değerleri teyit eder.
+      const marks = await pdfMarks((n) => doc.getPage(n), draft);
+      return { ...applyReportMarks(draft, (box) => marks.get(box)), plainText: plainTextOf(items, pageSizes) };
     } finally {
       void task.destroy();
     }
@@ -114,19 +128,9 @@ export async function extractDraft(
       if (draftScore(alt) > draftScore(best)) best = alt;
     }
     options.onProgress?.({ phase: 'parse', page: 1, pages: 1 });
-    return { ...best, plainText };
+    const marks = await imageMarks(bytes, info.mimeType, best);
+    return { ...applyReportMarks(best, (box) => marks.get(box)), plainText };
   }
-
-  options.onProgress?.({ phase: 'parse', page: pageCount, pages: pageCount });
-  const opts = {
-    sex: options.sex,
-    method: (usedOcr && usedText ? 'mixed' : usedOcr ? 'ocr' : 'text') as ReportDraft['method'],
-    pageSizes,
-    pageCount,
-    userAliases: options.userAliases,
-  };
-  const draft = parseReport(items, opts);
-  return { ...(usedOcr ? mergeOcrDrafts(draft, parseReport(altItems, opts)) : draft), plainText: plainTextOf(items, pageSizes) };
 }
 
 /**

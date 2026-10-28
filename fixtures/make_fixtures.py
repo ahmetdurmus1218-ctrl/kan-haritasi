@@ -476,7 +476,7 @@ def make_enabiz_png(path: Path) -> None:
 
 # e-Nabız "Tahlillerim" tablosunun telefondan alınmış dört ekran görüntüsünün 2×2 birleştirilmiş hâli (resmi
 # arayüz değildir; yalnızca düzeni taklit eder). Zorluklar: yan yana iki tablo, ~13 px yazı, satır başında
-# onay/ünlem simgeleri, referans dışı satırların pembe zemini, kan gazı gibi katalogda olmayan testler,
+# onay/ünlem simgeleri, referans dışı satırların pembe zemini, kan gazı ve spot idrar testleri,
 # "Ca++" (iyonize kalsiyum), "Spot Kreatinin (İdrar)" (serum kreatinini değildir).
 # Satır: (ad, değer, birim, referans, test anahtarı ya da None, beklenen durum) · bölüm: ("#", tarih, saat, başlık)
 KOLAJ = [
@@ -493,23 +493,24 @@ KOLAJ = [
         ("Lipemi", "14", "", "0 - 400", None, None),
         ("t GFH (CKD-EPİ formülü ile)", "104", "ml/dk/1.73m²", ">60", "egfr", "normal"),
         ("#", "14.04.2026", "10:05", ""),
-        ("Spot Kreatinin (İdrar)", "132.6", "mg/dL", "39 - 259", None, None),
-        ("Spot Mikroalbumin (İdrar)", "0.41", "mg/dL", "0 - 2", None, None),
-        ("Spot Protein (İdrar)", "9.7", "mg/dL", "0 - 15", None, None),
+        ("Spot Kreatinin (İdrar)", "132.6", "mg/dL", "39 - 259", "urine-creatinine", "normal"),
+        ("Spot Mikroalbumin (İdrar)", "0.41", "mg/dL", "0 - 2", "urine-microalbumin", "normal"),
+        ("Spot Protein (İdrar)", "9.7", "mg/dL", "0 - 15", "urine-protein", "normal"),
         ("#", "14.04.2026", "14:40", "Kan Gazi Ve Kooksimetre"),
-        ("Base(Ecf)", "2.6", "mmol/L", "", None, None),
+        # Raporda aralık yok; genel aralığın (−2…3) dışında ama satırda yeşil onay var → "normal".
+        ("Base(Ecf)", "4.1", "mmol/L", "", "base-excess", "normal"),
         ("Ca++", "1.09", "mmol/L", "1.15 - 1.29", "calcium-ionized", "low"),
-        ("COHb", "1.1", "%", "0 - 1.5", None, None),
+        ("COHb", "1.1", "%", "0 - 1.5", "cohb", "normal"),
     ],
     [
-        ("HCO3-(p,st)", "27.4", "mmol/L", "21.8 - 26.9", None, None),
-        ("Lac", "1.2", "mmol/L", "0.5 - 1.6", None, None),
-        ("MetHb", "0.6", "%", "", None, None),
-        ("O2Hb", "81.2", "%", "94 - 98", None, None),
-        ("pCO2", "47.9", "mmHg", "32 - 48", None, None),
-        ("pH", "7.380", "", "7.32 - 7.42", None, None),
-        ("pO2", "52.1", "mmHg", "80 - 108", None, None),
-        ("sO2", "83.5", "%", "95 - 99", None, None),
+        ("HCO3-(p,st)", "27.4", "mmol/L", "21.8 - 26.9", "hco3", "high"),
+        ("Lac", "1.2", "mmol/L", "0.5 - 1.6", "lactate", "normal"),
+        ("MetHb", "0.6", "%", "", "methb", "normal"),
+        ("O2Hb", "81.2", "%", "94 - 98", "o2hb", "low"),
+        ("pCO2", "47.9", "mmHg", "32 - 48", "pco2", "normal"),
+        ("pH", "7.380", "", "7.32 - 7.42", "ph", "normal"),
+        ("pO2", "52.1", "mmHg", "80 - 108", "po2", "low"),
+        ("sO2", "83.5", "%", "95 - 99", "so2", "low"),
         ("tHb", "15.8", "g/dL", "11.5 - 17.4", None, None),
         ("#", "14.04.2026", "14:40", "Tam Kan (Hemogram)"),
         ("BASO#", "0.04", "10^3/µL", "0.01 - 0.07", "basophil-abs", "normal"),
@@ -520,7 +521,7 @@ KOLAJ = [
         ("HGB", "14.7", "g/dL", "11.7 - 18", "hemoglobin", "normal"),
     ],
     [
-        ("IG#", "0.03", "", "", None, None),
+        ("IG#", "0.03", "", "", "ig-abs", "normal"),
         ("LYMPH#", "2.21", "10^3/µL", "1 - 4.5", "lymphocyte-abs", "normal"),
         ("LYMPH%", "27.9", "%", "10 - 47.4", "lymphocyte-pct", "normal"),
         ("MCH", "30.2", "pg", "24.5 - 34", "mch", "normal"),
@@ -531,10 +532,10 @@ KOLAJ = [
         ("MPV", "9.8", "fL", "8.1 - 13.1", "mpv", "normal"),
         ("NEU#", "4.87", "10^3/µL", "2.0 - 7.7", "neutrophil-abs", "normal"),
         ("NEU%", "61.3", "%", "14 - 54.6", "neutrophil-pct", "high"),
-        ("PDW", "11.6", "", "", None, None),
+        ("PDW", "11.6", "", "", "pdw", "normal"),
         ("PLT", "233", "10^3/µL", "150 - 450", "platelet", "normal"),
         ("RBC", "4.97", "10^6/µL", "4.0 - 6.2", "rbc", "normal"),
-        ("RDW-SD", "39.4", "fL", "35 - 50", None, None),
+        ("RDW-SD", "39.4", "fL", "35 - 50", "rdw-sd", "normal"),
         ("WBC", "7.96", "10^3/µL", "4.0 - 11", "wbc", "normal"),
         ("#", "14.04.2026", "16:22", ""),
         ("Alkalen Fosfataz", "104", "U/L", "40 - 129", "alp", "normal"),
