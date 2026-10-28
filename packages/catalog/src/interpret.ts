@@ -294,6 +294,44 @@ const GRADERS: Record<string, Grader> = {
     return null;
   },
   bilirubin: () => null,
+  ph: (v) => {
+    if (v < 7.2) return { severity: 'marked', category: 'Belirgin asidik (<7,20)', critical: true };
+    if (v < 7.3) return { severity: 'moderate', category: 'Asidik (7,20–7,29)' };
+    if (v > 7.6) return { severity: 'marked', category: 'Belirgin bazik (>7,60)', critical: true };
+    if (v > 7.5) return { severity: 'moderate', category: 'Bazik (7,51–7,60)' };
+    return null;
+  },
+  hco3: (v) => {
+    if (v < 12) return { severity: 'marked', category: 'Çok düşük (<12)', critical: true };
+    if (v > 40) return { severity: 'marked', category: 'Çok yüksek (>40)' };
+    return null;
+  },
+  lactate: (v) => {
+    if (v >= 4) return { severity: 'marked', category: 'Belirgin yüksek (≥4)', critical: true };
+    if (v > 2) return { severity: 'moderate', category: 'Yüksek (2–4)' };
+    return null;
+  },
+  cohb: (v) => {
+    if (v >= 20) return { severity: 'marked', category: 'Zehirlenme düzeyi olabilir (≥20)', critical: true };
+    if (v >= 10) return { severity: 'marked', category: 'Belirgin yüksek (≥10)' };
+    if (v > 3) return { severity: 'mild', category: 'Hafif yüksek (3–10)', note: 'Sigara içenlerde %3–10 görülebilir.' };
+    return null;
+  },
+  methb: (v) => {
+    if (v >= 20) return { severity: 'marked', category: 'Belirgin yüksek (≥20)', critical: true };
+    if (v >= 10) return { severity: 'moderate', category: 'Yüksek (10–19)' };
+    return null;
+  },
+  'calcium-ionized': (v) => {
+    if (v < 0.8) return { severity: 'marked', category: 'Çok düşük (<0,80)', critical: true };
+    if (v > 1.6) return { severity: 'marked', category: 'Çok yüksek (>1,60)', critical: true };
+    return null;
+  },
+  'urine-microalbumin': (v) => {
+    if (v >= 300) return { severity: 'marked', category: 'Belirgin artmış (≥300 mg/L)' };
+    if (v >= 30) return { severity: 'moderate', category: 'Artmış (30–299 mg/L)' };
+    return null;
+  },
 };
 
 function defaultGrade(test: LabTestDef | undefined, input: LabInput): { severity: Severity; deviation: number | null; uln: number | null } {
@@ -570,6 +608,113 @@ function patterns(m: FMap, sex: Sex): Pattern[] {
       systems: ['urinary'],
       structures: ['kidneys'],
       scene: 'nefron',
+    });
+  }
+
+  // --- Kan gazı: asit-baz dengesi ve oksijenlenme
+  const ph = val(m, 'ph');
+  const pco2 = val(m, 'pco2');
+  const hco3 = val(m, 'hco3');
+  const po2 = val(m, 'po2');
+  const so2 = val(m, 'so2') ?? val(m, 'o2hb');
+  // Toplardamar (venöz) örneğinde pO₂ ~30–50 mmHg, satürasyon %60–85'tir; pCO₂ ve bikarbonat biraz yüksektir.
+  const venous = po2 !== undefined && po2 < 60 && (so2 === undefined || (so2 >= 55 && so2 <= 90));
+  const venousNote = venous ? ' pO₂ ve satürasyon toplardamar (venöz) örneğine uyuyor; bu örnekte pCO₂ ve bikarbonat doğal olarak biraz daha yüksek, oksijen değerleri ise çok daha düşüktür. Atardamar aralıklarıyla karşılaştırmak yanıltıcı olabilir.' : '';
+  if (ph !== undefined && (ph < 7.35 || ph > 7.45)) {
+    const acid = ph < 7.4;
+    const resp = pco2 !== undefined && (acid ? pco2 > 45 : pco2 < 35);
+    const metab = hco3 !== undefined && (acid ? hco3 < 22 : hco3 > 26);
+    const source = resp && metab ? 'hem solunum (pCO₂) hem metabolik (bikarbonat) bileşen birlikte' : resp ? 'solunum kaynaklı görünüyor (pCO₂ ile uyumlu)' : metab ? 'metabolik görünüyor (bikarbonat ile uyumlu)' : 'kaynağı bu değerlerden ayırt edilemiyor';
+    push({
+      id: 'acid-base',
+      title: acid ? 'Kan asidik tarafa kaymış (asit-baz dengesi)' : 'Kan bazik tarafa kaymış (asit-baz dengesi)',
+      level: ph < 7.2 || ph > 7.6 ? 'urgent' : 'attention',
+      text: `pH ${f(ph, 2)}: ${acid ? 'asidoz' : 'alkaloz'} yönünde; ${source}. Akciğerler karbondioksiti atarak, böbrekler bikarbonatı ayarlayarak pH'ı dar bir aralıkta tutar; birinin değişikliğini diğeri dengelemeye çalışır.${venousNote}`,
+      tests: ['ph', 'pco2', 'hco3', 'base-excess', 'lactate'].filter((k) => has(m, k)),
+      systems: ['respiratory', 'urinary'],
+      structures: ['lungs', 'kidneys'],
+      scene: 'alveol',
+      ask: ['Örnek atardamardan mı toplardamardan mı alındı?', 'Asit-baz değişikliğinin nedeni (solunum, böbrek, metabolik) nedir?'],
+    });
+  } else if (ph !== undefined && pco2 !== undefined && hco3 !== undefined && ((pco2 > 45 && hco3 > 26) || (pco2 < 35 && hco3 < 22))) {
+    push({
+      id: 'acid-base-compensated',
+      title: 'pH normal; pCO₂ ve bikarbonat birlikte değişmiş',
+      level: 'info',
+      text: `pH ${f(ph, 2)} aralıkta, ama pCO₂ ${f(pco2, 1)} ve bikarbonat ${f(hco3, 1)} aynı yönde ${pco2 > 45 ? 'yüksek' : 'düşük'}: akciğer ve böbrek birbirini dengeliyor olabilir (telafi edilmiş değişiklik).${venousNote}`,
+      tests: ['ph', 'pco2', 'hco3', 'base-excess'].filter((k) => has(m, k)),
+      systems: ['respiratory', 'urinary'],
+      structures: ['lungs', 'kidneys'],
+      scene: 'alveol',
+      ask: ['Örnek atardamardan mı toplardamardan mı alındı?'],
+    });
+  }
+  if (is(m, 'po2', 'low') || is(m, 'so2', 'low') || is(m, 'o2hb', 'low')) {
+    push({
+      id: 'oxygenation',
+      title: venous ? 'Kan oksijen değerleri düşük (toplardamar örneğine uyuyor)' : 'Kan oksijen değerleri düşük',
+      level: venous ? 'info' : 'attention',
+      text: venous
+        ? 'pO₂ ve oksijen satürasyonu atardamar aralığının altında; ancak değerler toplardamar (venöz) örneğine uyuyor. Venöz kanda oksijen dokulara verildiği için düşüktür ve bu beklenen bir durumdur. Örneğin türünü hekiminden öğren.'
+        : 'Akciğerden kana oksijen geçişi azalmış olabilir. Nefes darlığı, morarma veya göğüs ağrısı varsa hemen başvur.',
+      tests: ['po2', 'so2', 'o2hb', 'pco2', 'hemoglobin'].filter((k) => has(m, k)),
+      systems: ['respiratory'],
+      structures: ['lungs', 'pulmonary-vessels'],
+      scene: 'alveol',
+      ask: ['Örnek atardamardan mı toplardamardan mı alındı?', 'Oksijen değerlerim için ek değerlendirme gerekir mi?'],
+    });
+  }
+  const cohb = val(m, 'cohb');
+  if (cohb !== undefined && (cohb > 3 || is(m, 'cohb', 'high'))) {
+    push({
+      id: 'carbon-monoxide',
+      title: 'Karboksihemoglobin yüksek (karbonmonoksit)',
+      level: cohb >= 20 ? 'urgent' : cohb >= 10 ? 'attention' : 'info',
+      text: `COHb %${f(cohb, 1)}: hemoglobinin bu kısmı karbonmonoksit bağladığı için oksijen taşıyamaz. Sigara içenlerde %3–10 görülebilir; daha yükseği soba, şofben, mangal veya egzoz dumanı gibi karbonmonoksit kaynaklarını düşündürür.${cohb >= 10 ? ' Baş ağrısı, baş dönmesi veya bulantı varsa ortamdan uzaklaş ve hemen başvur.' : ''}`,
+      tests: ['cohb', 'o2hb', 'so2'].filter((k) => has(m, k)),
+      systems: ['respiratory', 'hematologic'],
+      structures: ['lungs', 'heart'],
+      scene: 'alveol',
+      ask: ['Karbonmonoksit maruziyeti açısından değerlendirme gerekir mi?'],
+    });
+  }
+  if (is(m, 'methb', 'high')) {
+    push({
+      id: 'methemoglobin',
+      title: 'Methemoglobin yüksek',
+      level: (val(m, 'methb') ?? 0) >= 20 ? 'urgent' : 'info',
+      text: 'Methemoglobin oksijen taşıyamaz. Bazı ilaçlar (ör. lokal uyuşturucular, bazı antibiyotikler), nitrit/nitrat içeren maddeler veya kalıtsal nedenlerle artabilir.',
+      tests: ['methb', 'so2', 'o2hb'].filter((k) => has(m, k)),
+      systems: ['hematologic'],
+      structures: ['bones', 'spleen'],
+      scene: 'kan',
+    });
+  }
+  if (is(m, 'lactate', 'high')) {
+    push({
+      id: 'lactate',
+      title: 'Laktat yüksek',
+      level: (val(m, 'lactate') ?? 0) >= 4 ? 'urgent' : 'attention',
+      text: 'Laktat, hücreler yeterli oksijen alamadığında ya da çok yoğun çalıştığında artar. Yoğun egzersiz, örnek alınırken turnikenin uzun kalması, enfeksiyon, dokulara yetersiz kan akımı ve bazı ilaçlar (ör. metformin) etkiler.',
+      tests: ['lactate', 'ph', 'hco3', 'base-excess'].filter((k) => has(m, k)),
+      systems: ['musculoskeletal', 'cardiovascular'],
+      structures: ['skeletal-muscle', 'liver'],
+      scene: 'damar',
+    });
+  }
+
+  // --- İdrar: protein / albümin kaçağı
+  if (is(m, 'urine-microalbumin', 'high') || is(m, 'urine-protein', 'high')) {
+    push({
+      id: 'urine-protein',
+      title: 'İdrarda protein/albümin kaçağı',
+      level: 'attention',
+      text: 'Böbrek süzgeci normalde proteinleri kanda tutar. İdrarda albümin ya da protein artışı süzgecin etkilendiğini gösterebilir; yoğun egzersiz, ateş ve idrar yolu enfeksiyonu da geçici olarak artırır. Tanı için genellikle tekrar ölçüm ve idrar kreatinini ile oranlama (albümin/kreatinin oranı) yapılır.',
+      tests: ['urine-microalbumin', 'urine-protein', 'urine-creatinine', 'creatinine', 'egfr'].filter((k) => has(m, k)),
+      systems: ['urinary'],
+      structures: ['kidneys', 'renal-vessels'],
+      scene: 'nefron',
+      ask: ['Albümin/kreatinin oranım nedir, tekrar ölçüm gerekir mi?', 'Kan şekeri ve tansiyon açısından değerlendirme gerekir mi?'],
     });
   }
 

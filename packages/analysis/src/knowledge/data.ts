@@ -364,5 +364,83 @@ edge(thyroidAxis, 'measured_by', lab('ft4', 'Serbest T4', 'Kandaki serbest tiroi
 /* ---------------------------------------------------------------- Derin anatomi, bölgeler, komşuluk (deep.ts) */
 addDeepAnatomy({ N, E });
 
+/* ---------------------------------------------------------------- Tüm katalog testleri grafikte */
+// Her laboratuvar testi ölçtüğü sürece, süreç de onu yapan organa bağlanır: "bu değer hangi organın hangi
+// işini gösteriyor?" sorusu her test için yanıtlanır (bkz. __tests__/coverage.test.ts).
+{
+  const has = (id: string) => N.some((n) => n.id === id);
+  const link = (from: string, rel: Relation, to: string) => {
+    if (!E.some((e) => e.from === from && e.to === to && e.rel === rel)) edge(from, rel, to);
+  };
+  const proc = (id: string, nameTr: string, summary: string, performers: string[], leadsTo: string[] = []) => {
+    if (!has(id)) node({ id, kind: 'process', nameTr, summary });
+    for (const o of performers) link(o, 'performs', id);
+    for (const l of leadsTo) link(id, 'leads_to', l);
+    return id;
+  };
+  const measure = (procs: string[], testKey: string, nameTr: string, summary: string) => {
+    const id = `lab:${testKey}`;
+    if (!has(id)) node({ id, kind: 'biomarker', nameTr, summary, testKey });
+    for (const p of procs) link(p, 'measured_by', id);
+  };
+
+  const leuko = proc('proc.leukopoiesis', 'Akyuvar yapımı', 'Kemik iliği her gün milyarlarca akyuvar üretir; enfeksiyonda üretim hızlanır.', ['bones'], ['proc.inflammation']);
+  const thrombo = proc('proc.thrombopoiesis', 'Trombosit yapımı', 'Kemik iliğindeki megakaryositler parçalanarak trombositleri oluşturur; trombositler 7–10 gün yaşar.', ['bones'], ['proc.coagulation']);
+  link('liver', 'performs', 'proc.coagulation');
+  link('liver', 'performs', 'proc.iron-metabolism');
+  const vitD = proc('proc.vitamin-d-activation', 'D vitamininin etkinleşmesi', 'Deride yapılan ya da besinle alınan D vitamini önce karaciğerde, sonra böbrekte etkin hormona dönüşür.', ['liver', 'kidneys'], ['proc.tubular-reabsorption']);
+  const methyl = proc('proc.methylation', 'Metil döngüsü (B12–folat)', 'Homosistein, B12 ve folat yardımıyla metiyonine geri dönüştürülür; döngü aksarsa homosistein birikir.', ['liver'], ['proc.circulation']);
+
+  const erythro = 'proc.erythropoiesis';
+  measure([erythro], 'hematocrit', 'Hematokrit', 'Kan hacminin alyuvarlardan oluşan yüzdesi.');
+  measure([erythro], 'rbc', 'Alyuvar sayısı', 'Kandaki alyuvar sayısı.');
+  measure([erythro], 'mch', 'MCH', 'Alyuvar başına ortalama hemoglobin.');
+  measure([erythro], 'mchc', 'MCHC', 'Alyuvar hacmine göre hemoglobin yoğunluğu.');
+  measure([erythro], 'rdw', 'RDW', 'Alyuvar boyut farklılığı (%).');
+  measure([erythro], 'rdw-sd', 'RDW-SD', 'Alyuvar boyut farklılığı (fL).');
+  measure([leuko], 'wbc', 'Lökosit (WBC)', 'Kandaki toplam beyaz küre sayısı.');
+  for (const [k, nameTr] of [['neutrophil', 'Nötrofil'], ['lymphocyte', 'Lenfosit'], ['monocyte', 'Monosit'], ['eosinophil', 'Eozinofil'], ['basophil', 'Bazofil'], ['ig', 'İmmatür granülosit']] as const) {
+    measure([leuko], `${k}-abs`, `${nameTr} (sayı)`, `Kandaki ${nameTr.toLocaleLowerCase('tr')} sayısı.`);
+    measure([leuko], `${k}-pct`, `${nameTr} (%)`, `${nameTr} hücrelerinin akyuvarlar içindeki oranı.`);
+  }
+  for (const [k, nameTr, summary] of [
+    ['platelet', 'Trombosit', 'Pıhtılaşmanın ilk adımını yapan kan pulcukları.'],
+    ['mpv', 'MPV', 'Trombositlerin ortalama hacmi.'],
+    ['pdw', 'PDW', 'Trombosit boyut farklılığı.'],
+    ['plateletcrit', 'Plateletkrit', 'Trombositlerin kan hacmindeki payı.'],
+  ] as const)
+    measure([thrombo], k, nameTr, summary);
+  measure(['proc.bile-metabolism'], 'bilirubin-direct', 'Direkt bilirubin', 'Karaciğerde bağlanmış, safrayla atılan bilirubin.');
+  measure(['proc.bile-metabolism', 'proc.rbc-clearance'], 'bilirubin-indirect', 'İndirekt bilirubin', 'Alyuvar yıkımından gelen, karaciğerde henüz işlenmemiş bilirubin.');
+  measure(['proc.hepatocyte-injury', 'proc.rbc-clearance', 'proc.excitation-contraction'], 'ldh', 'LDH', 'Neredeyse tüm hücrelerde bulunan enzim; hücre hasarında kana geçer.');
+  for (const [k, nameTr] of [['cholesterol-total', 'Total kolesterol'], ['non-hdl', 'HDL dışı kolesterol'], ['vldl', 'VLDL kolesterol']] as const)
+    measure(['proc.lipid-transport'], k, nameTr, 'Kanda lipoproteinlerle taşınan kolesterol.');
+  measure(['proc.tubular-reabsorption'], 'calcium-ionized', 'İyonize kalsiyum', 'Kanda serbest, etkin kalsiyum.');
+  measure(['proc.glomerular-filtration'], 'bun', 'BUN', 'Üre azotu; böbrekle atılır.');
+  measure(['proc.glomerular-filtration'], 'urine-creatinine', 'İdrar kreatinini', 'İdrara geçen kreatinin; idrar yoğunluğunu gösterir.');
+  measure(['proc.glomerular-filtration'], 'urine-microalbumin', 'İdrarda mikroalbümin', 'Böbrek süzgecinden kaçan az miktardaki albümin.');
+  measure(['proc.glomerular-filtration'], 'urine-protein', 'İdrarda protein', 'İdrara geçen toplam protein.');
+  measure(['proc.acid-base', 'proc.gas-exchange'], 'ph', 'Kan pH', 'Kanın asitlik derecesi.');
+  measure(['proc.gas-exchange', 'proc.ventilation', 'proc.acid-base'], 'pco2', 'pCO₂', 'Kandaki karbondioksit basıncı.');
+  measure(['proc.gas-exchange'], 'po2', 'pO₂', 'Kandaki oksijen basıncı.');
+  measure(['proc.gas-exchange'], 'so2', 'sO₂', 'Hemoglobinin oksijenle dolu olma yüzdesi.');
+  measure(['proc.gas-exchange'], 'o2hb', 'O₂Hb', 'Oksijen bağlamış hemoglobin oranı.');
+  measure(['proc.acid-base'], 'hco3', 'Bikarbonat', 'Kanın ana tamponu; böbrek ayarlar.');
+  measure(['proc.acid-base'], 'base-excess', 'Baz fazlası', 'Asit-baz dengesinin metabolik bileşeni.');
+  measure(['proc.gas-exchange', 'proc.oxygen-transport'], 'cohb', 'COHb', 'Karbonmonoksit bağlamış hemoglobin.');
+  measure([erythro, 'proc.oxygen-transport'], 'methb', 'MetHb', 'Oksijen taşıyamayan hemoglobin biçimi.');
+  measure(['proc.energy-metabolism', 'proc.hepatic-glucose', 'proc.excitation-contraction'], 'lactate', 'Laktat', 'Oksijensiz enerji üretiminin ürünü; karaciğer temizler.');
+  for (const [k, nameTr] of [['tibc', 'TDBK'], ['uibc', 'SDBK'], ['transferrin-saturation', 'Transferrin satürasyonu']] as const)
+    measure(['proc.iron-metabolism'], k, nameTr, 'Transferrinin demir taşıma durumu.');
+  measure(['proc.thyroid-axis'], 'ft3', 'Serbest T3', 'Tiroid hormonunun en etkin biçimi.');
+  measure(['proc.thyroid-axis', 'proc.inflammation'], 'anti-tpo', 'Anti-TPO', 'Tiroide yönelen antikor.');
+  measure([vitD], 'vitamin-d', '25-OH D vitamini', 'D vitamini depo biçimi.');
+  measure(['proc.inflammation'], 'hs-crp', 'hs-CRP', 'Duyarlı CRP ölçümü.');
+  measure(['proc.hpa-axis'], 'dhea-s', 'DHEA-S', 'Böbreküstü bezi androjeni.');
+  measure([methyl], 'homocysteine', 'Homosistein', 'Metil döngüsünün ara ürünü.');
+  measure([methyl], 'b12', 'B12 vitamini', 'Alyuvar yapımı ve sinir sistemi için gerekli vitamin.');
+  measure([methyl], 'folate', 'Folat', 'Hücre bölünmesi ve alyuvar yapımı için gerekli vitamin (B9).');
+}
+
 export const NODES: readonly KNode[] = N;
 export const EDGES: readonly KEdge[] = E;
