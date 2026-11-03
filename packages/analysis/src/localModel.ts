@@ -17,10 +17,11 @@ import { type ModelFinding, type MedicalImageAIProvider, type ProviderOutput, ty
 import { GRAPH } from './knowledge';
 import { type Modality, type ModelVersion, type RasterImage, score } from './types';
 import type { VolumeSpec } from './volumeModel';
+import { type PatternExtras, type PatternPanelResult, type PatternSpec, headBox, leadPanel, patternPanels, patternTensor, postprocessPattern, squareAround } from './patternModel';
 
 /* ------------------------------------------------------------------ Manifest */
 
-export type ModelTask = 'detection' | 'segmentation' | 'classification' | 'multilabel' | 'segmentation-3d';
+export type ModelTask = 'detection' | 'segmentation' | 'classification' | 'multilabel' | 'segmentation-3d' | 'pattern-2d';
 
 export interface ModelLabel {
   id: number;
@@ -89,7 +90,12 @@ export interface ModelManifest {
     /** segmentation-3d: [1,K,D,H,W] en yüksek K değer ve sınıf */
     topkValues?: string;
     topkIndices?: string;
+    /** pattern-2d: sağlıklı referansa uzaklık [1] ve eğitim dağılımı dışı uzaklığı [1]. */
+    refDist?: string;
+    oodDist?: string;
   };
+  /** pattern-2d: sağlıklı referans kalibrasyonu, OOD eşiği, maske eşiği, test başarımı. */
+  pattern?: PatternSpec;
   /** 3B hacim modeli parametreleri (segmentation-3d). */
   volume?: VolumeSpec;
   /** multilabel: çalışma noktası normalizasyonu (TorchXRayVision op_norm). */
@@ -119,7 +125,7 @@ export function validateManifest(json: unknown): { ok: true; manifest: ModelMani
   if (typeof m.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(m.sha256)) e.push('sha256 64 haneli onaltılık özet olmalı.');
   if (m.format !== 'onnx') e.push('format yalnızca "onnx" olabilir.');
   if (!Array.isArray(m.modalities) || !m.modalities.length || m.modalities.some((x) => !MODALITIES.has(x))) e.push('modalities geçerli modalite listesi olmalı (ör. ["MRI"]).');
-  if (!['detection', 'segmentation', 'classification', 'multilabel', 'segmentation-3d'].includes(m.task as string)) e.push('task: detection | segmentation | classification | multilabel | segmentation-3d.');
+  if (!['detection', 'segmentation', 'classification', 'multilabel', 'segmentation-3d', 'pattern-2d'].includes(m.task as string)) e.push('task: detection | segmentation | classification | multilabel | segmentation-3d | pattern-2d.');
   const i = m.input;
   if (!i || typeof i.name !== 'string' || i.layout !== (m.task === 'segmentation-3d' ? 'NCDHW' : 'NCHW') || (i.channels !== 1 && i.channels !== 3) || !(i.width > 0 && i.width <= 2048) || !(i.height > 0 && i.height <= 2048) || !(i.scale > 0) || !Array.isArray(i.mean) || !Array.isArray(i.std) || i.mean.length !== i.channels || i.std.length !== i.channels || i.std.some((x) => !(x > 0)))
     e.push('input: name, layout NCHW, channels 1|3, width/height (1–2048), scale > 0, kanal sayısı kadar mean/std (std > 0).');
@@ -130,6 +136,13 @@ export function validateManifest(json: unknown): { ok: true; manifest: ModelMani
   else if (m.task === 'classification' && !o.logits) e.push('classification için output.logits gerekli.');
   else if (m.task === 'multilabel' && !o.probs) e.push('multilabel için output.probs gerekli.');
   else if (m.task === 'segmentation-3d' && !(o.topkValues && o.topkIndices)) e.push('segmentation-3d için output.topkValues ve output.topkIndices gerekli.');
+  else if (m.task === 'pattern-2d' && !(o.logits && o.mask && o.refDist && o.oodDist)) e.push('pattern-2d için output.logits, output.mask, output.refDist ve output.oodDist gerekli.');
+  if (m.task === 'pattern-2d') {
+    const p = m.pattern;
+    if (!p || !Array.isArray(p.refQuantiles) || p.refQuantiles.length < 2 || !(p.oodThreshold > 0) || !(p.maskThreshold > 0 && p.maskThreshold < 1) || !(Number.isInteger(p.maxPanels) && p.maxPanels >= 1 && p.maxPanels <= 32))
+      e.push('pattern: refQuantiles ([yüzdelik, uzaklık] en az 2), oodThreshold > 0, maskThreshold (0–1), maxPanels (1–32) gerekli.');
+    if (!m.labels?.some((l) => l.key === 'normal')) e.push('pattern-2d: "normal" anahtarlı (sağlıklı referans) bir etiket gerekli.');
+  }
   if (m.task === 'segmentation-3d') {
     const v = m.volume;
     const okPatch = Array.isArray(v?.patch) && v.patch.length === 3 && v.patch.every((x) => Number.isInteger(x) && x > 0 && x <= 512);
@@ -372,6 +385,8 @@ export function postprocess(outputs: Record<string, Tensor>, manifest: ModelMani
       const l = label(i);
       if (l && p >= manifest.scoreThreshold) out.push({ finding: l.finding, ...meta(l), confidence: conf(p), localization: { kind: 'region-only' } });
     });
+  } else if (manifest.task === 'pattern-2d') {
+    throw new Error('Örüntü modeli kesit kesit çalışır (LocalModelProvider.detectFindings).');
   } else {
     throw new Error('3B hacim modeli tek görüntüde çalıştırılmaz; seri (DICOM) gerekir.');
   }
@@ -425,6 +440,8 @@ export function cardiothoracicRatio(outputs: Record<string, Tensor>, manifest: M
 export interface ModelExtras {
   scores?: Array<{ key: string; name: string; structure?: string; score: number }>;
   ctr?: { ratio: number; heartWidth: number; thoraxWidth: number };
+  /** pattern-2d: kesit kesit örüntü olasılıkları, sağlıklı referansa uzaklık, OOD ve katkı haritası. */
+  pattern?: PatternExtras;
 }
 
 export function modelVersionOf(m: ModelManifest): ModelVersion & { sha256: string; license: string } {
@@ -483,6 +500,35 @@ export class LocalModelProvider implements MedicalImageAIProvider {
     const findings: ModelFinding[] = [];
     const engine = await this.session();
     this.lastExtras = {};
+    if (this.manifest.task === 'pattern-2d') {
+      const panels: PatternPanelResult[] = [];
+      for (const [frame, img] of input.images.entries()) {
+        const { gray, angle, boxes } = patternPanels(img, this.manifest.pattern!.maxPanels);
+        for (const [k, b] of boxes.entries()) {
+          const square = squareAround(headBox(gray, img.width, b));
+          const outputs = await engine.run({ [this.manifest.input.name]: patternTensor(gray, img.width, img.height, square) });
+          const r = postprocessPattern(outputs, this.manifest, { panel: panels.length, panelBox: b, square, imageSize: { width: img.width, height: img.height }, angle });
+          panels.push(r);
+          const top = r.probs[0]!;
+          if (r.ood || top.key === 'normal' || top.p < this.manifest.scoreThreshold) continue;
+          const l = this.manifest.labels.find((x) => (x.key ?? String(x.id)) === top.key)!;
+          findings.push(
+            enforceLocalization('pattern-2d', {
+              finding: `${l.finding} — kesit ${k + 1}`,
+              ...(l.key ? { key: l.key } : {}),
+              kind: 'finding' as const,
+              ...(l.structure ? { structure: l.structure } : {}),
+              ...(l.node ? { node: l.node } : {}),
+              confidence: score(top.p, `${this.manifest.name} ${this.manifest.version} örüntü olasılığı (tanı değildir)`),
+              localization: r.mask && r.maskBox ? { kind: 'pixel' as const, frame, box: r.maskBox, imageSize: { width: img.width, height: img.height }, mask: r.mask } : { kind: 'region-only' as const },
+            }),
+          );
+        }
+      }
+      const lead = leadPanel(panels);
+      this.lastExtras.pattern = { panels, ...(lead ? { lead } : {}) };
+      return this.ok(findings);
+    }
     for (const [frame, img] of input.images.entries()) {
       const outputs = await engine.run({ [this.manifest.input.name]: preprocess(img, this.manifest) });
       findings.push(...postprocess(outputs, this.manifest, { width: img.width, height: img.height }, frame));
@@ -574,7 +620,7 @@ export function capabilitiesFor(modality: Modality, models: readonly ModelManife
   const localizing = mine.filter((m) => m.task !== 'classification' && m.task !== 'multilabel');
   const mapped = mine.filter((m) => m.labels.some((l) => l.structure && (GRAPH.node(l.structure) || l.structure)));
   const describe = (m: ModelManifest) =>
-    `${m.name} ${m.version}${m.task === 'segmentation-3d' ? ' — 3B, yalnızca DICOM serisinde' : m.task === 'multilabel' || m.task === 'classification' ? ' — görüntü düzeyinde skor, konum vermez' : ''}${m.labels.every((l) => l.kind === 'anatomy') ? ' (anatomi bölütleme; bulgu değil)' : ''}`;
+    `${m.name} ${m.version}${m.task === 'segmentation-3d' ? ' — 3B, yalnızca DICOM serisinde' : m.task === 'multilabel' || m.task === 'classification' ? ' — görüntü düzeyinde skor, konum vermez' : m.task === 'pattern-2d' ? ' — kesit kesit örüntü benzerliği, sağlıklı referansa uzaklık ve katkı haritası (fotoğrafta da)' : ''}${m.labels.every((l) => l.kind === 'anatomy') ? ' (anatomi bölütleme; bulgu değil)' : ''}`;
   const cross = modality === 'MRI' || modality === 'CT';
   return [
     { key: 'dicom', label: 'DICOM okuma (seri, kesit, başlık, anonimleştirme)', supported: modality !== 'ECG', reason: modality === 'ECG' ? 'EKG dalga formu DICOM\'u okunmuyor; kâğıt EKG fotoğrafı/taraması destekleniyor.' : 'Cihazda (Explicit/Implicit VR, sıkıştırmasız, RLE, JPEG Baseline).' },
@@ -592,7 +638,7 @@ export function capabilitiesFor(modality: Modality, models: readonly ModelManife
       label: 'Görüntü üzerinde konum (kutu / maske)',
       supported: localizing.length > 0,
       reason: localizing.length
-        ? `Model çıktısı: ${localizing.map((m) => (m.task === 'segmentation-3d' ? '3B voksel maskesi (seri)' : m.task === 'segmentation' ? 'piksel maskesi' : 'kutu')).join(', ')}.`
+        ? `Model çıktısı: ${localizing.map((m) => (m.task === 'segmentation-3d' ? '3B voksel maskesi (seri)' : m.task === 'segmentation' ? 'piksel maskesi' : m.task === 'pattern-2d' ? 'örüntüye katkı veren alan (piksel maskesi)' : 'kutu')).join(', ')}.`
         : mine.length
           ? 'Kurulu model görüntü düzeyinde sınıflandırır; konum vermez (yalnızca ilgili organ).'
           : cross

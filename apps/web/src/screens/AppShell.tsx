@@ -39,6 +39,7 @@ function activeKey(route: Route): NavKey | 'add' {
     case 'personalOrgan':
     case 'physiology':
     case 'brain':
+    case 'tomography':
       return 'mybody';
     case 'timeline':
       return 'timeline';
@@ -206,6 +207,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
               ['Belgelerim', 'Yüklediğin tüm dosyalar', FolderIcon, { name: 'documents' }],
               ['Beyin haritası', 'Raporundaki her cümle beyinde nerede, adım adım', BrainIcon, { name: 'brain' }],
               ['3B vücut', 'Organları döndür, içine gir', LayersIcon, { name: 'body' }],
+              ['Tomografi görünümü', 'Gerçek BT ile kalp, damar ve organlar (3B hacim)', LayersIcon, { name: 'tomography' }],
               ['Ayarlar ve gizlilik', 'Kilit, yedek, verilerimi indir', ShieldIcon, { name: 'privacy' }],
             ] as const
           ).map(([label, hint, Icon, r]) => (

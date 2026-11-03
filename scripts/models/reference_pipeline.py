@@ -35,7 +35,8 @@ def steps(size, patch, step=0.8):
     return [int(round(actual * i)) for i in range(n)]
 
 
-def run(model, man, img):
+def run(model, man, img, return_grid=False):
+    """return_grid=True: özgün ızgaraya taşımadan RAS'a hizalı ızgaradaki etiketler, ızgara başlangıcı (mm) ve aralık."""
     data = np.asarray(img.dataobj, dtype=np.float32)
     aff = img.affine  # voksel (i,j,k) → RAS mm
     sp = man["volume"]["spacing"]
@@ -116,6 +117,8 @@ def run(model, man, img):
     seg_ras = np.zeros(full_shape, np.uint8)
     seg_ras[b0[0] : b1[0], b0[1] : b1[1], b0[2] : b1[2]] = np.transpose(seg, (2, 1, 0))
     print(json.dumps({"grid": shape, "tiles": len(tiles), "seconds": round(time.time() - t, 1)}))
+    if return_grid:
+        return seg_ras, lo, sp
     # Özgün ızgaraya en yakın komşu
     I = np.stack(np.meshgrid(*[np.arange(s) for s in data.shape], indexing="ij"), -1).reshape(-1, 3)
     w = (np.c_[I, np.ones(len(I))] @ aff.T)[:, :3]

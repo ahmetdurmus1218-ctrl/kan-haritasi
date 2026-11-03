@@ -1,0 +1,904 @@
+{
+ "schema": "kh-ct-atlas/1",
+ "id": "ct-body-msb03203",
+ "name": "Gerçek BT atlası (kontrastlı göğüs–karın–pelvis)",
+ "shape": [
+  258,
+  183,
+  425
+ ],
+ "spacing": 1.5,
+ "origin": [
+  -182.35,
+  -127.5,
+  -641.3125954198473
+ ],
+ "axes": "RAS (x = sağ, y = ön, z = üst); veri sırası x en hızlı",
+ "huMap": [
+  [
+   -1024,
+   0
+  ],
+  [
+   -900,
+   10
+  ],
+  [
+   -200,
+   60
+  ],
+  [
+   300,
+   210
+  ],
+  [
+   1500,
+   255
+  ]
+ ],
+ "files": {
+  "volume.bin": {
+   "bytes": 9740452,
+   "raw": 20065950,
+   "sha256": "c02295941d5829bfaa108993205415a6227b1557b89e47095014443d3f49b1f7",
+   "rawSha256": "538219cfa61b21843b01f50a6b468c455100ee8cd1f1a7b68867c2e02dd6702e"
+  },
+  "labels.bin": {
+   "bytes": 306333,
+   "raw": 20065950,
+   "sha256": "67d8d0eace6d891e6b321eb085d442f60f953ea2eaffaf0e451d89386c7d7bbf",
+   "rawSha256": "a08038c1f18a624c9d201467a16bbf568ede3d8049056a2166e455e233762114"
+  }
+ },
+ "labels": [
+  {
+   "id": 1,
+   "key": "spleen",
+   "finding": "Dalak",
+   "structure": "spleen",
+   "ml": 214.0
+  },
+  {
+   "id": 2,
+   "key": "kidney_right",
+   "finding": "Sağ böbrek",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "ml": 77.3
+  },
+  {
+   "id": 3,
+   "key": "kidney_left",
+   "finding": "Sol böbrek",
+   "structure": "kidneys",
+   "node": "kidneys",
+   "ml": 95.2
+  },
+  {
+   "id": 4,
+   "key": "gallbladder",
+   "finding": "Safra kesesi",
+   "structure": "gallbladder",
+   "ml": 31.3
+  },
+  {
+   "id": 5,
+   "key": "liver",
+   "finding": "Karaciğer",
+   "structure": "liver",
+   "node": "liver",
+   "ml": 1624.0
+  },
+  {
+   "id": 6,
+   "key": "stomach",
+   "finding": "Mide",
+   "structure": "stomach",
+   "node": "stomach",
+   "ml": 307.7
+  },
+  {
+   "id": 7,
+   "key": "pancreas",
+   "finding": "Pankreas",
+   "structure": "pancreas",
+   "node": "pancreas",
+   "ml": 31.8
+  },
+  {
+   "id": 8,
+   "key": "adrenal_gland_right",
+   "finding": "Sağ böbreküstü bezi",
+   "structure": "adrenals",
+   "ml": 3.2
+  },
+  {
+   "id": 9,
+   "key": "adrenal_gland_left",
+   "finding": "Sol böbreküstü bezi",
+   "structure": "adrenals",
+   "ml": 3.7
+  },
+  {
+   "id": 10,
+   "key": "lung_upper_lobe_left",
+   "finding": "Sol akciğer üst lobu",
+   "structure": "lungs",
+   "node": "lungs",
+   "ml": 875.7
+  },
+  {
+   "id": 11,
+   "key": "lung_lower_lobe_left",
+   "finding": "Sol akciğer alt lobu",
+   "structure": "lungs",
+   "node": "lungs",
+   "ml": 641.0
+  },
+  {
+   "id": 12,
+   "key": "lung_upper_lobe_right",
+   "finding": "Sağ akciğer üst lobu",
+   "structure": "lungs",
+   "node": "lungs",
+   "ml": 826.6
+  },
+  {
+   "id": 13,
+   "key": "lung_middle_lobe_right",
+   "finding": "Sağ akciğer orta lobu",
+   "structure": "lungs",
+   "node": "lungs",
+   "ml": 556.1
+  },
+  {
+   "id": 14,
+   "key": "lung_lower_lobe_right",
+   "finding": "Sağ akciğer alt lobu",
+   "structure": "lungs",
+   "node": "lungs",
+   "ml": 1218.5
+  },
+  {
+   "id": 15,
+   "key": "esophagus",
+   "finding": "Yemek borusu",
+   "structure": "esophagus",
+   "ml": 72.8
+  },
+  {
+   "id": 16,
+   "key": "trachea",
+   "finding": "Nefes borusu (trakea)",
+   "structure": "airways",
+   "ml": 23.6
+  },
+  {
+   "id": 17,
+   "key": "thyroid_gland",
+   "finding": "Tiroid bezi",
+   "structure": "thyroid",
+   "node": "thyroid",
+   "ml": 8.3
+  },
+  {
+   "id": 18,
+   "key": "small_bowel",
+   "finding": "İnce bağırsak",
+   "structure": "small-intestine",
+   "node": "small-intestine",
+   "ml": 569.5
+  },
+  {
+   "id": 19,
+   "key": "duodenum",
+   "finding": "On iki parmak bağırsağı (duodenum)",
+   "structure": "small-intestine",
+   "node": "small-intestine.duodenum",
+   "ml": 30.9
+  },
+  {
+   "id": 20,
+   "key": "colon",
+   "finding": "Kalın bağırsak (kolon)",
+   "structure": "large-intestine",
+   "node": "large-intestine",
+   "ml": 449.8
+  },
+  {
+   "id": 21,
+   "key": "urinary_bladder",
+   "finding": "Mesane",
+   "structure": "urinary-tract",
+   "ml": 47.4
+  },
+  {
+   "id": 25,
+   "key": "sacrum",
+   "finding": "Sakrum",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 119.0
+  },
+  {
+   "id": 26,
+   "key": "vertebrae_S1",
+   "finding": "S1 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 30.9
+  },
+  {
+   "id": 27,
+   "key": "vertebrae_L5",
+   "finding": "L5 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 40.6
+  },
+  {
+   "id": 28,
+   "key": "vertebrae_L4",
+   "finding": "L4 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 40.0
+  },
+  {
+   "id": 29,
+   "key": "vertebrae_L3",
+   "finding": "L3 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 39.8
+  },
+  {
+   "id": 30,
+   "key": "vertebrae_L2",
+   "finding": "L2 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 35.0
+  },
+  {
+   "id": 31,
+   "key": "vertebrae_L1",
+   "finding": "L1 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 56.7
+  },
+  {
+   "id": 32,
+   "key": "vertebrae_T12",
+   "finding": "T12 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 59.9
+  },
+  {
+   "id": 33,
+   "key": "vertebrae_T11",
+   "finding": "T11 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 53.1
+  },
+  {
+   "id": 34,
+   "key": "vertebrae_T10",
+   "finding": "T10 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 47.9
+  },
+  {
+   "id": 35,
+   "key": "vertebrae_T9",
+   "finding": "T9 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 31.0
+  },
+  {
+   "id": 36,
+   "key": "vertebrae_T8",
+   "finding": "T8 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 20.0
+  },
+  {
+   "id": 37,
+   "key": "vertebrae_T7",
+   "finding": "T7 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 28.4
+  },
+  {
+   "id": 38,
+   "key": "vertebrae_T6",
+   "finding": "T6 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 19.6
+  },
+  {
+   "id": 39,
+   "key": "vertebrae_T5",
+   "finding": "T5 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 18.9
+  },
+  {
+   "id": 40,
+   "key": "vertebrae_T4",
+   "finding": "T4 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 17.7
+  },
+  {
+   "id": 41,
+   "key": "vertebrae_T3",
+   "finding": "T3 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 16.0
+  },
+  {
+   "id": 42,
+   "key": "vertebrae_T2",
+   "finding": "T2 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 15.1
+  },
+  {
+   "id": 43,
+   "key": "vertebrae_T1",
+   "finding": "T1 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 15.6
+  },
+  {
+   "id": 44,
+   "key": "vertebrae_C7",
+   "finding": "C7 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 15.8
+  },
+  {
+   "id": 45,
+   "key": "vertebrae_C6",
+   "finding": "C6 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 8.5
+  },
+  {
+   "id": 46,
+   "key": "vertebrae_C5",
+   "finding": "C5 omuru",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 2.5
+  },
+  {
+   "id": 51,
+   "key": "heart",
+   "finding": "Kalp",
+   "structure": "heart",
+   "node": "heart",
+   "ml": 654.0
+  },
+  {
+   "id": 52,
+   "key": "aorta",
+   "finding": "Aort",
+   "structure": "aorta",
+   "ml": 213.2
+  },
+  {
+   "id": 53,
+   "key": "pulmonary_vein",
+   "finding": "Akciğer toplardamarları",
+   "structure": "pulmonary-vessels",
+   "ml": 20.7
+  },
+  {
+   "id": 54,
+   "key": "brachiocephalic_trunk",
+   "finding": "Brakiyosefalik arter",
+   "structure": "carotid-arteries",
+   "ml": 6.0
+  },
+  {
+   "id": 55,
+   "key": "subclavian_artery_right",
+   "finding": "Sağ köprücükaltı arter",
+   "structure": "carotid-arteries",
+   "ml": 6.4
+  },
+  {
+   "id": 56,
+   "key": "subclavian_artery_left",
+   "finding": "Sol köprücükaltı arter",
+   "structure": "carotid-arteries",
+   "ml": 6.8
+  },
+  {
+   "id": 57,
+   "key": "common_carotid_artery_right",
+   "finding": "Sağ ortak şah damarı",
+   "structure": "carotid-arteries",
+   "ml": 2.6
+  },
+  {
+   "id": 58,
+   "key": "common_carotid_artery_left",
+   "finding": "Sol ortak şah damarı",
+   "structure": "carotid-arteries",
+   "ml": 3.2
+  },
+  {
+   "id": 59,
+   "key": "brachiocephalic_vein_left",
+   "finding": "Sol brakiyosefalik ven",
+   "structure": "veins",
+   "ml": 12.4
+  },
+  {
+   "id": 60,
+   "key": "brachiocephalic_vein_right",
+   "finding": "Sağ brakiyosefalik ven",
+   "structure": "veins",
+   "ml": 6.9
+  },
+  {
+   "id": 61,
+   "key": "atrial_appendage_left",
+   "finding": "Sol kulakçık eki",
+   "structure": "heart",
+   "node": "heart",
+   "ml": 11.7
+  },
+  {
+   "id": 62,
+   "key": "superior_vena_cava",
+   "finding": "Üst ana toplardamar",
+   "structure": "veins",
+   "ml": 20.9
+  },
+  {
+   "id": 63,
+   "key": "inferior_vena_cava",
+   "finding": "Alt ana toplardamar",
+   "structure": "veins",
+   "ml": 50.4
+  },
+  {
+   "id": 64,
+   "key": "portal_vein_and_splenic_vein",
+   "finding": "Kapı ve dalak toplardamarı",
+   "structure": "abdominal-vessels",
+   "ml": 18.0
+  },
+  {
+   "id": 65,
+   "key": "iliac_artery_left",
+   "finding": "Sol iliak arter",
+   "structure": "abdominal-vessels",
+   "ml": 11.0
+  },
+  {
+   "id": 66,
+   "key": "iliac_artery_right",
+   "finding": "Sağ iliak arter",
+   "structure": "abdominal-vessels",
+   "ml": 10.6
+  },
+  {
+   "id": 67,
+   "key": "iliac_vena_left",
+   "finding": "Sol iliak ven",
+   "structure": "abdominal-vessels",
+   "ml": 14.8
+  },
+  {
+   "id": 68,
+   "key": "iliac_vena_right",
+   "finding": "Sağ iliak ven",
+   "structure": "abdominal-vessels",
+   "ml": 14.4
+  },
+  {
+   "id": 69,
+   "key": "humerus_left",
+   "finding": "Sol üst kol kemiği",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 59.0
+  },
+  {
+   "id": 70,
+   "key": "humerus_right",
+   "finding": "Sağ üst kol kemiği",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 54.6
+  },
+  {
+   "id": 71,
+   "key": "scapula_left",
+   "finding": "Sol kürek kemiği",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 73.6
+  },
+  {
+   "id": 72,
+   "key": "scapula_right",
+   "finding": "Sağ kürek kemiği",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 69.4
+  },
+  {
+   "id": 73,
+   "key": "clavicula_left",
+   "finding": "Sol köprücük kemiği",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 18.0
+  },
+  {
+   "id": 74,
+   "key": "clavicula_right",
+   "finding": "Sağ köprücük kemiği",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 16.3
+  },
+  {
+   "id": 75,
+   "key": "femur_left",
+   "finding": "Sol uyluk kemiği",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 121.7
+  },
+  {
+   "id": 76,
+   "key": "femur_right",
+   "finding": "Sağ uyluk kemiği",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 115.6
+  },
+  {
+   "id": 77,
+   "key": "hip_left",
+   "finding": "Sol kalça kemiği",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 209.3
+  },
+  {
+   "id": 78,
+   "key": "hip_right",
+   "finding": "Sağ kalça kemiği",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 215.3
+  },
+  {
+   "id": 79,
+   "key": "spinal_cord",
+   "finding": "Omurilik",
+   "structure": "spinal-cord",
+   "ml": 100.5
+  },
+  {
+   "id": 80,
+   "key": "gluteus_maximus_left",
+   "finding": "Sol büyük kalça kası",
+   "structure": "skeletal-muscle",
+   "ml": 311.6
+  },
+  {
+   "id": 81,
+   "key": "gluteus_maximus_right",
+   "finding": "Sağ büyük kalça kası",
+   "structure": "skeletal-muscle",
+   "ml": 305.0
+  },
+  {
+   "id": 82,
+   "key": "gluteus_medius_left",
+   "finding": "Sol orta kalça kası",
+   "structure": "skeletal-muscle",
+   "ml": 139.0
+  },
+  {
+   "id": 83,
+   "key": "gluteus_medius_right",
+   "finding": "Sağ orta kalça kası",
+   "structure": "skeletal-muscle",
+   "ml": 146.9
+  },
+  {
+   "id": 84,
+   "key": "gluteus_minimus_left",
+   "finding": "Sol küçük kalça kası",
+   "structure": "skeletal-muscle",
+   "ml": 30.6
+  },
+  {
+   "id": 85,
+   "key": "gluteus_minimus_right",
+   "finding": "Sağ küçük kalça kası",
+   "structure": "skeletal-muscle",
+   "ml": 33.6
+  },
+  {
+   "id": 86,
+   "key": "autochthon_left",
+   "finding": "Sol sırt (otokton) kasları",
+   "structure": "skeletal-muscle",
+   "ml": 293.8
+  },
+  {
+   "id": 87,
+   "key": "autochthon_right",
+   "finding": "Sağ sırt (otokton) kasları",
+   "structure": "skeletal-muscle",
+   "ml": 314.7
+  },
+  {
+   "id": 88,
+   "key": "iliopsoas_left",
+   "finding": "Sol iliopsoas kası",
+   "structure": "skeletal-muscle",
+   "ml": 124.1
+  },
+  {
+   "id": 89,
+   "key": "iliopsoas_right",
+   "finding": "Sağ iliopsoas kası",
+   "structure": "skeletal-muscle",
+   "ml": 143.7
+  },
+  {
+   "id": 91,
+   "key": "skull",
+   "finding": "Kafatası",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 21.7
+  },
+  {
+   "id": 92,
+   "key": "rib_left_1",
+   "finding": "Sol 1. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 6.7
+  },
+  {
+   "id": 93,
+   "key": "rib_left_2",
+   "finding": "Sol 2. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 7.5
+  },
+  {
+   "id": 94,
+   "key": "rib_left_3",
+   "finding": "Sol 3. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 8.6
+  },
+  {
+   "id": 95,
+   "key": "rib_left_4",
+   "finding": "Sol 4. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 8.9
+  },
+  {
+   "id": 96,
+   "key": "rib_left_5",
+   "finding": "Sol 5. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 12.9
+  },
+  {
+   "id": 97,
+   "key": "rib_left_6",
+   "finding": "Sol 6. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 15.9
+  },
+  {
+   "id": 98,
+   "key": "rib_left_7",
+   "finding": "Sol 7. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 21.5
+  },
+  {
+   "id": 99,
+   "key": "rib_left_8",
+   "finding": "Sol 8. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 17.5
+  },
+  {
+   "id": 100,
+   "key": "rib_left_9",
+   "finding": "Sol 9. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 17.0
+  },
+  {
+   "id": 101,
+   "key": "rib_left_10",
+   "finding": "Sol 10. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 15.6
+  },
+  {
+   "id": 102,
+   "key": "rib_left_11",
+   "finding": "Sol 11. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 8.5
+  },
+  {
+   "id": 103,
+   "key": "rib_left_12",
+   "finding": "Sol 12. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 4.1
+  },
+  {
+   "id": 104,
+   "key": "rib_right_1",
+   "finding": "Sağ 1. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 6.7
+  },
+  {
+   "id": 105,
+   "key": "rib_right_2",
+   "finding": "Sağ 2. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 7.4
+  },
+  {
+   "id": 106,
+   "key": "rib_right_3",
+   "finding": "Sağ 3. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 8.3
+  },
+  {
+   "id": 107,
+   "key": "rib_right_4",
+   "finding": "Sağ 4. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 9.4
+  },
+  {
+   "id": 108,
+   "key": "rib_right_5",
+   "finding": "Sağ 5. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 15.0
+  },
+  {
+   "id": 109,
+   "key": "rib_right_6",
+   "finding": "Sağ 6. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 15.6
+  },
+  {
+   "id": 110,
+   "key": "rib_right_7",
+   "finding": "Sağ 7. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 19.4
+  },
+  {
+   "id": 111,
+   "key": "rib_right_8",
+   "finding": "Sağ 8. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 15.8
+  },
+  {
+   "id": 112,
+   "key": "rib_right_9",
+   "finding": "Sağ 9. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 16.8
+  },
+  {
+   "id": 113,
+   "key": "rib_right_10",
+   "finding": "Sağ 10. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 14.1
+  },
+  {
+   "id": 114,
+   "key": "rib_right_11",
+   "finding": "Sağ 11. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 7.5
+  },
+  {
+   "id": 115,
+   "key": "rib_right_12",
+   "finding": "Sağ 12. kaburga",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 3.1
+  },
+  {
+   "id": 116,
+   "key": "sternum",
+   "finding": "Göğüs kemiği (sternum)",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 47.5
+  },
+  {
+   "id": 117,
+   "key": "costal_cartilages",
+   "finding": "Kaburga kıkırdakları",
+   "structure": "bones",
+   "node": "bones",
+   "ml": 153.2
+  }
+ ],
+ "segmentation": "TotalSegmentator — BT anatomi (117 yapı) 2.0.0-weights · Dataset297 (3 mm, fast) (uygulamayla gelen model; cihaz dışında, bu betikle çalıştırıldı)",
+ "source": "NCI Imaging Data Commons · Cancer Moonshot Biobank – Colorectal Cancer (CMB-CRC) · MSB-03203 · \"CHEST ABD PELVIS 1.25\"",
+ "doi": "https://doi.org/10.7937/DJG7-GZ87",
+ "license": "CC BY 4.0",
+ "attribution": "Cancer Moonshot Biobank (CMB) — National Cancer Institute; Imaging Data Commons (Fedorov ve ark., RadioGraphics 2023).",
+ "notes": [
+  "Gerçek, anonim bir yetişkin BT taraması; kullanıcının vücudu değildir.",
+  "Sağlıklı referans olarak seçilmemiştir (kanser tarama kohortu); tanı ya da karşılaştırma amacıyla kullanılmaz.",
+  "Masa, kablolar ve vücut dışı nesneler gövde maskesiyle silindi; 1,5 mm izotropik yeniden örneklendi.",
+  "Organ etiketleri 3 mm TotalSegmentator bölütlemesinden en yakın komşuyla taşındı (sınırlar 3 mm keskinliğindedir)."
+ ]
+}

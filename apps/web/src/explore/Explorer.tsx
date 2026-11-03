@@ -4,7 +4,7 @@ import { CameraControls, type CameraControlsImpl } from '@react-three/drei';
 import { Box3, MathUtils, type PerspectiveCamera, Plane, PMREMGenerator, Sphere, Vector3 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { type Sex, type SystemId, structureById, systemById, testByKey } from '@kh/catalog';
-import { interiorArchetype, interiorById, interiorFor, interiorProvenance, stagePersonal } from '@kh/analysis';
+import { effectsAtInterior, interiorArchetype, interiorById, interiorFor, interiorProvenance, normalAtInterior, sceneShiftFor, stagePersonal } from '@kh/analysis';
 import { useHealthModel } from '../lib/analysisBridge';
 import { useUnlockedVault } from '../state/VaultContext';
 import { type Route, type SimulationMode, go } from '../state/router';
@@ -744,7 +744,17 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     () => (lvScene ? { scene: lvScene.id, stage: lvScene.stage, playing: !reducedMotion, speed: 1, auto: false, selected: picked ?? lvScene.selected, view: 'typical', process: lvScene.stage > 0 } : null),
     [lvScene, reducedMotion, picked],
   );
-  const lvParams = useMemo(() => (lvScene ? personalFor(lvScene.id, interp, INSIDE_CONTENT[lvScene.id].tests, structure).typical : {}), [lvScene, interp, structure]);
+  // "Normal ↔ Sonucuma göre": iç dünyada kişinin referans dışı sonuçlarının temsili etkisi (varsayılan normal).
+  const [resultView, setResultView] = useState(false);
+  const lvLabs = useMemo(() => health?.latestLabs ?? [], [health]);
+  const lvEffects = useMemo(() => (lv ? effectsAtInterior(lv.def.organId, lv.stage.id, lvLabs) : []), [lv, lvLabs]);
+  const lvNormal = useMemo(() => (lv ? normalAtInterior(lv.def.organId, lv.stage.id) : []), [lv]);
+  const lvShift = useMemo(() => (lv ? sceneShiftFor(lv.def.organId, lvLabs) : null), [lv, lvLabs]);
+  const lvParams = useMemo(() => {
+    if (!lvScene) return {};
+    const p = personalFor(lvScene.id, interp, INSIDE_CONTENT[lvScene.id].tests, structure);
+    return resultView ? p.params : p.typical;
+  }, [lvScene, interp, structure, resultView]);
   const lvActions = useMemo(() => (lv ? levelActions(lv) : []), [lv]);
   const lvPersonal = useMemo(() => (lv ? stagePersonal(lv.stage, health) : null), [lv, health]);
   const lvProv = lv ? interiorProvenance(lv.def, health) : null;
@@ -869,6 +879,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       data-testid="explorer"
       data-level={navLevel}
       data-scene={shownKey}
+      data-result-view={resultView ? 'mine' : 'normal'}
       data-target-scene={sceneKey}
       data-transition={phase}
       {...(lv
@@ -966,6 +977,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                     leaving={leaving}
                     view={worldView}
                     onSubject={onSubject}
+                    {...(resultView && lvShift?.from.length ? { shift: lvShift.shift } : {})}
                   />
                 )}
                 {shown.startsWith('in:') && LvComp && lvState && (
@@ -1205,7 +1217,19 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       )}
 
       {lv && !immersive && (
-        <LevelDock view={lv} actions={lvActions} onAction={(a: LevelAction) => a.to && go(routeOf(lv.def, a.to))} accent={accent} onSize={onCover} personal={lvPersonal} label={lvLabel} busy={busy} picked={pickedInfo} personal3D={lvPersonal3D} />
+        <LevelDock
+            view={lv}
+            actions={lvActions}
+            onAction={(a: LevelAction) => a.to && go(routeOf(lv.def, a.to))}
+            accent={accent}
+            onSize={onCover}
+            personal={lvPersonal}
+            label={lvLabel}
+            busy={busy}
+            picked={pickedInfo}
+            personal3D={lvPersonal3D}
+            results={{ effects: lvEffects, normal: lvNormal, shiftFrom: lvShift?.from ?? [], view: resultView, onView: setResultView, anyAbnormal: lvLabs.some((l) => l.status === 'high' || l.status === 'low') }}
+          />
       )}
 
       {cloudData && bodyUi && <OrganCloud data={cloudData} refs={cloudRefs} accent={accent} onClose={() => setCloud(null)} />}

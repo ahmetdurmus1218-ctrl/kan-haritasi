@@ -29,3 +29,5 @@ export * from './volumeSurface';
 export * from './personalOrgan';
 export * from './physiology';
 export * from './interior';
+export * from './labEffects';
+export * from './patternModel';

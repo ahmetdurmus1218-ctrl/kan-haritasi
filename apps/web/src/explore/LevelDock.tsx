@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { StagePersonal } from '@kh/analysis';
+import type { Dir, InteriorEffect, LabObservation, NormalHere, SceneShift, StagePersonal } from '@kh/analysis';
+import { go } from '../state/router';
+import { labStyle } from '../lib/tone';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/icons';
 import { LabRow } from '../screens/organ/common';
 import { SourceBadge } from '../components/evidence';
@@ -23,6 +25,7 @@ export function LevelDock({
   busy,
   picked,
   personal3D,
+  results,
 }: {
   view: LevelView;
   actions: LevelAction[];
@@ -37,6 +40,15 @@ export function LevelDock({
   picked?: { name: string; text: string } | null;
   /** Organ gerçek kişisel bölütlemeden geliyorsa: etiket, yapılar (hacimle) ve gerçek görüntüye dönüş. */
   personal3D?: { label: string; detail: string; onOpen?: () => void } | null;
+  /** Kişinin sonuçlarının bu iç dünyadaki etkisi ve "Normal ↔ Sonucuma göre" sahne anahtarı. */
+  results?: {
+    effects: InteriorEffect[];
+    normal: NormalHere[];
+    shiftFrom: Array<{ lab: LabObservation; dir: Dir; keys: Array<keyof SceneShift> }>;
+    view: boolean;
+    onView: (mine: boolean) => void;
+    anyAbnormal: boolean;
+  };
 }) {
   const ref = useRef<HTMLElement>(null);
   const [more, setMore] = useState(false);
@@ -141,6 +153,9 @@ export function LevelDock({
             ))}
           </div>
         )}
+        {results && (results.effects.length > 0 || results.shiftFrom.length > 0 || results.normal.length > 0) && (
+          <ResultEffects results={results} more={more} onMore={() => setMore(true)} />
+        )}
         {personal?.hasData && !more && level === 'interior' && (
           <button type="button" className="mt-1.5 text-[12px] text-accent" onClick={() => setMore(true)} data-testid="interior-stage-personal-toggle">
             Benim verim · {personal.labs.length + personal.findings.length} olası ilişki
@@ -171,5 +186,111 @@ export function LevelDock({
         ))}
       </div>
     </aside>
+  );
+}
+
+const SHIFT_TR: Record<keyof SceneShift, string> = {
+  rbc: 'alyuvar sayısı',
+  pale: 'alyuvar rengi',
+  rbcSize: 'alyuvar boyu',
+  wbc: 'akyuvarlar',
+  plt: 'trombositler',
+  plaque: 'damar duvarı plağı',
+  lipid: 'kanın yağ bulanıklığı',
+  sugar: 'şeker parçacıkları',
+  yellow: 'sarılık rengi',
+  inflam: 'iltihap kızarıklığı',
+  leak: 'hücreden sızan enzim',
+  flow: 'akış hızı',
+  crystals: 'kristaller',
+  fluid: 'doku arası sıvı',
+  acid: 'asit-baz tonu',
+  oxygen: 'kanın oksijen yükü',
+  signal: 'sinyal hızı',
+  protein: 'süzgeçten kaçan protein',
+};
+
+/**
+ * "Senin sonucunla burada": bu iç dünyayı (basamağı) etkileyen referans dışı sonuçlar, burada neyin
+ * değiştiği ve olası nedenlere geçiş; "Normal ↔ Sonucuma göre" anahtarı 3B sahneyi değiştirir. Kişisel
+ * görüntü değildir: değişiklikler tahlilden türetilen eğitimsel, temsili gösterimdir.
+ */
+function ResultEffects({ results, more, onMore }: { results: NonNullable<Parameters<typeof LevelDock>[0]['results']>; more: boolean; onMore: () => void }) {
+  const { effects, normal, shiftFrom, view, onView } = results;
+  const canShift = shiftFrom.length > 0;
+  const shown = more ? effects : effects.slice(0, 2);
+  return (
+    <div className="mt-2 space-y-1.5 rounded-xl border border-caution/30 bg-caution/[0.04] p-2.5" data-testid="interior-result-effects">
+      {canShift && (
+        <div className="flex gap-1" role="group" aria-label="Sahne görünümü">
+          {([false, true] as const).map((mine) => (
+            <button
+              key={String(mine)}
+              type="button"
+              aria-pressed={view === mine}
+              data-testid={mine ? 'result-view-mine' : 'result-view-normal'}
+              onClick={() => onView(mine)}
+              className={`min-h-[36px] flex-1 rounded-full border px-2.5 text-[12px] ${view === mine ? 'border-accent bg-accent/10 text-accent' : 'border-ink-600 text-fg-muted'}`}
+            >
+              {mine ? 'Sonucuma göre' : 'Normal (tipik)'}
+            </button>
+          ))}
+        </div>
+      )}
+      {canShift && view && (
+        <p className="text-[11px] text-fg-faint" data-testid="result-view-note">
+          Sahnede değişen: {[...new Set(shiftFrom.flatMap((f) => f.keys))].map((k) => SHIFT_TR[k]).join(', ')} — {shiftFrom.map((f) => `${f.lab.name} ${f.dir === 'high' ? '▲' : '▼'}`).join(', ')}. Eğitimsel, temsili gösterim; senin dokunun görüntüsü değildir.
+        </p>
+      )}
+      {effects.length > 0 ? (
+        <>
+          <p className="text-[11px] font-medium text-fg-muted">SENİN SONUCUNLA BURADA · olası etki (tanı değildir)</p>
+          <ul className="space-y-1.5">
+            {shown.map((e) => {
+              const st = labStyle(e.lab);
+              return (
+                <li key={e.lab.testKey} className="text-[12.5px]" data-testid="interior-result-effect" data-test={e.lab.testKey}>
+                  <span className={`font-medium ${st.text}`}>
+                    {e.lab.name} {e.lab.value.toLocaleString('tr-TR')} {e.lab.unit} {e.dir === 'high' ? '▲' : '▼'}
+                  </span>
+                  <span className="block text-fg-muted">{e.site.text}</span>
+                  {more && <span className="block text-[11.5px] text-fg-faint">{e.effect.summary}</span>}
+                  <button type="button" className="text-[11.5px] text-accent hover:underline" onClick={() => go({ name: 'result', key: e.lab.testKey })}>
+                    Normalde nasıl · olası nedenler ›
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          {!more && effects.length > 2 && (
+            <button type="button" className="text-[12px] text-accent" onClick={onMore}>
+              +{effects.length - 2} sonuç daha
+            </button>
+          )}
+        </>
+      ) : (
+        results.anyAbnormal && <p className="text-[11.5px] text-fg-faint">Referans dışı sonuçlarının bu basamağa bilinen doğrudan bir etkisi yok.</p>
+      )}
+      {more && normal.length > 0 && (
+        <details className="text-[12px]" data-testid="interior-normal-here">
+          <summary className="cursor-pointer text-fg-muted">Burada normalde ne olur? ({normal.length} değer buradan geçer)</summary>
+          <ul className="mt-1 space-y-1">
+            {normal.slice(0, 8).map((n) => (
+              <li key={n.testKey} className="text-fg-muted">
+                <button type="button" className="font-medium text-fg hover:underline" onClick={() => go({ name: 'result', key: n.testKey })}>
+                  {n.name}
+                </button>{' '}
+                <span className="text-fg-faint">(yolun {n.step}/{n.steps}. adımı)</span>: {n.site.text}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {!more && normal.length > 0 && effects.length === 0 && (
+        <button type="button" className="text-[12px] text-accent" onClick={onMore}>
+          Burada normalde ne olur? ({normal.length})
+        </button>
+      )}
+    </div>
   );
 }

@@ -28,6 +28,7 @@ const SystemPage = lazy(() => import('./screens/SystemPage').then((m) => ({ defa
 const PersonalOrganPage = lazy(() => import('./screens/PersonalOrganPage').then((m) => ({ default: m.PersonalOrganPage })));
 const PhysiologyPage = lazy(() => import('./screens/PhysiologyPage').then((m) => ({ default: m.PhysiologyPage })));
 const SentencePage = lazy(() => import('./screens/SentencePage').then((m) => ({ default: m.SentencePage })));
+const TomographyPage = lazy(() => import('./screens/TomographyPage').then((m) => ({ default: m.TomographyPage })));
 const BrainMapPage = lazy(() => import('./screens/BrainMapPage').then((m) => ({ default: m.BrainMapPage })));
 
 function ExplorerFallback() {
@@ -122,6 +123,10 @@ function Gate() {
           ) : route.name === 'brain' ? (
             <Suspense fallback={<PageFallback />}>
               <BrainMapPage key={route.region ?? 'map'} region={route.region} />
+            </Suspense>
+          ) : route.name === 'tomography' ? (
+            <Suspense fallback={<ExplorerFallback />}>
+              <TomographyPage organ={route.organ} />
             </Suspense>
           ) : route.name === 'sentence' ? (
             <Suspense fallback={<PageFallback />}>

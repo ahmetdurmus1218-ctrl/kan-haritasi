@@ -78,7 +78,7 @@ export interface StudyAnalysis {
 }
 
 /** Model çıktı görevi (manifest.task ile aynı değerler). */
-export type ModelOutputTask = 'detection' | 'segmentation' | 'classification' | 'multilabel' | 'segmentation-3d';
+export type ModelOutputTask = 'detection' | 'segmentation' | 'classification' | 'multilabel' | 'segmentation-3d' | 'pattern-2d';
 
 /**
  * Görev → üretebileceği konum türleri. KOD DÜZEYİNDE zorunludur: sınıflandırma (classification /
@@ -91,6 +91,8 @@ export const ALLOWED_LOCALIZATION: Readonly<Record<ModelOutputTask, ReadonlyArra
   detection: ['pixel', 'point', 'region-only', 'none'],
   segmentation: ['pixel', 'region-only', 'none'],
   'segmentation-3d': ['volume', 'region-only', 'none'],
+  // Örüntü modeli: sınıf + katkı haritası (piksel maskesi); maskesiz piksel kutusu kabul edilmez
+  'pattern-2d': ['pixel', 'region-only', 'none'],
 };
 
 export const LOCALIZATION_REMOVED = 'Bu model görevi (sınıflandırma/tespit/bölütleme) bu türde konum üretemez; konum kaldırıldı (sahte konum gösterilmez).';
@@ -98,7 +100,7 @@ export const LOCALIZATION_REMOVED = 'Bu model görevi (sınıflandırma/tespit/b
 /** Görevin üretemeyeceği bir konum gelirse (hatalı sağlayıcı/manifest) konum kaldırılır ve bu yazılır. */
 export function enforceLocalization<T extends { localization: Localization; limitations?: string[] }>(task: ModelOutputTask, f: T): T {
   const L = f.localization;
-  const allowed = ALLOWED_LOCALIZATION[task].includes(L.kind) && !(task === 'segmentation' && L.kind === 'pixel' && !L.mask);
+  const allowed = ALLOWED_LOCALIZATION[task].includes(L.kind) && !((task === 'segmentation' || task === 'pattern-2d') && L.kind === 'pixel' && !L.mask);
   if (allowed) return f;
   return { ...f, localization: { kind: 'region-only' }, limitations: [...(f.limitations ?? []), LOCALIZATION_REMOVED] };
 }

@@ -40,7 +40,7 @@ import {
   TubeGeometry,
   Vector3,
 } from 'three';
-import type { InteriorMode, SceneFocus, SceneSpec } from '@kh/analysis';
+import type { InteriorMode, SceneFocus, SceneShift, SceneSpec } from '@kh/analysis';
 import { Headlight, bumpySphere, rbcGeometry, rng, useAtmosphere, useDisposable } from './kit';
 
 /** Görünür alan: tuval boyutu ve panelin sağdan/alttan kapattığı piksel. */
@@ -79,6 +79,11 @@ export interface InteriorWorldProps {
   view: WorldView;
   /** Kadraja alınan nesnenin küresi (uçtan uca testte ekrana sığma denetimi); lümen içinde null. */
   onSubject?: (s: { center: [number, number, number]; radius: number } | null) => void;
+  /**
+   * "Sonucuma göre" görünümü: kişinin referans dışı tahlillerinin bu iç dünyadaki temsili görsel etkisi
+   * (alyuvar yoğunluğu/rengi, plak, şeker, yağ, iltihap…). Verilmezse normal (tipik) işleyiş çizilir.
+   */
+  shift?: SceneShift;
 }
 
 const TMP = new Object3D();
@@ -92,12 +97,13 @@ export const WORLD_FOV = { lumen: 62, object: 38, body: 35 } as const;
 /** Yoğunluk/hareket varsayılanları (mod yoksa): tipik normal işleyiş. */
 const DEFAULT_MODE: InteriorMode = { id: 'normal', name: 'Normal', text: '', content: 0.6, motion: 0.6, digestion: 0.3, absorption: 0 };
 
-const WorldContext = createContext<{ view: WorldView; entry: Entry; leaving: Leaving; reducedMotion: boolean; progress: number; onSubject?: InteriorWorldProps['onSubject'] }>({
+const WorldContext = createContext<{ view: WorldView; entry: Entry; leaving: Leaving; reducedMotion: boolean; progress: number; onSubject?: InteriorWorldProps['onSubject']; shift: SceneShift }>({
   view: { width: 1, height: 1, right: 0, bottom: 0 },
   progress: 0,
   entry: 'outside',
   leaving: null,
   reducedMotion: false,
+  shift: {},
 });
 
 function useClock(playing: boolean, reducedMotion: boolean) {
@@ -222,9 +228,18 @@ interface LumenSpec {
   flow: number;
   color: string;
   pulse?: boolean;
+  /** Damar duvarında plak (0–1; "sonucuma göre" görünümü). */
+  plaque?: number;
 }
 
 const LENGTH = 14;
+/** Plak tepeleri boyunca (s) ve çevresel (th) yerleşim. */
+const PLAQUE_FREQ = 0.8;
+const PLAQUE_PHASE = 0.7;
+const PLAQUE_TH = 0.6;
+function plaqueBump(s: number, th: number): number {
+  return Math.pow(Math.max(0, Math.sin(s * LENGTH * PLAQUE_FREQ + PLAQUE_PHASE)), 6) * (0.55 + 0.45 * Math.cos(th - PLAQUE_TH));
+}
 const TUBULAR = 180;
 const RADIAL = 40;
 
@@ -256,6 +271,7 @@ function radiusAt(sp: LumenSpec, s: number, th: number, t: number, motion: numbe
     default:
       r *= 1 + 0.025 * Math.sin(th * 9 + s * 30) * Math.sin(s * 17);
   }
+  if (sp.plaque) r *= 1 - sp.plaque * 0.34 * plaqueBump(s, th);
   if (sp.pulse) r *= 1 + 0.07 * Math.pow(Math.max(0, Math.sin(2 * Math.PI * (t * 1.1 - s * 1.5))), 3);
   else if (sp.wave > 0) {
     const squeeze = Math.pow(Math.max(0, Math.sin(2 * Math.PI * (s * (sp.shape === 'sac' ? 1.5 : 3) - t * 0.22))), 6);
@@ -290,7 +306,8 @@ interface Particle {
 }
 
 function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: SceneFocus; mode: InteriorMode; time: { current: number }; progress: number }) {
-  const { entry, leaving, onSubject } = useContext(WorldContext);
+  const { entry, leaving, onSubject, shift } = useContext(WorldContext);
+  const blood = sp.content === 'blood';
   const curve = useMemo(() => lumenCurve(sp.shape), [sp.shape]);
   const frames = useMemo(() => curve.computeFrenetFrames(TUBULAR, false), [curve]);
   const centers = useMemo(() => Array.from({ length: TUBULAR + 1 }, (_, i) => curve.getPointAt(i / TUBULAR)), [curve]);
@@ -308,21 +325,45 @@ function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: 
     g.setIndex(idx);
     return g;
   }, [curve]);
-  const wallMat = useDisposable(() => new MeshStandardMaterial({ color: new Color(sp.color), roughness: 0.55, metalness: 0, side: DoubleSide }), [sp.color]);
+  const wallMat = useDisposable(() => new MeshStandardMaterial({ color: new Color(sp.color), roughness: 0.55, metalness: 0, side: DoubleSide, emissive: new Color('#ff2a2a'), emissiveIntensity: 0 }), [sp.color]);
+  // Plak birikintileri: duvardaki darlık tepelerine yerleşen sarımsı yağ/köpük hücresi kümeleri
+  const plaqueN = sp.plaque ? 90 : 0;
+  const plaques = useMemo(() => {
+    const r = rng(19);
+    const peaks: number[] = [];
+    for (let k = 0; k < 12; k++) {
+      const s0 = (Math.PI / 2 - PLAQUE_PHASE + 2 * Math.PI * k) / (LENGTH * PLAQUE_FREQ);
+      if (s0 > 0.04 && s0 < 0.96) peaks.push(s0);
+    }
+    return Array.from({ length: plaqueN }, (_, k) => ({ s: peaks[k % Math.max(1, peaks.length)]! + (r() - 0.5) * 0.02, th: PLAQUE_TH + (r() - 0.5) * 1.6, size: 0.05 + r() * 0.07 }));
+  }, [plaqueN]);
+  const plGeo = useDisposable(() => bumpySphere(1, 0.25, 5));
+  const plMat = useDisposable(() => new MeshStandardMaterial({ color: '#e6c25a', roughness: 0.7, emissive: '#5a4210', emissiveIntensity: 0.25 }));
+  const plRef = useRef<InstancedMesh>(null);
 
   const cfg = CONTENT[sp.content] ?? CONTENT.none!;
-  const n = sp.content === 'none' ? 0 : sp.content === 'bolus' ? 14 : Math.round(30 + 170 * mode.content);
+  // Sonucuma göre: alyuvar sayısı, büyüklüğü, solukluğu ve oksijen yüküne göre rengi (eğitimsel, temsili)
+  const rbcK = blood ? clamp(shift.rbc ?? 1, 0.25, 2) : 1;
+  const sizeK = blood ? clamp(shift.rbcSize ?? 1, 0.6, 1.5) : 1;
+  const bodyColor = useMemo(() => {
+    const c = new Color(cfg.color);
+    if (blood && shift.pale) c.lerp(new Color('#f2b0ad'), clamp(shift.pale, 0, 1) * 0.75);
+    if (blood && shift.oxygen !== undefined && shift.oxygen < 1) c.lerp(new Color('#4a1018'), clamp(1 - shift.oxygen, 0, 1) * 0.9);
+    if (shift.yellow && !blood) c.lerp(new Color('#d9c23a'), clamp(shift.yellow, 0, 1) * 0.6);
+    return `#${c.getHexString()}`;
+  }, [cfg.color, blood, shift.pale, shift.oxygen, shift.yellow]);
+  const n = sp.content === 'none' ? 0 : sp.content === 'bolus' ? 14 : Math.round((30 + 170 * mode.content) * rbcK);
   const particles = useMemo<Particle[]>(() => {
     const r = rng(7);
     return Array.from({ length: Math.max(n, 1) }, (_, k) => ({
       s: 0.14 + r() * 0.83,
       th: r() * Math.PI * 2,
       rho: Math.sqrt(r()) * 0.75,
-      size: cfg.size[0] + r() * (cfg.size[1] - cfg.size[0]) * (sp.content === 'bolus' && k === 0 ? 3 : 1),
+      size: (cfg.size[0] + r() * (cfg.size[1] - cfg.size[0]) * (sp.content === 'bolus' && k === 0 ? 3 : 1)) * sizeK,
       role: 'flow',
       speed: 0.6 + r() * 0.8,
     }));
-  }, [n, cfg.size, sp.content]);
+  }, [n, cfg.size, sp.content, sizeK]);
   const pGeo = useDisposable(() => (cfg.geo === 'rbc' ? rbcGeometry(20) : cfg.geo === 'blob' ? bumpySphere(1, 0.12, 3) : cfg.geo === 'long' ? new CapsuleGeometry(0.5, 1.6, 3, 8) : new SphereGeometry(1, 10, 8)), [cfg.geo]);
   const pMat = useDisposable(() => new MeshStandardMaterial({ color: '#ffffff', transparent: cfg.opacity < 1, opacity: cfg.opacity, roughness: 0.5 }), [cfg.opacity]);
   const pRef = useRef<InstancedMesh>(null);
@@ -372,6 +413,19 @@ function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: 
     }
     pos.needsUpdate = true;
     wall.computeVertexNormals();
+    wallMat.emissiveIntensity = shift.inflam ? shift.inflam * 0.32 * (0.65 + 0.35 * Math.sin(t * 2.2)) : 0;
+    const plm = plRef.current;
+    if (plm && sp.plaque) {
+      plaques.forEach((q, k) => {
+        pointAt(q.s, q.th, radiusAt(sp, q.s, q.th, t, motion) * 0.985, V);
+        TMP.position.copy(V);
+        TMP.rotation.set(k, k * 0.7, 0);
+        TMP.scale.setScalar(q.size * (sp.radius / 0.9) * (0.4 + sp.plaque! * 0.9));
+        TMP.updateMatrix();
+        plm.setMatrixAt(k, TMP.matrix);
+      });
+      plm.instanceMatrix.needsUpdate = true;
+    }
     // Astar
     const lm = lRef.current;
     if (lm) {
@@ -396,7 +450,7 @@ function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: 
     const absorbing = focus === 'absorb' ? 0.45 : mode.absorption * 0.3;
     if (pm) {
       particles.forEach((p, k) => {
-        const forward = sp.flow * 0.035 * p.speed * (0.4 + motion * 0.9);
+        const forward = sp.flow * 0.035 * p.speed * (0.4 + motion * 0.9) * clamp(shift.flow ?? 1, 0.3, 2);
         p.s += forward * 0.016 * (1 + (sp.pulse ? Math.max(0, Math.sin(2 * Math.PI * t * 1.1)) * 2 : 0));
         p.th += Math.sin(t * 0.7 + k) * 0.002 * (1 + motion * 3);
         const absorbingHere = k / particles.length < absorbing;
@@ -414,7 +468,7 @@ function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: 
         TMP.scale.set(sc, cfg.geo === 'rbc' ? sc : sc, sc);
         TMP.updateMatrix();
         pm.setMatrixAt(k, TMP.matrix);
-        color.set(absorbingHere ? '#7ee0b0' : cfg.color);
+        color.set(absorbingHere ? '#7ee0b0' : bodyColor);
         pm.setColorAt(k, color);
       });
       pm.instanceMatrix.needsUpdate = true;
@@ -471,7 +525,8 @@ function LumenView({ sp, focus, mode, time, progress }: { sp: LumenSpec; focus: 
     <group>
       <mesh geometry={wall} material={wallMat} />
       {liningN > 0 && <instancedMesh ref={lRef} args={[lGeo, lMat, liningN]} frustumCulled={false} />}
-      {n > 0 && <instancedMesh ref={pRef} args={[pGeo, pMat, particles.length]} frustumCulled={false} />}
+      {n > 0 && <instancedMesh key={particles.length} ref={pRef} args={[pGeo, pMat, particles.length]} frustumCulled={false} />}
+      {plaqueN > 0 && <instancedMesh ref={plRef} args={[plGeo, plMat, plaqueN]} frustumCulled={false} />}
       <instancedMesh ref={eRef} args={[eGeo, eMat, extraN]} frustumCulled={false} />
     </group>
   );
@@ -854,8 +909,12 @@ function PathwayView({ signal, color, focus, stations, time }: { signal: 'sound'
 
 /* ================================================================== KÖK */
 
-function Scene({ spec, focus, progress, wall, mode, layers, highlightLayer, stations, playing, reducedMotion }: InteriorWorldProps) {
-  const time = useClock(playing, reducedMotion);
+function Scene({ spec, focus, progress, wall, mode, layers, highlightLayer, stations, playing, reducedMotion, shift }: InteriorWorldProps) {
+  const clock = useClock(playing, reducedMotion);
+  // Sonucuma göre akış/sinyal hızı (ör. koyu kan yavaş akar, tiroid fazlasında süreç hızlanır).
+  const nervous = spec.kind === 'pathway' || (spec.kind === 'parenchyma' && (spec.unit === 'neuron' || spec.unit === 'fibers'));
+  const speed = clamp((shift?.flow ?? 1) * (nervous ? (shift?.signal ?? 1) : 1), 0.3, 2);
+  const time = useMemo(() => ({ get current() { return clock.current * speed; } }), [clock, speed]);
   const m = mode ?? DEFAULT_MODE;
   if (wall && layers?.length) return <WallSection layers={layers} highlight={highlightLayer} time={time} />;
   switch (spec.kind) {
@@ -863,7 +922,7 @@ function Scene({ spec, focus, progress, wall, mode, layers, highlightLayer, stat
       return <LumenView sp={spec} focus={focus} mode={m} time={time} progress={progress} />;
     case 'vessel': {
       const radius = spec.caliber === 'large' ? 1.4 : spec.caliber === 'medium' ? 1 : spec.caliber === 'small' ? 0.55 : 0.28;
-      return <LumenView sp={{ shape: 'tube', lining: 'smooth', content: 'blood', radius, wave: 0, flow: spec.pulse ? 1 : 0.5, color: spec.color, pulse: spec.pulse }} focus={focus} mode={{ ...m, content: spec.caliber === 'capillary' ? 0.15 : 0.7, motion: 0.6 }} time={time} progress={progress} />;
+      return <LumenView sp={{ shape: 'tube', lining: 'smooth', content: 'blood', radius, wave: 0, flow: spec.pulse ? 1 : 0.5, color: spec.color, pulse: spec.pulse, ...(shift?.plaque && spec.caliber !== 'capillary' ? { plaque: clamp(shift.plaque, 0, 1) } : {}) }} focus={focus} mode={{ ...m, content: spec.caliber === 'capillary' ? 0.15 : 0.7, motion: 0.6 }} time={time} progress={progress} />;
     }
     case 'chambers':
       return <ChambersView focus={focus} time={time} />;
@@ -880,10 +939,12 @@ function Scene({ spec, focus, progress, wall, mode, layers, highlightLayer, stat
  */
 export function InteriorWorld(props: InteriorWorldProps) {
   const lumenLike = !props.wall && (props.spec.kind === 'lumen' || props.spec.kind === 'vessel');
-  useAtmosphere(lumenLike ? '#1a0c0f' : '#0d1117', lumenLike ? ['#2a1014', 1.5, 9] : null, lumenLike ? 0.3 : 0.45);
+  const shift = props.shift ?? EMPTY_SHIFT;
+  const [bg, fogColor] = useMemo(() => tinted(lumenLike ? '#1a0c0f' : '#0d1117', lumenLike ? '#2a1014' : '#0d1117', shift), [lumenLike, shift]);
+  useAtmosphere(bg, lumenLike ? [fogColor, 1.5, 9 - 3 * clamp(shift.lipid ?? 0, 0, 1)] : null, lumenLike ? 0.3 : 0.45);
   const ctx = useMemo(
-    () => ({ view: props.view, entry: props.entry, leaving: props.leaving, reducedMotion: props.reducedMotion, progress: props.progress, onSubject: props.onSubject }),
-    [props.view, props.entry, props.leaving, props.reducedMotion, props.progress, props.onSubject],
+    () => ({ view: props.view, entry: props.entry, leaving: props.leaving, reducedMotion: props.reducedMotion, progress: props.progress, onSubject: props.onSubject, shift }),
+    [props.view, props.entry, props.leaving, props.reducedMotion, props.progress, props.onSubject, shift],
   );
   return (
     <WorldContext value={ctx}>
@@ -891,7 +952,98 @@ export function InteriorWorld(props: InteriorWorldProps) {
         {lumenLike && <Headlight intensity={3} distance={10} />}
         <pointLight position={[0, 2, 3]} intensity={lumenLike ? 0.5 : 1.2} distance={12} decay={1.3} color="#ffe8e0" />
         <Scene {...props} />
+        {!props.wall && <ShiftParticles shift={shift} />}
       </group>
     </WorldContext>
   );
+}
+
+const EMPTY_SHIFT: SceneShift = {};
+
+/** Arka plan/sis rengi: sarılıkta sarımsı, iltihapta kırmızımsı, asit-baz kaymasında mor/mavi ton. */
+function tinted(bg: string, fog: string, sh: SceneShift): [string, string] {
+  const mix = (base: string) => {
+    const c = new Color(base);
+    if (sh.yellow) c.lerp(new Color('#4a3f0c'), clamp(sh.yellow, 0, 1) * 0.6);
+    if (sh.lipid) c.lerp(new Color('#4a4230'), clamp(sh.lipid, 0, 1) * 0.5);
+    if (sh.inflam) c.lerp(new Color('#4a0c0c'), clamp(sh.inflam, 0, 1) * 0.45);
+    if (sh.acid) c.lerp(new Color(sh.acid < 0 ? '#3a0a2c' : '#0a2a3a'), Math.min(1, Math.abs(sh.acid)) * 0.45);
+    return `#${c.getHexString()}`;
+  };
+  return [mix(bg), mix(fog)];
+}
+
+/**
+ * Sonucuma göre ek parçacıklar (her iç dünyada, kameranın önünde süzülür): şeker (beyaz kristalcikler),
+ * yağ damlacıkları, kristal iğneleri (ürik asit/kalsiyum), hasarlı hücreden sızan enzim, fazla akyuvar ve
+ * trombosit, süzgeçten kaçan protein köpüğü, doku arası sıvı. Eğitimsel ve temsilidir; ölçek gerçek değildir.
+ */
+const SHIFT_KINDS: Array<{ key: keyof SceneShift; color: string; geo: 'cube' | 'drop' | 'needle' | 'dot' | 'cell' | 'disc'; max: number; emissive?: number; opacity?: number; size: number }> = [
+  { key: 'sugar', color: '#ffffff', geo: 'cube', max: 160, emissive: 0.9, size: 0.018 },
+  { key: 'lipid', color: '#f3d98a', geo: 'drop', max: 120, opacity: 0.55, size: 0.05 },
+  { key: 'crystals', color: '#e8f3ff', geo: 'needle', max: 90, emissive: 0.6, size: 0.06 },
+  { key: 'leak', color: '#b48cff', geo: 'dot', max: 140, emissive: 0.8, size: 0.016 },
+  { key: 'protein', color: '#fff6d8', geo: 'drop', max: 120, opacity: 0.5, size: 0.03 },
+  { key: 'fluid', color: '#8fc9ff', geo: 'drop', max: 100, opacity: 0.25, size: 0.07 },
+  { key: 'wbc', color: '#f4f1ea', geo: 'cell', max: 40, size: 0.07 },
+  { key: 'plt', color: '#e7b6d0', geo: 'disc', max: 70, size: 0.025 },
+];
+
+function ShiftParticles({ shift }: { shift: SceneShift }) {
+  const active = SHIFT_KINDS.map((k) => {
+    const v = shift[k.key];
+    if (v === undefined) return { k, n: 0 };
+    // Çarpanlar (akyuvar, trombosit) yalnızca artışta ek hücre çizer; 0–1 değerler doğrudan yoğunluk.
+    const amount = k.key === 'wbc' || k.key === 'plt' ? clamp(v - 1, 0, 2) / 2 : clamp(v, 0, 1);
+    return { k, n: Math.round(k.max * amount) };
+  }).filter((x) => x.n > 0);
+  if (!active.length) return null;
+  return (
+    <group>
+      {active.map(({ k, n }) => (
+        <ShiftKind key={k.key} kind={k} n={n} />
+      ))}
+    </group>
+  );
+}
+
+function ShiftKind({ kind, n }: { kind: (typeof SHIFT_KINDS)[number]; n: number }) {
+  const camera = useThree((s) => s.camera);
+  const ref = useRef<InstancedMesh>(null);
+  const geo = useDisposable(
+    () =>
+      kind.geo === 'cube'
+        ? new CylinderGeometry(0.5, 0.5, 1, 6)
+        : kind.geo === 'needle'
+          ? new CylinderGeometry(0.06, 0.06, 1.6, 4)
+          : kind.geo === 'cell'
+            ? bumpySphere(1, 0.18, 9)
+            : kind.geo === 'disc'
+              ? new CylinderGeometry(0.6, 0.6, 0.18, 10)
+              : new SphereGeometry(1, 10, 8),
+    [kind.geo],
+  );
+  const mat = useDisposable(() => new MeshStandardMaterial({ color: kind.color, emissive: kind.color, emissiveIntensity: kind.emissive ?? 0.15, transparent: kind.opacity !== undefined, opacity: kind.opacity ?? 1, roughness: 0.4, depthWrite: kind.opacity === undefined }), [kind.color]);
+  const seeds = useMemo(() => {
+    const r = rng(kind.key.length * 31 + n);
+    return Array.from({ length: n }, () => ({ x: (r() - 0.5) * 3.2, y: (r() - 0.5) * 2.2, z: -0.8 - r() * 4.5, ph: r() * 6.28, sp: 0.4 + r() * 0.8, s: 0.6 + r() * 0.8 }));
+  }, [kind.key, n]);
+  useFrame(({ clock }) => {
+    const m = ref.current;
+    if (!m) return;
+    const t = clock.elapsedTime;
+    seeds.forEach((q, i) => {
+      // Kameranın önünde, yavaşça sürüklenen hacim (kamera uzayı → dünya)
+      const drift = ((q.z - t * 0.12 * q.sp) % 5.3) - 0.8;
+      V.set(q.x + Math.sin(t * 0.5 + q.ph) * 0.12, q.y + Math.cos(t * 0.4 + q.ph) * 0.1 + (kind.key === 'leak' ? ((t * 0.15 * q.sp) % 1) * 0.6 : 0), drift < -5.3 ? drift + 5.3 : drift);
+      V.applyMatrix4(camera.matrixWorld);
+      TMP.position.copy(V);
+      TMP.rotation.set(t * 0.6 * q.sp + q.ph, t * 0.4 + i, q.ph);
+      TMP.scale.setScalar(kind.size * q.s);
+      TMP.updateMatrix();
+      m.setMatrixAt(i, TMP.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true;
+  });
+  return <instancedMesh key={n} ref={ref} args={[geo, mat, n]} frustumCulled={false} />;
 }

@@ -52,7 +52,9 @@ export type Route =
    */
   | { name: 'brain'; region?: string }
   /** Bir rapor cümlesi adım adım (her organ): file = belge kimliği, n = cümlenin rapordaki sırası (1'den). */
-  | { name: 'sentence'; file: string; n: number };
+  | { name: 'sentence'; file: string; n: number }
+  /** Gerçek BT atlası (tomografi görünümü); organ: atlas etiketi (alt çizgi yerine tire). */
+  | { name: 'tomography'; organ?: string };
 
 /** ic: İçine gir (iç dünya); doku: duvar → doku → hücre adım adım; derin: bilgi grafiğinde serbest iniş. */
 export type OrganViewMode = 'normal' | 'benim' | 'fark' | 'ic' | 'doku' | 'derin';
@@ -128,6 +130,8 @@ export function parseHash(hash: string): Route {
       return arg && NODE.test(arg) ? { name: 'personalOrgan', id: arg, ...(arg2 === 'ic' ? { inside: true } : {}) } : { name: 'mybody' };
     case 'fizyoloji':
       return arg && KEY.test(arg) ? { name: 'physiology', id: arg } : { name: 'physiology' };
+    case 'tomografi':
+      return arg && KEY.test(arg) ? { name: 'tomography', organ: arg } : { name: 'tomography' };
     case 'beyin':
       return arg && NODE.test(arg) ? { name: 'brain', region: arg } : { name: 'brain' };
     case 'cumle': {
@@ -186,6 +190,8 @@ export function hrefFor(route: Route): string {
       return route.region ? `#/beyin/${route.region}` : '#/beyin';
     case 'sentence':
       return `#/cumle/${route.file}/${route.n}`;
+    case 'tomography':
+      return route.organ ? `#/tomografi/${route.organ}` : '#/tomografi';
     default:
       return '#/belgeler';
   }

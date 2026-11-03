@@ -8,6 +8,7 @@
  * Kesitsel görüntülerde sağ-sol ön kontrolün görüntü üzerindeki gösterimi (SymmetryView) bu kartın
  * içindedir; ayrı bir kart yoktur. Ayrıntılar "Nasıl analiz edildi?" bölümündedir.
  */
+import { PatternResult } from './PatternResult';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ANALYSIS_STATE_TEXT,
@@ -235,6 +236,7 @@ function ModelFindings({
     st.localization.kind === 'pixel' ? [{ box: st.localization.box, color: STRUCTURE_COLOR, label: st.name, ...(st.localization.mask ? { mask: st.localization.mask } : {}) }] : [],
   );
   const scored = runs.filter((r) => r.extras?.scores?.length);
+  const patterned = runs.filter((r) => r.extras?.pattern);
   const ctr = runs.find((r) => r.extras?.ctr)?.extras?.ctr;
   const anyClassOnly = result.findings.some((f) => f.localization.kind === 'region-only');
   return (
@@ -255,6 +257,9 @@ function ModelFindings({
       {raster && (marks.length > 0 || structureMarks.length > 0) && (
         <Overlay raster={raster} marks={[...structureMarks, ...marks]} testId="model-overlay" caption={`${marks.length ? 'Turkuaz: modelin işaretlediği bulgu alanı. ' : ''}${structureMarks.length ? 'Mor: modelin bölütlediği anatomik yapılar.' : ''} Konumlar modelin çıktısıdır.`} />
       )}
+      {patterned.map((r) => (
+        <PatternResult key={r.model.manifest.id} extras={r.extras!} manifest={r.model.manifest} />
+      ))}
       {anyClassOnly && <p className="text-xs text-fg-faint">Bu model görüntü düzeyinde sınıflandırır: bulgunun görüntüdeki yerini vermez; yalnızca ilgili organ gösterilir.</p>}
       {ctr && (
         <p className="text-sm text-fg" data-testid="model-ctr">
@@ -263,7 +268,7 @@ function ModelFindings({
         </p>
       )}
       {result.findings.length === 0 ? (
-        <p className="text-sm text-fg-muted">Model bu görüntüde eşik üstü bir bulgu bildirmedi. Bu, görüntünün normal olduğunu göstermez.</p>
+        patterned.length ? null : <p className="text-sm text-fg-muted">Model bu görüntüde eşik üstü bir bulgu bildirmedi. Bu, görüntünün normal olduğunu göstermez.</p>
       ) : (
         <ul className="space-y-2" aria-label="Model bulguları">
           {result.findings.map((f, i) => {
@@ -440,12 +445,25 @@ export function AnalysisCard({
   const context = useMemo(() => contextFor(info, dicom, files), [info, dicom, files]);
   const reportAvailable = reportFindings.length > 0;
   const { run, raster, state } = useImageAnalysis(info, bytes, context, reportAvailable, true);
-  const [region, setRegion] = useState<string | null>(null);
+  const [regionInfo, setRegion] = useState<string | null>(null);
   const models = useLocalModels();
   const modality = run?.result.modality;
   // Orkestrasyon: bu modaliteye uygun TÜM 2B yerel modeller sırayla çalışır (ör. sınıflandırıcı + anatomi);
   // 3B hacim modelleri tek görüntüde değil, DICOM serisinde (SeriesModelPanel) çalışır.
-  const models2d = useMemo(() => (modality && models ? models.filter((m) => m.manifest.task !== 'segmentation-3d' && m.manifest.modalities.includes(modality)) : []), [models, modality]);
+  // Örüntü modelleri yalnızca kendi bölgelerinde (ör. beyin) çalışır; bölge bilinmiyorsa çalışır (eğitim dışı kapısı korur).
+  const region = run?.anatomy?.structure;
+  const headLike = run?.result.extent?.headLike === true;
+  const models2d = useMemo(
+    () =>
+      modality && models
+        ? models.filter((m) => {
+            if (m.manifest.task === 'segmentation-3d' || !m.manifest.modalities.includes(modality)) return false;
+            const regions = m.manifest.pattern?.regions;
+            return !regions?.length || !region || regions.includes(region) || (headLike && regions.includes('brain'));
+          })
+        : [],
+    [models, modality, region, headLike],
+  );
   const volumeModel = useMemo(() => (modality && models ? models.find((m) => m.manifest.task === 'segmentation-3d' && m.manifest.modalities.includes(modality)) : undefined), [models, modality]);
   const candidate = models2d[0];
   const [modelState, setModelState] = useState<ModelState>({ status: 'idle' });
@@ -551,6 +569,8 @@ export function AnalysisCard({
   const st = analysisState({ modelRan: Boolean(modelRan), precheckRan });
   // MR/BT fotoğrafı ya da tek kesit, yerel model çalışmadı: görüntüden bölge/bulgu söylenmez; okuma yolu gösterilir.
   const photoOnly = symmetry && !modelRan;
+  // Örüntü modeli fotoğrafta da çalışır; yine de kesin okumanın yolu rapor ve DICOM serisidir (rehber görünür kalır).
+  const patternRan = modelState.status === 'done' && modelState.runs.some((r) => r.extras?.pattern);
   const brainStudy = run?.anatomy?.structure === 'brain' || run?.result.extent?.headLike === true;
   const outcome = !run
     ? ''
@@ -615,7 +635,7 @@ export function AnalysisCard({
               {` · İnceleme kapsamı: ${run.coverage.label}`}
             </p>
             {run.modality?.conflict && <p className="mt-1 text-sm text-caution-fg">{run.modality.conflict}</p>}
-            {photoOnly && <ReadGuide brain={brainStudy} reportAvailable={reportAvailable} volumeModel={volumeModel?.manifest.name} />}
+            {(photoOnly || (symmetry && patternRan)) && <ReadGuide brain={brainStudy} reportAvailable={reportAvailable} patternRan={patternRan} {...(volumeModel ? { volumeModel: volumeModel.manifest.name } : {})} />}
             {run.coverage.limited && <p className="mt-2 text-sm text-fg-muted">{run.coverage.limited}</p>}
             {modelRan && <p className="mt-2 text-[15px] text-fg">{modelRan.findings.length ? `Model ${modelRan.findings.length} bulgu bildirdi.` : 'Model eşik üstü bulgu bildirmedi.'}</p>}
             {(precheckRan || st !== 'model') && <p className="mt-2 text-[15px] text-fg">{st === 'model' && precheckRan ? `Ön inceleme: ${outcome}` : outcome}</p>}
@@ -797,7 +817,7 @@ export function AnalysisCard({
           </details>
         </>
       )}
-      <RegionSheet id={region} onClose={() => setRegion(null)} />
+      <RegionSheet id={regionInfo} onClose={() => setRegion(null)} />
     </section>
   );
 }
@@ -806,12 +826,14 @@ export function AnalysisCard({
  * MR/BT fotoğrafında (model yok) sonucun nasıl GERÇEKTEN okunacağı: rapor metni (cümle cümle, sade dil,
  * beyin haritası) ya da DICOM serisi (yerel 3B model). Görüntüden bölge/bulgu uydurulmaz.
  */
-function ReadGuide({ brain, reportAvailable, volumeModel }: { brain: boolean; reportAvailable: boolean; volumeModel?: string }) {
+function ReadGuide({ brain, reportAvailable, volumeModel, patternRan = false }: { brain: boolean; reportAvailable: boolean; volumeModel?: string; patternRan?: boolean }) {
   return (
-    <div className="mt-3 rounded-xl border border-accent/40 bg-accent/5 p-3.5" data-testid="read-guide">
-      <p className="text-[15px] font-medium text-fg">Bu fotoğraftan “şurada şu var” diye sonuç çıkarılmaz</p>
+    <div className="mt-3 rounded-xl border border-accent/40 bg-accent/5 p-3.5" data-testid="read-guide" data-pattern={patternRan ? 'ran' : 'none'}>
+      <p className="text-[15px] font-medium text-fg">{patternRan ? 'Model ön bilgi verdi; kesin okuma rapordan ve DICOM serisinden yapılır' : 'Bu fotoğraftan “şurada şu var” diye sonuç çıkarılmaz'}</p>
       <p className="mt-1 text-sm text-fg-muted">
-        Bu cihazda MR/BT fotoğrafında hastalık okuyan doğrulanmış bir model yok. Fotoğraftan bölge ya da bulgu söylemek uydurma olur; bu yüzden söylemiyoruz.
+        {patternRan
+          ? 'Yerel örüntü modeli bu kesitleri sağlıklı referans kesitleriyle karşılaştırdı ve hangi örüntüye benzediğini olasılıklarla gösterdi (aşağıda). Bu bir ön bilgidir, kesin sonuç değildir; model yalnızca eğitildiği birkaç örüntüyü tanır.'
+          : 'Bu cihazda bu tür görüntüde hastalık okuyan doğrulanmış bir model yok. Fotoğraftan bölge ya da bulgu söylemek uydurma olur; bu yüzden söylemiyoruz.'}
       </p>
       <p className="mt-2 text-sm font-medium text-fg">Sonucunu okuyabilmemiz için:</p>
       <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm text-fg">

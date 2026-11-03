@@ -14,6 +14,7 @@ import { findingMap, useInterpretation, useSex } from '../lib/interpretation';
 import { useImagingStudies } from '../lib/imagingStudies';
 import { ImagingStudyList } from '../components/imaging';
 import { ResultPhysiology } from '../components/physiology';
+import { Differential, ResultJourney } from '../components/labEffects';
 import { useHealthModel } from '../lib/analysisBridge';
 import { AlertIcon, BodyIcon, ChartIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileTextIcon, SpinnerIcon, UploadIcon } from '../components/icons';
 
@@ -42,6 +43,7 @@ export function ResultsPage() {
   const interp = useInterpretation(series, sex);
   const findings = useMemo(() => findingMap(interp), [interp]);
   const studies = useImagingStudies();
+  const { model } = useHealthModel();
 
   if (error) return <div className="p-6"><Banner tone="error">Sonuçlar yüklenemedi.</Banner></div>;
   if (!reports) {
@@ -108,6 +110,12 @@ export function ResultsPage() {
           </div>
         )}
       </div>
+
+      {model && model.latestLabs.some((l) => l.status === 'high' || l.status === 'low') && (
+        <div className="mb-8">
+          <Differential labs={model.latestLabs} {...(sex !== 'unspecified' ? { sex } : {})} />
+        </div>
+      )}
 
       {studies && studies.length > 0 && (
         <section className="mb-8" aria-labelledby="goruntuleme-sonuclari">
@@ -444,6 +452,10 @@ export function ResultDetail({ testKey }: { testKey: string }) {
           )}
         </section>
       )}
+
+      <div className="mt-4">
+        <ResultJourney testKey={testKey} model={model} {...(sex !== 'unspecified' ? { sex } : {})} />
+      </div>
 
       {content && (
         <div className="mt-4 space-y-4">
