@@ -28,7 +28,8 @@
    0.12451171875
   ],
   "crop": "center-square",
-  "antialias": true
+  "antialias": true,
+  "region": "xray"
  },
  "output": {
   "probs": "probs"
@@ -157,6 +158,7 @@
   "Görüntü düzeyinde sınıflandırmadır: bulgunun görüntüdeki yerini VERMEZ; konum yalnızca ilgili organ/bölge olarak gösterilir.",
   "Skorlar modelin çalışma noktasına göre ölçeklenir (0,5 ≈ çalışma noktası); uygulama ≥ 0,6'yı 'modelin işaret ettiği' diye gösterir, bu bir tanı eşiği değildir.",
   "Yalnızca NIH ChestX-ray14 ile eğitildi; farklı cihaz/ülke/hasta grubunda başarımı düşebilir. Yan (lateral) grafilerde kullanılmamalı.",
+  "Telefon fotoğrafı ve ekran görüntüsünde önce röntgenin kapladığı alan bulunur ve model yalnızca oraya bakar. Ölçümde (440 etiketli grafinin benzetimleri) ekran görüntüsünde ayırıcılık korundu; ekranın ya da filmin fotoğrafında düştü (pnömoni AUC 0,81 → 0,76–0,77) ve görüntülerin yaklaşık yarısında en az bir bulgunun 'işaret ettiği' kararı değişti. Fotoğraftan çıkan skorlar güvenilir değildir; mümkünse orijinal dosyayı (DICOM/PNG) ya da ekran görüntüsünü yükleyin.",
   "Klinik kullanım için onaylı tıbbi cihaz değildir."
  ],
  "upstream": {
@@ -165,5 +167,58 @@
  },
  "file": "model.onnx",
  "sha256": "2d469320bc934c8ed1bb5fe6d0430ccb29528e97402ef440853091355b1a1889",
- "size": 14469212
+ "size": 14469212,
+ "photoMetrics": {
+  "finding": "Pneumonia",
+  "n": 440,
+  "positives": 295,
+  "negatives": 145,
+  "source": "ieee8023/covid-chestxray-dataset ve Actualmed-COVID-chestxray-dataset (GitHub; PA/AP grafiler): pnömoni/COVID-19 (295) ↔ bulgusuz (145). Her görüntüden ekran görüntüsü, monitör fotoğrafı ve film fotoğrafı benzetimi üretildi (scripts/models/xray_photo). Bulgusuz görüntülerin çoğu tek kaynaktan; AUC kaynak farkını da yansıtabilir.",
+  "conditions": {
+   "original": {
+    "name": "Orijinal dijital dosya",
+    "auc": 0.811,
+    "aucCi95": [
+     0.765,
+     0.853
+    ],
+    "aucWithoutRegion": 0.808,
+    "meanAbsDiff": 0.009,
+    "anyFlagChanged": 0.041
+   },
+   "screenshot": {
+    "name": "Ekran görüntüsü (bilgisayar görüntüleyicisi ya da telefonda e-Nabız)",
+    "auc": 0.818,
+    "aucCi95": [
+     0.774,
+     0.861
+    ],
+    "aucWithoutRegion": 0.845,
+    "meanAbsDiff": 0.062,
+    "anyFlagChanged": 0.366
+   },
+   "monitorPhoto": {
+    "name": "Ekranın telefonla fotoğrafı",
+    "auc": 0.761,
+    "aucCi95": [
+     0.708,
+     0.802
+    ],
+    "aucWithoutRegion": 0.647,
+    "meanAbsDiff": 0.129,
+    "anyFlagChanged": 0.461
+   },
+   "filmPhoto": {
+    "name": "Negatoskoptaki filmin fotoğrafı",
+    "auc": 0.766,
+    "aucCi95": [
+     0.712,
+     0.818
+    ],
+    "aucWithoutRegion": 0.759,
+    "meanAbsDiff": 0.159,
+    "anyFlagChanged": 0.541
+   }
+  }
+ }
 }

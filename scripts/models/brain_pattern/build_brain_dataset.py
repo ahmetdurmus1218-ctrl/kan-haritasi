@@ -7,6 +7,11 @@ Kaynaklar (hepsi açık lisans):
   - Vestibular-Schwannoma-SEG (IDC, CC BY 4.0): iç kulak yolu tümörü; T1-kontrast, T2 + RTSTRUCT
   - ARC ds004884 (OpenNeuro, CC0): kronik inme; T2 + lezyon maskesi
   - CCNRP ds007212 (OpenNeuro, CC0): kronik odak lezyon (inme, ameliyat); T1 + maske
+  - Olfaktör oluk menenjiyomu ds007345 (OpenNeuro, CC0): T1, kontrastlı T1, T2 + tümör maskesi
+  - Brain Tumor Connectomics ds001226 (OpenNeuro, CC0): menenjiyom ve düşük dereceli glioma; T1 + tümör maskesi;
+    sağlıklı kontroller
+  - Hipofiz adenomu ds006248 (OpenNeuro, CC0): koronal T1/kontrastlı T1/T2, sagital ve 3B kontrastlı T1 + uzman
+    tümör maskesi
   - Sağlıklı: MPI-LEMON ds000221 (T2, FLAIR), FCD ds004199 sağlıklı kontroller (T1, FLAIR),
     MS ds007908 sağlıklı kontroller (T1, FLAIR) — OpenNeuro, CC0
 
@@ -26,12 +31,18 @@ OUT = os.path.join(ROOT, 'brain_ds')
 TMP = os.path.join(ROOT, 'tmp_dl')
 S5 = shutil.which('s5cmd') or 's5cmd'
 SIZE = 192
-CLASSES = ['normal', 'glial_tumor', 'cpa_tumor', 'chronic_lesion']
+CLASSES = ['normal', 'glial_tumor', 'cpa_tumor', 'chronic_lesion', 'meningioma', 'pituitary_tumor']
 
 
 def split_of(subject: str) -> str:
     h = int(hashlib.sha1(subject.encode()).hexdigest(), 16) % 100
+    if subject.startswith(SMALL_PREFIXES):
+        # Az hastalı yeni örüntüler (menenjiyom, hipofiz): test payı daha büyük (%25) — başarım daha çok hastada ölçülür
+        return 'train' if h < 60 else 'val' if h < 75 else 'test'
     return 'train' if h < 70 else 'val' if h < 85 else 'test'
+
+
+SMALL_PREFIXES = ('ogm_', 'btc_', 'pit_')
 
 
 def s3cp(url: str, dst: str):
@@ -174,7 +185,24 @@ def save(src, subject, series, items):
 
 
 def planes_for(sp):
-    return ['ax', 'cor', 'sag'] if max(sp) <= 1.6 else ['ax']
+    """İzotropa yakın hacimde üç düzlem; kalın kesitli çekimde yalnızca çekim düzlemi (kalın eksene dik)."""
+    if max(sp) <= 1.6:
+        return ['ax', 'cor', 'sag']
+    return [('sag', 'cor', 'ax')[int(np.argmax(sp))]]
+
+
+def resample_mask(mask, mask_aff, ref_shape, ref_aff):
+    """Maskeyi (en yakın komşu) başka bir çekimin ızgarasına taşır; iki çekim aynı tarayıcı koordinatındadır."""
+    from nibabel.processing import resample_from_to
+    out = resample_from_to(nib.Nifti1Image((mask > 0.5).astype(np.float32), mask_aff), (ref_shape, ref_aff), order=0)
+    return (np.asarray(out.dataobj) > 0.5).astype(np.uint8)
+
+
+def to_iso(arr, aff, vox=1.0):
+    """Çok ince ızgaralı 3B hacmi ~1 mm izotropa indirir (bellek/süre)."""
+    from nibabel.processing import resample_to_output
+    out = resample_to_output(nib.Nifti1Image(arr.astype(np.float32), aff), voxel_sizes=(vox, vox, vox), order=1)
+    return np.asarray(out.dataobj, dtype=np.float32), out.affine
 
 
 # ------------------------------------------------------------------ kaynaklar
@@ -423,6 +451,157 @@ def do_ccnrp(limit, rng):
     return n
 
 
+def tsv(ds):
+    import csv, io
+    txt = subprocess.run(['curl', '-s', f'https://s3.amazonaws.com/openneuro.org/{ds}/participants.tsv'], capture_output=True, text=True).stdout.lstrip('\ufeff')
+    return [{k.strip(): (v or '').strip() for k, v in r.items()} for r in csv.DictReader(io.StringIO(txt), delimiter='\t')]
+
+
+def vol(key, tmp, name):
+    arr, aff = nifti(on_get(key, os.path.join(tmp, name)))
+    return (arr[..., 0] if arr.ndim == 4 else arr), aff
+
+
+def do_ogm(limit, rng):
+    """Olfaktör oluk menenjiyomu (ds007345): maske kontrastlı T1 (run-02) ızgarasında; T1 ve T2'ye taşınır."""
+    subs = [r['participant_id'] for r in tsv('ds007345') if not r['participant_id'].endswith('fu')]
+    rng.shuffle(subs)
+    n = 0
+    for s in subs[:limit]:
+        tmp = os.path.join(TMP, f'ogm_{s}')
+        try:
+            msk, maff = vol(f'ds007345/derivatives/{s}/segmentation/{s}_tumor_mask.nii.gz', tmp, 'm.nii.gz')
+        except Exception:  # noqa: BLE001
+            shutil.rmtree(tmp, ignore_errors=True)
+            continue
+        for key, seq in ((f'ds007345/{s}/anat/{s}_run-02_T1w.nii.gz', 'T1C'), (f'ds007345/{s}/anat/{s}_run-01_T1w.nii.gz', 'T1'), (f'ds007345/{s}/anat/{s}_T2w.nii.gz', 'T2')):
+            try:
+                arr, aff = vol(key, tmp, 'i.nii.gz')
+                m = resample_mask(msk, maff, arr.shape, aff)
+                if m.sum() == 0:
+                    continue
+                data, sp, mm = canonical(arr, aff, m)
+                items = extract(data, sp, mm, lesion_class=4, seq=seq, min_area=100, margin_mm=20, n_lesion=10, n_normal=4, planes=planes_for(sp), rng=rng)
+                n += save('ogm', 'ogm_' + s, seq.lower(), items)
+            except Exception as e:  # noqa: BLE001
+                print('ogm hata', s, seq, e, file=sys.stderr)
+        shutil.rmtree(tmp, ignore_errors=True)
+        print('ogm', s, n, flush=True)
+    return n
+
+
+def do_btc(limit, rng):
+    """Brain Tumor Connectomics (ds001226): menenjiyom → 4, glioma → 1, kontroller → normal. T1 MPRAGE."""
+    rows = tsv('ds001226')
+    rng.shuffle(rows)
+    n = 0
+    for r in rows[:limit]:
+        s = r['participant_id']
+        kind = r.get('tumor type & grade', '').lower()
+        tmp = os.path.join(TMP, f'btc_{s}')
+        try:
+            arr, aff = vol(f'ds001226/{s}/ses-preop/anat/{s}_ses-preop_T1w.nii.gz', tmp, 'i.nii.gz')
+            if s.startswith('sub-CON'):
+                data, sp, _ = canonical(arr, aff)
+                items = extract(data, sp, None, lesion_class=0, seq='T1', min_area=0, margin_mm=0, n_lesion=0, n_normal=12, planes=planes_for(sp), rng=rng)
+            else:
+                cls = 4 if 'meningioma' in kind else 1 if any(k in kind for k in ('glioma', 'astrocytoma', 'oligo', 'ependymoma')) else None
+                if cls is None:
+                    continue
+                msk, maff = vol(f'ds001226/derivatives/tumor_masks/{s}/anat/{s}_space_T1_label-tumor.nii', tmp, 'm.nii')
+                m = resample_mask(msk, maff, arr.shape, aff)
+                if m.sum() == 0:
+                    continue
+                data, sp, mm = canonical(arr, aff, m)
+                items = extract(data, sp, mm, lesion_class=cls, seq='T1', min_area=100, margin_mm=20, n_lesion=10, n_normal=4, planes=planes_for(sp), rng=rng)
+            n += save('btc', 'btc_' + s, 't1', items)
+        except Exception as e:  # noqa: BLE001
+            print('btc hata', s, e, file=sys.stderr)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        print('btc', s, n, flush=True)
+    return n
+
+
+def do_pit(limit, rng):
+    """Hipofiz adenomu (ds006248): uzman maskesi (etiket 1 = tümör) koronal kontrastlı T1 ızgarasında. Koronal T1/T2
+    aynı ızgarada; sagital kontrastlı T1 ve tüm kafa 3B kontrastlı T1'e (1 mm'ye indirilerek) taşınır."""
+    subs = list_subjects('ds006248')
+    rng.shuffle(subs)
+    n = 0
+    for s in subs[:limit]:
+        tmp = os.path.join(TMP, f'pit_{s}')
+        try:
+            lab, maff = vol(f'ds006248/derivatives/segmentations/{s}/anat/{s}_label-groundTruth.nii.gz', tmp, 'm.nii.gz')
+            msk = (np.rint(lab) == 1).astype(np.uint8)
+        except Exception:  # noqa: BLE001
+            shutil.rmtree(tmp, ignore_errors=True)
+            continue
+        for acq, seq in (('CECor_T1w', 'T1C'), ('Cor_T1w', 'T1'), ('Cor_T2w', 'T2'), ('CESag_T1w', 'T1C'), ('CE3DNavigation_T1w', 'T1C')):
+            try:
+                arr, aff = vol(f'ds006248/{s}/anat/{s}_acq-{acq}.nii.gz', tmp, 'i.nii.gz')
+                if acq.startswith('CE3D'):
+                    arr, aff = to_iso(arr, aff, 1.0)
+                m = resample_mask(msk, maff, arr.shape, aff)
+                if m.sum() == 0:
+                    continue
+                data, sp, mm = canonical(arr, aff, m)
+                items = extract(data, sp, mm, lesion_class=5, seq=seq, min_area=30, margin_mm=10, n_lesion=8, n_normal=(4 if acq.startswith('CE3D') else 1), planes=planes_for(sp), rng=rng)
+                n += save('pit', 'pit_' + s, acq.split('_')[0].lower(), items)
+            except Exception as e:  # noqa: BLE001
+                print('pit hata', s, acq, e, file=sys.stderr)
+        shutil.rmtree(tmp, ignore_errors=True)
+        print('pit', s, n, flush=True)
+    return n
+
+
+def do_zoom_normals(limit, rng):
+    """Sağlıklı 3B hacimlerden dar görüş alanlı (ör. hipofiz/kafa tabanı çekimi gibi) koronal ve sagital orta hat
+    kesitleri: dar görüş alanı tek başına "hastalık" ipucu olmasın diye. Kaynak: FCD sağlıklı kontrolleri (T1)."""
+    import csv, io
+    txt = subprocess.run(['curl', '-s', 'https://s3.amazonaws.com/openneuro.org/ds004199/participants.tsv'], capture_output=True, text=True).stdout.lstrip('\ufeff')
+    hc = [r['participant_id'] for r in csv.DictReader(io.StringIO(txt), delimiter='\t') if r.get('group') == 'hc']
+    rng.shuffle(hc)
+    n = 0
+    for s in hc[:limit]:
+        tmp = os.path.join(TMP, f'zn_{s}')
+        try:
+            arr, aff = vol(f'ds004199/{s}/anat/{s}_acq-iso08_T1w.nii.gz', tmp, 'i.nii.gz')
+            data, sp, _ = canonical(arr, aff)
+            vals = data[data > 0]
+            lo, hi = np.percentile(vals, 0.5), np.percentile(vals, 99.5)
+            norm = np.clip((data - lo) / max(hi - lo, 1e-6), 0, 1)
+            head = norm > 0.12
+            idx = np.argwhere(head)
+            c = idx.mean(0)
+            ext = idx.max(0) - idx.min(0)
+            items = []
+            for plane in ('cor', 'sag'):
+                get, ins, _, nsl = plane_slices(norm, sp, plane)
+                if plane == 'cor':
+                    ks = [int(c[1] + ext[1] * f) for f in (0.0, 0.05, 0.1, 0.15)]
+                else:
+                    ks = [int(c[0] + ext[0] * f) for f in (-0.02, 0.0, 0.02)]
+                for k in ks:
+                    sl = to_1mm(get(min(max(k, 0), nsl - 1)), ins, 1)
+                    H, W = sl.shape
+                    fov = int(rng.uniform(110, 170))
+                    cy = int(H * rng.uniform(0.5, 0.62))
+                    cx = W // 2
+                    crop = np.pad(sl, fov)[cy - fov // 2 + fov: cy + fov // 2 + fov, cx - fov // 2 + fov: cx + fov // 2 + fov]
+                    img = ndimage.zoom(crop, SIZE / crop.shape[0], order=1)[:SIZE, :SIZE]
+                    if img.shape != (SIZE, SIZE):
+                        continue
+                    items.append(dict(img=(np.clip(img, 0, 1) * 255).astype(np.uint8), label=0, plane=plane, seq='T1', area=0.0, lesion=None))
+            n += save('zoom_ds004199', s, 'zoom', items)
+        except Exception as e:  # noqa: BLE001
+            print('zoom hata', s, e, file=sys.stderr)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        print('zoom', s, n, flush=True)
+    return n
+
+
 def do_healthy(ds, files, limit, rng, subjects=None):
     subs = subjects if subjects is not None else list_subjects(ds)
     rng.shuffle(subs)
@@ -450,7 +629,8 @@ def do_healthy(ds, files, limit, rng, subjects=None):
 if __name__ == '__main__':
     which = sys.argv[1]
     lim = int(sys.argv[2]) if len(sys.argv) > 2 else 10
-    rng = random.Random(1234 + hash(which) % 1000)
+    import zlib
+    rng = random.Random(1234 + zlib.crc32(which.encode()) % 1000)  # tekrarlanabilir tohum
     os.makedirs(OUT, exist_ok=True)
     if which == 'upenn':
         do_upenn(lim, rng)
@@ -469,6 +649,14 @@ if __name__ == '__main__':
         txt = subprocess.run(['curl', '-s', 'https://s3.amazonaws.com/openneuro.org/ds004199/participants.tsv'], capture_output=True, text=True).stdout.lstrip('﻿')
         hc = [r['participant_id'] for r in csv.DictReader(io.StringIO(txt), delimiter='\t') if r.get('group') == 'hc']
         do_healthy('ds004199', [('anat/{s}_acq-iso08_T1w.nii.gz', 'T1'), ('anat/{s}_acq-T2sel_FLAIR.nii.gz', 'FLAIR')], lim, rng, subjects=hc)
+    elif which == 'ogm':
+        do_ogm(lim, rng)
+    elif which == 'btc':
+        do_btc(lim, rng)
+    elif which == 'pit':
+        do_pit(lim, rng)
+    elif which == 'zoom':
+        do_zoom_normals(lim, rng)
     elif which == 'mshc':
         import csv, io
         txt = subprocess.run(['curl', '-s', 'https://s3.amazonaws.com/openneuro.org/ds007908/participants.tsv'], capture_output=True, text=True).stdout.lstrip('﻿')

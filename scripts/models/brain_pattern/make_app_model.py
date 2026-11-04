@@ -3,7 +3,7 @@
   - apps/web/public/ai-models/kh-brain-mri-pattern/{model.onnx, manifest.json, NOTICE.txt}; index.json'a eklenir
   - fixtures/imaging/beyin-mr-gercek/<sınıf>.png: her sınıftan, HASTA BAZLI TEST kümesindeki (eğitimde görülmemiş)
     lezyon alanı en büyük eksenel kesit (seçim kurala dayalı; modelin tahminine bakılmaz)
-  - fixtures/imaging/beyin-mr-gercek/kolaj-foto.jpg: bu dört kesitten film kolajı, telefonla eğik çekilmiş gibi
+  - fixtures/imaging/beyin-mr-gercek/kolaj-foto.jpg: bu kesitlerden (sınıf başına bir) film kolajı, telefonla eğik çekilmiş gibi
   - fixtures/imaging/beyin-mr-gercek/expected.json: uygulamadaki ön işlemenin (TypeScript) Python eşiyle aynı
     girdilerde modelin çıktıları — TS ↔ Python eşdeğerlik testi için
 """
@@ -25,7 +25,11 @@ LABELS = [
     {'id': 1, 'key': 'glial_tumor', 'finding': 'Beyin içi kitle örüntüsü (glioma / glioblastom benzeri)', 'kind': 'finding', 'structure': 'brain', 'node': 'brain'},
     {'id': 2, 'key': 'cpa_tumor', 'finding': 'İç kulak yolu – serebellopontin köşe kitlesi örüntüsü (vestibüler schwannom benzeri)', 'kind': 'finding', 'structure': 'brain', 'node': 'brain'},
     {'id': 3, 'key': 'chronic_lesion', 'finding': 'Eski doku kaybı alanı örüntüsü (kronik inme / ameliyat boşluğu benzeri)', 'kind': 'finding', 'structure': 'brain', 'node': 'brain'},
+    {'id': 4, 'key': 'meningioma', 'finding': 'Beyin zarı kaynaklı kitle örüntüsü (menenjiyom benzeri)', 'kind': 'finding', 'structure': 'brain', 'node': 'brain'},
+    {'id': 5, 'key': 'pituitary_tumor', 'finding': 'Hipofiz bölgesi kitlesi örüntüsü (hipofiz adenomu benzeri)', 'kind': 'finding', 'structure': 'pituitary', 'node': 'pituitary'},
 ]
+assert [l['key'] for l in LABELS] == CLASSES
+NUM_TR = {4: 'dört', 5: 'beş', 6: 'altı', 7: 'yedi', 8: 'sekiz'}
 
 SOURCES = {
     'upenn': ('UPENN-GBM (Imaging Data Commons / TCIA)', 'CC BY 4.0', 'glioblastom kesitleri + uzak sağlıklı görünümlü kesitler', 'https://doi.org/10.7937/TCIA.709X-DN49'),
@@ -35,6 +39,10 @@ SOURCES = {
     'healthy_ds000221': ('MPI-Leipzig Mind-Brain-Body (LEMON), OpenNeuro ds000221', 'CC0', 'sağlıklı gönüllüler (T2, FLAIR)', 'https://doi.org/10.18112/openneuro.ds000221'),
     'healthy_ds004199': ('FCD presurgery veri seti sağlıklı kontrolleri, OpenNeuro ds004199', 'CC0', 'sağlıklı kontroller (T1, FLAIR)', 'https://doi.org/10.18112/openneuro.ds004199'),
     'healthy_ds007908': ('MS bilişsel bozulma çalışması sağlıklı kontrolleri, OpenNeuro ds007908', 'CC0', 'sağlıklı kontroller (T1, FLAIR)', 'https://openneuro.org/datasets/ds007908'),
+    'ogm': ('Olfaktör oluk menenjiyomu, OpenNeuro ds007345', 'CC0', 'menenjiyom kesitleri (T1, kontrastlı T1, T2) + tümörsüz kesitler', 'https://openneuro.org/datasets/ds007345'),
+    'btc': ('Brain Tumor Connectomics (ameliyat öncesi), OpenNeuro ds001226', 'CC0', 'menenjiyom ve düşük dereceli glioma kesitleri (T1) + sağlıklı kontroller', 'https://doi.org/10.18112/openneuro.ds001226'),
+    'pit': ('Hipofiz adenomu çok parametreli MR veri seti, OpenNeuro ds006248', 'CC0', 'hipofiz adenomu kesitleri (koronal/sagital/3B kontrastlı T1, T1, T2) + tümörsüz kesitler', 'https://openneuro.org/datasets/ds006248'),
+    'zoom_ds004199': ('FCD presurgery veri seti sağlıklı kontrolleri (dar görüş alanı), OpenNeuro ds004199', 'CC0', 'sağlıklı kontrollerin kafa tabanı ve orta hat kesitleri (dar görüş alanı)', 'https://doi.org/10.18112/openneuro.ds004199'),
 }
 
 
@@ -110,27 +118,29 @@ def embed(img192, size=320, off=(48, 70)):
 
 
 def collage_photo(imgs):
-    """2×2 film kolajı (beyaz ızgara çizgileri, köşe yazıları) → telefonla eğik, parlamalı, JPEG fotoğraf."""
+    """Film kolajı (2 sıra; beyaz ızgara çizgileri, köşe yazıları) → telefonla eğik, parlamalı, JPEG fotoğraf."""
     tile = 300
     pad = 6
-    W = 2 * tile + 3 * pad
-    film = Image.new('L', (W, W), 235)
+    cols = (len(imgs) + 1) // 2
+    W = cols * tile + (cols + 1) * pad
+    Hf = 2 * tile + 3 * pad
+    film = Image.new('L', (W, Hf), 235)
     d = ImageDraw.Draw(film)
     for i, a in enumerate(imgs):
-        x = pad + (i % 2) * (tile + pad)
-        y = pad + (i // 2) * (tile + pad)
+        x = pad + (i % cols) * (tile + pad)
+        y = pad + (i // cols) * (tile + pad)
         t = Image.fromarray(a).resize((tile, tile), Image.BILINEAR)
         film.paste(t, (x, y))
         d.text((x + 6, y + 4), f'{i + 1}', fill=230)
         d.text((x + tile - 40, y + tile - 14), 'R  L', fill=200)
-    rgb = Image.merge('RGB', [film, film, film]).resize((W, W))
+    rgb = Image.merge('RGB', [film, film, film])
     # eğik çekim (perspektif) ve hafif döndürme
-    Wd, Hd = 760, 720
-    coeffs = perspective_coeffs([(40, 30), (Wd - 20, 10), (Wd - 45, Hd - 25), (15, Hd - 40)], [(0, 0), (W, 0), (W, W), (0, W)])
+    Wd, Hd = int(760 * W / Hf), 720
+    coeffs = perspective_coeffs([(40, 30), (Wd - 20, 10), (Wd - 45, Hd - 25), (15, Hd - 40)], [(0, 0), (W, 0), (W, Hf), (0, Hf)])
     photo = rgb.transform((Wd, Hd), Image.PERSPECTIVE, coeffs, Image.BILINEAR, fillcolor=(60, 58, 52))
     arr = np.asarray(photo).astype(np.float32)
     yy, xx = np.mgrid[0:Hd, 0:Wd]
-    glare = 38 * np.exp(-(((xx - 520) / 180) ** 2 + ((yy - 200) / 140) ** 2))
+    glare = 38 * np.exp(-(((xx - 0.68 * Wd) / 180) ** 2 + ((yy - 200) / 140) ** 2))
     arr = arr * np.array([1.0, 0.98, 0.93]) + glare[..., None]
     arr += np.random.default_rng(3).normal(0, 4, arr.shape)
     out = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.8))
@@ -171,6 +181,7 @@ def main():
         'refAuc': rep['ref_distance_auc_normal_vs_lesion'],
         'lesionMapDice': rep['lesion_map_median_dice'],
         'patients': rep['n']['patients'],
+        'perClassCi': rep.get('per_class_ci', {}),
         'finding': {'threshold': 0.7, 'lesionReported': ft['clean']['0.7']['lesion_reported'], 'correctPattern': ft['clean']['0.7']['lesion_reported_correct_pattern'], 'normalFalse': ft['clean']['0.7']['normal_false_finding'], 'lesionReportedPhoto': ft['photo']['0.7']['lesion_reported'], 'normalFalsePhoto': ft['photo']['0.7']['normal_false_finding'], 'oodRate': ft['clean']['ood_rate']},
         'gate': {'brainPass': gate['brain_test_pass_clean'], 'brainPassPhoto': gate['brain_test_pass_photo'], 'rejected': gate['negatives_test_rejected'], 'rejectedPhoto': gate['negatives_test_rejected_photo'], 'negatives': gate['negatives_total']},
         'slices': {k: rep['n'][k] for k in ('train', 'val', 'test')},
@@ -180,7 +191,7 @@ def main():
         'schema': 'kh-model-manifest/2',
         'id': MID,
         'name': 'Beyin MR örüntü benzerliği (Kan Haritası, gerçek hasta verisiyle eğitildi)',
-        'version': '1.0.0',
+        'version': '2.0.0',
         'modalities': ['MRI'],
         'task': 'pattern-2d',
         'format': 'onnx',
@@ -188,11 +199,11 @@ def main():
         'sha256': sha,
         'license': 'CC BY 4.0 (model ağırlıkları, Kan Haritası); eğitim verisi CC BY 4.0 ve CC0 — atıflar NOTICE.txt',
         'source': 'Kan Haritası — scripts/models/brain_pattern (veri indirme, eğitim, doğrulama ve dışa aktarma betikleri)',
-        'intendedUse': 'Beyin MR kesitini (fotoğraf, ekran görüntüsü ya da DICOM kesiti) sağlıklı referans kesitleriyle karşılaştırmak ve dört örüntüden hangisine benzediğini olasılıkla göstermek. Ön bilgi ve eğitim amaçlıdır; tanı koymaz.',
+        'intendedUse': f'Beyin MR kesitini (fotoğraf, ekran görüntüsü ya da DICOM kesiti) sağlıklı referans kesitleriyle karşılaştırmak ve {NUM_TR[len(CLASSES)]} örüntüden hangisine benzediğini olasılıkla göstermek. Ön bilgi ve eğitim amaçlıdır; tanı koymaz.',
         'citation': '; '.join(f"{d['name']} ({d['license']}) {d['url']}" for d in data),
         'validation': (
             f"Hasta bazlı ayrık test ({metrics['patients']['test']} hasta, {metrics['slices']['test']} kesit): normal ↔ lezyonlu AUC {tc['abnormal_auc']}, "
-            f"duyarlılık {tc['abnormal_sens_at_0_5']}, özgüllük {tc['abnormal_spec_at_0_5']}; 4 örüntü doğruluğu {tc['accuracy']} (makro F1 {tc['macro_f1']}). "
+            f"duyarlılık {tc['abnormal_sens_at_0_5']}, özgüllük {tc['abnormal_spec_at_0_5']}; {len(CLASSES)} örüntü doğruluğu {tc['accuracy']} (makro F1 {tc['macro_f1']}). "
             f"Telefon fotoğrafı benzetimi: doğruluk {tp['accuracy']}, AUC {tp['abnormal_auc']}. PyTorch ↔ ONNX en büyük fark {onx['max_diff']:.1e}."
         ),
         'compatibleDevice': 'Tüm cihazlar (kesit başına < 1 sn, WASM).',
@@ -211,16 +222,17 @@ def main():
         'labels': LABELS,
         'scoreThreshold': 0.7,
         'limitations': [
-            'Yalnızca dört örüntüyü tanır: sağlıklı referansa benzer, beyin içi kitle (glioma/glioblastom), iç kulak yolu kitlesi (vestibüler schwannom), eski doku kaybı alanı (kronik inme / ameliyat boşluğu).',
-            'Multipl skleroz ve diğer beyaz cevher lezyonları, metastaz, menenjiyom, hipofiz tümörü, kanama, akut inme, enfeksiyon/apse, hidrosefali, atrofi/demans, damar anomalileri ve çocukluk çağı hastalıklarını TANIMAZ; bu durumlarda "sağlıklıya benzer" ya da yanlış bir örüntü söyleyebilir.',
+            f"Yalnızca {NUM_TR[len(CLASSES)]} örüntüyü tanır: sağlıklı referansa benzer, beyin içi kitle (glioma/glioblastom), iç kulak yolu kitlesi (vestibüler schwannom), eski doku kaybı alanı (kronik inme / ameliyat boşluğu), beyin zarı kaynaklı kitle (menenjiyom), hipofiz bölgesi kitlesi (hipofiz adenomu).",
+            'Multipl skleroz ve diğer beyaz cevher lezyonları, metastaz, kanama, akut inme, enfeksiyon/apse, hidrosefali, atrofi/demans, damar anomalileri ve çocukluk çağı hastalıklarını TANIMAZ (bu hastalıklar için açık lisanslı, etiketli gerçek veri bulunamadı); bu durumlarda "sağlıklıya benzer" ya da yanlış bir örüntü söyleyebilir.',
             'T1, kontrastlı T1, T2 ve FLAIR kesitleriyle eğitildi; difüzyon (DWI/ADC), SWI, perfüzyon ve BT görüntülerinde kullanılmamalıdır (eğitim dışı kapısı bunların çoğunu yakalar, hepsini değil).',
-            f"Kesit düzeyindedir: tek bir kesite bakar, tüm seriyi ve önceki çekimleri değerlendirmez. Lezyonun görünmediği kesit sağlıklıya benzer çıkabilir. Testte örüntü başına duyarlılık: glioma {pc['glial_tumor']['sensitivity']}, iç kulak yolu {pc['cpa_tumor']['sensitivity']}, kronik lezyon {pc['chronic_lesion']['sensitivity']}; sağlıklı kesitte özgüllük {pc['normal']['specificity']}.",
-            'Eğitim verisi ABD ve Avrupa merkezlerinden (çoğunlukla Siemens/GE cihazları); Türkiye\'deki cihaz ve çekim protokollerinde başarımı ayrıca ölçülmedi.',
-            'İç kulak yolu örüntüsünün verisi tek bir merkezden (Londra, Gamma Knife planlama MR\'ı); testteki çok yüksek başarı bu merkeze özgü olabilir, başka cihazlarda daha düşük olabilir.',
+            "Kesit düzeyindedir: tek bir kesite bakar, tüm seriyi ve önceki çekimleri değerlendirmez. Lezyonun görünmediği kesit sağlıklıya benzer çıkabilir. Testte örüntü başına duyarlılık: " + ', '.join(f"{n} {pc[k]['sensitivity']}" for k, n in (('glial_tumor', 'glioma'), ('cpa_tumor', 'iç kulak yolu'), ('chronic_lesion', 'kronik lezyon'), ('meningioma', 'menenjiyom'), ('pituitary_tumor', 'hipofiz'))) + f"; sağlıklı kesitte özgüllük {pc['normal']['specificity']}.",
+            "Menenjiyom ve hipofiz örüntüleri az hastayla eğitildi ve test edildi (test: menenjiyom " + str(rep.get('per_class_ci', {}).get('meningioma', {}).get('patients', '?')) + ", hipofiz " + str(rep.get('per_class_ci', {}).get('pituitary_tumor', {}).get('patients', '?')) + " hasta); sonuçlarındaki belirsizlik diğerlerinden büyüktür. Menenjiyom verisinin çoğu kafa tabanı (olfaktör oluk) menenjiyomudur; başka yerdeki menenjiyomlarda başarım daha düşük olabilir.",
+            'Eğitim verisi ABD, Avrupa ve Rusya merkezlerinden (çoğunlukla Siemens/GE/Philips cihazları); Türkiye\'deki cihaz ve çekim protokollerinde başarımı ayrıca ölçülmedi.',
+            'İç kulak yolu ve hipofiz örüntülerinin verisi tek merkezlerden (Londra; Prag); testteki yüksek başarı bu merkezlere özgü olabilir, başka cihazlarda daha düşük olabilir.',
             'Telefon fotoğrafı koşulları benzetimle test edildi (eğik çekim, bulanıklık, ekran deseni, yazılar); gerçek film/ekran fotoğraflarında başarım daha düşük olabilir.',
             'Sağlıklı referansa uzaklık kesitin düzeyine (kafa tabanı, tepe) ve sekansa göre de değişir; tek başına hastalık göstermez.',
             'Katkı haritası modelin örüntüye en çok katkı veren alanıdır; lezyon sınırı ya da ölçümü değildir.',
-            f"Bir örüntü ancak olasılığı %70 ve üzerindeyse bildirilir. Hasta bazlı testte lezyonlu kesitlerin %{round(ft['clean']['0.7']['lesion_reported'] * 100)}'inde örüntü bildirildi (kaçırma %{round((1 - ft['clean']['0.7']['lesion_reported']) * 100)}); lezyonsuz kesitlerin %{round(ft['clean']['0.7']['normal_false_finding'] * 100)}'unda yanlışlıkla örüntü bildirildi.",
+            f"Bir örüntü ancak olasılığı %70 ve üzerindeyse bildirilir. Hasta bazlı testte lezyonlu kesitlerin %{round(ft['clean']['0.7']['lesion_reported'] * 100)}'inde örüntü bildirildi; lezyonsuz kesitlerin %{round(ft['clean']['0.7']['normal_false_finding'] * 100)}'unda yanlışlıkla örüntü bildirildi.",
             'Çizim ya da karikatür gibi gerçek olmayan "beyin" görüntülerini kapı her zaman yakalayamaz; bunlarda olasılıklar anlamsızdır.',
             'Eğitim dışı kapısı gerçek röntgen, BT, beyin dışı MR, belge ve çizim görüntüleriyle eğitildi; bunların çoğunu yakalar ama her türlü görüntüyü yakalayamaz (ör. DWI/SWI beyin MR, çocuk beyni, olağan dışı ekran düzenleri).',
             'Klinik kullanım için onaylı tıbbi cihaz değildir; radyolog değerlendirmesinin yerini tutmaz.',
@@ -239,6 +251,8 @@ def main():
                '  - Sentetik belge/ekran görüntüleri, çizim "kafa" fantomları ve dokular (betikle üretildi)']
     notice += ['', 'UPENN-GBM: Bakas S. ve ark., Sci Data 2022. Vestibular-Schwannoma-SEG: Shapey J. ve ark., Sci Data 2021.',
                'ARC: Gibson M. ve ark., Sci Data 2024. MPI-LEMON: Babayan A. ve ark., Sci Data 2019. FCD: Schuch F. ve ark., Sci Data 2023.',
+               'Olfaktör oluk menenjiyomu: Filimonova E. ve ark., OpenNeuro ds007345. Brain Tumor Connectomics: Aerts H. ve ark., eNeuro 2018.',
+               'Hipofiz adenomu: Černý M. ve ark., OpenNeuro ds006248 (Scientific Data, 2025).',
                'Imaging Data Commons: Fedorov A. ve ark., RadioGraphics 2023.', '', 'Doğrulama: ' + manifest['validation']]
     open(os.path.join(DST, 'NOTICE.txt'), 'w').write('\n'.join(notice) + '\n')
     idx_path = os.path.join(REPO, 'apps/web/public/ai-models/index.json')
@@ -284,8 +298,8 @@ def main():
     open(os.path.join(FIX, 'BENIOKU.txt'), 'w').write(
         'Gerçek beyin MR kesitleri (anonim, açık lisanslı) — model doğrulama fikstürleri.\n'
         'Her sınıftan, HASTA BAZLI TEST kümesinden (eğitimde görülmemiş) lezyon alanı en büyük eksenel kesit; seçim kurala dayalıdır.\n'
-        'Kaynaklar: UPENN-GBM ve Vestibular-Schwannoma-SEG (TCIA/IDC, CC BY 4.0); ARC ds004884, MPI-LEMON ds000221, FCD ds004199 (OpenNeuro, CC0).\n'
-        'kolaj-foto.jpg: aynı dört kesitten oluşturulmuş film kolajının telefon fotoğrafı benzetimi (perspektif, parlama, gürültü, JPEG).\n'
+        'Kaynaklar: ' + '; '.join(sorted({e['source'] + ' (' + e['license'] + ')' for e in exp['images'].values()})) + '.\n'
+        'kolaj-foto.jpg: aynı kesitlerden (sınıf başına bir) oluşturulmuş film kolajının telefon fotoğrafı benzetimi (perspektif, parlama, gürültü, JPEG).\n'
         'expected.json: uygulamadaki ön işlemenin Python eşiyle modelin çıktıları (TypeScript ↔ Python eşdeğerlik testi).\n')
 
 

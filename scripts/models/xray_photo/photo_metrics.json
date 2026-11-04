@@ -1,0 +1,53 @@
+{
+ "finding": "Pneumonia",
+ "n": 440,
+ "positives": 295,
+ "negatives": 145,
+ "source": "ieee8023/covid-chestxray-dataset ve Actualmed-COVID-chestxray-dataset (GitHub; PA/AP grafiler): pnömoni/COVID-19 (295) ↔ bulgusuz (145). Her görüntüden ekran görüntüsü, monitör fotoğrafı ve film fotoğrafı benzetimi üretildi (scripts/models/xray_photo). Bulgusuz görüntülerin çoğu tek kaynaktan; AUC kaynak farkını da yansıtabilir.",
+ "conditions": {
+  "original": {
+   "name": "Orijinal dijital dosya",
+   "auc": 0.811,
+   "aucCi95": [
+    0.765,
+    0.853
+   ],
+   "aucWithoutRegion": 0.808,
+   "meanAbsDiff": 0.009,
+   "anyFlagChanged": 0.041
+  },
+  "screenshot": {
+   "name": "Ekran görüntüsü (bilgisayar görüntüleyicisi ya da telefonda e-Nabız)",
+   "auc": 0.818,
+   "aucCi95": [
+    0.774,
+    0.861
+   ],
+   "aucWithoutRegion": 0.845,
+   "meanAbsDiff": 0.062,
+   "anyFlagChanged": 0.366
+  },
+  "monitorPhoto": {
+   "name": "Ekranın telefonla fotoğrafı",
+   "auc": 0.761,
+   "aucCi95": [
+    0.708,
+    0.802
+   ],
+   "aucWithoutRegion": 0.647,
+   "meanAbsDiff": 0.129,
+   "anyFlagChanged": 0.461
+  },
+  "filmPhoto": {
+   "name": "Negatoskoptaki filmin fotoğrafı",
+   "auc": 0.766,
+   "aucCi95": [
+    0.712,
+    0.818
+   ],
+   "aucWithoutRegion": 0.759,
+   "meanAbsDiff": 0.159,
+   "anyFlagChanged": 0.541
+  }
+ }
+}

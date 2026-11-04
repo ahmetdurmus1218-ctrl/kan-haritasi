@@ -5,7 +5,7 @@
  *  - TS ↔ Python eşdeğerliği: hasta bazlı TEST kümesinden (eğitimde görülmemiş) her örüntüden bir gerçek kesit;
  *    uygulamadaki ön işleme (kesit ayırma, kafa kutusu, kare kırpma, yüzdelik normalizasyon) Python eşiyle aynı
  *    olasılıkları verir (fixtures/imaging/beyin-mr-gercek/expected.json).
- *  - Telefonla çekilmiş film kolajı benzetimi: 4 kesit ayrılır, her biri ayrı değerlendirilir.
+ *  - Telefonla çekilmiş film kolajı benzetimi: örüntü başına bir kesit ayrılır, her biri ayrı değerlendirilir.
  *  - Eğitim dışı (OOD) kapısı: beyin MR'ı olmayan gerçek görüntülerde (göğüs röntgeni, belge fotoğrafı) örüntü
  *    söylenmez; kapıyı geçebilen çizim fantomlarda bulgu eşiği (%70) aşılmaz.
  */
@@ -73,9 +73,9 @@ describe('Beyin MR örüntü modeli (gerçek veriyle eğitildi) — gömülü mo
     }
   }, 120_000);
 
-  it('Telefonla çekilmiş film kolajı: 4 kesit ayrılır; her biri ayrı değerlendirilir, eğitim dışı sayılmaz', async () => {
+  it('Telefonla çekilmiş film kolajı (örüntü başına bir kesit): kesitler ayrılır; her biri ayrı değerlendirilir, eğitim dışı sayılmaz', async () => {
     const { pattern } = await analyze(resolve(FIX, 'kolaj-foto.jpg'));
-    expect(pattern.panels.length).toBe(4);
+    expect(pattern.panels.length).toBe(Object.keys(expected.images).length);
     const ood = pattern.panels.filter((p) => p.ood).length;
     console.log(JSON.stringify(pattern.panels.map((p) => ({ panel: p.panel, top: p.probs[0], ref: p.refPercentile, ood: p.ood }))));
     expect(ood).toBeLessThanOrEqual(1);

@@ -1,5 +1,6 @@
 """
-Beyin MR kesiti örüntü modeli: sınıf (normal / glial tümör / iç kulak yolu-KPA tümörü / kronik lezyon)
+Beyin MR kesiti örüntü modeli: sınıf (normal / glial tümör / iç kulak yolu-KPA tümörü / kronik lezyon / menenjiyom /
+hipofiz tümörü)
 + lezyon olasılık haritası + sağlıklı referansa uzaklık + eğitim dışı (OOD) uzaklığı.
 
 Eğitim gerçek, açık lisanslı veriyle yapılır (build_brain_dataset.py). Bölmeler hasta bazlıdır.
@@ -8,7 +9,7 @@ bulanıklık, gürültü, düşük çözünürlük, aydınlatma eğimi, moiré, 
 
 Çıktılar (ONNX, opset 17):
   input  [1,1,160,160]  (piksel 0–1, görüntü başına %1–%99,5 yüzdelik normalizasyon)
-  logits [1,4]
+  logits [1,6]
   mask   [1,1,40,40]    lezyon olasılığı (sigmoid)
   ref    [1]            sağlıklı referans dağılımına (PCA-beyazlatılmış) uzaklık²/k
   ood    [1]            en yakın sınıf merkezine (ortak kovaryans) uzaklık²/k
@@ -24,7 +25,8 @@ ROOT = os.environ.get('KH_BRAIN_WORK', os.path.join(os.path.dirname(os.path.absp
 DS = os.path.join(ROOT, 'brain_ds')
 OUT = os.path.join(ROOT, 'brain_model')
 os.makedirs(OUT, exist_ok=True)
-CLASSES = ['normal', 'glial_tumor', 'cpa_tumor', 'chronic_lesion']
+CLASSES = ['normal', 'glial_tumor', 'cpa_tumor', 'chronic_lesion', 'meningioma', 'pituitary_tumor']
+NC = len(CLASSES)
 S = 160
 SEED = 7
 rng = np.random.default_rng(SEED)
@@ -65,7 +67,7 @@ class Block(nn.Module):
 
 
 class Net(nn.Module):
-    def __init__(self, nc=4):
+    def __init__(self, nc=NC):
         super().__init__()
         self.stem = nn.Sequential(nn.Conv2d(1, 24, 3, 2, 1, bias=False), nn.BatchNorm2d(24), nn.ReLU())  # 80
         self.l1 = nn.Sequential(Block(24, 32, 1))  # 80
@@ -244,11 +246,11 @@ def predict(net, X, M, ids, photo=False, bs=256):
 
 def metrics(prob, y):
     pred = prob.argmax(1)
-    cm = np.zeros((4, 4), int)
+    cm = np.zeros((NC, NC), int)
     for a, b in zip(y, pred):
         cm[a, b] += 1
     per = {}
-    for c in range(4):
+    for c in range(NC):
         tp = cm[c, c]
         fn = cm[c].sum() - tp
         fp = cm[:, c].sum() - tp
@@ -289,12 +291,27 @@ def main():
     epochs = int(os.environ.get('EPOCHS', '14'))
     bs = 64
     # sınıf dengeli örnekleme: her dönemde her sınıftan eşit sayıda
-    per_class = [tr[Y[tr] == c] for c in range(4)]
+    per_class = [tr[Y[tr] == c] for c in range(NC)]
     n_ep = int(os.environ.get('PER_CLASS', '3000'))
-    steps = 4 * n_ep // bs
+    steps = math.ceil(NC * n_ep / bs)  # son yarım toplu dahil (öğrenme hızı planı tam adım sayısını bilmeli)
     resume = os.environ.get('RESUME')
+    init = os.environ.get('INIT')
     best = (-1, None)
-    if resume:
+    if init:
+        # İnce ayar: önceki (daha az sınıflı) modelin omurgası ve haritası; sınıflandırıcıda eski sınıfların satırları
+        # korunur, yeni sınıflar sıfırdan öğrenilir. Bölmeler aynı (hasta bazlı özet) → test hastası eğitime sızmaz.
+        old = torch.load(init)
+        cur = net.state_dict()
+        for k, v in old.items():
+            if k in ('fc.weight', 'fc.bias'):
+                cur[k][: v.shape[0]] = v
+            elif k in cur and cur[k].shape == v.shape:
+                cur[k] = v
+        net.load_state_dict(cur)
+        print('ince ayar başlangıcı:', init, flush=True)
+        opt = torch.optim.AdamW(net.parameters(), lr=1e-3, weight_decay=1e-4)
+        sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=1e-3, total_steps=epochs * steps, pct_start=0.1)
+    elif resume:
         # Kesilen eğitime devam: en iyi kontrol noktasından azalan (kosinüs) öğrenme hızıyla
         net.load_state_dict(torch.load(resume))
         pv, _, _ = predict(net, X, M, va)
@@ -302,7 +319,7 @@ def main():
         print('devam: başlangıç val macroF1', best[0], flush=True)
         opt = torch.optim.AdamW(net.parameters(), lr=8e-4, weight_decay=1e-4)
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs * steps, eta_min=1e-5)
-    else:
+    if not init and not resume:
         opt = torch.optim.AdamW(net.parameters(), lr=2e-3, weight_decay=1e-4)
         sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=2e-3, total_steps=epochs * steps, pct_start=0.15)
     hist = []

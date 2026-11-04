@@ -62,6 +62,11 @@ export function PatternResult({ extras, manifest }: { extras: ModelExtras; manif
           </ul>
           {abnormal && (
             <div className="flex flex-wrap gap-1.5 pt-1">
+              {top.key === 'pituitary_tumor' && (
+                <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => go({ name: 'organ', id: 'pituitary' })} data-testid="pattern-organ">
+                  Hipofiz: ne yapar, hangi hormonlar?
+                </button>
+              )}
               <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => go({ name: 'brain' })}>
                 Beyin haritası
               </button>
@@ -96,12 +101,18 @@ export function PatternResult({ extras, manifest }: { extras: ModelExtras; manif
             <li>
               Normal ↔ lezyonlu kesit ayrımı: AUC {tr(m.test.abnormal_auc, 3)} · duyarlılık {fmtPct(m.test.abnormal_sens_at_0_5)} · özgüllük {fmtPct(m.test.abnormal_spec_at_0_5)}
             </li>
-            <li>Dört örüntü doğruluğu: {fmtPct(m.test.accuracy)} (makro F1 {tr(m.test.macro_f1, 2)})</li>
-            {Object.entries(m.test.per_class).map(([k, v]) => (
-              <li key={k}>
-                {manifest.labels.find((l) => l.key === k)?.finding ?? k}: duyarlılık {fmtPct(v.sensitivity)} · özgüllük {fmtPct(v.specificity)}
-              </li>
-            ))}
+            <li>
+              {manifest.labels.length} örüntü arasında doğru olanı seçme: {fmtPct(m.test.accuracy)} (makro F1 {tr(m.test.macro_f1, 2)})
+            </li>
+            {Object.entries(m.test.per_class).map(([k, v]) => {
+              const ci = m.perClassCi?.[k];
+              return (
+                <li key={k} data-testid="pattern-class-metric">
+                  {manifest.labels.find((l) => l.key === k)?.finding ?? k}: duyarlılık {fmtPct(v.sensitivity)} · özgüllük {fmtPct(v.specificity)}
+                  {ci ? ` · test: ${ci.patients} hasta (duyarlılık %95 aralığı ${fmtPct(ci.sensitivity_ci95[0])}–${fmtPct(ci.sensitivity_ci95[1])})` : ''}
+                </li>
+              );
+            })}
             <li>
               Telefon fotoğrafı benzetimi (eğik çekim, bulanıklık, ekran deseni, yazılar): doğruluk {fmtPct(m.photo.accuracy)} · normal ↔ lezyonlu AUC {tr(m.photo.abnormal_auc, 3)}
             </li>

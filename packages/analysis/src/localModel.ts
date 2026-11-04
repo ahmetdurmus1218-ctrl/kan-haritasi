@@ -17,6 +17,7 @@ import { type ModelFinding, type MedicalImageAIProvider, type ProviderOutput, ty
 import { GRAPH } from './knowledge';
 import { type Modality, type ModelVersion, type RasterImage, score } from './types';
 import type { VolumeSpec } from './volumeModel';
+import { xrayFrame } from './xrayRegion';
 import { type PatternExtras, type PatternPanelResult, type PatternSpec, headBox, leadPanel, patternPanels, patternTensor, postprocessPattern, squareAround } from './patternModel';
 
 /* ------------------------------------------------------------------ Manifest */
@@ -72,6 +73,11 @@ export interface ModelManifest {
     std: number[];
     /** Önce merkezden kare kırp (TorchXRayVision XRayCenterCrop). */
     crop?: 'center-square';
+    /**
+     * 'xray': önce fotoğraf/ekran görüntüsünde röntgenin kapladığı alan bulunur (görüntünün %80'inden küçükse oraya
+     * kırpılır; dijital röntgen olduğu gibi kalır), merkez kare kırpma bu alanda yapılır. Bkz. xrayRegion.ts.
+     */
+    region?: 'xray';
     /** Küçültürken örtüşme önleyici Gauss süzgeci (skimage resize anti_aliasing). */
     antialias?: boolean;
   };
@@ -98,6 +104,11 @@ export interface ModelManifest {
   };
   /** pattern-2d: sağlıklı referans kalibrasyonu, OOD eşiği, maske eşiği, test başarımı. */
   pattern?: PatternSpec;
+  /**
+   * Telefon fotoğrafı / ekran görüntüsü ölçümü (etiketli görüntülerin benzetimleri): koşul başına ayırıcılık (AUC) ve
+   * orijinal dijital görüntüye göre skor sapması. Arayüzde dürüstçe gösterilir.
+   */
+  photoMetrics?: PhotoMetrics;
   /** 3B hacim modeli parametreleri (segmentation-3d). */
   volume?: VolumeSpec;
   /** multilabel: çalışma noktası normalizasyonu (TorchXRayVision op_norm). */
@@ -219,17 +230,12 @@ function blur1d(src: Float32Array<ArrayBuffer>, w: number, h: number, sigma: num
  * (TorchXRayVision: normalize → kırp → skimage.resize(order=1, anti_aliasing, mode="constant")).
  */
 export function preprocess(image: RasterImage, manifest: ModelManifest): Tensor {
-  const { width: W, height: H, channels: C, scale, mean, std, crop, antialias } = manifest.input;
-  let x0 = 0;
-  let y0 = 0;
-  let w = image.width;
-  let h = image.height;
-  if (crop === 'center-square') {
-    const size = Math.min(w, h);
-    x0 = Math.floor(w / 2) - Math.floor(size / 2);
-    y0 = Math.floor(h / 2) - Math.floor(size / 2);
-    w = h = size;
-  }
+  const { width: W, height: H, channels: C, scale, mean, std, antialias } = manifest.input;
+  const fr = inputFrame(image, manifest);
+  const x0 = fr.x0;
+  const y0 = fr.y0;
+  const w = fr.w;
+  const h = fr.h;
   const out = new Float32Array(C * H * W);
   const rgba = C === 3 ? image.rgba : undefined;
   for (let c = 0; c < C; c++) {
@@ -264,10 +270,12 @@ export function preprocess(image: RasterImage, manifest: ModelManifest): Tensor 
 }
 
 /** Kırpma sonrası model ızgarasından özgün görüntü koordinatına dönüşüm (konumlar özgün görüntüde gösterilir). */
-export function inputFrame(image: { width: number; height: number }, manifest: ModelManifest): { x0: number; y0: number; w: number; h: number } {
-  if (manifest.input.crop !== 'center-square') return { x0: 0, y0: 0, w: image.width, h: image.height };
-  const size = Math.min(image.width, image.height);
-  return { x0: Math.floor(image.width / 2) - Math.floor(size / 2), y0: Math.floor(image.height / 2) - Math.floor(size / 2), w: size, h: size };
+export function inputFrame(image: { width: number; height: number; gray?: Float32Array }, manifest: ModelManifest): { x0: number; y0: number; w: number; h: number } {
+  // Röntgen alanı (fotoğraf/ekran görüntüsü) — gri değerler gerekir; yalnızca konum vermeyen sınıflandırıcıda kullanılır.
+  const r = manifest.input.region === 'xray' && image.gray ? xrayFrame(image.gray, image.width, image.height) : { x: 0, y: 0, w: image.width, h: image.height };
+  if (manifest.input.crop !== 'center-square') return { x0: r.x, y0: r.y, w: r.w, h: r.h };
+  const size = Math.min(r.w, r.h);
+  return { x0: r.x + Math.floor(r.w / 2) - Math.floor(size / 2), y0: r.y + Math.floor(r.h / 2) - Math.floor(size / 2), w: size, h: size };
 }
 
 /* ------------------------------------------------------------------ Son işleme */
@@ -440,11 +448,28 @@ export function cardiothoracicRatio(outputs: Record<string, Tensor>, manifest: M
 
 /* ------------------------------------------------------------------ Sağlayıcı */
 
+export interface PhotoMetrics {
+  /** Ölçülen bulgu (ör. Pneumonia) ve görüntü sayıları. */
+  finding: string;
+  n: number;
+  positives: number;
+  negatives: number;
+  /** Kaynak veri ve not. */
+  source: string;
+  /**
+   * koşul anahtarı → ad, AUC (%95 GA) ve röntgen alanı kırpması olmadan AUC, orijinale göre ortalama mutlak skor
+   * farkı, en az bir bulgunun eşik kararının (işaret ettiği / etmediği) değiştiği görüntü oranı.
+   */
+  conditions: Record<string, { name: string; auc: number; aucCi95: [number, number]; aucWithoutRegion?: number; meanAbsDiff: number; anyFlagChanged: number }>;
+}
+
 export interface ModelExtras {
   scores?: Array<{ key: string; name: string; structure?: string; score: number }>;
   ctr?: { ratio: number; heartWidth: number; thoraxWidth: number };
   /** pattern-2d: kesit kesit örüntü olasılıkları, sağlıklı referansa uzaklık, OOD ve katkı haritası. */
   pattern?: PatternExtras;
+  /** input.region 'xray': fotoğraf/ekran görüntüsünde modelin baktığı alan (röntgene kırpıldıysa). */
+  xrayFrame?: { x: number; y: number; w: number; h: number; imageSize: { width: number; height: number } };
 }
 
 export function modelVersionOf(m: ModelManifest): ModelVersion & { sha256: string; license: string } {
@@ -536,6 +561,10 @@ export class LocalModelProvider implements MedicalImageAIProvider {
       const outputs = await engine.run({ [this.manifest.input.name]: preprocess(img, this.manifest) });
       findings.push(...postprocess(outputs, this.manifest, { width: img.width, height: img.height }, frame));
       if (this.manifest.task === 'multilabel' && !this.lastExtras.scores) this.lastExtras.scores = multilabelScores(outputs, this.manifest);
+      if (this.manifest.input.region === 'xray' && !this.lastExtras.xrayFrame) {
+        const f = inputFrame(img, this.manifest);
+        if (f.w * f.h < 0.8 * img.width * img.height) this.lastExtras.xrayFrame = { x: f.x0, y: f.y0, w: f.w, h: f.h, imageSize: { width: img.width, height: img.height } };
+      }
       if (this.manifest.task === 'segmentation' && !this.lastExtras.ctr) {
         const ctr = cardiothoracicRatio(outputs, this.manifest);
         if (ctr) this.lastExtras.ctr = ctr;

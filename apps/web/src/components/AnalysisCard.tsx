@@ -236,6 +236,10 @@ function ModelFindings({
     st.localization.kind === 'pixel' ? [{ box: st.localization.box, color: STRUCTURE_COLOR, label: st.name, ...(st.localization.mask ? { mask: st.localization.mask } : {}) }] : [],
   );
   const scored = runs.filter((r) => r.extras?.scores?.length);
+  // Röntgen fotoğrafı / ekran görüntüsü: modelin baktığı alan (röntgene kırpıldıysa) ve ölçülen güvenilirlik
+  const framed = runs.find((r) => r.extras?.xrayFrame);
+  const frameMarks: Mark[] = framed ? [{ box: { x: framed.extras!.xrayFrame!.x, y: framed.extras!.xrayFrame!.y, w: framed.extras!.xrayFrame!.w, h: framed.extras!.xrayFrame!.h }, color: '#94a3b8', label: 'Modelin baktığı alan' }] : [];
+  const photo = framed?.model.manifest.photoMetrics;
   const patterned = runs.filter((r) => r.extras?.pattern);
   const ctr = runs.find((r) => r.extras?.ctr)?.extras?.ctr;
   const anyClassOnly = result.findings.some((f) => f.localization.kind === 'region-only');
@@ -257,6 +261,15 @@ function ModelFindings({
       {raster && (marks.length > 0 || structureMarks.length > 0) && (
         <Overlay raster={raster} marks={[...structureMarks, ...marks]} testId="model-overlay" caption={`${marks.length ? 'Turkuaz: modelin işaretlediği bulgu alanı. ' : ''}${structureMarks.length ? 'Mor: modelin bölütlediği anatomik yapılar.' : ''} Konumlar modelin çıktısıdır.`} />
       )}
+      {framed && (
+        <div className={`space-y-1 rounded-lg border px-3 py-2 text-sm ${TONE.attention.chip}`} role="note" data-testid="xray-photo-caution">
+          <p>
+            ⚠ Bu bir ekran görüntüsü ya da fotoğraf gibi görünüyor. Röntgenin kapladığı alan bulundu; model yalnızca o alana baktı (gri çerçeve).
+            {photo ? ` Ölçümde ekranın ya da filmin fotoğrafında en az bir bulgunun kararı değişen görüntü oranı %${Math.round(Math.max(photo.conditions.monitorPhoto?.anyFlagChanged ?? 0, photo.conditions.filmPhoto?.anyFlagChanged ?? 0) * 100)} oldu.` : ''} Kesin değerlendirme için orijinal dosyayı (DICOM ya da PNG) yükle.
+          </p>
+        </div>
+      )}
+      {raster && framed && <Overlay raster={raster} marks={frameMarks} testId="xray-frame" caption="Gri çerçeve: modelin baktığı röntgen alanı (fotoğraf/ekran görüntüsünden bulundu)." />}
       {patterned.map((r) => (
         <PatternResult key={r.model.manifest.id} extras={r.extras!} manifest={r.model.manifest} />
       ))}
@@ -350,6 +363,21 @@ function ModelFindings({
         <details key={r.model.manifest.id} className="text-xs text-fg-muted">
           <summary className="cursor-pointer text-fg">Tüm model skorları · {r.model.manifest.name}</summary>
           <p className="mt-1">Skorlar modelin çalışma noktasına göre ölçeklidir (0,50 ≈ çalışma noktası); ≥ {r.model.manifest.scoreThreshold.toLocaleString('tr-TR')} olanlar “modelin işaret ettiği” diye listelenir. Olasılık ya da tanı değildir.</p>
+          {r.model.manifest.photoMetrics && (
+            <div className="mt-1" data-testid="photo-metrics">
+              <p className="text-fg">Fotoğrafta ve ekran görüntüsünde ne kadar güvenilir? (ölçüm: {r.model.manifest.photoMetrics.n} etiketli grafi, pnömoni ↔ bulgusuz)</p>
+              <ul className="mt-0.5 list-disc space-y-0.5 pl-4">
+                {Object.entries(r.model.manifest.photoMetrics.conditions).map(([k, c]) => (
+                  <li key={k}>
+                    {c.name}: ayırıcılık AUC {c.auc.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ({c.aucCi95.map((v) => v.toLocaleString('tr-TR', { maximumFractionDigits: 2 })).join('–')})
+                    {k !== 'original' ? ` · orijinale göre skor farkı ${c.meanAbsDiff.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} · en az bir bulgunun kararı değişen görüntü %${Math.round(c.anyFlagChanged * 100)}` : ''}
+                    {c.aucWithoutRegion !== undefined && k !== 'original' ? ` · röntgen alanı bulunmadan AUC ${c.aucWithoutRegion.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : ''}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-0.5 text-fg-faint">{r.model.manifest.photoMetrics.source}</p>
+            </div>
+          )}
           <ul className="mt-1 space-y-0.5" aria-label="Model skorları" data-testid="model-scores">
             {r.extras!.scores!.map((sc) => (
               <li key={sc.key} className="flex items-center gap-2">

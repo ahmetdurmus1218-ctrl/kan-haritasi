@@ -65,8 +65,8 @@ def main():
     # eğitim gömmeleri (artırmasız)
     _, Etr, _ = predict(net, X, M, tr)
     mu, W = whiten(Etr[Y[tr] == 0], K)
-    means = np.stack([Etr[Y[tr] == c].mean(0) for c in range(4)])
-    Wc = np.concatenate([Etr[Y[tr] == c] - means[c] for c in range(4)])
+    means = np.stack([Etr[Y[tr] == c].mean(0) for c in range(len(CLASSES))])
+    Wc = np.concatenate([Etr[Y[tr] == c] - means[c] for c in range(len(CLASSES))])
     _, Wp = whiten(Wc + 0, K)  # ortak kovaryans (merkezler çıkarılmış)
     from train_gate import Gate
     gate = Gate()
@@ -75,7 +75,7 @@ def main():
     exp = Exported(net, mu, W, means, Wp, gate).eval()
 
     def run(ids, photo=False):
-        P, R, O, SEG = [], [], [], []
+        P, R, O, SEG, G = [], [], [], [], []
         gen = torch.Generator().manual_seed(321)
         from train_brain import augment
         for i in range(0, len(ids), 256):
@@ -84,7 +84,8 @@ def main():
             x, _ = augment(img, les, strong=True, gen=gen) if photo else center(img, les)
             with torch.no_grad():
                 lo, sg, r, o, _g = exp(x)
-            P.append(F.softmax(lo, 1).numpy()); R.append(r.numpy()); O.append(o.numpy()); SEG.append(sg.numpy())
+            P.append(F.softmax(lo, 1).numpy()); R.append(r.numpy()); O.append(o.numpy()); SEG.append(sg.numpy()); G.append(_g.numpy().reshape(-1))
+        run.gate = np.concatenate(G)
         return np.concatenate(P), np.concatenate(R), np.concatenate(O), np.concatenate(SEG)
 
     Pv, Rv, Ov, _ = run(va)
@@ -92,7 +93,9 @@ def main():
     ref_q = [[q, float(np.percentile(Rv[Y[va] == 0], q))] for q in qs]
     ood_thr = float(np.percentile(Ov, 99.5))
     Pt, Rt, Ot, SEGt = run(te)
+    Gt = run.gate
     Ptp, Rtp, Otp, _ = run(te, photo=True)
+    Gtp = run.gate
     m_clean = metrics(Pt, Y[te])
     m_photo = metrics(Ptp, Y[te])
     # sekans kırılımı (test, artırmasız)
@@ -120,6 +123,43 @@ def main():
                   n=dict(train=int(len(tr)), val=int(len(va)), test=int(len(te)), patients=dict(train=len(set(subj[tr])), val=len(set(subj[va])), test=len(set(subj[te])))),
                   per_source={s: int((src == s).sum()) for s in sorted(set(src))})
     json.dump(report, open(os.path.join(OUT, 'report.json'), 'w'), indent=1, ensure_ascii=False)
+    # Bulgu eşiği: uygulamadaki kuralla (eğitim dışı değil, en olası sınıf normal değil, olasılık ≥ eşik) test kesitlerinde
+    gthr = json.load(open(os.path.join(OUT, 'gate.json')))['threshold']
+    yt = Y[te]
+
+    def finding_stats(P, O, G):
+        ood = (O > ood_thr) | (G > gthr)
+        top, pmax = P.argmax(1), P.max(1)
+        out = {'ood_rate': round(float(ood.mean()), 4)}
+        for t in (0.5, 0.6, 0.7, 0.8):
+            rep_ = ~ood & (top != 0) & (pmax >= t)
+            les = yt != 0
+            out[str(t)] = dict(lesion_reported=round(float(rep_[les].mean()), 4), lesion_reported_correct_pattern=round(float((rep_ & (top == yt))[les].mean()), 4),
+                               normal_false_finding=round(float(rep_[~les].mean()), 4),
+                               per_class={CLASSES[c]: round(float((rep_ & (top == c))[yt == c].mean()), 4) for c in range(1, len(CLASSES)) if (yt == c).any()})
+        return out
+
+    ft = dict(clean=finding_stats(Pt, Ot, Gt), photo=finding_stats(Ptp, Otp, Gtp))
+    json.dump(ft, open(os.path.join(OUT, 'finding_thresholds.json'), 'w'), indent=1)
+    print('bulgu eşiği 0.7:', ft['clean']['0.7'], 'foto:', ft['photo']['0.7'])
+    # Az hastalı örüntüler için hasta sayısı ve %95 güven aralığı (Wilson) — kesit düzeyinde duyarlılık
+    def wilson(k, n, z=1.96):
+        if n == 0:
+            return [0.0, 0.0]
+        p = k / n
+        d = 1 + z * z / n
+        c = (p + z * z / (2 * n)) / d
+        h = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+        return [round(float(c - h), 4), round(float(c + h), 4)]
+
+    pred = Pt.argmax(1)
+    ci = {}
+    for c in range(len(CLASSES)):
+        m = yt == c
+        ci[CLASSES[c]] = dict(patients=len(set(subj[te][m])), slices=int(m.sum()), sensitivity_ci95=wilson(int((pred[m] == c).sum()), int(m.sum())))
+    report['per_class_ci'] = ci
+    json.dump(report, open(os.path.join(OUT, 'report.json'), 'w'), indent=1, ensure_ascii=False)
+    print('sınıf başına test hasta sayısı ve %95 GA:', json.dumps(ci, ensure_ascii=False))
     print(json.dumps({k: report[k] for k in ('ref_distance_auc_normal_vs_lesion', 'lesion_map_median_dice', 'ood_threshold', 'ood_rate_test')}, indent=1))
     print('TEST (artırmasız):', json.dumps({k: m_clean[k] for k in ('accuracy', 'macro_f1', 'abnormal_auc', 'abnormal_sens_at_0_5', 'abnormal_spec_at_0_5')}))
     print('TEST (fotoğraf benzetimli):', json.dumps({k: m_photo[k] for k in ('accuracy', 'macro_f1', 'abnormal_auc', 'abnormal_sens_at_0_5', 'abnormal_spec_at_0_5')}))

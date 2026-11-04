@@ -1,5 +1,5 @@
 """
-Eğitim dışı kapısı: "bu görüntü beyin MR kesiti mi?" (omurga dondurulmuş; 4 örüntü başarımı değişmez).
+Eğitim dışı kapısı: "bu görüntü beyin MR kesiti mi?" (omurga dondurulmuş; örüntü başarımı değişmez).
 
 Özellikler: omurganın 3 katmanının (40×40, 20×20, 10×10) global ortalama ve standart sapma havuzlaması
 (2 × (64 + 128 + 192) = 768). Küçük MLP → "beyin MR kesiti değil" olasılığı. Pozitifler beyin MR eğitim

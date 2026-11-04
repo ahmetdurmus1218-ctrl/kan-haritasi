@@ -1,0 +1,7 @@
+Röntgen fotoğrafı / ekran görüntüsü fikstürleri (benzetim) — kaynak: nih-cxr-00000001_000.png (NIH ChestX-ray14, kısıtlamasız, atıfla).
+ekran-goruntusu.jpg: bilgisayardaki görüntüleyici (koyu arayüz, araç çubuğu, küçük resimler, yazılar).
+telefon-ekran-goruntusu.jpg: telefonda dikey e-Nabız benzeri ekran görüntüsü.
+monitor-foto.jpg: ekranın telefonla fotoğrafı (eğik, moiré, parlama, siyah seviyesi, bulanıklık, JPEG).
+film-foto.jpg: negatoskoptaki filmin fotoğrafı.
+expected.json: uygulamadaki ön işlemenin Python eşiyle röntgen alanı kutusu ve model skorları (A: tüm görüntü, B: röntgen alanı).
+Üretim: scripts/models/xray_photo/make_fixtures.py

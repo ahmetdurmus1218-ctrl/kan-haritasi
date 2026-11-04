@@ -60,6 +60,8 @@ export interface PatternMetrics {
    * örüntü söylendi (ve doğru örüntü mü), lezyonsuz kesitlerin yüzde kaçında yanlışlıkla söylendi.
    */
   finding?: { threshold: number; lesionReported: number; correctPattern: number; normalFalse: number; lesionReportedPhoto: number; normalFalsePhoto: number; oodRate: number };
+  /** Örüntü başına test hasta/kesit sayısı ve kesit düzeyinde duyarlılığın %95 güven aralığı (Wilson). */
+  perClassCi?: Record<string, { patients: number; slices: number; sensitivity_ci95: [number, number] }>;
 }
 
 export interface Box {

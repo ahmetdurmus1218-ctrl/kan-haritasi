@@ -411,15 +411,19 @@ def build_xrv(work: Path, sample: Path, cls_dir: Path | None, seg_dir: Path | No
             "citation": XRV_CITATION + " Wang X. et al. ChestX-ray8, CVPR 2017 (NIH Clinical Center).",
             "validation": XRV_VALIDATION,
             "compatibleDevice": "Tüm cihazlar (~1–3 sn).",
-            "input": {"name": "input", "layout": "NCHW", "channels": 1, "width": 224, "height": 224, "scale": 1, "mean": [127.5], "std": [0.12451171875], "crop": "center-square", "antialias": True},
+            # region 'xray': fotoğraf/ekran görüntüsünde önce röntgen alanı bulunur (packages/analysis/src/xrayRegion.ts)
+            "input": {"name": "input", "layout": "NCHW", "channels": 1, "width": 224, "height": 224, "scale": 1, "mean": [127.5], "std": [0.12451171875], "crop": "center-square", "antialias": True, "region": "xray"},
             "output": {"probs": "probs"},
             "calibration": {"kind": "xrv-op-norm", "thresholds": cls_info["op_threshs"]},
+            # Telefon fotoğrafı / ekran görüntüsü ölçümü: scripts/models/xray_photo (xray_eval.py → photo_metrics.json)
+            **({"photoMetrics": json.loads((HERE / "xray_photo" / "photo_metrics.json").read_text())} if (HERE / "xray_photo" / "photo_metrics.json").exists() else {}),
             "labels": labels,
             "scoreThreshold": 0.6,
             "limitations": [
                 "Görüntü düzeyinde sınıflandırmadır: bulgunun görüntüdeki yerini VERMEZ; konum yalnızca ilgili organ/bölge olarak gösterilir.",
                 "Skorlar modelin çalışma noktasına göre ölçeklenir (0,5 ≈ çalışma noktası); uygulama ≥ 0,6'yı 'modelin işaret ettiği' diye gösterir, bu bir tanı eşiği değildir.",
                 "Yalnızca NIH ChestX-ray14 ile eğitildi; farklı cihaz/ülke/hasta grubunda başarımı düşebilir. Yan (lateral) grafilerde kullanılmamalı.",
+                "Telefon fotoğrafı ve ekran görüntüsünde önce röntgenin kapladığı alan bulunur ve model yalnızca oraya bakar. Ölçümde (440 etiketli grafinin benzetimleri) ekran görüntüsünde ayırıcılık korundu; ekranın ya da filmin fotoğrafında düştü (pnömoni AUC 0,81 → 0,76–0,77) ve görüntülerin yaklaşık yarısında en az bir bulgunun 'işaret ettiği' kararı değişti. Fotoğraftan çıkan skorlar güvenilir değildir; mümkünse orijinal dosyayı (DICOM/PNG) ya da ekran görüntüsünü yükleyin.",
                 "Klinik kullanım için onaylı tıbbi cihaz değildir.",
             ],
             "upstream": {"weights": f"{XRV_URL}/nih-densenet121-d121-tw-lr001-rot45-tr15-sc15-seed0-best.pt", "weightsSha256": "31a5475c6b1383a7edbfcaf96af9ce302eb9969cfe28b6b8b5859afc6f274fdf"},

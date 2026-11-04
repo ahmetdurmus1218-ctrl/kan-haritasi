@@ -2,8 +2,8 @@
 
   Senaryo 2 — Beyin MR FOTOĞRAFI (çizim kolaj): uygulamayla gelen 3B MR modeli fotoğrafta çalıştırılmaz; beyin MR
               örüntü modeli (2B) çalışır ama görüntü eğitim dağılımı dışında → örüntü söylenmez, model bulgusu yok.
-  Senaryo 5 — GERÇEK beyin MR filmi fotoğrafı (4 kesitli kolaj, eğitimde görülmemiş hastalar): 4 kesit ayrı
-              değerlendirilir; sağlıklı referansla karşılaştırma, örüntü olasılıkları, test başarımı, sınırlar ve
+  Senaryo 5 — GERÇEK beyin MR filmi fotoğrafı (örüntü başına bir kesitli kolaj, eğitimde görülmemiş hastalar): her
+              kesit ayrı değerlendirilir; sağlıklı referansla karşılaştırma, örüntü olasılıkları, test başarımı, sınırlar ve
               "kesin sonuç değildir" notu.
   Senaryo 3 — TEST AMAÇLI sahte ONNX modeli (tests/fixtures/models/mock-detector, tıbbi değil):
               kur (SHA-256) → gerçek görüntüde çıkarım → kutu → anatomi → organ sayfası → akış → köken.
@@ -213,9 +213,11 @@ with sync_playwright() as p:
     check(card.get_by_test_id("analysis-state").get_attribute("data-state") == "model", "S5: durum 'Yerel tıbbi AI modeli ile analiz edildi'")
     check("Sağlıklı referans" in card.get_by_test_id("pattern-ref").inner_text(), "S5: sağlıklı referans kesitleriyle karşılaştırma cümlesi")
     probs = card.get_by_test_id("pattern-probs").locator("li")
-    check(probs.count() == 4 and all(re.search(r"%\d+", probs.nth(i).inner_text()) for i in range(4)), "S5: dört örüntünün olasılıkları (%)")
+    NPAT = len(json.loads((ROOT / "apps/web/public/ai-models/kh-brain-mri-pattern/manifest.json").read_text())["labels"])
+    check(probs.count() == NPAT and all(re.search(r"%\d+", probs.nth(i).inner_text()) for i in range(NPAT)), f"S5: {NPAT} örüntünün olasılıkları (%)")
     pr.locator("summary", has_text="Kesit kesit").click()
-    check(card.get_by_test_id("pattern-panels").locator("li").count() == 4, "S5: film kolajı 4 kesite ayrıldı, her biri ayrı değerlendirildi")
+    npanel = len(json.loads((ROOT / "fixtures/imaging/beyin-mr-gercek/expected.json").read_text())["images"])
+    check(card.get_by_test_id("pattern-panels").locator("li").count() == npanel, f"S5: film kolajı {npanel} kesite ayrıldı, her biri ayrı değerlendirildi")
     pr.locator("summary", has_text="Bu model ne kadar doğru?").click()
     mt = card.get_by_test_id("pattern-metrics").inner_text()
     check("hasta" in mt and "AUC" in mt and "Eğitim dışı kapısı" in mt and "%70" in card.get_by_test_id("pattern-finding").inner_text(), "S5: hasta bazlı test başarımı, bulgu eşiği ve eğitim dışı kapısı yazılı")
