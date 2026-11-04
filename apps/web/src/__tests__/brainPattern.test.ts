@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { LocalModelProvider, type ModelManifest, type RasterImage, rasterFromRgba, validateManifest } from '@kh/analysis';
+import { LocalModelProvider, MIN_ROTATE_DEG, type ModelManifest, type RasterImage, patternPanels, rasterFromRgba, validateManifest } from '@kh/analysis';
 import { ortEngineFactory } from '../lib/localModels/engine';
 
 const ROOT = resolve(__dirname, '../../../..');
@@ -72,6 +72,14 @@ describe('Beyin MR örüntü modeli (gerçek veriyle eğitildi) — gömülü mo
       expect(Math.abs(p.refDistance - e.ref) / Math.max(1, e.ref)).toBeLessThan(0.1);
     }
   }, 120_000);
+
+  it('Tek kesitte küçük eğiklik düzeltilmez: büyük tek taraflı tümör eğiklik tahminini yanıltsa da kesit döndürülmez', async () => {
+    // Glioma kesitinde asimetri eğiklik tahminini ~8° yapar; model ±15° döndürmeyle eğitildiği için düzeltilmez.
+    const r = patternPanels(await raster(resolve(FIX, expected.images.glial_tumor!.file)), manifest.pattern!.maxPanels);
+    expect(r.boxes.length).toBe(1);
+    expect(r.angle === 0 || Math.abs(r.angle) >= MIN_ROTATE_DEG).toBe(true);
+    expect(r.angle).toBe(0);
+  });
 
   it('Telefonla çekilmiş film kolajı (örüntü başına bir kesit): kesitler ayrılır; her biri ayrı değerlendirilir, eğitim dışı sayılmaz', async () => {
     const { pattern } = await analyze(resolve(FIX, 'kolaj-foto.jpg'));

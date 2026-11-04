@@ -1,5 +1,5 @@
 Gerçek beyin MR kesitleri (anonim, açık lisanslı) — model doğrulama fikstürleri.
 Her sınıftan, HASTA BAZLI TEST kümesinden (eğitimde görülmemiş) lezyon alanı en büyük eksenel kesit; seçim kurala dayalıdır.
-Kaynaklar: UPENN-GBM ve Vestibular-Schwannoma-SEG (TCIA/IDC, CC BY 4.0); ARC ds004884, MPI-LEMON ds000221, FCD ds004199 (OpenNeuro, CC0).
-kolaj-foto.jpg: aynı dört kesitten oluşturulmuş film kolajının telefon fotoğrafı benzetimi (perspektif, parlama, gürültü, JPEG).
+Kaynaklar: Aphasia Recovery Cohort, OpenNeuro ds004884 (CC0); Hipofiz adenomu çok parametreli MR veri seti, OpenNeuro ds006248 (CC0); MPI-Leipzig Mind-Brain-Body (LEMON), OpenNeuro ds000221 (CC0); Olfaktör oluk menenjiyomu, OpenNeuro ds007345 (CC0); UPENN-GBM (Imaging Data Commons / TCIA) (CC BY 4.0); Vestibular-Schwannoma-SEG (Imaging Data Commons / TCIA) (CC BY 4.0).
+kolaj-foto.jpg: aynı kesitlerden (sınıf başına bir) oluşturulmuş film kolajının telefon fotoğrafı benzetimi (perspektif, parlama, gürültü, JPEG).
 expected.json: uygulamadaki ön işlemenin Python eşiyle modelin çıktıları (TypeScript ↔ Python eşdeğerlik testi).

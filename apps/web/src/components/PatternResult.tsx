@@ -1,7 +1,8 @@
 import type { ModelExtras, ModelManifest, PatternPanelResult } from '@kh/analysis';
 import { go } from '../state/router';
 
-const fmtPct = (p: number) => `%${Math.round(p * 100)}`;
+/** Ölçülmüş oran: %100'e yuvarlanıp kusursuz izlenimi vermesin diye %99,5–%99,9 bir ondalıkla yazılır. */
+const fmtPct = (p: number) => (p >= 0.995 && p < 1 ? `%${(p * 100).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}` : `%${Math.round(p * 100)}`);
 /** Model olasılığı: uçlar kesinlik izlenimi vermesin diye %99+ / <%1 yazılır (ölçülmüş oranlar için fmtPct). */
 const fmtProb = (p: number) => (p >= 0.995 ? '%99+' : p < 0.005 ? '<%1' : `%${Math.round(p * 100)}`);
 const GATE_KIND: Record<string, string> = { xray: 'röntgen', headct: 'beyin BT', ct: 'gövde BT', bodymr: 'beyin dışı MR', doc: 'belge/ekran', phantom: 'çizim kafa fantomu', drawing: 'şema/karikatür çizimi', texture: 'doku/desen' };

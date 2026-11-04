@@ -254,14 +254,32 @@ export function patternPanels(img: RasterImage, maxPanels: number): { gray: Floa
   const H = img.height;
   const base = normalize01(img.gray);
   const rev = reviewImage(img.gray, W, H);
-  const gray = rev.angle ? rotateImage(base, W, H, rev.angle, borderValue(base, W, H)) : base;
+  let angle = rev.angle;
+  let gray = angle ? rotateImage(base, W, H, angle, borderValue(base, W, H)) : base;
   let boxes = rev.panels.filter((p) => p.kind !== 'too-small').map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h }));
   if (boxes.length <= 1) {
     const grid = brightGrid(gray, W, H);
     if (grid.length >= 2) boxes = grid;
   }
-  return { gray, angle: rev.angle, boxes: (boxes.length ? boxes : [{ x: 0, y: 0, w: W, h: H }]).slice(0, maxPanels) };
+  // Tek kesitte küçük açı düzeltilmez: model ±15° döndürmeyle eğitildi; eğiklik tahmini büyük, tek taraflı bir
+  // lezyonda (asimetri) yanlış çıkabilir. Kutu özgün koordinata taşınır. Kolajda ızgara için döndürme korunur.
+  if (boxes.length <= 1 && angle && Math.abs(angle) < MIN_ROTATE_DEG) {
+    boxes = boxes.map((b) => {
+      const pts = [unrotate(b.x, b.y, W, H, angle), unrotate(b.x + b.w, b.y, W, H, angle), unrotate(b.x, b.y + b.h, W, H, angle), unrotate(b.x + b.w, b.y + b.h, W, H, angle)];
+      const x0 = Math.max(0, Math.floor(Math.min(...pts.map((q) => q[0]))));
+      const y0 = Math.max(0, Math.floor(Math.min(...pts.map((q) => q[1]))));
+      const x1 = Math.min(W, Math.ceil(Math.max(...pts.map((q) => q[0]))));
+      const y1 = Math.min(H, Math.ceil(Math.max(...pts.map((q) => q[1]))));
+      return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+    });
+    gray = base;
+    angle = 0;
+  }
+  return { gray, angle, boxes: (boxes.length ? boxes : [{ x: 0, y: 0, w: W, h: H }]).slice(0, maxPanels) };
 }
+
+/** Tek kesitte bundan küçük eğiklik düzeltilmez (eğitimdeki döndürme artırması ±15°). */
+export const MIN_ROTATE_DEG = 12;
 
 /* ------------------------------------------------------------------ son işleme */
 

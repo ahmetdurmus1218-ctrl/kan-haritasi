@@ -2,19 +2,19 @@
  "schema": "kh-model-manifest/2",
  "id": "kh-brain-mri-pattern",
  "name": "Beyin MR örüntü benzerliği (Kan Haritası, gerçek hasta verisiyle eğitildi)",
- "version": "1.0.0",
+ "version": "2.0.0",
  "modalities": [
   "MRI"
  ],
  "task": "pattern-2d",
  "format": "onnx",
  "file": "model.onnx",
- "sha256": "1099ef85ea8b325977e9a80de80dc401a9bc484cec1ccc81937ad52ad7bf5baa",
+ "sha256": "fe6d0e7efbcdbfe7dc323eb11151b67f517484022d6c74761f4657a0cc74107b",
  "license": "CC BY 4.0 (model ağırlıkları, Kan Haritası); eğitim verisi CC BY 4.0 ve CC0 — atıflar NOTICE.txt",
  "source": "Kan Haritası — scripts/models/brain_pattern (veri indirme, eğitim, doğrulama ve dışa aktarma betikleri)",
- "intendedUse": "Beyin MR kesitini (fotoğraf, ekran görüntüsü ya da DICOM kesiti) sağlıklı referans kesitleriyle karşılaştırmak ve dört örüntüden hangisine benzediğini olasılıkla göstermek. Ön bilgi ve eğitim amaçlıdır; tanı koymaz.",
- "citation": "Aphasia Recovery Cohort, OpenNeuro ds004884 (CC0) https://doi.org/10.18112/openneuro.ds004884; CCNRP kronik lezyon, OpenNeuro ds007212 (CC0) https://openneuro.org/datasets/ds007212; MPI-Leipzig Mind-Brain-Body (LEMON), OpenNeuro ds000221 (CC0) https://doi.org/10.18112/openneuro.ds000221; FCD presurgery veri seti sağlıklı kontrolleri, OpenNeuro ds004199 (CC0) https://doi.org/10.18112/openneuro.ds004199; MS bilişsel bozulma çalışması sağlıklı kontrolleri, OpenNeuro ds007908 (CC0) https://openneuro.org/datasets/ds007908; UPENN-GBM (Imaging Data Commons / TCIA) (CC BY 4.0) https://doi.org/10.7937/TCIA.709X-DN49; Vestibular-Schwannoma-SEG (Imaging Data Commons / TCIA) (CC BY 4.0) https://doi.org/10.7937/TCIA.9YTJ-5Q73",
- "validation": "Hasta bazlı ayrık test (175 hasta, 5918 kesit): normal ↔ lezyonlu AUC 0.9426, duyarlılık 0.9252, özgüllük 0.7864; 4 örüntü doğruluğu 0.8542 (makro F1 0.8626). Telefon fotoğrafı benzetimi: doğruluk 0.8385, AUC 0.9351. PyTorch ↔ ONNX en büyük fark 9.5e-07.",
+ "intendedUse": "Beyin MR kesitini (fotoğraf, ekran görüntüsü ya da DICOM kesiti) sağlıklı referans kesitleriyle karşılaştırmak ve altı örüntüden hangisine benzediğini olasılıkla göstermek. Ön bilgi ve eğitim amaçlıdır; tanı koymaz.",
+ "citation": "Aphasia Recovery Cohort, OpenNeuro ds004884 (CC0) https://doi.org/10.18112/openneuro.ds004884; Brain Tumor Connectomics (ameliyat öncesi), OpenNeuro ds001226 (CC0) https://doi.org/10.18112/openneuro.ds001226; CCNRP kronik lezyon, OpenNeuro ds007212 (CC0) https://openneuro.org/datasets/ds007212; MPI-Leipzig Mind-Brain-Body (LEMON), OpenNeuro ds000221 (CC0) https://doi.org/10.18112/openneuro.ds000221; FCD presurgery veri seti sağlıklı kontrolleri, OpenNeuro ds004199 (CC0) https://doi.org/10.18112/openneuro.ds004199; MS bilişsel bozulma çalışması sağlıklı kontrolleri, OpenNeuro ds007908 (CC0) https://openneuro.org/datasets/ds007908; Olfaktör oluk menenjiyomu, OpenNeuro ds007345 (CC0) https://openneuro.org/datasets/ds007345; Hipofiz adenomu çok parametreli MR veri seti, OpenNeuro ds006248 (CC0) https://openneuro.org/datasets/ds006248; UPENN-GBM (Imaging Data Commons / TCIA) (CC BY 4.0) https://doi.org/10.7937/TCIA.709X-DN49; Vestibular-Schwannoma-SEG (Imaging Data Commons / TCIA) (CC BY 4.0) https://doi.org/10.7937/TCIA.9YTJ-5Q73; FCD presurgery veri seti sağlıklı kontrolleri (dar görüş alanı), OpenNeuro ds004199 (CC0) https://doi.org/10.18112/openneuro.ds004199",
+ "validation": "Hasta bazlı ayrık test (208 hasta, 7108 kesit): normal ↔ lezyonlu AUC 0.9504, duyarlılık 0.9434, özgüllük 0.7662; 6 örüntü doğruluğu 0.8588 (makro F1 0.8741). Telefon fotoğrafı benzetimi: doğruluk 0.8429, AUC 0.9419. PyTorch ↔ ONNX en büyük fark 6.0e-07.",
  "compatibleDevice": "Tüm cihazlar (kesit başına < 1 sn, WASM).",
  "input": {
   "name": "input",
@@ -41,55 +41,55 @@
   "refQuantiles": [
    [
     0,
-    0.35391947627067566
+    0.29170677065849304
    ],
    [
     5,
-    0.531830370426178
+    0.53597491979599
    ],
    [
     10,
-    0.5900928974151611
+    0.585850179195404
    ],
    [
     25,
-    0.7190998792648315
+    0.6971172094345093
    ],
    [
     50,
-    0.9033823609352112
+    0.887852132320404
    ],
    [
     75,
-    1.1749845743179321
+    1.1579545736312866
    ],
    [
     90,
-    1.5856513977050781
+    1.560266375541687
    ],
    [
     95,
-    1.8760545253753662
+    1.8958176374435425
    ],
    [
     97.5,
-    2.151703357696533
+    2.2808589935302734
    ],
    [
     99,
-    3.031202793121338
+    2.894749879837036
    ],
    [
     99.5,
-    3.465562582015991
+    3.6973788738250732
    ],
    [
     100,
-    24.635421752929688
+    21.84947967529297
    ]
   ],
-  "oodThreshold": 2.344360828399658,
-  "gateThreshold": 0.9274834990501404,
+  "oodThreshold": 2.4581921100616455,
+  "gateThreshold": 0.9364691972732544,
   "maskThreshold": 0.5,
   "maxPanels": 16,
   "regions": [
@@ -97,89 +97,155 @@
   ],
   "metrics": {
    "test": {
-    "accuracy": 0.8542,
-    "macro_f1": 0.8626,
-    "abnormal_auc": 0.9426,
-    "abnormal_sens_at_0_5": 0.9252,
-    "abnormal_spec_at_0_5": 0.7864,
+    "accuracy": 0.8588,
+    "macro_f1": 0.8741,
+    "abnormal_auc": 0.9504,
+    "abnormal_sens_at_0_5": 0.9434,
+    "abnormal_spec_at_0_5": 0.7662,
     "per_class": {
      "normal": {
-      "n": 2697,
-      "sensitivity": 0.7987,
-      "specificity": 0.9112,
-      "precision": 0.8828,
-      "f1": 0.8386,
-      "auc": 0.9426
+      "n": 3135,
+      "sensitivity": 0.7892,
+      "specificity": 0.9313,
+      "precision": 0.9006,
+      "f1": 0.8412,
+      "auc": 0.9504
      },
      "glial_tumor": {
-      "n": 1488,
-      "sensitivity": 0.8831,
-      "specificity": 0.9424,
-      "precision": 0.8375,
-      "f1": 0.8597,
-      "auc": 0.9798
+      "n": 1516,
+      "sensitivity": 0.8865,
+      "specificity": 0.9497,
+      "precision": 0.8271,
+      "f1": 0.8558,
+      "auc": 0.9822
      },
      "cpa_tumor": {
       "n": 822,
-      "sensitivity": 0.9976,
-      "specificity": 0.9853,
-      "precision": 0.9162,
-      "f1": 0.9552,
+      "sensitivity": 0.9951,
+      "specificity": 0.989,
+      "precision": 0.9222,
+      "f1": 0.9573,
       "auc": 0.9984
      },
      "chronic_lesion": {
       "n": 911,
-      "sensitivity": 0.8419,
-      "specificity": 0.9507,
-      "precision": 0.7564,
-      "f1": 0.7969,
-      "auc": 0.9672
+      "sensitivity": 0.8617,
+      "specificity": 0.9611,
+      "precision": 0.7651,
+      "f1": 0.8105,
+      "auc": 0.9781
+     },
+     "meningioma": {
+      "n": 490,
+      "sensitivity": 0.9184,
+      "specificity": 0.9856,
+      "precision": 0.8257,
+      "f1": 0.8696,
+      "auc": 0.9955
+     },
+     "pituitary_tumor": {
+      "n": 234,
+      "sensitivity": 0.9957,
+      "specificity": 0.9935,
+      "precision": 0.8381,
+      "f1": 0.9102,
+      "auc": 0.9992
      }
     }
    },
    "photo": {
-    "accuracy": 0.8385,
-    "macro_f1": 0.8458,
-    "abnormal_auc": 0.9351,
-    "abnormal_sens_at_0_5": 0.9326,
-    "abnormal_spec_at_0_5": 0.7412
+    "accuracy": 0.8429,
+    "macro_f1": 0.8589,
+    "abnormal_auc": 0.9419,
+    "abnormal_sens_at_0_5": 0.9492,
+    "abnormal_spec_at_0_5": 0.7199
    },
-   "refAuc": 0.8705,
-   "lesionMapDice": 0.25,
+   "refAuc": 0.8896,
+   "lesionMapDice": 0.4065,
    "patients": {
-    "train": 711,
-    "val": 133,
-    "test": 175
+    "train": 789,
+    "val": 145,
+    "test": 208
+   },
+   "perClassCi": {
+    "normal": {
+     "patients": 207,
+     "slices": 3135,
+     "sensitivity_ci95": [
+      0.7745,
+      0.8031
+     ]
+    },
+    "glial_tumor": {
+     "patients": 35,
+     "slices": 1516,
+     "sensitivity_ci95": [
+      0.8696,
+      0.9015
+     ]
+    },
+    "cpa_tumor": {
+     "patients": 32,
+     "slices": 822,
+     "sensitivity_ci95": [
+      0.9876,
+      0.9981
+     ]
+    },
+    "chronic_lesion": {
+     "patients": 69,
+     "slices": 911,
+     "sensitivity_ci95": [
+      0.8377,
+      0.8826
+     ]
+    },
+    "meningioma": {
+     "patients": 13,
+     "slices": 490,
+     "sensitivity_ci95": [
+      0.8907,
+      0.9395
+     ]
+    },
+    "pituitary_tumor": {
+     "patients": 14,
+     "slices": 234,
+     "sensitivity_ci95": [
+      0.9762,
+      0.9992
+     ]
+    }
    },
    "finding": {
     "threshold": 0.7,
-    "lesionReported": 0.7957,
-    "correctPattern": 0.7929,
-    "normalFalse": 0.1009,
-    "lesionReportedPhoto": 0.7613,
-    "normalFalsePhoto": 0.1009,
-    "oodRate": 0.01
+    "lesionReported": 0.8183,
+    "correctPattern": 0.8142,
+    "normalFalse": 0.1024,
+    "lesionReportedPhoto": 0.7888,
+    "normalFalsePhoto": 0.1094,
+    "oodRate": 0.0111
    },
    "gate": {
-    "brainPass": 0.9943,
-    "brainPassPhoto": 0.9932,
+    "brainPass": 0.9942,
+    "brainPassPhoto": 0.9892,
     "rejected": {
-     "bodymr": 0.93,
-     "ct": 0.992,
+     "bodymr": 0.935,
+     "ct": 1.0,
      "doc": 1.0,
-     "drawing": 0.955,
+     "drawing": 0.985,
      "headct": 1.0,
      "phantom": 1.0,
-     "xray": 0.9643
+     "xray": 1.0
     },
     "rejectedPhoto": {
-     "bodymr": 0.93,
-     "ct": 0.92,
+     "bodymr": 0.915,
+     "ct": 0.968,
      "doc": 1.0,
-     "drawing": 0.89,
-     "headct": 0.9,
+     "drawing": 0.92,
+     "headct": 0.9417,
      "phantom": 0.96,
-     "xray": 0.9286
+     "xray": 0.9643
     },
     "negatives": {
      "bodymr": 1496,
@@ -193,9 +259,9 @@
     }
    },
    "slices": {
-    "train": 23427,
-    "val": 4211,
-    "test": 5918
+    "train": 26232,
+    "val": 4597,
+    "test": 7108
    }
   },
   "data": [
@@ -206,6 +272,14 @@
     "url": "https://doi.org/10.18112/openneuro.ds004884",
     "patients": 228,
     "slices": 4532
+   },
+   {
+    "name": "Brain Tumor Connectomics (ameliyat öncesi), OpenNeuro ds001226",
+    "license": "CC0",
+    "role": "menenjiyom ve düşük dereceli glioma kesitleri (T1) + sağlıklı kontroller",
+    "url": "https://doi.org/10.18112/openneuro.ds001226",
+    "patients": 36,
+    "slices": 682
    },
    {
     "name": "CCNRP kronik lezyon, OpenNeuro ds007212",
@@ -240,6 +314,22 @@
     "slices": 336
    },
    {
+    "name": "Olfaktör oluk menenjiyomu, OpenNeuro ds007345",
+    "license": "CC0",
+    "role": "menenjiyom kesitleri (T1, kontrastlı T1, T2) + tümörsüz kesitler",
+    "url": "https://openneuro.org/datasets/ds007345",
+    "patients": 37,
+    "slices": 2199
+   },
+   {
+    "name": "Hipofiz adenomu çok parametreli MR veri seti, OpenNeuro ds006248",
+    "license": "CC0",
+    "role": "hipofiz adenomu kesitleri (koronal/sagital/3B kontrastlı T1, T1, T2) + tümörsüz kesitler",
+    "url": "https://openneuro.org/datasets/ds006248",
+    "patients": 50,
+    "slices": 1206
+   },
+   {
     "name": "UPENN-GBM (Imaging Data Commons / TCIA)",
     "license": "CC BY 4.0",
     "role": "glioblastom kesitleri + uzak sağlıklı görünümlü kesitler",
@@ -254,6 +344,14 @@
     "url": "https://doi.org/10.7937/TCIA.9YTJ-5Q73",
     "patients": 157,
     "slices": 5278
+   },
+   {
+    "name": "FCD presurgery veri seti sağlıklı kontrolleri (dar görüş alanı), OpenNeuro ds004199",
+    "license": "CC0",
+    "role": "sağlıklı kontrollerin kafa tabanı ve orta hat kesitleri (dar görüş alanı)",
+    "url": "https://doi.org/10.18112/openneuro.ds004199",
+    "patients": 42,
+    "slices": 294
    }
   ]
  },
@@ -287,23 +385,40 @@
    "kind": "finding",
    "structure": "brain",
    "node": "brain"
+  },
+  {
+   "id": 4,
+   "key": "meningioma",
+   "finding": "Beyin zarı kaynaklı kitle örüntüsü (menenjiyom benzeri)",
+   "kind": "finding",
+   "structure": "brain",
+   "node": "brain"
+  },
+  {
+   "id": 5,
+   "key": "pituitary_tumor",
+   "finding": "Hipofiz bölgesi kitlesi örüntüsü (hipofiz adenomu benzeri)",
+   "kind": "finding",
+   "structure": "pituitary",
+   "node": "pituitary"
   }
  ],
  "scoreThreshold": 0.7,
  "limitations": [
-  "Yalnızca dört örüntüyü tanır: sağlıklı referansa benzer, beyin içi kitle (glioma/glioblastom), iç kulak yolu kitlesi (vestibüler schwannom), eski doku kaybı alanı (kronik inme / ameliyat boşluğu).",
-  "Multipl skleroz ve diğer beyaz cevher lezyonları, metastaz, menenjiyom, hipofiz tümörü, kanama, akut inme, enfeksiyon/apse, hidrosefali, atrofi/demans, damar anomalileri ve çocukluk çağı hastalıklarını TANIMAZ; bu durumlarda \"sağlıklıya benzer\" ya da yanlış bir örüntü söyleyebilir.",
+  "Yalnızca altı örüntüyü tanır: sağlıklı referansa benzer, beyin içi kitle (glioma/glioblastom), iç kulak yolu kitlesi (vestibüler schwannom), eski doku kaybı alanı (kronik inme / ameliyat boşluğu), beyin zarı kaynaklı kitle (menenjiyom), hipofiz bölgesi kitlesi (hipofiz adenomu).",
+  "Multipl skleroz ve diğer beyaz cevher lezyonları, metastaz, kanama, akut inme, enfeksiyon/apse, hidrosefali, atrofi/demans, damar anomalileri ve çocukluk çağı hastalıklarını TANIMAZ (bu hastalıklar için açık lisanslı, etiketli gerçek veri bulunamadı); bu durumlarda \"sağlıklıya benzer\" ya da yanlış bir örüntü söyleyebilir.",
   "T1, kontrastlı T1, T2 ve FLAIR kesitleriyle eğitildi; difüzyon (DWI/ADC), SWI, perfüzyon ve BT görüntülerinde kullanılmamalıdır (eğitim dışı kapısı bunların çoğunu yakalar, hepsini değil).",
-  "Kesit düzeyindedir: tek bir kesite bakar, tüm seriyi ve önceki çekimleri değerlendirmez. Lezyonun görünmediği kesit sağlıklıya benzer çıkabilir. Testte örüntü başına duyarlılık: glioma 0.8831, iç kulak yolu 0.9976, kronik lezyon 0.8419; sağlıklı kesitte özgüllük 0.9112.",
-  "Eğitim verisi ABD ve Avrupa merkezlerinden (çoğunlukla Siemens/GE cihazları); Türkiye'deki cihaz ve çekim protokollerinde başarımı ayrıca ölçülmedi.",
-  "İç kulak yolu örüntüsünün verisi tek bir merkezden (Londra, Gamma Knife planlama MR'ı); testteki çok yüksek başarı bu merkeze özgü olabilir, başka cihazlarda daha düşük olabilir.",
+  "Kesit düzeyindedir: tek bir kesite bakar, tüm seriyi ve önceki çekimleri değerlendirmez. Lezyonun görünmediği kesit sağlıklıya benzer çıkabilir. Testte örüntü başına duyarlılık: glioma 0.8865, iç kulak yolu 0.9951, kronik lezyon 0.8617, menenjiyom 0.9184, hipofiz 0.9957; sağlıklı kesitte özgüllük 0.9313.",
+  "Menenjiyom ve hipofiz örüntüleri az hastayla eğitildi ve test edildi (test: menenjiyom 13, hipofiz 14 hasta); sonuçlarındaki belirsizlik diğerlerinden büyüktür. Menenjiyom verisinin çoğu kafa tabanı (olfaktör oluk) menenjiyomudur; başka yerdeki menenjiyomlarda başarım daha düşük olabilir.",
+  "Eğitim verisi ABD, Avrupa ve Rusya merkezlerinden (çoğunlukla Siemens/GE/Philips cihazları); Türkiye'deki cihaz ve çekim protokollerinde başarımı ayrıca ölçülmedi.",
+  "İç kulak yolu ve hipofiz örüntülerinin verisi tek merkezlerden (Londra; Prag); testteki yüksek başarı bu merkezlere özgü olabilir, başka cihazlarda daha düşük olabilir.",
   "Telefon fotoğrafı koşulları benzetimle test edildi (eğik çekim, bulanıklık, ekran deseni, yazılar); gerçek film/ekran fotoğraflarında başarım daha düşük olabilir.",
   "Sağlıklı referansa uzaklık kesitin düzeyine (kafa tabanı, tepe) ve sekansa göre de değişir; tek başına hastalık göstermez.",
   "Katkı haritası modelin örüntüye en çok katkı veren alanıdır; lezyon sınırı ya da ölçümü değildir.",
-  "Bir örüntü ancak olasılığı %70 ve üzerindeyse bildirilir. Hasta bazlı testte lezyonlu kesitlerin %80'inde örüntü bildirildi (kaçırma %20); lezyonsuz kesitlerin %10'unda yanlışlıkla örüntü bildirildi.",
+  "Bir örüntü ancak olasılığı %70 ve üzerindeyse bildirilir. Hasta bazlı testte lezyonlu kesitlerin %82'inde örüntü bildirildi; lezyonsuz kesitlerin %10'unda yanlışlıkla örüntü bildirildi.",
   "Çizim ya da karikatür gibi gerçek olmayan \"beyin\" görüntülerini kapı her zaman yakalayamaz; bunlarda olasılıklar anlamsızdır.",
   "Eğitim dışı kapısı gerçek röntgen, BT, beyin dışı MR, belge ve çizim görüntüleriyle eğitildi; bunların çoğunu yakalar ama her türlü görüntüyü yakalayamaz (ör. DWI/SWI beyin MR, çocuk beyni, olağan dışı ekran düzenleri).",
   "Klinik kullanım için onaylı tıbbi cihaz değildir; radyolog değerlendirmesinin yerini tutmaz."
  ],
- "size": 8426557
+ "size": 8429637
 }

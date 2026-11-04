@@ -111,7 +111,23 @@ with sync_playwright() as p:
     prov = card.locator("details", has_text="Model kökeni").first
     prov.locator("summary").first.click()
     check(manifest("xrv-densenet121-nih")["sha256"] in card.inner_text(), "B: köken: model SHA-256")
+    check(card.get_by_test_id("xray-photo-caution").count() == 0 and card.get_by_test_id("xray-frame").count() == 0, "B: dijital röntgende fotoğraf uyarısı ve kırpma yok")
+    check(card.get_by_test_id("photo-metrics").count() == 1 and "Ekranın telefonla fotoğrafı" in card.get_by_test_id("photo-metrics").text_content(), "B: fotoğraf / ekran görüntüsü ölçümü skor ayrıntısında yazılı")
     card.screenshot(path=SHOTS / "r2-rontgen-model.png")
+
+    # ------------------------------------------------------------ B2: telefonda e-Nabız ekran görüntüsü → röntgen alanı
+    page.goto(URL + "#/ekle")
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
+    pick_type(page, "Röntgen")
+    page.set_input_files("input[type=file][multiple]", [str(IMG / "rontgen-foto" / "telefon-ekran-goruntusu.jpg")])
+    page.get_by_role("button", name="Aç ve oku").click()
+    card = page.get_by_role("region", name="Ham görüntü analizi")
+    card.locator("[data-testid=analysis-state][data-state=model]").wait_for(timeout=240000)
+    card.get_by_test_id("xray-photo-caution").wait_for(timeout=60000)
+    cau = card.get_by_test_id("xray-photo-caution").inner_text()
+    check("ekran görüntüsü ya da fotoğraf" in cau and "orijinal dosyayı" in cau and "⚠" in cau, "B2: ekran görüntüsünde uyarı: röntgen alanı bulundu, orijinal dosya istenir")
+    check(card.get_by_test_id("xray-frame").count() == 1, "B2: modelin baktığı alan görüntü üzerinde çerçeveyle gösterildi")
+    card.screenshot(path=SHOTS / "r2b-rontgen-ekran-goruntusu.png")
 
     # ------------------------------------------------------------ C: BT serisi → 3B anatomi
     ct_url = upload_series(page, "Tomografi (BT)", "totalseg-ct-sm", 30)

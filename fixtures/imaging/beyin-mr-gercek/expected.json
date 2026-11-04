@@ -1,6 +1,6 @@
 {
  "model": "kh-brain-mri-pattern",
- "sha256": "1099ef85ea8b325977e9a80de80dc401a9bc484cec1ccc81937ad52ad7bf5baa",
+ "sha256": "fe6d0e7efbcdbfe7dc323eb11151b67f517484022d6c74761f4657a0cc74107b",
  "images": {
   "normal": {
    "file": "normal.png",
@@ -14,14 +14,16 @@
     219
    ],
    "probs": [
-    0.9897,
-    0.0016,
-    0.0037,
-    0.005
+    0.9955,
+    0.0005,
+    0.0006,
+    0.0017,
+    0.0006,
+    0.0011
    ],
-   "ref": 0.8387,
-   "ood": 1.2579,
-   "gate": 0.1543
+   "ref": 0.783,
+   "ood": 1.0336,
+   "gate": 0.0502
   },
   "glial_tumor": {
    "file": "glial_tumor.png",
@@ -35,14 +37,16 @@
     231
    ],
    "probs": [
-    0.0705,
-    0.8848,
-    0.0265,
-    0.0181
+    0.0659,
+    0.8937,
+    0.0104,
+    0.0085,
+    0.0066,
+    0.0148
    ],
-   "ref": 1.4906,
-   "ood": 0.6304,
-   "gate": 0.0005
+   "ref": 0.9362,
+   "ood": 0.3839,
+   "gate": 0.0017
   },
   "cpa_tumor": {
    "file": "cpa_tumor.png",
@@ -56,14 +60,16 @@
     217
    ],
    "probs": [
-    0.0031,
-    0.0016,
-    0.9932,
-    0.0021
+    0.0013,
+    0.0023,
+    0.9922,
+    0.0011,
+    0.0021,
+    0.0009
    ],
-   "ref": 6.1404,
-   "ood": 1.0982,
-   "gate": 0.0006
+   "ref": 7.6487,
+   "ood": 1.2206,
+   "gate": 0.0028
   },
   "chronic_lesion": {
    "file": "chronic_lesion.png",
@@ -77,14 +83,62 @@
     240
    ],
    "probs": [
-    0.0005,
-    0.0012,
-    0.0026,
-    0.9958
+    0.0004,
+    0.003,
+    0.0037,
+    0.9887,
+    0.0019,
+    0.0024
    ],
-   "ref": 17.9269,
-   "ood": 1.5554,
+   "ref": 13.6613,
+   "ood": 1.2953,
    "gate": 0.0001
+  },
+  "meningioma": {
+   "file": "meningioma.png",
+   "source": "Olfaktör oluk menenjiyomu, OpenNeuro ds007345",
+   "license": "CC0",
+   "sequence": "T1",
+   "headBox": [
+    74,
+    80,
+    189,
+    222
+   ],
+   "probs": [
+    0.2189,
+    0.0104,
+    0.0073,
+    0.0038,
+    0.7482,
+    0.0114
+   ],
+   "ref": 1.1095,
+   "ood": 0.8105,
+   "gate": 0.0918
+  },
+  "pituitary_tumor": {
+   "file": "pituitary_tumor.png",
+   "source": "Hipofiz adenomu çok parametreli MR veri seti, OpenNeuro ds006248",
+   "license": "CC0",
+   "sequence": "T1C",
+   "headBox": [
+    48,
+    78,
+    240,
+    232
+   ],
+   "probs": [
+    0.0334,
+    0.0182,
+    0.0204,
+    0.0096,
+    0.0054,
+    0.913
+   ],
+   "ref": 2.7483,
+   "ood": 1.411,
+   "gate": 0.0632
   }
  }
 }
