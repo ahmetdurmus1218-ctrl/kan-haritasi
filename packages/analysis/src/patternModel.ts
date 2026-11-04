@@ -23,6 +23,8 @@ export interface PatternSpec {
   refQuantiles: Array<[number, number]>;
   /** Eğitim dağılımı dışı eşiği (tüm sınıfların doğrulama kesitlerinde %99,5'lik). */
   oodThreshold: number;
+  /** Eğitilmiş kapı eşiği: "modelin türünde değil" olasılığı bunu aşarsa örüntü söylenmez. */
+  gateThreshold?: number;
   /** Lezyon olasılık haritası eşiği. */
   maskThreshold: number;
   /** En fazla kaç kesit incelenir (kolaj). */
@@ -51,6 +53,13 @@ export interface PatternMetrics {
   lesionMapDice: number;
   patients: { train: number; val: number; test: number };
   slices: { train: number; val: number; test: number };
+  /** Eğitim dışı kapısı: beyin MR test kesitlerinin geçme oranı ve negatif türlerin reddedilme oranları (test). */
+  gate?: { brainPass: number; brainPassPhoto: number; rejected: Record<string, number>; rejectedPhoto: Record<string, number>; negatives: Record<string, number> };
+  /**
+   * Bulgu eşiğinde (scoreThreshold) hasta bazlı test kümesindeki davranış: lezyonlu kesitlerin yüzde kaçında bir
+   * örüntü söylendi (ve doğru örüntü mü), lezyonsuz kesitlerin yüzde kaçında yanlışlıkla söylendi.
+   */
+  finding?: { threshold: number; lesionReported: number; correctPattern: number; normalFalse: number; lesionReportedPhoto: number; normalFalsePhoto: number; oodRate: number };
 }
 
 export interface Box {
@@ -70,9 +79,11 @@ export interface PatternPanelResult {
   /** Sağlıklı referansa uzaklık: ham değer ve yüzdeliği (0–100: sağlıklı kesitlerin yüzde kaçından farklı). */
   refDistance: number;
   refPercentile: number;
-  /** Eğitim dağılımı dışı mı (öyleyse örüntü söylenmez). */
+  /** Eğitim dağılımı dışı mı (öyleyse örüntü söylenmez): gömme uzaklığı ya da eğitilmiş kapı. */
   ood: boolean;
   oodDistance: number;
+  /** Eğitilmiş kapının "beyin MR kesiti değil" olasılığı (varsa). */
+  gate?: number;
   /** Örüntüye katkı veren alan (özgün görüntünün 64×64'lük ızgarasında 0/1) ve kutusu. */
   mask?: { width: number; height: number; data: number[] };
   maskBox?: Box;
@@ -156,6 +167,85 @@ export function patternTensor(gray: Float32Array, W: number, H: number, sq: Box)
   return { data: out, dims: [1, 1, N, N] };
 }
 
+/**
+ * Film kolajında kesitler arasındaki PARLAK ayırıcı çizgiler (beyaz ızgara): satır/sütun boyunca piksellerin
+ * çoğu parlak olan dar şeritler. Koyu boşluklu kolajlar reviewImage ile zaten ayrılır; bu yalnızca onun tek
+ * kesit bulduğu durumda denenir. Her hücre yeterince büyük ve içerikli olmalı.
+ */
+export function brightGrid(gray: Float32Array, W: number, H: number): Box[] {
+  // Eğik çekimde çizgiler birkaç piksel kayar: her satır/sütun ±k komşu satır/sütunla birlikte değerlendirilir.
+  const lineAt = (n: number, len: number, get: (i: number, j: number) => number): boolean[] => {
+    const k = Math.max(1, Math.round(n * 0.02));
+    const bright = new Uint8Array(n * len);
+    for (let i = 0; i < n; i++) for (let j = 0; j < len; j++) bright[i * len + j] = get(i, j) > 0.8 ? 1 : 0;
+    const out: boolean[] = [];
+    const a = Math.floor(len * 0.08);
+    const b = Math.ceil(len * 0.92);
+    for (let i = 0; i < n; i++) {
+      let on = 0;
+      for (let j = a; j < b; j++) {
+        let hit = 0;
+        for (let d = Math.max(0, i - k); d <= Math.min(n - 1, i + k) && !hit; d++) hit = bright[d * len + j]!;
+        on += hit;
+      }
+      out.push(on / Math.max(1, b - a) > 0.8);
+    }
+    // Yalnızca İNCE şeritler ayırıcıdır (kalın parlak bölge bir görüntünün kendisidir)
+    // (yukarıdaki ±k komşuluk şeridi 2k uzatır)
+    const maxRun = 2 * k + Math.max(3, Math.round(n * 0.05));
+    for (let i = 0; i < n; ) {
+      if (!out[i]) {
+        i++;
+        continue;
+      }
+      let j = i;
+      while (j < n && out[j]) j++;
+      if (j - i > maxRun) for (let t = i; t < j; t++) out[t] = false;
+      i = j;
+    }
+    return out;
+  };
+  const rows = lineAt(H, W, (y, x) => gray[y * W + x]!);
+  const cols = lineAt(W, H, (x, y) => gray[y * W + x]!);
+  const cells = (flags: boolean[], n: number): Array<[number, number]> => {
+    const out: Array<[number, number]> = [];
+    let start = -1;
+    for (let i = 0; i <= n; i++) {
+      const sep = i === n || flags[i]!;
+      if (!sep && start < 0) start = i;
+      if (sep && start >= 0) {
+        if (i - start >= n * 0.18) out.push([start, i]);
+        start = -1;
+      }
+    }
+    return out;
+  };
+  const ys = cells(rows, H);
+  const xs = cells(cols, W);
+  if (ys.length * xs.length < 2) return [];
+  // Kolaj hücreleri benzer boyuttadır
+  const similar = (c: Array<[number, number]>) => c.length < 2 || Math.min(...c.map(([a, z]) => z - a)) / Math.max(...c.map(([a, z]) => z - a)) > 0.5;
+  if (!similar(ys) || !similar(xs)) return [];
+  const boxes: Box[] = [];
+  for (const [y0, y1] of ys)
+    for (const [x0, x1] of xs) {
+      // içerik denetimi: hücrenin tamamı düz değilse
+      let s = 0;
+      let s2 = 0;
+      let k = 0;
+      for (let y = y0; y < y1; y += 3)
+        for (let x = x0; x < x1; x += 3) {
+          const v = gray[y * W + x]!;
+          s += v;
+          s2 += v * v;
+          k++;
+        }
+      const sd = Math.sqrt(Math.max(0, s2 / k - (s / k) ** 2));
+      if (sd > 0.05) boxes.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+    }
+  return boxes.length >= 2 ? boxes : [];
+}
+
 /** Görüntüdeki kesitler (kolajsa birden çok) ve döndürme açısı. */
 export function patternPanels(img: RasterImage, maxPanels: number): { gray: Float32Array; angle: number; boxes: Box[] } {
   const W = img.width;
@@ -163,7 +253,11 @@ export function patternPanels(img: RasterImage, maxPanels: number): { gray: Floa
   const base = normalize01(img.gray);
   const rev = reviewImage(img.gray, W, H);
   const gray = rev.angle ? rotateImage(base, W, H, rev.angle, borderValue(base, W, H)) : base;
-  const boxes = rev.panels.filter((p) => p.kind !== 'too-small').map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h }));
+  let boxes = rev.panels.filter((p) => p.kind !== 'too-small').map((p) => ({ x: p.x, y: p.y, w: p.w, h: p.h }));
+  if (boxes.length <= 1) {
+    const grid = brightGrid(gray, W, H);
+    if (grid.length >= 2) boxes = grid;
+  }
   return { gray, angle: rev.angle, boxes: (boxes.length ? boxes : [{ x: 0, y: 0, w: W, h: H }]).slice(0, maxPanels) };
 }
 
@@ -204,7 +298,8 @@ export function postprocessPattern(outputs: Record<string, Tensor>, manifest: Mo
   const mask = outputs[o.mask!];
   const ref = outputs[o.refDist!];
   const ood = outputs[o.oodDist!];
-  if (!logits || !mask || !ref || !ood) throw new Error('Örüntü modeli çıktıları eksik (logits/mask/ref/ood).');
+  const gateT = o.gate ? outputs[o.gate] : undefined;
+  if (!logits || !mask || !ref || !ood || (o.gate && !gateT)) throw new Error('Örüntü modeli çıktıları eksik (logits/mask/ref/ood/gate).');
   const p = softmax(Array.from({ length: logits.data.length }, (_, i) => num(logits, i)));
   const probs = manifest.labels.map((l) => ({ key: l.key ?? String(l.id), name: l.finding, p: Math.round((p[l.id] ?? 0) * 1000) / 1000 })).sort((a, b) => b.p - a.p);
   const refDistance = num(ref, 0);
@@ -246,8 +341,9 @@ export function postprocessPattern(outputs: Record<string, Tensor>, manifest: Mo
     probs,
     refDistance: Math.round(refDistance * 1000) / 1000,
     refPercentile: Math.round(refPercentile(refDistance, spec.refQuantiles) * 10) / 10,
-    ood: oodDistance > spec.oodThreshold,
+    ood: oodDistance > spec.oodThreshold || (gateT !== undefined && num(gateT, 0) > (spec.gateThreshold ?? 0.5)),
     oodDistance: Math.round(oodDistance * 1000) / 1000,
+    ...(gateT ? { gate: Math.round(num(gateT, 0) * 1000) / 1000 } : {}),
     maskAreaPct: Math.round((on / (mw * mh)) * 1000) / 10,
   };
   if (on && Number.isFinite(minX)) {

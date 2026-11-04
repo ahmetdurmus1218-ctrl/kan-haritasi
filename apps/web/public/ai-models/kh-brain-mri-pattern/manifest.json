@@ -1,0 +1,309 @@
+{
+ "schema": "kh-model-manifest/2",
+ "id": "kh-brain-mri-pattern",
+ "name": "Beyin MR örüntü benzerliği (Kan Haritası, gerçek hasta verisiyle eğitildi)",
+ "version": "1.0.0",
+ "modalities": [
+  "MRI"
+ ],
+ "task": "pattern-2d",
+ "format": "onnx",
+ "file": "model.onnx",
+ "sha256": "1099ef85ea8b325977e9a80de80dc401a9bc484cec1ccc81937ad52ad7bf5baa",
+ "license": "CC BY 4.0 (model ağırlıkları, Kan Haritası); eğitim verisi CC BY 4.0 ve CC0 — atıflar NOTICE.txt",
+ "source": "Kan Haritası — scripts/models/brain_pattern (veri indirme, eğitim, doğrulama ve dışa aktarma betikleri)",
+ "intendedUse": "Beyin MR kesitini (fotoğraf, ekran görüntüsü ya da DICOM kesiti) sağlıklı referans kesitleriyle karşılaştırmak ve dört örüntüden hangisine benzediğini olasılıkla göstermek. Ön bilgi ve eğitim amaçlıdır; tanı koymaz.",
+ "citation": "Aphasia Recovery Cohort, OpenNeuro ds004884 (CC0) https://doi.org/10.18112/openneuro.ds004884; CCNRP kronik lezyon, OpenNeuro ds007212 (CC0) https://openneuro.org/datasets/ds007212; MPI-Leipzig Mind-Brain-Body (LEMON), OpenNeuro ds000221 (CC0) https://doi.org/10.18112/openneuro.ds000221; FCD presurgery veri seti sağlıklı kontrolleri, OpenNeuro ds004199 (CC0) https://doi.org/10.18112/openneuro.ds004199; MS bilişsel bozulma çalışması sağlıklı kontrolleri, OpenNeuro ds007908 (CC0) https://openneuro.org/datasets/ds007908; UPENN-GBM (Imaging Data Commons / TCIA) (CC BY 4.0) https://doi.org/10.7937/TCIA.709X-DN49; Vestibular-Schwannoma-SEG (Imaging Data Commons / TCIA) (CC BY 4.0) https://doi.org/10.7937/TCIA.9YTJ-5Q73",
+ "validation": "Hasta bazlı ayrık test (175 hasta, 5918 kesit): normal ↔ lezyonlu AUC 0.9426, duyarlılık 0.9252, özgüllük 0.7864; 4 örüntü doğruluğu 0.8542 (makro F1 0.8626). Telefon fotoğrafı benzetimi: doğruluk 0.8385, AUC 0.9351. PyTorch ↔ ONNX en büyük fark 9.5e-07.",
+ "compatibleDevice": "Tüm cihazlar (kesit başına < 1 sn, WASM).",
+ "input": {
+  "name": "input",
+  "layout": "NCHW",
+  "channels": 1,
+  "width": 160,
+  "height": 160,
+  "scale": 1,
+  "mean": [
+   0
+  ],
+  "std": [
+   1
+  ]
+ },
+ "output": {
+  "logits": "logits",
+  "mask": "mask",
+  "refDist": "ref",
+  "oodDist": "ood",
+  "gate": "gate"
+ },
+ "pattern": {
+  "refQuantiles": [
+   [
+    0,
+    0.35391947627067566
+   ],
+   [
+    5,
+    0.531830370426178
+   ],
+   [
+    10,
+    0.5900928974151611
+   ],
+   [
+    25,
+    0.7190998792648315
+   ],
+   [
+    50,
+    0.9033823609352112
+   ],
+   [
+    75,
+    1.1749845743179321
+   ],
+   [
+    90,
+    1.5856513977050781
+   ],
+   [
+    95,
+    1.8760545253753662
+   ],
+   [
+    97.5,
+    2.151703357696533
+   ],
+   [
+    99,
+    3.031202793121338
+   ],
+   [
+    99.5,
+    3.465562582015991
+   ],
+   [
+    100,
+    24.635421752929688
+   ]
+  ],
+  "oodThreshold": 2.344360828399658,
+  "gateThreshold": 0.9274834990501404,
+  "maskThreshold": 0.5,
+  "maxPanels": 16,
+  "regions": [
+   "brain"
+  ],
+  "metrics": {
+   "test": {
+    "accuracy": 0.8542,
+    "macro_f1": 0.8626,
+    "abnormal_auc": 0.9426,
+    "abnormal_sens_at_0_5": 0.9252,
+    "abnormal_spec_at_0_5": 0.7864,
+    "per_class": {
+     "normal": {
+      "n": 2697,
+      "sensitivity": 0.7987,
+      "specificity": 0.9112,
+      "precision": 0.8828,
+      "f1": 0.8386,
+      "auc": 0.9426
+     },
+     "glial_tumor": {
+      "n": 1488,
+      "sensitivity": 0.8831,
+      "specificity": 0.9424,
+      "precision": 0.8375,
+      "f1": 0.8597,
+      "auc": 0.9798
+     },
+     "cpa_tumor": {
+      "n": 822,
+      "sensitivity": 0.9976,
+      "specificity": 0.9853,
+      "precision": 0.9162,
+      "f1": 0.9552,
+      "auc": 0.9984
+     },
+     "chronic_lesion": {
+      "n": 911,
+      "sensitivity": 0.8419,
+      "specificity": 0.9507,
+      "precision": 0.7564,
+      "f1": 0.7969,
+      "auc": 0.9672
+     }
+    }
+   },
+   "photo": {
+    "accuracy": 0.8385,
+    "macro_f1": 0.8458,
+    "abnormal_auc": 0.9351,
+    "abnormal_sens_at_0_5": 0.9326,
+    "abnormal_spec_at_0_5": 0.7412
+   },
+   "refAuc": 0.8705,
+   "lesionMapDice": 0.25,
+   "patients": {
+    "train": 711,
+    "val": 133,
+    "test": 175
+   },
+   "finding": {
+    "threshold": 0.7,
+    "lesionReported": 0.7957,
+    "correctPattern": 0.7929,
+    "normalFalse": 0.1009,
+    "lesionReportedPhoto": 0.7613,
+    "normalFalsePhoto": 0.1009,
+    "oodRate": 0.01
+   },
+   "gate": {
+    "brainPass": 0.9943,
+    "brainPassPhoto": 0.9932,
+    "rejected": {
+     "bodymr": 0.93,
+     "ct": 0.992,
+     "doc": 1.0,
+     "drawing": 0.955,
+     "headct": 1.0,
+     "phantom": 1.0,
+     "xray": 0.9643
+    },
+    "rejectedPhoto": {
+     "bodymr": 0.93,
+     "ct": 0.92,
+     "doc": 1.0,
+     "drawing": 0.89,
+     "headct": 0.9,
+     "phantom": 0.96,
+     "xray": 0.9286
+    },
+    "negatives": {
+     "bodymr": 1496,
+     "ct": 1220,
+     "doc": 900,
+     "drawing": 800,
+     "headct": 1545,
+     "phantom": 700,
+     "texture": 300,
+     "xray": 184
+    }
+   },
+   "slices": {
+    "train": 23427,
+    "val": 4211,
+    "test": 5918
+   }
+  },
+  "data": [
+   {
+    "name": "Aphasia Recovery Cohort, OpenNeuro ds004884",
+    "license": "CC0",
+    "role": "kronik inme kesitleri + lezyonsuz kesitler",
+    "url": "https://doi.org/10.18112/openneuro.ds004884",
+    "patients": 228,
+    "slices": 4532
+   },
+   {
+    "name": "CCNRP kronik lezyon, OpenNeuro ds007212",
+    "license": "CC0",
+    "role": "kronik odak lezyon (inme, ameliyat) kesitleri + lezyonsuz kesitler",
+    "url": "https://openneuro.org/datasets/ds007212",
+    "patients": 203,
+    "slices": 3590
+   },
+   {
+    "name": "MPI-Leipzig Mind-Brain-Body (LEMON), OpenNeuro ds000221",
+    "license": "CC0",
+    "role": "sağlıklı gönüllüler (T2, FLAIR)",
+    "url": "https://doi.org/10.18112/openneuro.ds000221",
+    "patients": 120,
+    "slices": 3253
+   },
+   {
+    "name": "FCD presurgery veri seti sağlıklı kontrolleri, OpenNeuro ds004199",
+    "license": "CC0",
+    "role": "sağlıklı kontroller (T1, FLAIR)",
+    "url": "https://doi.org/10.18112/openneuro.ds004199",
+    "patients": 85,
+    "slices": 3402
+   },
+   {
+    "name": "MS bilişsel bozulma çalışması sağlıklı kontrolleri, OpenNeuro ds007908",
+    "license": "CC0",
+    "role": "sağlıklı kontroller (T1, FLAIR)",
+    "url": "https://openneuro.org/datasets/ds007908",
+    "patients": 8,
+    "slices": 336
+   },
+   {
+    "name": "UPENN-GBM (Imaging Data Commons / TCIA)",
+    "license": "CC BY 4.0",
+    "role": "glioblastom kesitleri + uzak sağlıklı görünümlü kesitler",
+    "url": "https://doi.org/10.7937/TCIA.709X-DN49",
+    "patients": 218,
+    "slices": 13165
+   },
+   {
+    "name": "Vestibular-Schwannoma-SEG (Imaging Data Commons / TCIA)",
+    "license": "CC BY 4.0",
+    "role": "iç kulak yolu tümörü kesitleri + tümörsüz kesitler",
+    "url": "https://doi.org/10.7937/TCIA.9YTJ-5Q73",
+    "patients": 157,
+    "slices": 5278
+   }
+  ]
+ },
+ "labels": [
+  {
+   "id": 0,
+   "key": "normal",
+   "finding": "Sağlıklı referans kesitlerine benzer (belirgin lezyon örüntüsü yok)",
+   "kind": "finding"
+  },
+  {
+   "id": 1,
+   "key": "glial_tumor",
+   "finding": "Beyin içi kitle örüntüsü (glioma / glioblastom benzeri)",
+   "kind": "finding",
+   "structure": "brain",
+   "node": "brain"
+  },
+  {
+   "id": 2,
+   "key": "cpa_tumor",
+   "finding": "İç kulak yolu – serebellopontin köşe kitlesi örüntüsü (vestibüler schwannom benzeri)",
+   "kind": "finding",
+   "structure": "brain",
+   "node": "brain"
+  },
+  {
+   "id": 3,
+   "key": "chronic_lesion",
+   "finding": "Eski doku kaybı alanı örüntüsü (kronik inme / ameliyat boşluğu benzeri)",
+   "kind": "finding",
+   "structure": "brain",
+   "node": "brain"
+  }
+ ],
+ "scoreThreshold": 0.7,
+ "limitations": [
+  "Yalnızca dört örüntüyü tanır: sağlıklı referansa benzer, beyin içi kitle (glioma/glioblastom), iç kulak yolu kitlesi (vestibüler schwannom), eski doku kaybı alanı (kronik inme / ameliyat boşluğu).",
+  "Multipl skleroz ve diğer beyaz cevher lezyonları, metastaz, menenjiyom, hipofiz tümörü, kanama, akut inme, enfeksiyon/apse, hidrosefali, atrofi/demans, damar anomalileri ve çocukluk çağı hastalıklarını TANIMAZ; bu durumlarda \"sağlıklıya benzer\" ya da yanlış bir örüntü söyleyebilir.",
+  "T1, kontrastlı T1, T2 ve FLAIR kesitleriyle eğitildi; difüzyon (DWI/ADC), SWI, perfüzyon ve BT görüntülerinde kullanılmamalıdır (eğitim dışı kapısı bunların çoğunu yakalar, hepsini değil).",
+  "Kesit düzeyindedir: tek bir kesite bakar, tüm seriyi ve önceki çekimleri değerlendirmez. Lezyonun görünmediği kesit sağlıklıya benzer çıkabilir. Testte örüntü başına duyarlılık: glioma 0.8831, iç kulak yolu 0.9976, kronik lezyon 0.8419; sağlıklı kesitte özgüllük 0.9112.",
+  "Eğitim verisi ABD ve Avrupa merkezlerinden (çoğunlukla Siemens/GE cihazları); Türkiye'deki cihaz ve çekim protokollerinde başarımı ayrıca ölçülmedi.",
+  "İç kulak yolu örüntüsünün verisi tek bir merkezden (Londra, Gamma Knife planlama MR'ı); testteki çok yüksek başarı bu merkeze özgü olabilir, başka cihazlarda daha düşük olabilir.",
+  "Telefon fotoğrafı koşulları benzetimle test edildi (eğik çekim, bulanıklık, ekran deseni, yazılar); gerçek film/ekran fotoğraflarında başarım daha düşük olabilir.",
+  "Sağlıklı referansa uzaklık kesitin düzeyine (kafa tabanı, tepe) ve sekansa göre de değişir; tek başına hastalık göstermez.",
+  "Katkı haritası modelin örüntüye en çok katkı veren alanıdır; lezyon sınırı ya da ölçümü değildir.",
+  "Bir örüntü ancak olasılığı %70 ve üzerindeyse bildirilir. Hasta bazlı testte lezyonlu kesitlerin %80'inde örüntü bildirildi (kaçırma %20); lezyonsuz kesitlerin %10'unda yanlışlıkla örüntü bildirildi.",
+  "Çizim ya da karikatür gibi gerçek olmayan \"beyin\" görüntülerini kapı her zaman yakalayamaz; bunlarda olasılıklar anlamsızdır.",
+  "Eğitim dışı kapısı gerçek röntgen, BT, beyin dışı MR, belge ve çizim görüntüleriyle eğitildi; bunların çoğunu yakalar ama her türlü görüntüyü yakalayamaz (ör. DWI/SWI beyin MR, çocuk beyni, olağan dışı ekran düzenleri).",
+  "Klinik kullanım için onaylı tıbbi cihaz değildir; radyolog değerlendirmesinin yerini tutmaz."
+ ],
+ "size": 8426557
+}

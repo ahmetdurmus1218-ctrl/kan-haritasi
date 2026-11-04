@@ -1,0 +1,90 @@
+{
+ "model": "kh-brain-mri-pattern",
+ "sha256": "1099ef85ea8b325977e9a80de80dc401a9bc484cec1ccc81937ad52ad7bf5baa",
+ "images": {
+  "normal": {
+   "file": "normal.png",
+   "source": "MPI-Leipzig Mind-Brain-Body (LEMON), OpenNeuro ds000221",
+   "license": "CC0",
+   "sequence": "FLAIR",
+   "headBox": [
+    75,
+    81,
+    187,
+    219
+   ],
+   "probs": [
+    0.9897,
+    0.0016,
+    0.0037,
+    0.005
+   ],
+   "ref": 0.8387,
+   "ood": 1.2579,
+   "gate": 0.1543
+  },
+  "glial_tumor": {
+   "file": "glial_tumor.png",
+   "source": "UPENN-GBM (Imaging Data Commons / TCIA)",
+   "license": "CC BY 4.0",
+   "sequence": "T1C",
+   "headBox": [
+    76,
+    70,
+    185,
+    231
+   ],
+   "probs": [
+    0.0705,
+    0.8848,
+    0.0265,
+    0.0181
+   ],
+   "ref": 1.4906,
+   "ood": 0.6304,
+   "gate": 0.0005
+  },
+  "cpa_tumor": {
+   "file": "cpa_tumor.png",
+   "source": "Vestibular-Schwannoma-SEG (Imaging Data Commons / TCIA)",
+   "license": "CC BY 4.0",
+   "sequence": "T1C",
+   "headBox": [
+    73,
+    84,
+    185,
+    217
+   ],
+   "probs": [
+    0.0031,
+    0.0016,
+    0.9932,
+    0.0021
+   ],
+   "ref": 6.1404,
+   "ood": 1.0982,
+   "gate": 0.0006
+  },
+  "chronic_lesion": {
+   "file": "chronic_lesion.png",
+   "source": "Aphasia Recovery Cohort, OpenNeuro ds004884",
+   "license": "CC0",
+   "sequence": "T2",
+   "headBox": [
+    55,
+    70,
+    222,
+    240
+   ],
+   "probs": [
+    0.0005,
+    0.0012,
+    0.0026,
+    0.9958
+   ],
+   "ref": 17.9269,
+   "ood": 1.5554,
+   "gate": 0.0001
+  }
+ }
+}

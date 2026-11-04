@@ -1,7 +1,10 @@
 """Uçtan uca: yerel tıbbi AI modeli (cihazda), üç dürüst durum, rapor ↔ model çelişkisi, DICOM MPR.
 
-  Senaryo 2 — Beyin MR FOTOĞRAFI: uygulamayla gelen MR modeli 3B'dir (yalnızca DICOM serisi) → fotoğrafta
-              çalıştırılmaz, nedeni yazılır; "ön inceleme · tıbbi model değil", model bulgusu yok.
+  Senaryo 2 — Beyin MR FOTOĞRAFI (çizim kolaj): uygulamayla gelen 3B MR modeli fotoğrafta çalıştırılmaz; beyin MR
+              örüntü modeli (2B) çalışır ama görüntü eğitim dağılımı dışında → örüntü söylenmez, model bulgusu yok.
+  Senaryo 5 — GERÇEK beyin MR filmi fotoğrafı (4 kesitli kolaj, eğitimde görülmemiş hastalar): 4 kesit ayrı
+              değerlendirilir; sağlıklı referansla karşılaştırma, örüntü olasılıkları, test başarımı, sınırlar ve
+              "kesin sonuç değildir" notu.
   Senaryo 3 — TEST AMAÇLI sahte ONNX modeli (tests/fixtures/models/mock-detector, tıbbi değil):
               kur (SHA-256) → gerçek görüntüde çıkarım → kutu → anatomi → organ sayfası → akış → köken.
   Senaryo 4 — Aynı çalışmaya rapor metni: rapor ve model AYRI kaynak; "beyin olağan" ↔ model bulgusu
@@ -43,11 +46,11 @@ def pick_type(page, name):
     radio.first.click()
 
 
-def upload_mr_photo(page):
+def upload_mr_photo(page, path=IMG / "mr-kolaj-foto.jpg", name="beyin_mr.jpg"):
     page.goto(URL + "#/ekle")
     page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
     pick_type(page, "MR")
-    page.set_input_files("input[type=file][multiple]", [{"name": "beyin_mr.jpg", "mimeType": "image/jpeg", "buffer": (IMG / "mr-kolaj-foto.jpg").read_bytes()}])
+    page.set_input_files("input[type=file][multiple]", [{"name": name, "mimeType": "image/jpeg", "buffer": path.read_bytes()}])
     page.get_by_role("button", name="Aç ve oku").click()
     card = page.get_by_role("region", name="Ham görüntü analizi")
     card.get_by_test_id("analysis-state").wait_for(timeout=120000)
@@ -73,11 +76,12 @@ with sync_playwright() as p:
     page.get_by_role("button", name="Kasayı oluştur").click()
     page.get_by_role("heading", name="Vücudum nasıl?").wait_for(timeout=30000)
 
-    # ------------------------------------------------------------ Senaryo 2: uygulamayla gelen modeller; fotoğrafta 3B model yok
+    # ------------------------------------------------------------ Senaryo 2: uygulamayla gelen modeller; çizim kolajda örüntü yok
     page.goto(URL + "#/gizlilik")
     page.get_by_test_id("model-card").first.wait_for()
     BUNDLED = page.get_by_test_id("model-card").count()
-    check(BUNDLED == 6, f"uygulamayla gelen 6 gerçek model listelendi ({BUNDLED})")
+    check(BUNDLED == 7, f"uygulamayla gelen 7 gerçek model listelendi ({BUNDLED})")
+    check("Beyin MR örüntü" in page.get_by_role("list", name="Kurulu modeller").inner_text(), "beyin MR örüntü modeli uygulamayla geliyor")
     caps = page.locator("details", has_text="Bu cihazda neler yapılabiliyor?")
     caps.locator("summary").click()
     ct = caps.inner_text()
@@ -86,12 +90,14 @@ with sync_playwright() as p:
     check(all(m in ct for m in ["MR", "BT", "Röntgen", "Ultrason", "Doppler", "EKO", "Mamografi", "Patoloji", "EKG", "Endoskopi", "Fundus", "Diş"]), "yetenek listesi: 12 modalite")
 
     card = upload_mr_photo(page)
-    state = card.get_by_test_id("analysis-state")
-    check(state.get_attribute("data-state") == "precheck", f"S2: model yokken durum 'precheck' ({state.get_attribute('data-state')})")
-    vis = card.inner_text()
-    check("Görüntü ön incelemesi yapıldı" in vis and "Bu sonuç tıbbi AI modeli sonucu değildir" in vis and "ön inceleme · tıbbi model değil" in vis, "S2: 'ön inceleme — tıbbi AI modeli sonucu değildir' açıkça yazıyor")
+    card.get_by_test_id("pattern-result").wait_for(timeout=120000)
+    pr = card.get_by_test_id("pattern-result")
+    check(pr.get_attribute("data-state") == "ood", f"S2: çizim kolaj eğitim dağılımı dışında ({pr.get_attribute('data-state')})")
+    check("eğitim dağılımı dışında" in card.get_by_test_id("pattern-ood").inner_text() and "örüntü benzerliği söylenmedi" in pr.inner_text(), "S2: 'eğitim dışı görüntü — örüntü söylenmedi' açıkça yazıyor")
     check(card.get_by_test_id("model-finding").count() == 0, "S2: model bulgusu yok (uydurma sonuç yok)")
-    check(card.get_by_test_id("volume-only").count() == 1 and "yalnızca DICOM serisinde" in card.get_by_test_id("volume-only").inner_text(), "S2: MR modeli 3B: fotoğrafta çalıştırılmadı, nedeni yazıyor")
+    check("kesin sonuç değildir" in pr.inner_text() and "radyolog raporunun yerini tutmaz" in pr.inner_text(), "S2: 'kesin sonuç değildir' notu")
+    check(card.get_by_test_id("read-guide").get_attribute("data-pattern") == "ran" and "DICOM serisinden" in card.get_by_test_id("read-guide").inner_text(), "S2: okuma rehberi: kesin okuma rapordan ve DICOM serisinden")
+    check(card.get_by_test_id("volume-only").count() == 0 and "Beyin MR örüntü" in card.get_by_test_id("local-model-row").inner_text(), "S2: fotoğrafta 2B örüntü modeli çalıştı (3B model yalnızca DICOM serisinde)")
     doc_url = page.url
     check("#/belge/" in doc_url, "S2: görüntü belgesi açıldı")
     card.screenshot(path=SHOTS / "a1-mr-model-yok.png")
@@ -195,8 +201,31 @@ with sync_playwright() as p:
     check(page.get_by_role("button", name=re.compile("modelini kaldır")).count() == 0, "uygulamayla gelen modeller kaldırılamaz (yalnızca kullanıcının kurduğu)")
     page.goto(doc_url)
     card = page.get_by_role("region", name="Ham görüntü analizi")
-    card.locator("[data-testid=analysis-state][data-state=precheck]").wait_for(timeout=120000)
-    check(True, "model kaldırılınca durum yeniden 'ön inceleme'")
+    card.locator("[data-testid=pattern-result][data-state=ood]").wait_for(timeout=120000)
+    check(card.get_by_test_id("model-finding").count() == 0, "model kaldırılınca test bulgusu kalmadı; yalnızca örüntü modeli (eğitim dışı → bulgu yok)")
+
+    # ------------------------------------------------------------ Senaryo 5: gerçek beyin MR filmi fotoğrafı (4 kesit)
+    card = upload_mr_photo(page, ROOT / "fixtures/imaging/beyin-mr-gercek/kolaj-foto.jpg", "mr_film.jpg")
+    card.get_by_test_id("pattern-result").wait_for(timeout=180000)
+    pr = card.get_by_test_id("pattern-result")
+    ps = pr.get_attribute("data-state")
+    check(ps not in ("ood", "none"), f"S5: gerçek beyin MR fotoğrafı değerlendirildi ({ps})")
+    check(card.get_by_test_id("analysis-state").get_attribute("data-state") == "model", "S5: durum 'Yerel tıbbi AI modeli ile analiz edildi'")
+    check("Sağlıklı referans" in card.get_by_test_id("pattern-ref").inner_text(), "S5: sağlıklı referans kesitleriyle karşılaştırma cümlesi")
+    probs = card.get_by_test_id("pattern-probs").locator("li")
+    check(probs.count() == 4 and all(re.search(r"%\d+", probs.nth(i).inner_text()) for i in range(4)), "S5: dört örüntünün olasılıkları (%)")
+    pr.locator("summary", has_text="Kesit kesit").click()
+    check(card.get_by_test_id("pattern-panels").locator("li").count() == 4, "S5: film kolajı 4 kesite ayrıldı, her biri ayrı değerlendirildi")
+    pr.locator("summary", has_text="Bu model ne kadar doğru?").click()
+    mt = card.get_by_test_id("pattern-metrics").inner_text()
+    check("hasta" in mt and "AUC" in mt and "Eğitim dışı kapısı" in mt and "%70" in card.get_by_test_id("pattern-finding").inner_text(), "S5: hasta bazlı test başarımı, bulgu eşiği ve eğitim dışı kapısı yazılı")
+    check("açık lisanslı" in mt, "S5: eğitim verisi kaynakları (açık lisans) yazılı")
+    pr.locator("summary", has_text="Modelin bilmediği durumlar").click()
+    check("TANIMAZ" in pr.inner_text(), "S5: modelin bilmediği hastalıklar açıkça yazılı")
+    check("kesin sonuç değildir" in pr.inner_text(), "S5: 'kesin sonuç değildir' notu")
+    if ps != "normal":
+        check(card.get_by_test_id("model-finding").count() >= 1 and "kesit" in card.get_by_test_id("model-finding").first.inner_text(), "S5: eşik üstü örüntü, kesit numarasıyla model bulgusu olarak listelendi")
+    pr.screenshot(path=SHOTS / "a7-beyin-mr-oruntu.png")
 
     # ------------------------------------------------------------ DICOM: MPR yapılamaz (8 kesit) + yakılmış yazı
     page.goto(URL + "#/ekle")

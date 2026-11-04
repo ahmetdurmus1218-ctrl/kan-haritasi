@@ -75,6 +75,8 @@ jobs:
         run: python tests/e2e/brainmap.py "$RUNNER_TEMP/shots"
       - name: Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR
         run: python tests/e2e/localai.py "$RUNNER_TEMP/shots"
+      - name: e2e — tahlil → vücut yolculuğu, sonucuma göre, tomografi
+        run: python tests/e2e/journey.py "$RUNNER_TEMP/shots"
       - name: İçine gir — anatomi grafiği derinliği, komşuluk (pelvis, yumurtalık, kulak, böbrek, kalp), model deposu
         run: python tests/e2e/inside.py "$RUNNER_TEMP/shots"
       - name: İçine gir motoru — bağırsak kabulü (lümen → … → moleküler taşıma), B12 → fizyoloji → ileum, model yok, katmanlar

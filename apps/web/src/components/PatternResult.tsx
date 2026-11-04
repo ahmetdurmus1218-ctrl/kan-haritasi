@@ -2,6 +2,7 @@ import type { ModelExtras, ModelManifest, PatternPanelResult } from '@kh/analysi
 import { go } from '../state/router';
 
 const fmtPct = (p: number) => `%${Math.round(p * 100)}`;
+const GATE_KIND: Record<string, string> = { xray: 'röntgen', headct: 'beyin BT', ct: 'gövde BT', bodymr: 'beyin dışı MR', doc: 'belge/ekran', phantom: 'çizim kafa fantomu', drawing: 'şema/karikatür çizimi', texture: 'doku/desen' };
 const tr = (x: number, d = 0) => x.toLocaleString('tr-TR', { maximumFractionDigits: d });
 
 /** Yüzdelik → sade cümle (sağlıklı referans kesitleriyle karşılaştırma). */
@@ -103,6 +104,21 @@ export function PatternResult({ extras, manifest }: { extras: ModelExtras; manif
               Telefon fotoğrafı benzetimi (eğik çekim, bulanıklık, ekran deseni, yazılar): doğruluk {fmtPct(m.photo.accuracy)} · normal ↔ lezyonlu AUC {tr(m.photo.abnormal_auc, 3)}
             </li>
             <li>Sağlıklı referansa uzaklığın tek başına ayırıcılığı: AUC {tr(m.refAuc, 3)} · katkı haritası (lezyon maskesiyle) ortanca Dice {tr(m.lesionMapDice, 2)}</li>
+            {m.finding && (
+              <li data-testid="pattern-finding">
+                Örüntü yalnızca olasılığı {fmtPct(m.finding.threshold)} ve üzerindeyse söylenir. Bu eşikte test kümesinde: lezyonlu kesitlerde örüntü söylenme oranı {fmtPct(m.finding.lesionReported)}
+                (doğru örüntü {fmtPct(m.finding.correctPattern)}) · lezyonsuz kesitlerde yanlışlıkla söylenme oranı {fmtPct(m.finding.normalFalse)} · telefon fotoğrafı benzetiminde{' '}
+                {fmtPct(m.finding.lesionReportedPhoto)} / {fmtPct(m.finding.normalFalsePhoto)}
+              </li>
+            )}
+            {m.gate && (
+              <li data-testid="pattern-gate">
+                Eğitim dışı kapısı: değerlendirmeye alınan beyin MR test kesitleri {fmtPct(m.gate.brainPass)} · reddedilen beyin MR dışı görüntüler —{' '}
+                {Object.entries(m.gate.rejected)
+                  .map(([k, r]) => `${GATE_KIND[k] ?? k} ${fmtPct(r)}`)
+                  .join(' · ')}
+              </li>
+            )}
           </ul>
           {manifest.pattern?.data && (
             <>

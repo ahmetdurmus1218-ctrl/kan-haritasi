@@ -18,6 +18,7 @@ import { TONE, TONE_RANK, labTone } from '../../lib/tone';
 import { Banner } from '../../components/ui';
 import { BodyIcon, ChevronLeftIcon, ChevronRightIcon, LayersIcon, PlusIcon } from '../../components/icons';
 import { Breadcrumb, LabRow, Section, organStatus } from './common';
+import { ATLAS_STRUCTURES } from '../../tomography/atlasStructures.generated';
 
 const nameOf = (id: string) => GRAPH.node(id)?.nameTr ?? structureById.get(id)?.nameTr ?? id;
 const organRoute = (id: string): Route => (GRAPH.node(id) || structureById.has(id) ? { name: 'organ', id } : { name: 'mybody' });
@@ -97,6 +98,7 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
   const modelN = v.personal.modelFindings.length;
   const inside = GRAPH.insidePath(v.node.id);
   const interior = interiorFor(v.node.id);
+  const atlasKey = ATLAS_STRUCTURES[v.node.id] ?? (interior?.structure ? ATLAS_STRUCTURES[interior.structure] : undefined);
   const personal3D = interior ? interiorProvenance(interior, model).personal3D : false;
   const chains = chainsForPlace(interior?.organId ?? v.node.id).slice(0, 4);
   const personalChains = chains.map((c) => ({ c, ov: physioOverlay(c, model) })).filter((x) => x.ov.hasData);
@@ -243,6 +245,12 @@ export function OrganOverview({ v, model }: { v: OrganView; model: HealthModel |
                 </button>
                 <p className="text-[11px] text-fg-faint">Eğitimsel normal anatomi/fizyoloji — kişisel görüntü değildir.</p>
               </>
+            )}
+            {atlasKey && (
+              <button type="button" className="btn-ghost min-h-[44px] w-full justify-between px-4 text-sm" onClick={() => go({ name: 'tomography', organ: atlasKey.replace(/_/g, '-') })} data-testid="organ-tomography">
+                <span>Gerçek BT'de gör (tomografi görünümü, 3B hacim)</span>
+                <ChevronRightIcon size={16} />
+              </button>
             )}
             {(v.node.id === 'brain' || v.node.id.startsWith('brain.')) && (
               <button type="button" className="btn-ghost min-h-[44px] w-full justify-between px-4 text-sm" onClick={() => go(v.node.id === 'brain' ? { name: 'brain' } : { name: 'brain', region: v.node.id })} data-testid="organ-brain-map">

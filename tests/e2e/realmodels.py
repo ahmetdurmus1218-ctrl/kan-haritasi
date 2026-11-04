@@ -83,9 +83,9 @@ with sync_playwright() as p:
     page.goto(URL + "#/gizlilik")
     page.get_by_test_id("model-card").first.wait_for()
     cards = page.get_by_test_id("model-card")
-    check(cards.count() == 6, f"A: uygulamayla gelen 6 gerçek model ({cards.count()})")
+    check(cards.count() == 7, f"A: uygulamayla gelen 7 gerçek model ({cards.count()})")
     store = page.get_by_role("list", name="Kurulu modeller").inner_text()
-    for mid in ["totalseg-ct-total-3mm", "totalseg-mr-total-3mm", "xrv-densenet121-nih", "totalseg-ct-kidney-cysts", "totalseg-ct-effusion", "totalseg-ct-liver-segments"]:
+    for mid in ["totalseg-ct-total-3mm", "totalseg-mr-total-3mm", "xrv-densenet121-nih", "totalseg-ct-kidney-cysts", "totalseg-ct-effusion", "totalseg-ct-liver-segments", "kh-brain-mri-pattern"]:
         m = manifest(mid)
         check(m["name"] in store and m["sha256"] in store, f"A: {mid}: ad ve SHA-256 görünür")
     check(store.count("Apache-2.0") >= 5, "A: her modelin lisansı yazıyor (Apache-2.0)")

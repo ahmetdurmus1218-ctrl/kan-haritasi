@@ -1,0 +1,28 @@
+// scripts/atlas/build_ct_atlas.py tarafından üretildi — elle düzenleme.
+/** Gerçek BT atlasında etiketi olan 3B yapı / bilgi grafiği düğümü → atlas etiketi. */
+export const ATLAS_STRUCTURES: Readonly<Record<string, string>> = {
+  'abdominal-vessels': 'portal_vein_and_splenic_vein',
+  'adrenals': 'adrenal_gland_right',
+  'airways': 'trachea',
+  'aorta': 'aorta',
+  'bones': 'sacrum',
+  'carotid-arteries': 'brachiocephalic_trunk',
+  'esophagus': 'esophagus',
+  'gallbladder': 'gallbladder',
+  'heart': 'heart',
+  'kidneys': 'kidney_right',
+  'large-intestine': 'colon',
+  'liver': 'liver',
+  'lungs': 'lung_upper_lobe_left',
+  'pancreas': 'pancreas',
+  'pulmonary-vessels': 'pulmonary_vein',
+  'skeletal-muscle': 'gluteus_maximus_left',
+  'small-intestine': 'small_bowel',
+  'small-intestine.duodenum': 'duodenum',
+  'spinal-cord': 'spinal_cord',
+  'spleen': 'spleen',
+  'stomach': 'stomach',
+  'thyroid': 'thyroid_gland',
+  'urinary-tract': 'urinary_bladder',
+  'veins': 'brachiocephalic_vein_left',
+};

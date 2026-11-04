@@ -1,0 +1,25 @@
+Beyin MR örüntü benzerliği (Kan Haritası, gerçek hasta verisiyle eğitildi)
+Sürüm 1.0.0 · SHA-256 1099ef85ea8b325977e9a80de80dc401a9bc484cec1ccc81937ad52ad7bf5baa
+Lisans: CC BY 4.0 (model ağırlıkları, Kan Haritası); eğitim verisi CC BY 4.0 ve CC0 — atıflar NOTICE.txt
+
+Model: Kan Haritası tarafından gerçek, açık lisanslı beyin MR verisiyle eğitildi (2B evrişimli ağ, ~2 milyon parametre).
+Eğitim verisi ve atıflar:
+  - Aphasia Recovery Cohort, OpenNeuro ds004884 — CC0 — https://doi.org/10.18112/openneuro.ds004884 (228 kişi, 4532 kesit; kronik inme kesitleri + lezyonsuz kesitler)
+  - CCNRP kronik lezyon, OpenNeuro ds007212 — CC0 — https://openneuro.org/datasets/ds007212 (203 kişi, 3590 kesit; kronik odak lezyon (inme, ameliyat) kesitleri + lezyonsuz kesitler)
+  - MPI-Leipzig Mind-Brain-Body (LEMON), OpenNeuro ds000221 — CC0 — https://doi.org/10.18112/openneuro.ds000221 (120 kişi, 3253 kesit; sağlıklı gönüllüler (T2, FLAIR))
+  - FCD presurgery veri seti sağlıklı kontrolleri, OpenNeuro ds004199 — CC0 — https://doi.org/10.18112/openneuro.ds004199 (85 kişi, 3402 kesit; sağlıklı kontroller (T1, FLAIR))
+  - MS bilişsel bozulma çalışması sağlıklı kontrolleri, OpenNeuro ds007908 — CC0 — https://openneuro.org/datasets/ds007908 (8 kişi, 336 kesit; sağlıklı kontroller (T1, FLAIR))
+  - UPENN-GBM (Imaging Data Commons / TCIA) — CC BY 4.0 — https://doi.org/10.7937/TCIA.709X-DN49 (218 kişi, 13165 kesit; glioblastom kesitleri + uzak sağlıklı görünümlü kesitler)
+  - Vestibular-Schwannoma-SEG (Imaging Data Commons / TCIA) — CC BY 4.0 — https://doi.org/10.7937/TCIA.9YTJ-5Q73 (157 kişi, 5278 kesit; iç kulak yolu tümörü kesitleri + tümörsüz kesitler)
+
+Eğitim dışı kapısı negatif örnekleri (beyin MR kesiti olmayan gerçek görüntüler, Imaging Data Commons):
+  - COVID-19-NY-SBU, COVID-19-AR (CC BY 4.0), LIDC-IDRI (CC BY 3.0) — göğüs röntgenleri ve göğüs BT
+  - Cancer Moonshot Biobank (CMB, CC BY 4.0) — beyin ve gövde BT; C4KC-KiTS (CC BY 3.0) — karın BT
+  - ProstateX (CC BY 3.0), ACRIN-Contralateral-Breast-MR, CPTAC-UCEC (CC BY 4.0), TCGA-KIRC, TCGA-LIHC (CC BY 3.0), Prostate-MRI-US-Biopsy (CC BY 4.0) — beyin dışı MR
+  - Sentetik belge/ekran görüntüleri, çizim "kafa" fantomları ve dokular (betikle üretildi)
+
+UPENN-GBM: Bakas S. ve ark., Sci Data 2022. Vestibular-Schwannoma-SEG: Shapey J. ve ark., Sci Data 2021.
+ARC: Gibson M. ve ark., Sci Data 2024. MPI-LEMON: Babayan A. ve ark., Sci Data 2019. FCD: Schuch F. ve ark., Sci Data 2023.
+Imaging Data Commons: Fedorov A. ve ark., RadioGraphics 2023.
+
+Doğrulama: Hasta bazlı ayrık test (175 hasta, 5918 kesit): normal ↔ lezyonlu AUC 0.9426, duyarlılık 0.9252, özgüllük 0.7864; 4 örüntü doğruluğu 0.8542 (makro F1 0.8626). Telefon fotoğrafı benzetimi: doğruluk 0.8385, AUC 0.9351. PyTorch ↔ ONNX en büyük fark 9.5e-07.

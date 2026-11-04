@@ -93,6 +93,8 @@ export interface ModelManifest {
     /** pattern-2d: sağlıklı referansa uzaklık [1] ve eğitim dağılımı dışı uzaklığı [1]. */
     refDist?: string;
     oodDist?: string;
+    /** pattern-2d: "bu görüntü modelin türünde (ör. beyin MR kesiti) değil" olasılığı [1] (eğitilmiş kapı). */
+    gate?: string;
   };
   /** pattern-2d: sağlıklı referans kalibrasyonu, OOD eşiği, maske eşiği, test başarımı. */
   pattern?: PatternSpec;
@@ -142,6 +144,7 @@ export function validateManifest(json: unknown): { ok: true; manifest: ModelMani
     if (!p || !Array.isArray(p.refQuantiles) || p.refQuantiles.length < 2 || !(p.oodThreshold > 0) || !(p.maskThreshold > 0 && p.maskThreshold < 1) || !(Number.isInteger(p.maxPanels) && p.maxPanels >= 1 && p.maxPanels <= 32))
       e.push('pattern: refQuantiles ([yüzdelik, uzaklık] en az 2), oodThreshold > 0, maskThreshold (0–1), maxPanels (1–32) gerekli.');
     if (!m.labels?.some((l) => l.key === 'normal')) e.push('pattern-2d: "normal" anahtarlı (sağlıklı referans) bir etiket gerekli.');
+    if (o?.gate && !(p && p.gateThreshold !== undefined && p.gateThreshold > 0 && p.gateThreshold < 1)) e.push('pattern-2d: output.gate verilirse pattern.gateThreshold (0–1) gerekli.');
   }
   if (m.task === 'segmentation-3d') {
     const v = m.volume;

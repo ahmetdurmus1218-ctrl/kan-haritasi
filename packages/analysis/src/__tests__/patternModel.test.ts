@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type EngineFactory, LocalModelProvider, type ModelManifest, type Tensor, capabilitiesFor, validateManifest } from '../localModel';
 import { enforceLocalization } from '../medicalAI';
-import { PATTERN_SIZE, headBox, patternPanels, patternTensor, refPercentile, squareAround } from '../patternModel';
+import { PATTERN_SIZE, brightGrid, headBox, patternPanels, patternTensor, refPercentile, squareAround } from '../patternModel';
 import type { RasterImage } from '../types';
 
 const manifest = (over: Partial<ModelManifest> = {}): ModelManifest => ({
@@ -92,6 +92,22 @@ describe('Örüntü modeli (pattern-2d): manifest ve ön işleme', () => {
     const { boxes } = patternPanels(raster(W, H, g), 8);
     expect(boxes.length).toBe(2);
     expect(boxes[0]!.x + boxes[0]!.w).toBeLessThan(boxes[1]!.x + 5);
+  });
+
+  it('beyaz ızgara çizgili film kolajı (2×2) ayrılır; tek parlak kafa ızgara sanılmaz', () => {
+    const W = 420;
+    const H = 420;
+    const g = new Float32Array(W * H).fill(255);
+    // dört kesit, aralarında ince beyaz çizgiler (çizgi = arka plan beyazı)
+    for (const [ox, oy] of [[6, 6], [214, 6], [6, 214], [214, 214]] as const)
+      for (let y = 0; y < 200; y++) for (let x = 0; x < 200; x++) g[(oy + y) * W + ox + x] = 10;
+    for (const [cx, cy] of [[106, 106], [314, 106], [106, 314], [314, 314]] as const) head(W, H, cx, cy, 70, 85, g);
+    const n = g.map((v) => v / 255);
+    const boxes = brightGrid(n, W, H);
+    expect(boxes.length).toBe(4);
+    expect(boxes.every((b) => b.w > 180 && b.w < 215 && b.h > 180 && b.h < 215)).toBe(true);
+    const single = head(300, 260, 150, 130, 80, 100).map((v) => v / 137);
+    expect(brightGrid(single, 300, 260)).toEqual([]);
   });
 
   it('sağlıklı referans yüzdeliği ara değerle; uçlarda kırpılır', () => {

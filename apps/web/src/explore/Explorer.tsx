@@ -46,6 +46,7 @@ import { InsidePanel, SimulationBadge } from './inside/InsidePanel';
 import { personalFor } from './inside/personal';
 import { type InsideSceneProps, SceneThemeContext } from './inside/kit';
 import type { InsideState } from './inside/state';
+import { ATLAS_STRUCTURES } from '../tomography/atlasStructures.generated';
 
 type ExploreRoute = Extract<Route, { name: 'body' }> | Extract<Route, { name: 'simulation' }> | Extract<Route, { name: 'interior' }>;
 
@@ -843,6 +844,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         })),
         // İçine gir = organın kendi iç dünyası (lümen / parankim / odacık…). Doku ve hücre sahnesi "Daha derine in"dir.
         ...(enterInterior ? [{ ...enterInterior, primary: !h }] : []),
+        // Aynı organı gerçek bir BT taramasının hacim görüntülemesinde gör (tomografi görünümü)
+        ...(ATLAS_STRUCTURES[cloud.structure] ? [{ key: 'tomografi', label: "Gerçek BT'de gör", sub: 'tomografi görünümü', onClick: () => (setCloud(null), go({ name: 'tomography', organ: ATLAS_STRUCTURES[cloud.structure]!.replace(/_/g, '-') })) }] : []),
         ...(scene
           ? [
               { key: 'benim', label: 'Sonucuma göre', sub: findings.length ? 'senin değerlerinle' : 'ilişkili sonuç yok', disabled: !findings.length, onClick: () => enter(scene, cloud.structure, 'benim') },

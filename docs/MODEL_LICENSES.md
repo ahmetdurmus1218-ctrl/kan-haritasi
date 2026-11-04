@@ -2,7 +2,7 @@
 
 Bu belge uygulamaya gömülü tıbbi görüntü modellerini, eklenmeyenleri ve nedenlerini tek yerde toplar. Kesin izinli modeller ile lisansı belirsiz olanlar ayrı tutulur. Belirsiz bir model "izinli" gibi paketlenmez.
 
-Son güncelleme: 2026-10-17.
+Son güncelleme: 2026-11-04.
 
 ## 1. Uygulamaya gömülü modeller (izinli, doğrulanmış)
 
@@ -16,8 +16,9 @@ Her modelin klasöründe (`apps/web/public/ai-models/<kimlik>/`) şunlar vardır
 | `totalseg-ct-effusion` | TotalSegmentator `pleural_pericard_effusion` (Dataset315) | Apache-2.0 | aynı | Basamaklı patoloji: plevral/perikardiyal sıvı maskesi |
 | `totalseg-ct-liver-segments` | TotalSegmentator `liver_segments` (Dataset570) | Apache-2.0 | aynı | Couinaud I–VIII (anizotropik 0,8 × 0,8 × 1,5 mm ızgara) |
 | `xrv-densenet121-nih` | TorchXRayVision densenet121-res224-nih | Apache-2.0 (NIH ChestX-ray14 verisi kısıtlamasız, atıfla) | PyTorch → ONNX, sigmoid, float16 saklama | Göğüs röntgeni → 14 bulgu skoru. **Konum üretmez**: kutu/maske çizilmez, kişisel 3B üretmez |
+| `kh-brain-mri-pattern` | Kan Haritası beyin MR örüntü modeli (2B ağ, ~2 M parametre; kendi eğitimimiz) | CC BY 4.0 (ağırlıklar). Eğitim verisi: UPENN-GBM, Vestibular-Schwannoma-SEG (CC BY 4.0, TCIA/IDC); ARC, CCNRP, MPI-LEMON, FCD, ds007908 (CC0, OpenNeuro). Kapı negatifleri: IDC koleksiyonları (CC BY 3.0 / 4.0) | Sıfırdan eğitim → ONNX (opset 17); atıflar ve veri kişi/kesit sayıları NOTICE.txt'de | Beyin MR kesiti (fotoğraf/ekran/DICOM kesiti) → 4 örüntü olasılığı, sağlıklı referansa uzaklık (yüzdelik), katkı haritası, eğitim dışı kapısı. **Tanı değildir**; bilmediği hastalıklar manifestte ve ekranda yazar |
 
-Doğrulama sayıları (resmi çıktıyla Dice, voksel uyumu) README'deki "Gerçek yerel modeller" tablosunda ve `apps/web/src/__tests__/realModels.test.ts` içindedir.
+Doğrulama sayıları (resmi çıktıyla Dice, voksel uyumu; örüntü modelinde hasta bazlı ayrık test) README'deki "Gerçek yerel modeller" tablosunda ve `apps/web/src/__tests__/realModels.test.ts` içindedir.
 
 ## 2. Bilinçli olarak eklenmeyenler
 

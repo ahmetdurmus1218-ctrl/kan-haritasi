@@ -148,6 +148,20 @@ def main(src, out):
         ],
     }
     json.dump(manifest, open(os.path.join(out, 'manifest.json'), 'w'), ensure_ascii=False, indent=1)
+    # Uygulama için küçük dizin: hangi yapı/düğüm atlasta var (organ sayfasından "Gerçek BT'de gör" bağlantısı)
+    ids = {}
+    for l in labs:
+        for k in (l.get('structure'), l.get('node')):
+            if k and k not in ids:
+                ids[k] = l['key']
+    gen = os.path.join(REPO, 'apps/web/src/tomography/atlasStructures.generated.ts')
+    with open(gen, 'w') as f:
+        f.write('// scripts/atlas/build_ct_atlas.py tarafından üretildi — elle düzenleme.\n')
+        f.write('/** Gerçek BT atlasında etiketi olan 3B yapı / bilgi grafiği düğümü → atlas etiketi. */\n')
+        f.write('export const ATLAS_STRUCTURES: Readonly<Record<string, string>> = {\n')
+        for k in sorted(ids):
+            f.write(f"  '{k}': '{ids[k]}',\n")
+        f.write('};\n')
     print(json.dumps({'shape': shape, 'files': files, 'labels': len(labs)}))
 
 
