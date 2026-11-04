@@ -129,6 +129,24 @@ with sync_playwright() as p:
     check(card.get_by_test_id("xray-frame").count() == 1, "B2: modelin baktığı alan görüntü üzerinde çerçeveyle gösterildi")
     card.screenshot(path=SHOTS / "r2b-rontgen-ekran-goruntusu.png")
 
+    # ------------------------------------------------------------ B3: tür "Diğer" → görüntüden MR sanılır → beyin modeli reddeder → "Röntgen olarak incele"
+    page.goto(URL + "#/ekle")
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
+    other = page.get_by_label("Diğer belge türleri")
+    if not other.count() or not other.first.is_visible():
+        page.get_by_role("button", name=re.compile("Türünü kendim seçeyim|Tür: ")).click()
+    other.first.select_option("other")
+    # B2'deki dosyanın aynısı çift kayıt sayılır; sona eklenen baytlar JPEG çözücüde yok sayılır → ayrı dosya
+    shot = (IMG / "rontgen-foto" / "telefon-ekran-goruntusu.jpg").read_bytes() + b"\0kh-b3"
+    page.set_input_files("input[type=file][multiple]", [{"name": "IMG_4021.jpg", "mimeType": "image/jpeg", "buffer": shot}])
+    page.get_by_role("button", name="Aç ve oku").click()
+    card = page.get_by_role("region", name="Ham görüntü analizi")
+    card.get_by_test_id("suggest-xray").wait_for(timeout=240000)
+    check("Röntgen olarak incele" in card.get_by_test_id("suggest-xray").inner_text(), "B3: tür bilinmezken beyin modeli reddedince 'Röntgen olarak incele' önerisi")
+    card.get_by_role("button", name="Röntgen olarak incele").click()
+    page.get_by_role("region", name="Ham görüntü analizi").get_by_test_id("xray-photo-caution").wait_for(timeout=240000)
+    check(page.get_by_role("region", name="Ham görüntü analizi").get_by_test_id("model-scores").count() == 1, "B3: türü Röntgen yapınca göğüs röntgeni modeli çalıştı (14 bulgu skoru)")
+
     # ------------------------------------------------------------ C: BT serisi → 3B anatomi
     ct_url = upload_series(page, "Tomografi (BT)", "totalseg-ct-sm", 30)
     panel = page.get_by_test_id("series-model-panel")

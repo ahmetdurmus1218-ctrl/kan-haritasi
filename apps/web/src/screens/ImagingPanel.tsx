@@ -297,6 +297,7 @@ export function ImagingPanel({ info, bytes, seriesIds, onInfoChange }: { info: F
             onHeadLike={() => {
               if (!info.region) setSuggested((s) => s ?? { region: 'beyin', from: 'shape' });
             }}
+            onCategory={(c) => void updateMeta({ category: c })}
             onReview={setImageEvidence}
           />
         )}

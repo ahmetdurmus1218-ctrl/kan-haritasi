@@ -33,7 +33,7 @@ import {
 } from '@kh/analysis';
 import { Sheet } from './Sheet';
 import type { DicomInfo } from '@kh/ingest';
-import type { Bytes, FileInfo } from '@kh/vault';
+import type { Bytes, DocCategory, FileInfo } from '@kh/vault';
 import { go } from '../state/router';
 import { insideRoute } from '../lib/anatomyNav';
 import { useUnlockedVault, useVault } from '../state/VaultContext';
@@ -449,6 +449,7 @@ export function AnalysisCard({
   files = 1,
   onHeadLike,
   onReview,
+  onCategory,
 }: {
   info: FileInfo;
   bytes: Bytes;
@@ -465,6 +466,8 @@ export function AnalysisCard({
   files?: number;
   /** Kesitler baş kesitine benziyorsa (bölge önerisi için). */
   onHeadLike?: () => void;
+  /** Belge türünü değiştir (ör. otomatik "MR" sanılan röntgen ekran görüntüsü → Röntgen). */
+  onCategory?: (c: DocCategory) => void;
   /** Ön kontrol özeti (sistematik değerlendirme için). */
   onReview?: (r: { compared: number; flagged: number; panels: number }) => void;
 }) {
@@ -599,6 +602,10 @@ export function AnalysisCard({
   const photoOnly = symmetry && !modelRan;
   // Örüntü modeli fotoğrafta da çalışır; yine de kesin okumanın yolu rapor ve DICOM serisidir (rehber görünür kalır).
   const patternRan = modelState.status === 'done' && modelState.runs.some((r) => r.extras?.pattern);
+  // Tür görüntüden tahmin edildi ve beyin MR modeli görüntüyü "beyin MR'ı değil" diye reddetti: göğüs röntgeninin
+  // ekran görüntüsü olabilir (simetrik göğüs, koyu arayüz) → türü Röntgen yapmayı öner.
+  const patternRejected = modelState.status === 'done' && modelState.runs.some((r) => r.extras?.pattern && r.extras.pattern.panels.length > 0 && r.extras.pattern.panels.every((p) => p.ood));
+  const suggestXray = Boolean(onCategory && patternRejected && run?.modality?.primary.source === 'IMAGE_ANALYSIS' && info.category !== 'xray');
   const brainStudy = run?.anatomy?.structure === 'brain' || run?.result.extent?.headLike === true;
   const outcome = !run
     ? ''
@@ -733,6 +740,14 @@ export function AnalysisCard({
           <div id={`bulgular-${info.id}`} className="scroll-mt-4 space-y-3">
             {modelRan && modelState.status === 'done' && (
               <ModelFindings result={modelRan} runs={modelState.runs} disagreements={modelState.disagreements} raster={raster} concordance={local?.modelConcordance ?? []} onRegion={setRegion} />
+            )}
+            {suggestXray && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-ink-600/60 px-3 py-2 text-sm text-fg" data-testid="suggest-xray">
+                <span>Bu görüntü beyin MR kesitine benzemiyor. Bir göğüs röntgeni (ya da ekran görüntüsü) ise röntgen modeliyle incelenebilir.</span>
+                <button type="button" className="btn-ghost px-3 py-1.5 text-xs" onClick={() => onCategory?.('xray')}>
+                  Röntgen olarak incele
+                </button>
+              </div>
             )}
             {modelState.status === 'volume-only' && (
               <p className="rounded-lg border border-ink-600/60 px-3 py-2 text-sm text-fg-muted" data-testid="volume-only">

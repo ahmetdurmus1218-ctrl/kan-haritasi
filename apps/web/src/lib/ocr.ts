@@ -128,7 +128,9 @@ async function getWorker(): Promise<TesseractWorker> {
     });
     report('init', 1);
     // user_defined_dpi: çözünürlük tahmin uyarısını önler; görseller OCR öncesi ~300 dpi'ye ölçeklenir.
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO, preserve_interword_spaces: '1', user_defined_dpi: '300' });
+    // debug_file: Tesseract'ın iç tanılama satırları (ör. ekran görüntüsündeki çok küçük yazı satırları için "Image too
+    // small to scale") konsola hata olarak düşmesin; okuma sonucu etkilenmez.
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO, preserve_interword_spaces: '1', user_defined_dpi: '300', debug_file: '/dev/null' });
     workerInstance = worker;
     return worker;
   })();
