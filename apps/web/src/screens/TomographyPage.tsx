@@ -101,6 +101,10 @@ export function TomographyPage({ organ }: { organ?: string | undefined }) {
   }, [atlas, organ, fams, byId]);
 
   const p = presetById(preset);
+  // Önayarın gizlediği bir gruptan organ seçilirse (ör. "Kemikler"de kalp), organ görünsün diye sinematiğe geçilir.
+  useEffect(() => {
+    if (selected && presetById(preset).hide?.includes(selected.group)) setPreset('cinematic');
+  }, [selected, preset]);
   const sel = useMemo(() => (selected ? new Set(selected.ids) : undefined), [selected]);
   const look = useMemo<VolumeLook | null>(() => {
     if (!atlas) return null;
