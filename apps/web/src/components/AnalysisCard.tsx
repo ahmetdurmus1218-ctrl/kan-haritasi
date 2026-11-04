@@ -206,7 +206,7 @@ function Overlay({ raster, marks, caption, testId }: { raster: RasterImage; mark
   );
 }
 
-const pct = (c: MedicalFinding['confidence']) => (c.kind === 'score' ? `%${Math.round(c.value * 100)}` : '—');
+const pct = (c: MedicalFinding['confidence']) => (c.kind === 'score' ? (c.value >= 0.995 ? '%99+' : `%${Math.round(c.value * 100)}`) : '—');
 
 /** Yerel modelin bulguları: gerçek görüntüde konum, anatomi, rapor uyumu ve model kökeni. */
 function ModelFindings({

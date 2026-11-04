@@ -2,6 +2,8 @@ import type { ModelExtras, ModelManifest, PatternPanelResult } from '@kh/analysi
 import { go } from '../state/router';
 
 const fmtPct = (p: number) => `%${Math.round(p * 100)}`;
+/** Model olasılığı: uçlar kesinlik izlenimi vermesin diye %99+ / <%1 yazılır (ölçülmüş oranlar için fmtPct). */
+const fmtProb = (p: number) => (p >= 0.995 ? '%99+' : p < 0.005 ? '<%1' : `%${Math.round(p * 100)}`);
 const GATE_KIND: Record<string, string> = { xray: 'röntgen', headct: 'beyin BT', ct: 'gövde BT', bodymr: 'beyin dışı MR', doc: 'belge/ekran', phantom: 'çizim kafa fantomu', drawing: 'şema/karikatür çizimi', texture: 'doku/desen' };
 const tr = (x: number, d = 0) => x.toLocaleString('tr-TR', { maximumFractionDigits: d });
 
@@ -41,7 +43,7 @@ export function PatternResult({ extras, manifest }: { extras: ModelExtras; manif
           <p className="text-sm text-fg" data-testid="pattern-lead">
             {abnormal ? (
               <>
-                En çok benzediği örüntü: <strong>{top.name}</strong> ({fmtPct(top.p)}).{lead.mask ? ' Örüntüye katkı veren alan görüntüde turkuazla gösterildi.' : ''}
+                En çok benzediği örüntü: <strong>{top.name}</strong> ({fmtProb(top.p)}).{lead.mask ? ' Örüntüye katkı veren alan görüntüde turkuazla gösterildi.' : ''}
               </>
             ) : (
               <>Model bu kesitlerde bildiği hastalık örüntülerinden birine belirgin benzerlik bulmadı. Bu, görüntünün normal olduğunu göstermez.</>
@@ -54,7 +56,7 @@ export function PatternResult({ extras, manifest }: { extras: ModelExtras; manif
                 <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-700">
                   <span className="block h-full" style={{ width: `${Math.round(x.p * 100)}%`, background: x.key === 'normal' ? 'var(--color-accent)' : '#22d3ee' }} />
                 </span>
-                <span className="w-10 text-right tabular-nums">{fmtPct(x.p)}</span>
+                <span className="w-11 text-right tabular-nums">{fmtProb(x.p)}</span>
               </li>
             ))}
           </ul>
@@ -78,7 +80,7 @@ export function PatternResult({ extras, manifest }: { extras: ModelExtras; manif
           <ul className="mt-1 space-y-0.5" data-testid="pattern-panels">
             {pat.panels.map((p) => (
               <li key={p.panel}>
-                Kesit {p.panel + 1}: {p.ood ? 'eğitim dışı görüntü — değerlendirilmedi' : `${p.probs[0]!.name} ${fmtPct(p.probs[0]!.p)} · sağlıklı referansa göre %${tr(p.refPercentile)} düzeyinde farklılık`}
+                Kesit {p.panel + 1}: {p.ood ? 'eğitim dışı görüntü — değerlendirilmedi' : `${p.probs[0]!.name} ${fmtProb(p.probs[0]!.p)} · sağlıklı referansa göre %${tr(p.refPercentile)} düzeyinde farklılık`}
               </li>
             ))}
           </ul>
