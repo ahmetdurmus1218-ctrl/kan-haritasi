@@ -296,9 +296,6 @@ function ModelFindings({
                   </span>
                   {f.finding} <span className="text-sm font-normal text-fg-muted">· güven {pct(f.confidence)}</span>
                 </p>
-                <p className="mt-0.5 text-xs text-fg-faint">
-                  Konum: {f.localization.kind === 'pixel' ? `model kaynaklı · kesit/kare ${f.localization.frame + 1} · x ${f.localization.box.x}, y ${f.localization.box.y}, ${f.localization.box.w}×${f.localization.box.h} px${f.localization.mask ? ' · maske' : ''}` : f.localization.kind === 'point' ? 'model kaynaklı · nokta' : 'konum yok (yalnızca sınıf)'}
-                </p>
                 {f.anatomicalStructure && (
                   <div className="mt-1">
                     <LocationPath loc={f.anatomicalStructure} onOpen={(id) => go({ name: 'organ', id })} />
@@ -310,9 +307,15 @@ function ModelFindings({
                     {conc.text}
                   </p>
                 )}
-                <p className="mt-1 text-[11px] text-fg-faint" data-testid="inside-depth" data-depth={insideCapability(f).depth}>
+                <details className="mt-1 text-[11px] text-fg-faint">
+                  <summary className="cursor-pointer">Teknik ayrıntı</summary>
+                <p className="mt-0.5">
+                  Konum: {f.localization.kind === 'pixel' ? `model kaynaklı · kesit/kare ${f.localization.frame + 1} · x ${f.localization.box.x}, y ${f.localization.box.y}, ${f.localization.box.w}×${f.localization.box.h} px${f.localization.mask ? ' · maske' : ''}` : f.localization.kind === 'point' ? 'model kaynaklı · nokta' : 'konum yok (yalnızca sınıf)'}
+                </p>
+                <p className="mt-0.5" data-testid="inside-depth" data-depth={insideCapability(f).depth}>
                   İçine gir derinliği: {INSIDE_DEPTH_TR[insideCapability(f).depth]}
                 </p>
+                </details>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {insideCapability(f).node && (
                     <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={() => go(insideRoute(insideCapability(f).node!.id))} data-testid="inside-button">
@@ -670,16 +673,6 @@ export function AnalysisCard({
               {` · İnceleme kapsamı: ${run.coverage.label}`}
             </p>
             {run.modality?.conflict && <p className="mt-1 text-sm text-caution-fg">{run.modality.conflict}</p>}
-            {(photoOnly || (symmetry && patternRan)) && <ReadGuide brain={brainStudy} reportAvailable={reportAvailable} patternRan={patternRan} {...(volumeModel ? { volumeModel: volumeModel.manifest.name } : {})} />}
-            {run.coverage.limited && <p className="mt-2 text-sm text-fg-muted">{run.coverage.limited}</p>}
-            {modelRan && <p className="mt-2 text-[15px] text-fg">{modelRan.findings.length ? `Model ${modelRan.findings.length} bulgu bildirdi.` : 'Model eşik üstü bulgu bildirmedi.'}</p>}
-            {(precheckRan || st !== 'model') && <p className="mt-2 text-[15px] text-fg">{st === 'model' && precheckRan ? `Ön inceleme: ${outcome}` : outcome}</p>}
-            {symmetry && !asym && precheckRan && <p className="text-sm text-fg-muted">Bu sonuç görüntünün normal olduğunu göstermez.</p>}
-            <p className="mt-1 text-sm text-fg-muted">
-              {reportAvailable ? 'Rapor da var: rapordaki bulgular ayrı kaynak olarak gösterilir.' : 'Rapor yok: sonuçlar yalnızca görüntünün kendisine dayanıyor.'}
-              {st === 'precheck' ? ` ${ANALYSIS_STATE_TEXT.precheck.split('. ')[1]}` : ''}
-              {st === 'precheck' ? ' Bu bir tıbbi görüntü tanı modeli değildir.' : ''}
-            </p>
             {modelBusy && (
               <div className="mt-2 flex items-center gap-2 text-sm text-fg-muted" aria-live="polite" data-testid="model-progress">
                 <SpinnerIcon size={14} /> {modelState.status === 'loading' ? `${modelState.model.manifest.name} yükleniyor…` : `${modelState.model.manifest.name} görüntüyü inceliyor (cihazda)…`}
@@ -726,16 +719,6 @@ export function AnalysisCard({
             </div>
           </div>
 
-          {precheckRan && run.result.capabilities.length > 0 && (
-            <ImageCapabilityPanel
-              run={run}
-              {...(candidate
-                ? { model: { name: models2d.map((m) => `${m.manifest.name} ${m.manifest.version}`).join(' + '), ran: Boolean(modelRan), task: candidate.manifest.task } }
-                : volumeModel
-                  ? { model: { name: `${volumeModel.manifest.name} — yalnızca DICOM serisinde (3B); bu görüntüde çalıştırılmadı`, ran: false, task: volumeModel.manifest.task } }
-                  : {})}
-            />
-          )}
 
           <div id={`bulgular-${info.id}`} className="scroll-mt-4 space-y-3">
             {modelRan && modelState.status === 'done' && (
@@ -785,6 +768,30 @@ export function AnalysisCard({
             )}
           </div>
 
+          {/* Görüntü hakkında notlar: kapsam, ön inceleme, rapor durumu — cevabın (model bulguları) arkasında. */}
+          <div className="space-y-1" data-testid="analysis-notes">
+            {run.coverage.limited && <p className="text-sm text-fg-muted">{run.coverage.limited}</p>}
+            {modelRan && <p className="text-[15px] text-fg">{modelRan.findings.length ? `Model ${modelRan.findings.length} bulgu bildirdi.` : 'Model eşik üstü bulgu bildirmedi.'}</p>}
+            {(precheckRan || st !== 'model') && <p className="text-[15px] text-fg">{st === 'model' && precheckRan ? `Ön inceleme: ${outcome}` : outcome}</p>}
+            {symmetry && !asym && precheckRan && <p className="text-sm text-fg-muted">Bu sonuç görüntünün normal olduğunu göstermez.</p>}
+            <p className="text-sm text-fg-muted">
+              {reportAvailable ? 'Rapor da var: rapordaki bulgular ayrı kaynak olarak gösterilir.' : 'Rapor yok: sonuçlar yalnızca görüntünün kendisine dayanıyor.'}
+              {st === 'precheck' ? ` ${ANALYSIS_STATE_TEXT.precheck.split('. ')[1]}` : ''}
+              {st === 'precheck' ? ' Bu bir tıbbi görüntü tanı modeli değildir.' : ''}
+            </p>
+          </div>
+          {precheckRan && run.result.capabilities.length > 0 && (
+            <ImageCapabilityPanel
+              run={run}
+              {...(candidate
+                ? { model: { name: models2d.map((m) => `${m.manifest.name} ${m.manifest.version}`).join(' + '), ran: Boolean(modelRan), task: candidate.manifest.task } }
+                : volumeModel
+                  ? { model: { name: `${volumeModel.manifest.name} — yalnızca DICOM serisinde (3B); bu görüntüde çalıştırılmadı`, ran: false, task: volumeModel.manifest.task } }
+                  : {})}
+            />
+          )}
+          {/* Okuma rehberi cevabın ARKASINDA: önce modelin söylediği, sonra kesin okuma için ne eklenmeli. */}
+          {(photoOnly || (symmetry && patternRan)) && <ReadGuide brain={brainStudy} reportAvailable={reportAvailable} patternRan={patternRan} {...(volumeModel ? { volumeModel: volumeModel.manifest.name } : {})} />}
           <details className="rounded-xl border border-dashed border-ink-600 p-3">
             <summary className="cursor-pointer text-sm text-fg-muted">Nasıl analiz edildi?</summary>
             <div className="mt-3 space-y-3 text-[13px]">

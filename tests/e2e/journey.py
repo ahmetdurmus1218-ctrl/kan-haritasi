@@ -75,6 +75,7 @@ with sync_playwright() as p:
 
     # ------------------------------------------------------------ 2. birlikte bakış
     page.goto(URL + "#/sonuclar")
+    page.get_by_test_id("combined-look").get_by_role("button").first.click()
     page.get_by_test_id("differential").wait_for()
     d = page.get_by_test_id("differential")
     causes = d.get_by_test_id("cause")
@@ -86,6 +87,7 @@ with sync_playwright() as p:
 
     # ------------------------------------------------------------ 3. hemoglobin yolculuğu
     page.goto(URL + "#/sonuc/hemoglobin")
+    page.get_by_role("tab", name="Yolculuk").click()
     j = page.get_by_test_id("result-journey")
     j.wait_for()
     check(j.get_attribute("data-dir") == "low", f"hemoglobin: yön 'düşük' ({j.get_attribute('data-dir')})")

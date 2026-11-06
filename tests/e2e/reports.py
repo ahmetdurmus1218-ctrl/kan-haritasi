@@ -102,18 +102,18 @@ with sync_playwright() as p:
         page.get_by_role("heading", name="Sonuçlar").wait_for(timeout=15000)
 
     # --- Sonuçlarım: en güncel değerler (çoklu anormallik raporu en yeni tarihli)
-    page.get_by_role("link", name="Belgelerim").first.click()
-    page.get_by_role("navigation", name="Ana gezinme").first.get_by_role("link", name="Sonuçlar").click()
-    page.get_by_text("Tahlil sonuçların").wait_for()
+    page.goto(URL + "#/sonuclar")
+    page.get_by_role("heading", name="Sonuçlar", exact=True).wait_for()
+    page.get_by_test_id("results-more").locator("summary").click()
     page.wait_for_timeout(1500)
     page.screenshot(path=SHOTS / "41-sonuclar.png", full_page=True)
     body = page.locator("main").inner_text()
 
-    def tile(label: str) -> int:
-        t = page.locator(f"div:has(> div:text-is('{label}')) > div").first.inner_text()
-        return int(t) if t.isdigit() else -1
+    def num(testid: str) -> int:
+        m = re.match(r"\d+", page.get_by_test_id(testid).inner_text().strip())
+        return int(m.group()) if m else -1
 
-    out, verify, systems = tile("Aralık dışı"), tile("Doğrulaman gereken"), tile("İlgili sistem")
+    out, verify, systems = num("out-count"), num("verify-count"), num("system-count")
     check(out >= 25, f"özet: {out} test aralık dışı")
     check(verify >= 4, f"özet: {verify} değer doğrulama istiyor (evreye göre aralıklar, OCR)")
     check(systems >= 7, f"özet: {systems} ilgili sistem")
@@ -140,16 +140,17 @@ with sync_playwright() as p:
 
     # Tek bir organa özgü olmayan test: CRP
     page.locator("li button:has-text('CRP')").first.click()
-    page.get_by_text("Bu test neyi ölçer?").wait_for()
+    page.get_by_text("Senin sonucun ne anlama geliyor?").wait_for()
     page.wait_for_timeout(400)
     check(page.get_by_text("Tek bir organa özgü değil").count() >= 1, "CRP: tek organa özgü olmadığı belirtiliyor")
     page.screenshot(path=SHOTS / "42-crp.png", full_page=True)
     page.keyboard.press("Escape")
     page.go_back()
-    page.get_by_text("Tahlil sonuçların").wait_for()
+    page.get_by_role("heading", name="Sonuçlar", exact=True).wait_for()
 
     # --- 3B: CK bulgusu → kaslar; bulgular arasında gezinme
-    page.get_by_role("button", name="CK (kreatin kinaz): vücutta göster").click()
+    page.locator("li button:has-text('CK (kreatin kinaz)')").first.click()
+    page.get_by_role("button", name="Vücutta göster").click()
     page.wait_for_timeout(1500)
     for _ in range(60):
         if page.locator("text=Anatomi modelleri yükleniyor").count() == 0:

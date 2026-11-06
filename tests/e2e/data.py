@@ -143,7 +143,7 @@ with sync_playwright() as p:
     page2.get_by_role("button", name="Geri yükle", exact=True).click()
     page2.get_by_text("Geri yüklendi: 2 yeni belge").wait_for(timeout=30000)
     page2.goto(URL + "#/sonuclar")
-    page2.get_by_text("Tahlil sonuçların").wait_for()
+    page2.get_by_role("heading", name="Sonuçlar", exact=True).wait_for()
     check(page2.get_by_text("LDL kolesterol").count() >= 1, "geri yüklenen kasada sonuçlar")
     page2.goto(URL + "#/belgeler")
     page2.wait_for_timeout(800)

@@ -126,6 +126,8 @@ with sync_playwright() as p:
     card.locator("[data-testid=analysis-state][data-state=model]").wait_for(timeout=120000)
     check(True, "S3: durum 'Yerel tıbbi AI modeli ile analiz edildi'")
     card.get_by_test_id("model-finding").first.wait_for()
+    # Piksel konumu ve "İçine gir derinliği" teknik ayrıntıdır: bulgu kartında kapalı bölümde durur.
+    card.get_by_test_id("model-finding").first.get_by_text("Teknik ayrıntı").click()
     f = card.get_by_test_id("model-finding").first.inner_text()
     check("Test bulgusu (sahte model)" in f and re.search(r"güven %\d+", f) is not None, f"S3: model bulgusu ve güveni ({f[:60]!r})")
     check("model kaynaklı" in f and re.search(r"x \d+, y \d+, \d+×\d+ px", f) is not None, "S3: gerçek görüntü üzerinde kutu (piksel konumu)")

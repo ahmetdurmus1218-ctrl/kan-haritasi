@@ -12,7 +12,6 @@ import { platform } from '../platform';
 
 import { Banner, Dialog } from '../components/ui';
 import { Uploader } from '../components/Uploader';
-import { DataTabs } from '../components/DataTabs';
 import {
   DownloadIcon,
   EyeIcon,
@@ -80,12 +79,11 @@ export function DocumentsPage({ navigate }: { navigate: (r: Route) => void }) {
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
       <div className="mb-5">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">Belgelerim</h1>
+        <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">Dosyalar</h1>
         <p className="mt-1 text-sm text-fg-muted">
           {files && files.length > 0 ? `${groups!.length} belge · ${formatBytes(files.reduce((n, f) => n + f.size, 0))} · ` : ''}yalnızca bu cihazda, şifreli
         </p>
       </div>
-      <DataTabs active="documents" />
 
       <Uploader navigate={navigate} />
 

@@ -1,4 +1,3 @@
-import { DataTabs } from '../components/DataTabs';
 import { useMemo, useState, type ReactNode } from 'react';
 import { CONTENT, GROUP_LABEL, MEDICAL_DISCLAIMER, PROCESSES, type ResultStatus, structureById, systemById, formatNumber, testByKey } from '@kh/catalog';
 import { go } from '../state/router';
@@ -16,6 +15,7 @@ import { ImagingStudyList } from '../components/imaging';
 import { ResultPhysiology } from '../components/physiology';
 import { Differential, ResultJourney } from '../components/labEffects';
 import { useHealthModel } from '../lib/analysisBridge';
+import { type LabObservation, differential } from '@kh/analysis';
 import { AlertIcon, BodyIcon, ChartIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileTextIcon, SpinnerIcon, UploadIcon } from '../components/icons';
 
 const ORDER: Record<ResultStatus, number> = { high: 0, low: 1, unknown: 2, normal: 3 };
@@ -69,77 +69,35 @@ export function ResultsPage() {
     groups.set(s.test.group, [...(groups.get(s.test.group) ?? []), s]);
   }
   const lastDate = reports[0] ? (reports[0].reportDate ?? reports[0].createdAt.slice(0, 10)) : null;
+  const allStatus = [...series.map((s) => s.latest.result.status), ...others.map((o) => o.result.status)];
+  const nHigh = allStatus.filter((x) => x === 'high').length;
+  const nLow = allStatus.filter((x) => x === 'low').length;
+  const nNormal = allStatus.filter((x) => x === 'normal').length;
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-6 md:px-8 md:py-10">
-      <DataTabs active="results" />
-      <div className="mb-6">
-        <p className="label-caps mb-1.5">Sonuçlarım</p>
-        <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">{studies?.length ? 'Tahlil ve görüntüleme sonuçların' : 'Tahlil sonuçların'}</h1>
-        <p className="mt-1.5 text-sm text-fg-muted">
+      <div className="mb-5">
+        <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">Sonuçlar</h1>
+        <p className="mt-1 text-sm text-fg-muted">
           {series.length + others.length
             ? `${series.length + others.length} test · ${reports.length} rapor${lastDate ? ` · son rapor ${formatDate(lastDate)}` : ''}`
             : 'Henüz onaylanmış tahlil sonucu yok.'}
           {studies?.length ? ` · ${studies.length} görüntüleme` : ''}
         </p>
-        {series.length + others.length > 0 && (
-          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <SummaryTile label="Aralık dışı" value={abnormal.length + othersAbnormal.length} tone="text-high" />
-            <SummaryTile
-              label="Aralıkta"
-              value={series.filter((s) => s.latest.result.status === 'normal').length + others.filter((o) => o.result.status === 'normal').length}
-              tone="text-accent"
-            />
-            <SummaryTile label="Doğrulaman gereken" value={toVerify.length} tone={toVerify.length ? 'text-[#f5b14c]' : 'text-fg-faint'} />
-            <SummaryTile label="İlgili sistem" value={involved.length} tone="text-fg" />
-          </div>
-        )}
-        {involved.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {involved.map((x) => (
-              <button
-                key={x.system}
-                type="button"
-                onClick={() => go({ name: 'body', system: x.system })}
-                className="inline-flex items-center gap-1.5 rounded-full border border-ink-600 px-2.5 py-1 text-xs text-fg-muted transition hover:border-ink-500 hover:text-fg"
-              >
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: systemById.get(x.system)?.color }} />
-                {x.name}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
+      {series.length + others.length > 0 && (
+        <SummaryRing high={nHigh} low={nLow} normal={nNormal} verify={toVerify.length} systems={involved.length} />
+      )}
+
       {model && model.latestLabs.some((l) => l.status === 'high' || l.status === 'low') && (
-        <div className="mb-8">
-          <Differential labs={model.latestLabs} {...(sex !== 'unspecified' ? { sex } : {})} />
+        <div className="mt-3">
+          <CombinedLook labs={model.latestLabs} {...(sex !== 'unspecified' ? { sex } : {})} />
         </div>
       )}
 
-      {studies && studies.length > 0 && (
-        <section className="mb-8" aria-labelledby="goruntuleme-sonuclari">
-          <div className="mb-2 flex items-end justify-between gap-3">
-            <h2 id="goruntuleme-sonuclari" className="label-caps">
-              Görüntüleme raporların ({studies.length})
-            </h2>
-            <span className={`text-[11px] ${studies.some((x) => x.abnormal.length) ? 'text-high' : 'text-fg-faint'}`}>
-              {(() => {
-                const all = studies.flatMap((x) => x.measures);
-                const out = all.filter((m) => m.status === 'high' || m.status === 'low').length;
-                return all.length ? `${all.length} ölçüm · ${out} tanesi genel referans dışında` : 'MR · BT · röntgen · ultrason';
-              })()}
-            </span>
-          </div>
-          <ImagingStudyList studies={studies} />
-          <p className="mt-2 text-[11px] leading-relaxed text-fg-faint">
-            Raporun kendi "Sonuç" bölümü aynen gösterilir; Kan Haritası görüntüleri ve raporları yorumlamaz, derecelendirmez. Terimlerin genel anlamı belgenin içinde açıklanır.
-          </p>
-        </section>
-      )}
-
       {series.length === 0 && others.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
+        <div className="mt-5 rounded-2xl border border-dashed border-ink-600 px-6 py-12 text-center">
           <p className="font-medium">{studies?.length ? 'Tahlil sonucu yok' : 'Sonuç yok'}</p>
           <p className="mt-1 text-sm text-fg-muted">Bir tahlil raporu ekle; okunan değerleri onayladığında burada görünür.</p>
           <button type="button" className="btn-primary mt-5" onClick={() => go({ name: 'add' })}>
@@ -148,46 +106,16 @@ export function ResultsPage() {
         </div>
       ) : (
         <>
-          <div className="mb-8 space-y-4">
+          <div className="mt-4 space-y-4">
             <CriticalBanner critical={interp.critical} />
             {toVerify.length > 0 && <VerifyList series={toVerify} />}
-            <section className="surface p-5" aria-labelledby="genel-degerlendirme">
-              <p className="label-caps mb-1.5">Kişisel değerlendirme</p>
-              <h2 id="genel-degerlendirme" className="text-lg font-semibold tracking-tight">
-                Genel durum
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-fg-muted">{interp.overall.text}</p>
-              <div className="mt-4">
-                <SeverityBar interp={interp} />
-              </div>
-              <p className="mt-4 text-[11px] leading-relaxed text-fg-faint">
-                Her sonuç önce laboratuvarın kendi referans aralığına göre, sonra aralıktan ne kadar saptığına göre (hafif / orta / belirgin)
-                derecelendirilir. Bazı testlerde yaygın kılavuz kategorileri de gösterilir. Kural tabanlıdır, cihazında hesaplanır; teşhis değildir.
-              </p>
-            </section>
-            {interp.patterns.length > 0 && (
-              <section aria-labelledby="birlikte">
-                <h2 id="birlikte" className="label-caps mb-2">
-                  Birlikte değerlendirme ({interp.patterns.length})
-                </h2>
-                <PatternList patterns={interp.patterns} />
-              </section>
-            )}
-            {interp.systems.length > 0 && (
-              <section aria-labelledby="sistemler">
-                <h2 id="sistemler" className="label-caps mb-2">
-                  Sistemlere göre
-                </h2>
-                <SystemGrid interp={interp} />
-              </section>
-            )}
           </div>
 
-          <h2 className="mb-3 text-lg font-semibold tracking-tight">Tüm sonuçlar</h2>
-          <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="mb-3 mt-6 flex flex-wrap items-center gap-2">
+            <h2 className="sr-only">Tüm sonuçlar</h2>
             {(
               [
-                ['all', 'Tümü'],
+                ['all', `Tümü (${series.length + others.length})`],
                 ['abnormal', `Aralık dışı (${abnormal.length + othersAbnormal.length})`],
                 ['borderline', `Sınırda (${borderline.length})`],
               ] as const
@@ -195,19 +123,16 @@ export function ResultsPage() {
               <button
                 key={k}
                 type="button"
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${filter === k ? 'border-accent/50 bg-accent/10 text-fg' : 'border-ink-600 text-fg-muted hover:text-fg'}`}
+                aria-pressed={filter === k}
+                className={`min-h-[36px] rounded-full border px-3.5 text-sm transition ${filter === k ? 'border-fg bg-fg text-ink-950' : 'border-ink-600 text-fg-muted hover:text-fg'}`}
                 onClick={() => setFilter(k)}
               >
                 {label}
               </button>
             ))}
-            <div className="flex-1" />
-            <button type="button" className="btn-ghost px-3 py-1.5 text-sm" onClick={() => go({ name: 'body' })}>
-              <BodyIcon size={16} /> Vücutta gör
-            </button>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-5">
             {[...groups.entries()].map(([group, list]) => (
               <section key={group}>
                 <h2 className="label-caps mb-2">{GROUP_LABEL[group as keyof typeof GROUP_LABEL]}</h2>
@@ -218,18 +143,16 @@ export function ResultsPage() {
                     const st = labStyle({ status: s.latest.result.status, severity: f?.severity, critical: f?.critical });
                     const tint = st.direction ? st.text : '';
                     return (
-                      <li key={s.test.key} className="flex items-stretch">
-                        <button type="button" className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2 text-left transition hover:bg-ink-800/60" onClick={() => go({ name: 'result', key: s.test.key })}>
+                      <li key={s.test.key}>
+                        <button type="button" className="flex w-full min-w-0 items-center gap-3 py-3 pl-4 pr-3 text-left transition hover:bg-ink-800/60" onClick={() => go({ name: 'result', key: s.test.key })}>
                           <span className="min-w-0 flex-1">
                             <span className={`block truncate text-[15px] font-medium ${tint}`} data-part="name">
                               {s.test.nameTr}
                             </span>
                             <span className="block text-xs text-fg-muted">
-                              {formatDate(s.latest.date)}
-                              {s.latest.result.refText ? ` · aralık ${s.latest.result.refText}` : ''}
+                              {s.latest.result.refText ? `aralık ${s.latest.result.refText}` : formatDate(s.latest.date)}
                               {s.latest.result.refSource === 'catalog' ? ' (genel)' : ''}
                             </span>
-                            {f?.category && <span className="mt-0.5 block truncate text-[11px] text-fg-faint">{f.category}</span>}
                             {needsVerification(s.latest.result) && (
                               <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-[#f5b14c]">
                                 <AlertIcon size={11} /> Okuma doğrulanmadı
@@ -244,15 +167,6 @@ export function ResultsPage() {
                           </span>
                           <ChevronRightIcon size={16} className="shrink-0 text-fg-faint" />
                         </button>
-                        <button
-                          type="button"
-                          className="flex w-12 shrink-0 items-center justify-center border-l border-ink-700 text-fg-faint transition hover:bg-ink-800/60 hover:text-accent"
-                          onClick={() => go({ name: 'body', focus: s.test.key })}
-                          aria-label={`${s.test.nameTr}: vücutta göster`}
-                          title="Vücutta göster"
-                        >
-                          <BodyIcon size={17} />
-                        </button>
                       </li>
                     );
                   })}
@@ -261,8 +175,133 @@ export function ResultsPage() {
             ))}
             {othersShown.length > 0 && <OtherList points={othersShown} />}
           </div>
-          <p className="mt-8 text-xs leading-relaxed text-fg-faint">{MEDICAL_DISCLAIMER}</p>
+
+
+          <details className="group mt-8 card" data-testid="results-more">
+            <summary className="flex min-h-[52px] cursor-pointer list-none items-center gap-2 px-4 text-[15px] font-medium text-fg">
+              <span className="flex-1">Ayrıntılı değerlendirme</span>
+              <span className="text-xs font-normal text-fg-faint">{interp.patterns.length} örüntü · sistemler</span>
+              <ChevronRightIcon size={16} className="text-fg-faint transition group-open:rotate-90" />
+            </summary>
+            <div className="space-y-5 border-t border-ink-700 p-4">
+              <section aria-labelledby="genel-degerlendirme">
+                <h2 id="genel-degerlendirme" className="text-lg font-semibold tracking-tight">
+                  Genel durum
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-fg-muted">{interp.overall.text}</p>
+                <div className="mt-4">
+                  <SeverityBar interp={interp} />
+                </div>
+                <p className="mt-4 text-[11px] leading-relaxed text-fg-faint">
+                  Her sonuç önce laboratuvarın kendi referans aralığına göre, sonra aralıktan ne kadar saptığına göre (hafif / orta / belirgin)
+                  derecelendirilir. Kural tabanlıdır, cihazında hesaplanır; teşhis değildir.
+                </p>
+              </section>
+              {interp.patterns.length > 0 && (
+                <section aria-labelledby="birlikte">
+                  <h2 id="birlikte" className="label-caps mb-2">
+                    Birlikte değerlendirme ({interp.patterns.length})
+                  </h2>
+                  <PatternList patterns={interp.patterns} />
+                </section>
+              )}
+              {interp.systems.length > 0 && (
+                <section aria-labelledby="sistemler">
+                  <h2 id="sistemler" className="label-caps mb-2">
+                    Sistemlere göre
+                  </h2>
+                  <SystemGrid interp={interp} />
+                </section>
+              )}
+            </div>
+          </details>
+          <p className="mt-6 text-xs leading-relaxed text-fg-faint">{MEDICAL_DISCLAIMER}</p>
         </>
+      )}
+
+      {/* Görüntüleme raporları tahlil olmasa da listelenir. */}
+      {studies && studies.length > 0 && (
+        <section className="mt-8" aria-labelledby="goruntuleme-sonuclari">
+          <h2 id="goruntuleme-sonuclari" className="label-caps mb-2">
+            Görüntüleme raporların ({studies.length})
+          </h2>
+          <ImagingStudyList studies={studies} />
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** Özet halka: kaç değer yüksek, düşük, aralıkta (+ doğrulanması gereken ve ilgili sistem sayısı). */
+function SummaryRing({ high, low, normal, verify, systems }: { high: number; low: number; normal: number; verify: number; systems: number }) {
+  const total = Math.max(high + low + normal, 1);
+  const C = 2 * Math.PI * 42;
+  const seg = (n: number) => Math.max((n / total) * C - (n ? 2 : 0), 0);
+  const parts = [
+    { n: high, cls: 'text-high', label: 'yüksek' },
+    { n: low, cls: 'text-low', label: 'düşük' },
+    { n: normal, cls: 'text-accent', label: 'aralıkta' },
+  ];
+  let off = 0;
+  return (
+    <section className="flex items-center gap-5 card p-4" data-testid="summary-ring" aria-label="Sonuç özeti">
+      <div className="relative h-[104px] w-[104px] shrink-0">
+        <svg viewBox="0 0 104 104" className="h-full w-full -rotate-90" aria-hidden="true">
+          <circle cx="52" cy="52" r="42" fill="none" className="stroke-ink-700" strokeWidth="12" />
+          {parts.map((p) => {
+            const el = p.n ? <circle key={p.label} cx="52" cy="52" r="42" fill="none" stroke="currentColor" className={p.cls} strokeWidth="12" strokeDasharray={`${seg(p.n)} ${C}`} strokeDashoffset={-off} /> : null;
+            off += (p.n / total) * C;
+            return el;
+          })}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-[26px] font-bold leading-none tabular-nums" data-testid="out-count">
+            {high + low}
+          </span>
+          <span className="mt-0.5 text-[11px] text-fg-muted">aralık dışı</span>
+        </div>
+      </div>
+      <ul className="space-y-1.5 text-sm">
+        {parts.map((p) => (
+          <li key={p.label} className="flex items-center gap-2">
+            <span className={`h-2.5 w-2.5 rounded-full bg-current ${p.cls}`} aria-hidden="true" />
+            <span className="tabular-nums">{p.n}</span> {p.label}
+          </li>
+        ))}
+        {verify > 0 && (
+          <li className="text-xs text-[#d39a2e]" data-testid="verify-count">
+            {verify} değeri doğrulaman gerekiyor
+          </li>
+        )}
+        {systems > 0 && (
+          <li className="text-xs text-fg-faint" data-testid="system-count">
+            {systems} sistemle ilgili
+          </li>
+        )}
+      </ul>
+    </section>
+  );
+}
+
+/** "Birlikte bakınca": tek satırlık kart; dokununca olası durumların ayrıntısı açılır. */
+function CombinedLook({ labs, sex }: { labs: readonly LabObservation[]; sex?: 'female' | 'male' }) {
+  const [open, setOpen] = useState(false);
+  const ranks = useMemo(() => differential(labs, sex ? { sex } : {}), [labs, sex]);
+  if (!ranks.length) return null;
+  return (
+    <div data-testid="combined-look">
+      <button type="button" aria-expanded={open} className="flex w-full items-center gap-3 card px-4 py-3 text-left transition hover:border-accent/50" onClick={() => setOpen((x) => !x)}>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold tracking-[0.06em] text-accent">BİRLİKTE BAKINCA</span>
+          <span className="block text-[15px] font-semibold text-fg">Sonuçlarına en çok uyan olası durumlar</span>
+          <span className="block truncate text-[13px] text-fg-muted">{ranks.slice(0, 3).map((r) => r.condition.name.replace(/\s*\(.*\)$/, '')).join(' · ')}</span>
+        </span>
+        <ChevronRightIcon size={16} className={`shrink-0 text-fg-faint transition ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && (
+        <div className="mt-2">
+          <Differential labs={labs} {...(sex ? { sex } : {})} />
+        </div>
       )}
     </div>
   );
@@ -358,16 +397,21 @@ function VerifyList({ series }: { series: TestSeries[] }) {
   );
 }
 
-function SummaryTile({ label, value, tone }: { label: string; value: number; tone: string }) {
-  return (
-    <div className="rounded-xl border border-ink-600/60 bg-ink-850/70 px-3 py-2.5">
-      <div className={`text-2xl font-semibold tabular-nums ${tone}`}>{value}</div>
-      <div className="text-xs text-fg-muted">{label}</div>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------------------------
+
+type DetailTab = 'meaning' | 'journey' | 'learn' | 'doctor';
+const DETAIL_TABS: Array<[DetailTab, string]> = [
+  ['meaning', 'Anlamı'],
+  ['journey', 'Yolculuk'],
+  ['learn', 'Bilgi'],
+  ['doctor', 'Doktora sor'],
+];
+
+/** İlk iki cümle (kısa "Ne demek?" metni için). */
+function firstSentences(text: string, n = 2): string {
+  const parts = text.match(/[^.!?]+[.!?]+/g);
+  return parts ? parts.slice(0, n).join('').trim() : text;
+}
 
 export function ResultDetail({ testKey }: { testKey: string }) {
   const { reports } = useReports();
@@ -380,37 +424,41 @@ export function ResultDetail({ testKey }: { testKey: string }) {
   const related = interp.patterns.filter((p) => p.tests.includes(testKey));
   const content = CONTENT[testKey];
   const { model } = useHealthModel();
+  const [tab, setTab] = useState<DetailTab>('meaning');
 
   if (!test) return <div className="p-6"><Banner tone="error">Bilinmeyen test.</Banner></div>;
   const latest = series?.latest.result;
   const status = latest?.status ?? 'unknown';
   const value = latest ? (latest.canonicalValue ?? latest.value) : null;
   const st = labStyle({ status, severity: finding?.severity, critical: finding?.critical });
+  const short = content ? firstSentences((status === 'high' && content.high) || (status === 'low' && content.low) || content.what) : null;
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-5 md:px-8 md:py-8">
-      <button type="button" className="mb-4 inline-flex items-center gap-1 text-sm text-fg-muted hover:text-fg" onClick={() => go({ name: 'results' })}>
-        <ChevronLeftIcon size={16} /> Sonuçlarım
+      <button type="button" className="mb-4 inline-flex min-h-[40px] items-center gap-1 text-sm text-fg-muted hover:text-fg" onClick={() => go({ name: 'results' })}>
+        <ChevronLeftIcon size={16} /> Sonuçlar
       </button>
 
       <div className="surface p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="label-caps mb-1">{GROUP_LABEL[test.group]}</p>
+            <p className="label-caps mb-1">
+              {GROUP_LABEL[test.group]}
+              {series ? ` · ${formatDate(series.latest.date)}` : ''}
+            </p>
             <h1 className={`text-xl font-semibold tracking-tight ${st.direction ? st.text : ''}`}>{test.nameTr}</h1>
-            <p className="mt-0.5 text-xs text-fg-faint">LOINC {test.loinc}</p>
           </div>
-          {latest && <StatusPill status={status} size="md" />}
+          {latest && !st.direction && <StatusPill status={status} size="md" />}
         </div>
         {latest && value !== null ? (
           <>
-            <div className="mt-4 flex items-baseline gap-2">
-              <span className={`text-4xl font-semibold tabular-nums ${st.direction ? st.text : STATUS_TEXT[status]}`}>{formatNumber(value, test.decimals)}</span>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className={`text-[44px] font-bold leading-none tabular-nums ${st.direction ? st.text : STATUS_TEXT[status]}`}>{formatNumber(value, test.decimals)}</span>
               <span className={st.direction ? st.text : 'text-fg-muted'}>{latest.canonicalValue !== null ? test.unit : latest.unit}</span>
               {st.direction && <span className={`text-sm font-medium ${st.text}`}>{st.statusLabel}</span>}
             </div>
-            <p className="mt-1 text-sm text-fg-muted">
-              {series && formatDate(series.latest.date)} · referans {latest.refText || 'yok'}
+            <p className="mt-1.5 text-sm text-fg-muted">
+              referans {latest.refText || 'yok'}
               {latest.refSource === 'catalog' ? ' (raporda aralık yoktu; genel yaklaşık aralık)' : ''}
             </p>
             <div className="mt-4 max-w-md">
@@ -420,55 +468,83 @@ export function ResultDetail({ testKey }: { testKey: string }) {
         ) : (
           <p className="mt-3 text-sm text-fg-muted">Bu test için henüz onaylanmış sonuç yok.</p>
         )}
-        <div className="mt-5 flex flex-wrap gap-2">
+        {short && (
+          <p className="mt-4 text-[15px] leading-relaxed text-fg" data-testid="result-short">
+            <span className="font-semibold">Ne demek? </span>
+            {short}
+          </p>
+        )}
+        <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className="btn-primary" onClick={() => go({ name: 'body', focus: test.key })}>
             <BodyIcon size={16} /> Vücutta göster
           </button>
-          {test.simulation && (
-            <button type="button" className="btn-ghost" onClick={() => go({ name: 'simulation', id: test.simulation!, from: test.structures[0] })}>
-              Eğitimsel simülasyon
-            </button>
-          )}
           {series && series.points.length > 1 && (
             <button type="button" className="btn-ghost" onClick={() => go({ name: 'timeline', key: test.key })}>
               <ChartIcon size={16} /> Zaman içinde
             </button>
           )}
+          {test.simulation && (
+            <button type="button" className="btn-ghost" onClick={() => go({ name: 'simulation', id: test.simulation!, from: test.structures[0] })}>
+              Eğitimsel simülasyon
+            </button>
+          )}
         </div>
       </div>
-
-      {finding && (
-        <section className="mt-4 space-y-3" aria-labelledby="senin-sonucun">
-          {finding.critical && <CriticalBanner critical={[finding]} />}
-          <h2 id="senin-sonucun" className="label-caps">
-            Senin sonucun ne anlama geliyor?
-          </h2>
-          <FindingBlock finding={finding} />
-          {related.length > 0 && (
-            <>
-              <h3 className="label-caps pt-2">Diğer sonuçlarınla birlikte</h3>
-              <PatternList patterns={related} />
-            </>
-          )}
-        </section>
+      {finding?.critical && (
+        <div className="mt-4">
+          <CriticalBanner critical={[finding]} />
+        </div>
       )}
 
-      <div className="mt-4">
-        <ResultJourney testKey={testKey} model={model} {...(sex !== 'unspecified' ? { sex } : {})} />
+      <div role="tablist" aria-label="Konu" className="mt-4 grid grid-cols-4 gap-1 rounded-2xl bg-ink-800 p-1">
+        {DETAIL_TABS.map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={tab === k}
+            className={`min-h-[40px] rounded-xl px-1 text-[13px] font-semibold transition ${tab === k ? 'bg-ink-850 text-fg shadow-[var(--shadow-card)]' : 'text-fg-muted hover:text-fg'}`}
+            onClick={() => setTab(k)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      {content && (
-        <div className="mt-4 space-y-4">
-          <LearnSection title="Bu test neyi ölçer?">
-            <p>{content.what}</p>
-          </LearnSection>
-          {(status === 'high' && content.high) || (status === 'low' && content.low) ? (
-            <LearnSection title="Neden önemli?" accent>
-              <p>{status === 'high' ? content.high : content.low}</p>
+      <div className="mt-4" role="tabpanel" aria-label={DETAIL_TABS.find(([k]) => k === tab)![1]}>
+        {tab === 'meaning' && (
+          <div className="space-y-3">
+            {finding ? (
+              <section className="space-y-3" aria-labelledby="senin-sonucun">
+                <h2 id="senin-sonucun" className="label-caps">
+                  Senin sonucun ne anlama geliyor?
+                </h2>
+                <FindingBlock finding={finding} />
+                {related.length > 0 && (
+                  <>
+                    <h3 className="label-caps pt-2">Diğer sonuçlarınla birlikte</h3>
+                    <PatternList patterns={related} />
+                  </>
+                )}
+              </section>
+            ) : (
+              <p className="text-sm text-fg-muted">Bu sonuç için kişisel yorum yok.</p>
+            )}
+            {content && (status === 'high' || status === 'low') && (status === 'high' ? content.high : content.low) && (
+              <LearnSection title="Neden önemli?" accent>
+                <p>{status === 'high' ? content.high : content.low}</p>
+              </LearnSection>
+            )}
+          </div>
+        )}
+        {tab === 'journey' && <ResultJourney testKey={testKey} model={model} {...(sex !== 'unspecified' ? { sex } : {})} />}
+        {tab === 'learn' && content && (
+          <div className="space-y-4">
+            <LearnSection title="Bu test neyi ölçer?">
+              <p>{content.what}</p>
             </LearnSection>
-          ) : (
-            (content.high || content.low) && (
-              <LearnSection title="Neden önemli?">
+            {(content.high || content.low) && (
+              <LearnSection title="Yüksek / düşük olduğunda">
                 {content.high && (
                   <p>
                     <strong className="text-fg">Yüksek olduğunda: </strong>
@@ -482,43 +558,48 @@ export function ResultDetail({ testKey }: { testKey: string }) {
                   </p>
                 )}
               </LearnSection>
-            )
-          )}
-          <ResultPhysiology testKey={testKey} model={model} />
-          <LearnSection title="Sonucu etkileyebilenler">
-            <Bullets items={content.factors} />
-          </LearnSection>
-          <LearnSection title="Ne yapabilirim? (genel öneriler)">
-            <Bullets items={content.actions} />
-            <p className="mt-2 text-xs text-fg-faint">İlaç başlatma, bırakma veya doz değişikliği için mutlaka hekimine danış.</p>
-          </LearnSection>
-          <LearnSection title="Doktoruna sorabileceklerin">
-            <Bullets items={content.askDoctor} />
-          </LearnSection>
-          <LearnSection title="Vücutta nereyle ilişkili?">
-            <div className="flex flex-wrap gap-1.5">
-              {test.processes.map((p) => (
-                <span key={p} className="rounded-full border border-ink-600 px-2.5 py-1 text-xs text-fg-muted" title={PROCESSES[p].summary}>
-                  {PROCESSES[p].nameTr}
-                </span>
-              ))}
-              {test.structures.map((sid) => (
-                <span key={sid} className="rounded-full border border-accent/30 bg-accent/8 px-2.5 py-1 text-xs text-fg">
-                  {structureById.get(sid)?.nameTr ?? sid}
-                </span>
-              ))}
-              {test.systems.map((sid) => (
-                <span key={sid} className="rounded-full border border-ink-600 px-2.5 py-1 text-xs text-fg-faint">
-                  {systemById.get(sid)?.nameTr}
-                </span>
-              ))}
-            </div>
-          </LearnSection>
-          <p className="text-xs leading-relaxed text-fg-faint">{MEDICAL_DISCLAIMER}</p>
-        </div>
-      )}
+            )}
+            <ResultPhysiology testKey={testKey} model={model} />
+            <LearnSection title="Sonucu etkileyebilenler">
+              <Bullets items={content.factors} />
+            </LearnSection>
+            <LearnSection title="Vücutta nereyle ilişkili?">
+              <div className="flex flex-wrap gap-1.5">
+                {test.processes.map((p) => (
+                  <span key={p} className="rounded-full border border-ink-600 px-2.5 py-1 text-xs text-fg-muted" title={PROCESSES[p].summary}>
+                    {PROCESSES[p].nameTr}
+                  </span>
+                ))}
+                {test.structures.map((sid) => (
+                  <span key={sid} className="rounded-full border border-accent/30 bg-accent/8 px-2.5 py-1 text-xs text-fg">
+                    {structureById.get(sid)?.nameTr ?? sid}
+                  </span>
+                ))}
+                {test.systems.map((sid) => (
+                  <span key={sid} className="rounded-full border border-ink-600 px-2.5 py-1 text-xs text-fg-faint">
+                    {systemById.get(sid)?.nameTr}
+                  </span>
+                ))}
+              </div>
+            </LearnSection>
+            <p className="text-[11px] text-fg-faint">LOINC {test.loinc}</p>
+          </div>
+        )}
+        {tab === 'doctor' && content && (
+          <div className="space-y-4">
+            <LearnSection title="Doktoruna sorabileceklerin">
+              <Bullets items={content.askDoctor} />
+            </LearnSection>
+            <LearnSection title="Ne yapabilirim? (genel öneriler)">
+              <Bullets items={content.actions} />
+              <p className="mt-2 text-xs text-fg-faint">İlaç başlatma, bırakma veya doz değişikliği için mutlaka hekimine danış.</p>
+            </LearnSection>
+          </div>
+        )}
+        {(tab === 'learn' || tab === 'doctor') && !content && <p className="text-sm text-fg-muted">Bu test için açıklama yok.</p>}
+      </div>
 
-      {series && series.points.length > 0 && (
+      {series && series.points.length > 1 && (
         <div className="surface mt-4 p-5">
           <h2 className="mb-3 font-semibold">Geçmiş</h2>
           <ul className="divide-y divide-ink-700 text-sm">
@@ -537,6 +618,7 @@ export function ResultDetail({ testKey }: { testKey: string }) {
           </ul>
         </div>
       )}
+      <p className="mt-6 text-xs leading-relaxed text-fg-faint">{MEDICAL_DISCLAIMER}</p>
     </div>
   );
 }

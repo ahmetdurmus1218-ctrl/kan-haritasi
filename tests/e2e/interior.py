@@ -157,6 +157,7 @@ with sync_playwright() as p:
     upload(page, "vitamin-mineral.pdf")
     upload(page, "sentetik-kan-tahlili.pdf")
     page.goto(URL + "#/sonuc/b12")
+    page.get_by_role("tab", name="Bilgi").click()
     page.get_by_test_id("result-physiology").wait_for()
     rp = page.get_by_test_id("result-physiology")
     t = rp.text_content() or ""

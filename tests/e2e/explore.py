@@ -261,7 +261,6 @@ with sync_playwright() as p:
     # Yalnızca model: tüm arayüz gizlenir, tek düğmeyle geri gelir
     mp.get_by_role("button", name="Yalnızca modeli göster").click()
     mp.wait_for_timeout(1500)
-    check(not mp.locator("nav[aria-label='Ana gezinme']").last.is_visible(), "yalnızca model: alt gezinme gizli")
     check(not mp.locator("nav[aria-label='Keşif seviyesi']").is_visible(), "yalnızca model: gezinme yolu gizli")
     check(mp.get_by_role("button", name="Bilgi paneli: aç").count() == 0, "yalnızca model: panel düğmesi de gizli")
     mp.wait_for_timeout(1500)
@@ -275,7 +274,7 @@ with sync_playwright() as p:
     mp.screenshot(path=SHOTS / "m2e-yalnizca-model-kart.png")
     mp.get_by_role("button", name="Arayüzü göster").click()
     mp.wait_for_timeout(1000)
-    check(mp.locator("nav[aria-label='Ana gezinme']").last.is_visible(), "arayüz tek düğmeyle geri geliyor")
+    check(mp.locator("nav[aria-label='Keşif seviyesi']").is_visible(), "arayüz tek düğmeyle geri geliyor")
     mp.goto(URL + "#/simulasyon/noron/brain/temel")
     mp.wait_for_timeout(5000)
     mp.screenshot(path=SHOTS / "m3-noron-temel.png")

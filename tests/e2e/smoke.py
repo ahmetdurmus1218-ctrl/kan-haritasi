@@ -59,13 +59,13 @@ with sync_playwright() as p:
     # Ana sayfa: tek soru ("Vücudum nasıl?"), boş durumda doğrudan veri ekleme alanı
     check(page.get_by_role("heading", name="Vücudum nasıl?").count() == 1, "ana sayfa açılıyor")
     check(page.get_by_text("Henüz sağlık verisi eklemedin").count() == 1, "boş durum: veri ekle çağrısı")
-    check(page.get_by_role("link", name="Ekle").count() >= 1, "alt gezinmede tek ekleme düğmesi")
+    check(page.get_by_role("navigation", name="Ana gezinme").get_by_role("link", name="Ekle").count() >= 1, "telefonda alt sekme yok, tek yüzen Ekle düğmesi")
     page.set_viewport_size({"width": 1366, "height": 860})
     nav = [x.strip() for x in page.get_by_role("complementary").get_by_role("navigation", name="Ana gezinme").get_by_role("link").all_inner_texts() if x.strip()]
-    check(nav == ["Özet", "Vücudum", "Sonuçlar", "Görüntüler", "Zamanım"], f"masaüstü ana gezinme: Özet · Vücudum · Sonuçlar · Görüntüler · Zamanım ({nav})")
+    check(nav == ["Vücudum", "Sonuçlar", "Dosyalar"], f"masaüstü ana gezinme: Vücudum · Sonuçlar · Dosyalar ({nav})")
     page.set_viewport_size({"width": 390, "height": 844})
-    mobile = [x.strip() for x in page.locator("nav.safe-bottom").locator("a, button").all_text_contents() if x.strip()]
-    check(mobile == ["Özet", "Vücudum", "Ekle", "Sonuçlar", "Daha"], f"mobil alt gezinme: Özet · Vücudum · (+) · Sonuçlar · Daha ({mobile})")
+    mobile = [x.strip() for x in page.locator("nav[aria-label='Ana gezinme']:visible").locator("a, button").all_text_contents() if x.strip()]
+    check(mobile == ["Ekle"], f"mobil: alt sekme çubuğu yok, yalnızca Ekle ({mobile})")
     page.goto(URL + "#/goruntuler")
     page.get_by_role("heading", name="Görüntüler").wait_for()
     check(page.get_by_test_id("no-images").count() == 1, "Görüntüler sayfası: boş durum")
@@ -195,7 +195,7 @@ with sync_playwright() as p:
 
     # Masaüstü görünüm
     page.set_viewport_size({"width": 1366, "height": 860})
-    page.get_by_role("link", name="Belgelerim").first.click()
+    page.get_by_role("link", name="Dosyalar").first.click()
     page.wait_for_timeout(500)
     page.screenshot(path=SHOTS / "10-masaustu.png")
     page.locator("ul li").first.locator("button").first.click()

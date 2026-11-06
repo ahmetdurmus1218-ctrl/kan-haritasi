@@ -86,9 +86,9 @@ with sync_playwright() as p:
     page.get_by_role("heading", name="Sonuçlar").wait_for(timeout=10000)
 
     # --- Sonuçlarım
-    page.get_by_role("link", name="Belgelerim").first.click()
-    page.get_by_role("navigation", name="Ana gezinme").first.get_by_role("link", name="Sonuçlar").click()
-    page.get_by_text("Tahlil sonuçların").wait_for()
+    page.goto(URL + "#/sonuclar")
+    page.get_by_role("heading", name="Sonuçlar", exact=True).wait_for()
+    page.get_by_test_id("results-more").locator("summary").click()
     page.wait_for_timeout(500)
     page.screenshot(path=SHOTS / "24-sonuclarim.png", full_page=True)
     check(page.get_by_text("LDL kolesterol").count() >= 1, "Sonuçlarım listesinde LDL")
@@ -120,13 +120,16 @@ with sync_playwright() as p:
     check(page.get_by_text("“sorunlu” sayılmaz", exact=False).count() + page.get_by_text("olası ilişki", exact=False).count() >= 1, "46/84: fizyoloji akışında kişisel katman 'olası ilişki'")
     page.screenshot(path=SHOTS / "24b-pankreas-renkler.png", full_page=True)
     page.goto(URL + "#/sonuclar")
-    page.get_by_text("Tahlil sonuçların").wait_for()
+    page.get_by_role("heading", name="Sonuçlar", exact=True).wait_for()
     page.locator("li button:has-text('LDL kolesterol')").first.click()
-    page.get_by_text("Bu test neyi ölçer?").wait_for()
+    page.get_by_text("Senin sonucun ne anlama geliyor?").wait_for()
     page.screenshot(path=SHOTS / "25-ldl-detay.png", full_page=True)
-    check(page.get_by_text("Doktoruna sorabileceklerin").count() == 1, "öğren paneli")
-    check(page.get_by_text("Senin sonucun ne anlama geliyor?").count() == 1, "kişisel yorum")
+    check(page.get_by_test_id("result-short").count() == 1, "değer sayfası: kısa 'Ne demek?' açıklaması ilk kartta")
     check(page.get_by_text("Orta derecede yüksek").count() >= 1, "sapma derecesi (LDL 178 / 130)")
+    page.get_by_role("tab", name="Bilgi").click()
+    page.get_by_text("Bu test neyi ölçer?").wait_for()
+    page.get_by_role("tab", name="Doktora sor").click()
+    check(page.get_by_text("Doktoruna sorabileceklerin").count() == 1, "öğren paneli (Doktora sor sekmesi)")
 
     # --- Vücutta göster → keşif yolu → eğitimsel simülasyon
     page.get_by_role("button", name="Vücutta göster").click()

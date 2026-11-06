@@ -153,9 +153,8 @@ with sync_playwright() as p:
     page.get_by_role("button", name="Kasayı oluştur").click()
     page.get_by_role("heading", name="Vücudum nasıl?").wait_for(timeout=20000)
 
-    # --- UI kabul: ana sayfa "Vücudum nasıl?" sorusunu yanıtlar; "Veri ekle" ve "Vücudum" hemen görünür
-    check(page.get_by_role("link", name="Veri ekle").first.is_visible(), "UI: 'Veri ekle' ilk ekranda görünür")
-    check(page.get_by_role("link", name="Vücudum").first.is_visible(), "UI: ana gezinmede 'Vücudum' görünür")
+    # --- UI kabul: ana sayfa "Vücudum nasıl?" sorusunu yanıtlar; "Ekle" ilk ekranda görünür (alt sekme yok)
+    check(page.get_by_role("link", name="Ekle").first.is_visible(), "UI: 'Ekle' ilk ekranda görünür")
     labels = [x.strip() for x in page.locator("nav[aria-label] a, nav[aria-label] button").all_inner_texts() if x.strip()]
     check(not any(w in " ".join(labels) for w in ("Kapsam", "Simülasyon", "Hakkında", "DICOM")), f"UI: gezinmede teknik öğe yok {labels}")
 
@@ -210,7 +209,7 @@ with sync_playwright() as p:
     # Ana sayfa artık özet gösteriyor
     page.goto(URL + "#/")
     page.get_by_role("heading", name="Vücudum nasıl?").wait_for()
-    check(page.get_by_text("Son durum").count() >= 1, "UI: ana sayfada 'Son durum' özeti")
+    check(page.get_by_text("Son eklenenler").count() >= 1 and page.get_by_test_id("body-schema").count() == 1, "UI: ana sayfada vücut şeması ve 'Son eklenenler'")
     check("görüntü/rapor gözlemi" not in page.locator("main").inner_text(), "UI: fotoğraf asimetrisi özette organ gözlemi olarak sayılmıyor")
     page.screenshot(path=SHOTS / "90c-ana-sayfa.png", full_page=True)
 
@@ -364,15 +363,14 @@ with sync_playwright() as p:
     page.set_viewport_size({"width": 390, "height": 844})
     page.goto(URL + "#/")
     page.get_by_role("heading", name="Vücudum nasıl?").wait_for()
-    bottom = page.get_by_role("navigation", name="Ana gezinme")
+    bottom = page.get_by_role("navigation", name="Ana gezinme").last
     n_items = bottom.locator("a:visible, button:visible").count()
-    check(1 <= n_items <= 5, f"telefon: alt gezinmede en fazla 5 öğe ({n_items})")
-    check(bottom.get_by_role("link", name="Ekle").is_visible(), "telefon: ortada 'Ekle'")
-    check(bottom.get_by_role("link", name="Sonuçlar").is_visible(), "telefon: alt gezinmede 'Sonuçlar'")
-    bottom.get_by_role("button", name="Daha").click()
+    check(n_items == 1 and bottom.get_by_role("link", name="Ekle").is_visible(), f"telefon: alt sekme yok, tek 'Ekle' düğmesi ({n_items})")
+    page.get_by_test_id("home-search").click()
     more = page.locator("dialog[open]")
-    more.get_by_text("Görüntüler", exact=True).wait_for()
-    check(more.get_by_text("Zamanım", exact=True).count() == 1 and more.get_by_text("Belgelerim", exact=True).count() == 1, "telefon: 'Daha' alt sayfasında Görüntüler, Zamanım, Belgelerim")
+    more.get_by_test_id("search-shortcuts").wait_for()
+    sc = more.get_by_test_id("search-shortcuts").inner_text()
+    check(all(w in sc for w in ("Dosyalarım", "Görüntüler", "Zaman içinde", "3B vücut", "Beyin haritası", "Ayarlar ve gizlilik")), "telefon: menü yerine arama — kısayollar Dosyalarım, Görüntüler, Zaman içinde, 3B, Beyin haritası, Ayarlar")
     page.keyboard.press("Escape")
     page.goto(URL + "#/vucudum")
     page.get_by_role("heading", name="Vücudum", exact=True).wait_for()
