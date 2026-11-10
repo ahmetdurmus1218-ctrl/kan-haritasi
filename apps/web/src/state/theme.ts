@@ -16,7 +16,7 @@ export function applyTheme(theme: ResolvedTheme): void {
   root.dataset.theme = theme;
   root.classList.toggle('dark', theme === 'dark');
   root.style.colorScheme = theme;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f5f6f8' : '#0b0c0f');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#f5f6f8' : '#04070f');
 }
 
 /** Uygulama açılırken bir kez çağrılır; ayar ya da sistem teması değişince belgeyi günceller. */

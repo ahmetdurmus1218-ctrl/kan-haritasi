@@ -18,7 +18,7 @@ export interface Settings {
   bodyModel: 'auto' | 'male' | 'female';
 }
 
-const DEFAULTS: Settings = { autoLockMinutes: 5, unlockFailures: 0, unlockBlockedUntil: 0, deviceUnlockWanted: false, profileSex: 'unspecified', theme: 'system', bodyModel: 'auto' };
+const DEFAULTS: Settings = { autoLockMinutes: 5, unlockFailures: 0, unlockBlockedUntil: 0, deviceUnlockWanted: false, profileSex: 'unspecified', theme: 'dark', bodyModel: 'auto' };
 const PREFIX = 'kh.setting.';
 
 export const AUTO_LOCK_OPTIONS: Settings['autoLockMinutes'][] = [0, 1, 5, 15];

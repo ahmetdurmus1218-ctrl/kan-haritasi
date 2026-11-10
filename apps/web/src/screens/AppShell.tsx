@@ -5,24 +5,41 @@ import { type Route, go, hrefFor } from '../state/router';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Sheet } from '../components/Sheet';
 import { SearchSheet } from '../components/SearchSheet';
-import { BodyIcon, BrainIcon, ChartIcon, DropIcon, FolderIcon, HomeIcon, LayersIcon, ListIcon, LockIcon, MoreIcon, PlusIcon, ScanIcon, SearchIcon, ShieldIcon, UserIcon } from '../components/icons';
+import { BodyIcon, BrainIcon, ChartIcon, DropIcon, FolderIcon, HomeIcon, ListIcon, LockIcon, MicroscopeIcon, MoreIcon, PlusIcon, PulseIcon, ScanIcon, SearchIcon, ShieldIcon, UserIcon } from '../components/icons';
 
 /**
- * Sade bilgi mimarisi: beş ana yer (Özet, Vücudum, Sonuçlar, Görüntüler, Zamanım) ve tek giriş noktası
- * "+ Veri ekle". Ayarlar/gizlilik profil simgesinde; teknik araçlar ana gezinmede yok. Derin sayfalara
- * arama (Ctrl+K) ve sayfa içi "Daha fazla / İncele / Neden?" bağlantılarıyla ulaşılır.
+ * Bilgi mimarisi: dokuz ana yer ve tek giriş noktası "+ Veri ekle".
+ *   Genel Bakış · Vücudum · Anatomi Laboratuvarı · Simülasyon · Sonuçlarım · Görüntülerim · Zaman Çizelgem ·
+ *   Belgelerim · Ayarlar ve Gizlilik
+ * Masaüstünde hepsi kenar çubuğundadır. Telefonda alt çubuk beş öğedir (Özet · Vücudum · (+) · Sonuçlar · Daha);
+ * kalanlar "Daha" alt sayfasındadır. Derin sayfalara arama (Ctrl+K) ve sayfa içi bağlantılarla ulaşılır.
  */
-type NavKey = 'home' | 'mybody' | 'results' | 'images' | 'timeline' | 'more' | 'settings';
+type NavKey = 'home' | 'mybody' | 'anatomylab' | 'simlab' | 'results' | 'images' | 'timeline' | 'documents' | 'settings';
 
-const NAV: Array<{ key: Exclude<NavKey, 'more' | 'settings'>; label: string; icon: (p: { size?: number }) => ReactNode; route: Route }> = [
-  { key: 'home', label: 'Özet', icon: HomeIcon, route: { name: 'home' } },
-  { key: 'mybody', label: 'Vücudum', icon: BodyIcon, route: { name: 'mybody' } },
-  { key: 'results', label: 'Sonuçlar', icon: ListIcon, route: { name: 'results' } },
-  { key: 'images', label: 'Görüntüler', icon: ScanIcon, route: { name: 'images' } },
-  { key: 'timeline', label: 'Zamanım', icon: ChartIcon, route: { name: 'timeline' } },
+interface NavItem {
+  key: NavKey;
+  label: string;
+  /** Telefonun alt çubuğundaki kısa ad. */
+  short: string;
+  hint: string;
+  icon: (p: { size?: number }) => ReactNode;
+  route: Route;
+}
+
+const NAV: NavItem[] = [
+  { key: 'home', label: 'Genel Bakış', short: 'Özet', hint: 'Vücudum nasıl? Son durum', icon: HomeIcon, route: { name: 'home' } },
+  { key: 'mybody', label: 'Vücudum', short: 'Vücudum', hint: 'Organların ve verilerin', icon: BodyIcon, route: { name: 'mybody' } },
+  { key: 'anatomylab', label: 'Anatomi Laboratuvarı', short: 'Anatomi', hint: '3B vücut, organın içi, doku ve hücre', icon: MicroscopeIcon, route: { name: 'anatomylab' } },
+  { key: 'simlab', label: 'Simülasyon', short: 'Simülasyon', hint: 'Vücut nasıl çalışır: canlı fizyoloji modelleri', icon: PulseIcon, route: { name: 'simlab' } },
+  { key: 'results', label: 'Sonuçlarım', short: 'Sonuçlar', hint: 'Tahlil sonuçların', icon: ListIcon, route: { name: 'results' } },
+  { key: 'images', label: 'Görüntülerim', short: 'Görüntüler', hint: 'MR, BT, röntgen, ultrason, EKG…', icon: ScanIcon, route: { name: 'images' } },
+  { key: 'timeline', label: 'Zaman Çizelgem', short: 'Zaman', hint: 'Sonuçların zaman içinde', icon: ChartIcon, route: { name: 'timeline' } },
+  { key: 'documents', label: 'Belgelerim', short: 'Belgeler', hint: 'Yüklediğin tüm dosyalar', icon: FolderIcon, route: { name: 'documents' } },
+  { key: 'settings', label: 'Ayarlar ve Gizlilik', short: 'Ayarlar', hint: 'Kilit, yedek, verilerimi indir', icon: ShieldIcon, route: { name: 'privacy' } },
 ];
+const navOf = (key: NavKey): NavItem => NAV.find((n) => n.key === key)!;
 
-function activeKey(route: Route): NavKey | 'add' {
+export function activeKey(route: Route): NavKey | 'add' {
   switch (route.name) {
     case 'home':
       return 'home';
@@ -30,20 +47,25 @@ function activeKey(route: Route): NavKey | 'add' {
       return 'add';
     case 'mybody':
     case 'organ':
-    case 'body':
-    case 'simulation':
-    case 'coverage':
-    case 'flow':
     case 'system':
-    case 'interior':
     case 'personalOrgan':
-    case 'physiology':
     case 'brain':
       return 'mybody';
+    case 'anatomylab':
+    case 'body':
+    case 'simulation':
+    case 'interior':
+    case 'coverage':
+      return 'anatomylab';
+    case 'simlab':
+    case 'flow':
+    case 'physiology':
+      return 'simlab';
     case 'timeline':
       return 'timeline';
     case 'documents':
     case 'document':
+      return 'documents';
     case 'results':
     case 'result':
       return 'results';
@@ -79,6 +101,8 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
     return () => window.removeEventListener('keydown', onKey);
   }, [explore]);
 
+  // Telefonda alt çubukta olmayan yerler "Daha" altında toplanır.
+  const inMore = active === 'anatomylab' || active === 'simlab' || active === 'images' || active === 'timeline' || active === 'documents' || active === 'settings';
   const moreGo = (r: Route) => {
     setMore(false);
     go(r);
@@ -93,7 +117,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
   return (
     <div className="flex h-full min-h-0 flex-col md:flex-row">
       {/* Masaüstü / tablet kenar çubuğu */}
-      <aside className={`hidden w-64 shrink-0 flex-col border-r border-ink-600/60 bg-ink-900/60 ${immersive ? '' : 'md:flex'}`}>
+      <aside className={`hidden w-64 shrink-0 flex-col overflow-y-auto border-r border-ink-600/60 bg-ink-900/60 ${immersive ? '' : 'md:flex'}`}>
         <a href={hrefFor({ name: 'home' })} className="flex items-center gap-3 px-5 pb-6 pt-7">
           <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-deep text-on-solid shadow-[var(--shadow-card)]">
             <DropIcon size={20} />
@@ -105,11 +129,11 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             <PlusIcon size={16} /> Veri ekle
           </a>
         </div>
-        <nav className="flex-1 space-y-1 px-3" aria-label="Ana gezinme">
+        <nav className="flex-1 space-y-0.5 px-3" aria-label="Ana gezinme">
           {NAV.map(({ key, label, icon: Icon, route: r }) => {
             const isActive = key === active;
             return (
-              <a key={key} href={hrefFor(r)} aria-current={isActive ? 'page' : undefined} className={side(isActive)}>
+              <a key={key} href={hrefFor(r)} aria-current={isActive ? 'page' : undefined} className={side(isActive)} data-nav={key}>
                 <span className={isActive ? 'text-accent' : ''}>
                   <Icon size={18} />
                 </span>
@@ -117,19 +141,13 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
               </a>
             );
           })}
+        </nav>
+        <div className="space-y-1 p-3">
           <button type="button" onClick={() => setSearching(true)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[14px] text-fg-muted transition hover:bg-ink-800 hover:text-fg">
             <SearchIcon size={18} />
             <span className="flex-1 text-left">Ara</span>
             <kbd className="rounded-md border border-ink-600 bg-ink-850 px-1.5 py-0.5 font-sans text-[10px] text-fg-faint">Ctrl K</kbd>
           </button>
-        </nav>
-        <div className="space-y-1 p-3">
-          <a href={hrefFor({ name: 'documents' })} aria-current={route.name === 'documents' || route.name === 'document' ? 'page' : undefined} className={side(route.name === 'documents' || route.name === 'document')}>
-            <FolderIcon size={18} /> Belgelerim
-          </a>
-          <a href={hrefFor({ name: 'privacy' })} aria-current={active === 'settings' ? 'page' : undefined} className={side(active === 'settings')}>
-            <UserIcon size={18} /> Ayarlar ve gizlilik
-          </a>
           <div className="flex gap-2 pt-2">
             <button type="button" className="btn-ghost flex-1" onClick={lock}>
               <LockIcon size={16} /> Kilitle
@@ -168,7 +186,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       {/* Mobil alt gezinme (yüzen çubuk): Özet · Vücudum · (+) · Sonuçlar · Daha (Görüntüler, Zamanım, Belgeler…) */}
       <div className={`px-3 pb-2 pt-1 md:hidden ${immersive ? 'hidden' : 'block'}`}>
         <nav className="safe-bottom grid grid-cols-5 rounded-[26px] border border-ink-600/70 bg-ink-850/90 px-1 shadow-[var(--shadow-float)] backdrop-blur-xl" aria-label="Ana gezinme">
-          {[NAV[0]!, NAV[1]!].map(({ key, label, icon: Icon, route: r }) => (
+          {[navOf('home'), navOf('mybody')].map(({ key, short: label, icon: Icon, route: r }) => (
             <a key={key} href={hrefFor(r)} aria-current={key === active ? 'page' : undefined} className={tab(key === active)}>
               <span className={pill(key === active)}>
                 <Icon size={21} />
@@ -182,14 +200,14 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
             </span>
             Ekle
           </a>
-          <a href={hrefFor(NAV[2]!.route)} aria-current={active === 'results' ? 'page' : undefined} className={tab(active === 'results')}>
+          <a href={hrefFor(navOf('results').route)} aria-current={active === 'results' ? 'page' : undefined} className={tab(active === 'results')}>
             <span className={pill(active === 'results')}>
               <ListIcon size={21} />
             </span>
             Sonuçlar
           </a>
-          <button type="button" onClick={() => setMore(true)} aria-haspopup="dialog" className={tab(active === 'images' || active === 'timeline' || active === 'settings')}>
-            <span className={pill(active === 'images' || active === 'timeline' || active === 'settings')}>
+          <button type="button" onClick={() => setMore(true)} aria-haspopup="dialog" className={tab(inMore)}>
+            <span className={pill(inMore)}>
               <MoreIcon size={21} />
             </span>
             Daha
@@ -201,13 +219,10 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
         <ul className="-mx-2 space-y-0.5">
           {(
             [
-              ['Görüntüler', 'MR, BT, röntgen, ultrason, EKG…', ScanIcon, { name: 'images' }],
-              ['Zamanım', 'Sonuçların zaman içinde', ChartIcon, { name: 'timeline' }],
-              ['Belgelerim', 'Yüklediğin tüm dosyalar', FolderIcon, { name: 'documents' }],
-              ['Beyin haritası', 'Raporundaki her cümle beyinde nerede, adım adım', BrainIcon, { name: 'brain' }],
-              ['3B vücut', 'Organları döndür, içine gir', LayersIcon, { name: 'body' }],
-              ['Ayarlar ve gizlilik', 'Kilit, yedek, verilerimi indir', ShieldIcon, { name: 'privacy' }],
-            ] as const
+              ...(['anatomylab', 'simlab', 'images', 'timeline', 'documents'] as const).map((k) => [navOf(k).label, navOf(k).hint, navOf(k).icon, navOf(k).route] as const),
+              ['Beyin haritası', 'Raporundaki her cümle beyinde nerede, adım adım', BrainIcon, { name: 'brain' }] as const,
+              [navOf('settings').label, navOf('settings').hint, navOf('settings').icon, navOf('settings').route] as const,
+            ] as ReadonlyArray<readonly [string, string, (p: { size?: number }) => ReactNode, Route]>
           ).map(([label, hint, Icon, r]) => (
             <li key={label}>
               <button type="button" className="flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left hover:bg-ink-800" onClick={() => moreGo(r)}>

@@ -313,3 +313,26 @@ export const BrainIcon = (p: IconProps) => (
     <path d="M12 5.5v13.5M8.5 9.5c1 .2 1.8.9 2 2M15.5 9.5c-1 .2-1.8.9-2 2" />
   </Icon>
 );
+export const PlayIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M7 4.5v15l12-7.5-12-7.5Z" />
+  </Icon>
+);
+export const PauseIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M8 5v14M16 5v14" />
+  </Icon>
+);
+/** Simülasyon (canlı süreç): nabız çizgisi. */
+export const PulseIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3 12h4l2.5-6 4 12 2.5-6h5" />
+  </Icon>
+);
+/** Anatomi laboratuvarı: mikroskop. */
+export const MicroscopeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M9 3h4v3H9zM11 6v6M8 12h6M6 21h12M14 9.5a5.5 5.5 0 0 1 0 11" />
+    <path d="M9 21v-3" />
+  </Icon>
+);

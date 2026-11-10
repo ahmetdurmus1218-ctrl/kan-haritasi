@@ -16,6 +16,7 @@
     "@kh/catalog": "workspace:*",
     "@kh/ingest": "workspace:*",
     "@kh/parser": "workspace:*",
+    "@kh/physio": "workspace:*",
     "@kh/platform": "workspace:*",
     "@kh/vault": "workspace:*",
     "@react-three/drei": "^10.7.9",
