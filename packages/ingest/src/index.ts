@@ -5,3 +5,4 @@ export * from './zip';
 export * from './mpr';
 export * from './volume';
 export * from './burnedIn';
+export * from './volumeRender';

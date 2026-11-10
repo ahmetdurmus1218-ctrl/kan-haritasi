@@ -67,6 +67,8 @@ jobs:
         run: python tests/e2e/data.py "$RUNNER_TEMP/shots"
       - name: Uçtan uca (simülasyon laboratuvarı, hesaplanan değerler, dayanak paneli — telefon ve masaüstü)
         run: python tests/e2e/simlab.py "$RUNNER_TEMP/shots"
+      - name: Gerçek BT serisinden 3B hacim görüntüleme (WebGL2 ışın izleme) — masaüstü ve telefon
+        run: python tests/e2e/volume3d.py "$RUNNER_TEMP/shots"
       - name: Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B
         run: python tests/e2e/reports.py "$RUNNER_TEMP/shots"
       - name: Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler

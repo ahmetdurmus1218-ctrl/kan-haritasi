@@ -1,4 +1,4 @@
-import { type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type PointerEvent, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type DecodedFrame,
   type DicomInfo,
@@ -28,6 +28,9 @@ import { labelColor, updateSeriesOverlay, useSeriesOverlay } from '../lib/series
 import { storedSliceLabels } from '../lib/volumeResults';
 import { go } from '../state/router';
 import { GRAPH } from '@kh/analysis';
+
+// 3B hacim görünümü (three.js) yalnızca istenince yüklenir.
+const VolumeView = lazy(() => import('./VolumeView').then((m) => ({ default: m.VolumeView })));
 
 type Gray = Extract<DecodedFrame, { kind: 'gray' }>;
 type Rgba = Extract<DecodedFrame, { kind: 'rgba' }>;
@@ -157,6 +160,8 @@ export function ImagingViewer({
   const [plane, setPlane] = useState<'acq' | 'column' | 'row'>('acq');
   const [mprPos, setMprPos] = useState({ column: 0, row: 0 });
   const mprCancel = useRef(false);
+  // 3B hacim görüntüleme: aynı hacim (MPR ile ortak) GPU'da ışın izleme ile çizilir.
+  const [vr, setVr] = useState(false);
   useEffect(
     () => () => {
       mprCancel.current = true;
@@ -237,6 +242,11 @@ export function ImagingViewer({
   }, [fileId, frameIndex, multiFile, ids, pos, load]);
 
   const volume = mpr?.status === 'ready' ? mpr.volume : null;
+  const vrOn = vr && !!volume;
+  // 3B açıkken kaydırıcı çekim kesitlerini gezer: açık kesit hacimde turkuaz çerçeveyle görünür.
+  useEffect(() => {
+    if (vrOn) setPlane('acq');
+  }, [vrOn]);
   const mprPlane = plane !== 'acq' && volume ? plane : null;
   const sliceCount = mprPlane ? (mprPlane === 'column' ? volume!.geometry.columns : volume!.geometry.rows) : count;
   const slicePos = mprPlane ? mprPos[mprPlane] : pos;
@@ -562,6 +572,21 @@ export function ImagingViewer({
                 {mpr?.status === 'loading' ? `Hacim hazırlanıyor ${mpr.done}/${mpr.total}` : 'Diğer düzlemler (MPR)'}
               </button>
             )}
+            <button
+              type="button"
+              className={`rounded-md px-2 py-1 text-xs hover:text-fg disabled:opacity-50 ${vrOn ? 'bg-ink-700 text-fg' : 'text-fg-muted'}`}
+              aria-pressed={vrOn}
+              disabled={mpr?.status === 'loading'}
+              onClick={() => {
+                if (vrOn) return setVr(false);
+                setVr(true);
+                if (!volume) void startMpr();
+              }}
+              title="Serinin kendi voksellerinden döndürülebilir 3B hacim görünümü (bölütleme ya da tanı değildir)"
+              data-testid="vr-open"
+            >
+              3B hacim
+            </button>
           </ToolbarGroup>
         )}
         <div className="flex-1" />
@@ -577,7 +602,7 @@ export function ImagingViewer({
 
       {mpr?.status === 'error' && (
         <p className="border-b border-ink-700 bg-ink-900/80 px-3 py-1.5 text-xs text-fg-muted" role="status" data-testid="mpr-unavailable">
-          Diğer düzlemler bu seride yapılamıyor: {mpr.reason}
+          3B hacim ve diğer düzlemler bu seride yapılamıyor: {mpr.reason}
         </p>
       )}
       {mprPlane && (
@@ -585,9 +610,14 @@ export function ImagingViewer({
           Yeniden yapılandırılmış görüntü: kesitler arası değerler enterpolasyonla doldurulur; ölçüm ve tanı için çekim düzlemini kullan.
         </p>
       )}
+      {vrOn && volume && (
+        <Suspense fallback={<div className="flex flex-1 items-center justify-center gap-2 p-6 text-sm text-fg-muted"><SpinnerIcon size={16} /> 3B hacim hazırlanıyor…</div>}>
+          <VolumeView volume={volume} isCt={isCt} slice={volume.geometry.order.indexOf(pos) >= 0 ? volume.geometry.order.indexOf(pos) : null} sliceCount={count} onClose={() => setVr(false)} />
+        </Suspense>
+      )}
       <div
         ref={areaRef}
-        className={`relative min-h-0 flex-1 overflow-auto ${tool ? 'touch-none cursor-crosshair' : 'touch-pan-x touch-pan-y'}`}
+        className={`relative min-h-0 flex-1 overflow-auto ${vrOn ? 'hidden' : ''} ${tool ? 'touch-none cursor-crosshair' : 'touch-pan-x touch-pan-y'}`}
         onContextMenu={(e) => e.preventDefault()}
       >
         {(loading && !current) || error ? (
