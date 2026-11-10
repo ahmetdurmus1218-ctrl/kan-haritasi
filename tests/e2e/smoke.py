@@ -62,7 +62,8 @@ with sync_playwright() as p:
     check(page.get_by_role("link", name="Ekle").count() >= 1, "alt gezinmede tek ekleme düğmesi")
     page.set_viewport_size({"width": 1366, "height": 860})
     nav = [x.strip() for x in page.get_by_role("complementary").get_by_role("navigation", name="Ana gezinme").get_by_role("link").all_inner_texts() if x.strip()]
-    check(nav == ["Özet", "Vücudum", "Sonuçlar", "Görüntüler", "Zamanım"], f"masaüstü ana gezinme: Özet · Vücudum · Sonuçlar · Görüntüler · Zamanım ({nav})")
+    expected_nav = ["Genel Bakış", "Vücudum", "Anatomi Laboratuvarı", "Simülasyon", "Sonuçlarım", "Görüntülerim", "Zaman Çizelgem", "Belgelerim", "Ayarlar ve Gizlilik"]
+    check(nav == expected_nav, f"masaüstü ana gezinme: dokuz ana yer ({nav})")
     page.set_viewport_size({"width": 390, "height": 844})
     mobile = [x.strip() for x in page.locator("nav.safe-bottom").locator("a, button").all_text_contents() if x.strip()]
     check(mobile == ["Özet", "Vücudum", "Ekle", "Sonuçlar", "Daha"], f"mobil alt gezinme: Özet · Vücudum · (+) · Sonuçlar · Daha ({mobile})")

@@ -52,7 +52,14 @@ export type Route =
    */
   | { name: 'brain'; region?: string }
   /** Bir rapor cümlesi adım adım (her organ): file = belge kimliği, n = cümlenin rapordaki sırası (1'den). */
-  | { name: 'sentence'; file: string; n: number };
+  | { name: 'sentence'; file: string; n: number }
+  /**
+   * Simülasyon laboratuvarı: matematiksel fizyoloji modelleri (#/sim) ve tek model (#/sim/<model>[/<senaryo>]).
+   * Eğitimseldir; kişisel ölçüm üretmez.
+   */
+  | { name: 'simlab'; id?: string; scenario?: string }
+  /** Anatomi laboratuvarı: sistemler, katmanlar, organın içine giriş ve mikroanatomi için tek giriş ekranı. */
+  | { name: 'anatomylab' };
 
 /** ic: İçine gir (iç dünya); doku: duvar → doku → hücre adım adım; derin: bilgi grafiğinde serbest iniş. */
 export type OrganViewMode = 'normal' | 'benim' | 'fark' | 'ic' | 'doku' | 'derin';
@@ -88,8 +95,14 @@ export function parseHash(hash: string): Route {
       if (arg === 'yapi' && arg2 && KEY.test(arg2)) return arg3 && KEY.test(arg3) ? { name: 'body', structure: arg2, part: arg3 } : { name: 'body', structure: arg2 };
       if (arg === 'sistem' && arg2 && KEY.test(arg2)) return { name: 'body', system: arg2 };
       return arg && KEY.test(arg) ? { name: 'body', focus: arg } : { name: 'body' };
+    case 'sim':
+      if (!arg || !KEY.test(arg)) return { name: 'simlab' };
+      return arg2 && KEY.test(arg2) ? { name: 'simlab', id: arg, scenario: arg2 } : { name: 'simlab', id: arg };
+    case 'laboratuvar':
+      return { name: 'anatomylab' };
     case 'simulasyon':
-      if (!arg || !KEY.test(arg)) return { name: 'body' };
+      if (!arg) return { name: 'simlab' };
+      if (!KEY.test(arg)) return { name: 'body' };
       if (arg2 && MODES.includes(arg2)) return { name: 'simulation', id: arg, mode: arg2 as SimulationMode };
       if (!arg2 || !KEY.test(arg2)) return { name: 'simulation', id: arg };
       return arg3 && MODES.includes(arg3) ? { name: 'simulation', id: arg, from: arg2, mode: arg3 as SimulationMode } : { name: 'simulation', id: arg, from: arg2 };
@@ -186,6 +199,10 @@ export function hrefFor(route: Route): string {
       return route.region ? `#/beyin/${route.region}` : '#/beyin';
     case 'sentence':
       return `#/cumle/${route.file}/${route.n}`;
+    case 'simlab':
+      return route.id ? `#/sim/${route.id}${route.scenario ? `/${route.scenario}` : ''}` : '#/sim';
+    case 'anatomylab':
+      return '#/laboratuvar';
     default:
       return '#/belgeler';
   }

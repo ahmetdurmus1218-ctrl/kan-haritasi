@@ -8,3 +8,4 @@ export * from './content';
 export * from './interpret';
 export * from './parts';
 export * from './imagingMeasures';
+export * from './relations';

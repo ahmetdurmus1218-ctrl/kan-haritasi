@@ -29,6 +29,9 @@ const PersonalOrganPage = lazy(() => import('./screens/PersonalOrganPage').then(
 const PhysiologyPage = lazy(() => import('./screens/PhysiologyPage').then((m) => ({ default: m.PhysiologyPage })));
 const SentencePage = lazy(() => import('./screens/SentencePage').then((m) => ({ default: m.SentencePage })));
 const BrainMapPage = lazy(() => import('./screens/BrainMapPage').then((m) => ({ default: m.BrainMapPage })));
+// Simülasyon laboratuvarı (matematiksel fizyoloji modelleri) ve anatomi laboratuvarı.
+const SimLabPage = lazy(() => import('./screens/SimLabPage').then((m) => ({ default: m.SimLabPage })));
+const AnatomyLabPage = lazy(() => import('./screens/AnatomyLabPage').then((m) => ({ default: m.AnatomyLabPage })));
 
 function ExplorerFallback() {
   return (
@@ -122,6 +125,14 @@ function Gate() {
           ) : route.name === 'brain' ? (
             <Suspense fallback={<PageFallback />}>
               <BrainMapPage key={route.region ?? 'map'} region={route.region} />
+            </Suspense>
+          ) : route.name === 'simlab' ? (
+            <Suspense fallback={<PageFallback />}>
+              <SimLabPage id={route.id} scenario={route.scenario} />
+            </Suspense>
+          ) : route.name === 'anatomylab' ? (
+            <Suspense fallback={<PageFallback />}>
+              <AnatomyLabPage />
             </Suspense>
           ) : route.name === 'sentence' ? (
             <Suspense fallback={<PageFallback />}>

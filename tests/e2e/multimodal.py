@@ -157,7 +157,8 @@ with sync_playwright() as p:
     check(page.get_by_role("link", name="Veri ekle").first.is_visible(), "UI: 'Veri ekle' ilk ekranda görünür")
     check(page.get_by_role("link", name="Vücudum").first.is_visible(), "UI: ana gezinmede 'Vücudum' görünür")
     labels = [x.strip() for x in page.locator("nav[aria-label] a, nav[aria-label] button").all_inner_texts() if x.strip()]
-    check(not any(w in " ".join(labels) for w in ("Kapsam", "Simülasyon", "Hakkında", "DICOM")), f"UI: gezinmede teknik öğe yok {labels}")
+    # "Simülasyon" artık dokuz ana yerden biridir (fizyoloji laboratuvarı); kapsam raporu, hakkında ve DICOM araçları gezinmede yok.
+    check(not any(w in " ".join(labels) for w in ("Kapsam", "Hakkında", "DICOM")), f"UI: gezinmede teknik öğe yok {labels}")
 
     # --- A / kabul 88: yalnızca MR fotoğrafı, rapor yok → görüntü ÖN İNCELEMESİ (tıbbi model değil)
     upload(page, "MR", "brain_mri.jpg", "image/jpeg", (IMG / "mr-kolaj-foto.jpg").read_bytes())
@@ -371,8 +372,9 @@ with sync_playwright() as p:
     check(bottom.get_by_role("link", name="Sonuçlar").is_visible(), "telefon: alt gezinmede 'Sonuçlar'")
     bottom.get_by_role("button", name="Daha").click()
     more = page.locator("dialog[open]")
-    more.get_by_text("Görüntüler", exact=True).wait_for()
-    check(more.get_by_text("Zamanım", exact=True).count() == 1 and more.get_by_text("Belgelerim", exact=True).count() == 1, "telefon: 'Daha' alt sayfasında Görüntüler, Zamanım, Belgelerim")
+    more.get_by_text("Görüntülerim", exact=True).wait_for()
+    check(more.get_by_text("Zaman Çizelgem", exact=True).count() == 1 and more.get_by_text("Belgelerim", exact=True).count() == 1, "telefon: 'Daha' alt sayfasında Görüntülerim, Zaman Çizelgem, Belgelerim")
+    check(more.get_by_text("Anatomi Laboratuvarı", exact=True).count() == 1 and more.get_by_text("Simülasyon", exact=True).count() == 1, "telefon: 'Daha' alt sayfasında Anatomi Laboratuvarı ve Simülasyon")
     page.keyboard.press("Escape")
     page.goto(URL + "#/vucudum")
     page.get_by_role("heading", name="Vücudum", exact=True).wait_for()
