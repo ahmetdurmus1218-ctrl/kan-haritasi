@@ -1,6 +1,6 @@
 import { DataTabs } from '../components/DataTabs';
 import { useMemo, useState, type ReactNode } from 'react';
-import { CONTENT, GROUP_LABEL, MEDICAL_DISCLAIMER, PROCESSES, type ResultStatus, structureById, systemById, formatNumber, testByKey } from '@kh/catalog';
+import { CONTENT, GROUP_LABEL, MEDICAL_DISCLAIMER, type ResultStatus, formatNumber, systemById, testByKey } from '@kh/catalog';
 import { go } from '../state/router';
 import { type OtherPoint, type TestSeries, buildOthers, buildSeries, useReports } from '../lib/useReports';
 import { formatDate } from '../lib/format';
@@ -14,6 +14,7 @@ import { findingMap, useInterpretation, useSex } from '../lib/interpretation';
 import { useImagingStudies } from '../lib/imagingStudies';
 import { ImagingStudyList } from '../components/imaging';
 import { ResultPhysiology } from '../components/physiology';
+import { EvidencePanel } from '../components/EvidencePanel';
 import { useHealthModel } from '../lib/analysisBridge';
 import { AlertIcon, BodyIcon, ChartIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, FileTextIcon, SpinnerIcon, UploadIcon } from '../components/icons';
 
@@ -372,6 +373,7 @@ export function ResultDetail({ testKey }: { testKey: string }) {
   const related = interp.patterns.filter((p) => p.tests.includes(testKey));
   const content = CONTENT[testKey];
   const { model } = useHealthModel();
+  const measured = useMemo(() => new Set(all.map((x) => x.test.key)), [all]);
 
   if (!test) return <div className="p-6"><Banner tone="error">Bilinmeyen test.</Banner></div>;
   const latest = series?.latest.result;
@@ -445,6 +447,10 @@ export function ResultDetail({ testKey }: { testKey: string }) {
         </section>
       )}
 
+      <div className="mt-4">
+        <EvidencePanel test={test} point={series?.latest} critical={!!finding?.critical} measured={measured} />
+      </div>
+
       {content && (
         <div className="mt-4 space-y-4">
           <LearnSection title="Bu test neyi ölçer?">
@@ -482,25 +488,6 @@ export function ResultDetail({ testKey }: { testKey: string }) {
           </LearnSection>
           <LearnSection title="Doktoruna sorabileceklerin">
             <Bullets items={content.askDoctor} />
-          </LearnSection>
-          <LearnSection title="Vücutta nereyle ilişkili?">
-            <div className="flex flex-wrap gap-1.5">
-              {test.processes.map((p) => (
-                <span key={p} className="rounded-full border border-ink-600 px-2.5 py-1 text-xs text-fg-muted" title={PROCESSES[p].summary}>
-                  {PROCESSES[p].nameTr}
-                </span>
-              ))}
-              {test.structures.map((sid) => (
-                <span key={sid} className="rounded-full border border-accent/30 bg-accent/8 px-2.5 py-1 text-xs text-fg">
-                  {structureById.get(sid)?.nameTr ?? sid}
-                </span>
-              ))}
-              {test.systems.map((sid) => (
-                <span key={sid} className="rounded-full border border-ink-600 px-2.5 py-1 text-xs text-fg-faint">
-                  {systemById.get(sid)?.nameTr}
-                </span>
-              ))}
-            </div>
           </LearnSection>
           <p className="text-xs leading-relaxed text-fg-faint">{MEDICAL_DISCLAIMER}</p>
         </div>

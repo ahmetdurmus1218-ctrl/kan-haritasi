@@ -241,10 +241,12 @@ function SimView({ model, scenario }: { model: SimModel; scenario?: string }) {
   const labs = (health?.latestLabs ?? []).filter((l) => model.relatedTests.includes(l.testKey));
   const organs = model.organs.map((id) => GRAPH.node(id)).filter((n) => !!n);
   const interior = model.interior ? interiorById(model.interior) : undefined;
-  const custom = !active && changed && !(mine && binding && model.params.every((d) => (d.key in binding.params ? true : params[d.key] === d.value)));
+  // Özel ayar: kullanıcı kaydırıcıyla seçili senaryonun (ya da normalin) değerlerinden ayrıldı.
+  const preset = useMemo(() => scenarioParams(model, active?.id), [model, active]);
+  const custom = model.params.some((d) => !(mine && binding && d.key in binding.params) && Math.abs((params[d.key] ?? d.value) - preset[d.key]!) > 1e-9);
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 md:px-8 md:py-8" data-testid="simlab" data-model={model.id} data-scenario={active?.id ?? (custom ? 'ozel' : 'normal')} data-playing={player.playing ? '1' : '0'} data-t={player.t.toFixed(3)} data-personal={mine && binding ? '1' : '0'}>
+    <div className="mx-auto w-full max-w-5xl space-y-4 px-4 py-6 md:px-8 md:py-8" data-testid="simlab" data-model={model.id} data-scenario={custom ? 'ozel' : (active?.id ?? 'normal')} data-playing={player.playing ? '1' : '0'} data-t={player.t.toFixed(3)} data-personal={mine && binding ? '1' : '0'}>
       <a href={hrefFor({ name: 'simlab' })} className="btn-ghost min-h-[40px] px-2.5 text-xs">
         <ChevronLeftIcon size={14} /> Simülasyon laboratuvarı
       </a>
@@ -333,7 +335,11 @@ function SimView({ model, scenario }: { model: SimModel; scenario?: string }) {
                   <tr>
                     <th className="py-1.5 pr-3 font-semibold">Büyüklük</th>
                     <th className="py-1.5 pr-3 font-semibold">Bu senaryo</th>
-                    {changed && <th className="py-1.5 pr-3 font-semibold">Normal çalışma</th>}
+                    {changed && (
+                      <th className="py-1.5 pr-3 font-semibold" data-testid="sim-metrics-normal">
+                        Normal çalışma
+                      </th>
+                    )}
                     {annotate && <th className="py-1.5 font-semibold">Tipik</th>}
                   </tr>
                 </thead>
@@ -379,7 +385,7 @@ function SimView({ model, scenario }: { model: SimModel; scenario?: string }) {
             );
           })}
         </div>
-        {changed && (
+        {(custom || (mine && changed)) && (
           <button type="button" className="btn-ghost min-h-[40px] text-[13px]" onClick={() => (setMine(false), active ? setParams(scenarioParams(model, active.id)) : setParams(base))} data-testid="sim-params-reset">
             {active ? 'Senaryo değerlerine dön' : 'Tipik değerlere dön'}
           </button>

@@ -157,7 +157,8 @@ with sync_playwright() as p:
     check(page.get_by_role("link", name="Veri ekle").first.is_visible(), "UI: 'Veri ekle' ilk ekranda görünür")
     check(page.get_by_role("link", name="Vücudum").first.is_visible(), "UI: ana gezinmede 'Vücudum' görünür")
     labels = [x.strip() for x in page.locator("nav[aria-label] a, nav[aria-label] button").all_inner_texts() if x.strip()]
-    check(not any(w in " ".join(labels) for w in ("Kapsam", "Simülasyon", "Hakkında", "DICOM")), f"UI: gezinmede teknik öğe yok {labels}")
+    # "Simülasyon" artık dokuz ana yerden biridir (fizyoloji laboratuvarı); kapsam raporu, hakkında ve DICOM araçları gezinmede yok.
+    check(not any(w in " ".join(labels) for w in ("Kapsam", "Hakkında", "DICOM")), f"UI: gezinmede teknik öğe yok {labels}")
 
     # --- A / kabul 88: yalnızca MR fotoğrafı, rapor yok → görüntü ÖN İNCELEMESİ (tıbbi model değil)
     upload(page, "MR", "brain_mri.jpg", "image/jpeg", (IMG / "mr-kolaj-foto.jpg").read_bytes())
