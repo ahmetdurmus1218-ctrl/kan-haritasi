@@ -1,9 +1,9 @@
 workflow: CI
-run: 40735407852
-sha: bc356a5f149e236688a6897d944d2855f848fc71
-conclusion: success
+run: 42833240278
+sha: a429370df2aa014b7ad8d72fd902fd2c17d56033
+conclusion: failure
 
-e2e: success
+e2e: failure
   - Set up job: success
   - Run actions/checkout@v4: success
   - Run pnpm/action-setup@v4: success
@@ -11,34 +11,29 @@ e2e: success
   - Run pnpm install --frozen-lockfile: success
   - Run pnpm build: success
   - Run actions/setup-python@v5: success
-  - Playwright (Chromium): success
-  - Önizleme sunucusu: success
-  - Belgeler ve kasa (smoke): success
-  - Okuma → sonuçlar → vücutta göster → simülasyon: success
-  - Zaman çizelgesi, şifreli yedek, dışa aktarma: success
-  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: success
-  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: success
-  - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: success
-  - Beyin haritası (telefon) — MR fotoğrafında uydurma yok, rapor cümlesi → bölge → 7 adım → iç dünya, her bölgeye gir: success
-  - Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR: success
-  - İçine gir — anatomi grafiği derinliği, komşuluk (pelvis, yumurtalık, kulak, böbrek, kalp), model deposu: success
-  - İçine gir motoru — bağırsak kabulü (lümen → … → moleküler taşıma), B12 → fizyoloji → ileum, model yok, katmanlar: success
-  - İçine gir — her organda iç dünya (117 yapı, hollow/solid/vascular/chamber/airway/sensory), 3B panel, arama, breadcrumb: success
-  - 3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon: success
-  - Kişisel 3B organ — gerçek BT → maske → mesh → İçine gir (kamera gerçek mesh'in içine) → eğitimsel iç dünya: success
-  - Gerçek yerel modeller — röntgen skoru, BT/MR 3B anatomi bölütleme, BT patoloji (basamaklı), köken: success
-  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: success
-  - Run actions/upload-artifact@v4: skipped
-  - Post Run actions/setup-python@v5: success
-  - Post Run actions/setup-node@v4: success
+  - Playwright (Chromium): failure
+  - Önizleme sunucusu: skipped
+  - Belgeler ve kasa (smoke): skipped
+  - Okuma → sonuçlar → vücutta göster → simülasyon: skipped
+  - Zaman çizelgesi, şifreli yedek, dışa aktarma: skipped
+  - Uçtan uca (simülasyon laboratuvarı, hesaplanan değerler, dayanak paneli — telefon ve masaüstü): skipped
+  - Gerçek BT serisinden 3B hacim görüntüleme (WebGL2 ışın izleme) — masaüstü ve telefon: skipped
+  - Farklı laboratuvar raporları (PDF, fotoğraf, ekran görüntüsü) → yorum → 3B: skipped
+  - Görüntüleme — MR klasörü (DICOM seri), BT pencereleri, radyoloji raporu, terimler: skipped
+  - Ham görüntü analizi (rapor yok) — MR, EKG, ultrason, patoloji → Vücudum → organ sayfası: skipped
+  - Beyin haritası (telefon) — MR fotoğrafında uydurma yok, rapor cümlesi → bölge → 7 adım → iç dünya, her bölgeye gir: skipped
+  - Yerel tıbbi AI (test modeli, cihazda) — üç durum, kutu → anatomi → organ, rapor ↔ model çelişkisi, MPR: skipped
+  - İçine gir — anatomi grafiği derinliği, komşuluk (pelvis, yumurtalık, kulak, böbrek, kalp), model deposu: skipped
+  - İçine gir motoru — bağırsak kabulü (lümen → … → moleküler taşıma), B12 → fizyoloji → ileum, model yok, katmanlar: skipped
+  - İçine gir — her organda iç dünya (117 yapı, hollow/solid/vascular/chamber/airway/sensory), 3B panel, arama, breadcrumb: skipped
+  - 3B organ navigasyonu — kamera organa dalar, iç dünya → duvar → doku → hücre → molekül (kalın/ince bağırsak, kalp, akciğer, böbrek, karaciğer, beyin), geri, ekrana sığma, telefon: skipped
+  - Kişisel 3B organ — gerçek BT → maske → mesh → İçine gir (kamera gerçek mesh'in içine) → eğitimsel iç dünya: skipped
+  - Gerçek yerel modeller — röntgen skoru, BT/MR 3B anatomi bölütleme, BT patoloji (basamaklı), köken: skipped
+  - Keşfet — iki vücut, bilgi bulutu, arama, araçlar, tema, 22 sahne, telefon: skipped
+  - Run actions/upload-artifact@v4: success
+  - Post Run actions/setup-python@v5: skipped
+  - Post Run actions/setup-node@v4: skipped
   - Post Run pnpm/action-setup@v4: success
-  - Post Run actions/checkout@v4: success
-  - Complete job: success
-dependencies: success
-  - Set up job: success
-  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
-  - Run actions/checkout@v4: success
-  - Bağımlılık açıkları (OSV): success
   - Post Run actions/checkout@v4: success
   - Complete job: success
 web: success
@@ -56,4 +51,74 @@ web: success
   - Post Run pnpm/action-setup@v4: success
   - Post Run actions/checkout@v4: success
   - Complete job: success
+dependencies: failure
+  - Set up job: success
+  - Pull ghcr.io/google/osv-scanner-action:v2.3.8: success
+  - Run actions/checkout@v4: success
+  - Bağımlılık açıkları (OSV): failure
+  - Post Run actions/checkout@v4: success
+  - Complete job: success
 
+e2e	Playwright (Chromium)	﻿2026-11-10T14:21:55.6079255Z ##[group]Run pip install playwright==1.56.0 pillow
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6079680Z ^[[36;1mpip install playwright==1.56.0 pillow^[[0m
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6080035Z ^[[36;1mpython -m playwright install --with-deps chromium^[[0m
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6151925Z shell: /usr/bin/bash -e {0}
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6152634Z env:
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6152915Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6153281Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.16/x64
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6153698Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib/pkgconfig
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6154106Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6154466Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6154828Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6155231Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib
+e2e	Playwright (Chromium)	2026-11-10T14:21:55.6155558Z ##[endgroup]
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.3020166Z Collecting playwright==1.56.0
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.3642558Z   Downloading playwright-1.56.0-py3-none-manylinux1_x86_64.whl.metadata (3.5 kB)
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.4913116Z Collecting pillow
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.5067676Z   Downloading pillow-13.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (9.1 kB)
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.5272925Z Collecting pyee<14,>=13 (from playwright==1.56.0)
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.5421726Z   Downloading pyee-13.0.1-py3-none-any.whl.metadata (3.0 kB)
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.6337241Z Collecting greenlet<4.0.0,>=3.1.1 (from playwright==1.56.0)
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.6491667Z   Downloading greenlet-3.5.6-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl.metadata (3.8 kB)
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.6702741Z Collecting typing-extensions (from pyee<14,>=13->playwright==1.56.0)
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.6857427Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+e2e	Playwright (Chromium)	2026-11-10T14:21:56.7045747Z Downloading playwright-1.56.0-py3-none-manylinux1_x86_64.whl (46.3 MB)
+e2e	Playwright (Chromium)	2026-11-10T14:21:57.1650782Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 46.3/46.3 MB 108.7 MB/s  0:00:00
+e2e	Playwright (Chromium)	2026-11-10T14:21:57.1876757Z Downloading greenlet-3.5.6-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl (621 kB)
+e2e	Playwright (Chromium)	2026-11-10T14:21:57.1930627Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 621.4/621.4 kB 98.4 MB/s  0:00:00
+e2e	Playwright (Chromium)	2026-11-10T14:21:57.2079487Z Downloading pyee-13.0.1-py3-none-any.whl (15 kB)
+e2e	Playwright (Chromium)	2026-11-10T14:21:57.2363765Z Downloading pillow-13.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (7.1 MB)
+e2e	Playwright (Chromium)	2026-11-10T14:21:57.2918885Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.1/7.1 MB 128.2 MB/s  0:00:00
+e2e	Playwright (Chromium)	2026-11-10T14:21:57.3070345Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+e2e	Playwright (Chromium)	2026-11-10T14:21:57.3729296Z Installing collected packages: typing-extensions, pillow, greenlet, pyee, playwright
+e2e	Playwright (Chromium)	2026-11-10T14:21:58.2079128Z 
+e2e	Playwright (Chromium)	2026-11-10T14:21:58.2088248Z Successfully installed greenlet-3.5.6 pillow-13.0.0 playwright-1.56.0 pyee-13.0.1 typing-extensions-4.16.0
+e2e	Playwright (Chromium)	2026-11-10T14:21:58.2094096Z 
+e2e	Playwright (Chromium)	2026-11-10T14:21:58.2094511Z [notice] A new release of pip is available: 26.2.2 -> 26.3
+e2e	Playwright (Chromium)	2026-11-10T14:21:58.2094950Z [notice] To update, run: pip install --upgrade pip
+e2e	Playwright (Chromium)	2026-11-10T14:21:58.4395830Z BEWARE: your OS is not officially supported by Playwright; installing dependencies for ubuntu26.04-x64 as a fallback.
+e2e	Playwright (Chromium)	2026-11-10T14:21:58.4396926Z Cannot install dependencies for ubuntu26.04-x64 with Playwright 1.56.1!
+e2e	Playwright (Chromium)	2026-11-10T14:21:58.4499499Z Failed to install browsers
+e2e	Playwright (Chromium)	2026-11-10T14:21:58.4499953Z Error: ERROR: Playwright does not support chromium on ubuntu26.04-x64
+e2e	Playwright (Chromium)	2026-11-10T14:21:58.4619874Z ##[error]Process completed with exit code 1.
+dependencies	Bağımlılık açıkları (OSV)	﻿2026-11-10T14:21:43.3893055Z ##[group]Run google/osv-scanner-action/osv-scanner-action@v2.3.8
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:43.3893468Z with:
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:43.3893698Z   scan-args: -r
+dependencies	Bağımlılık açıkları (OSV)	./
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:43.3893913Z ##[endgroup]
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:43.3999799Z ##[command]/usr/bin/docker run --name ghcriogoogleosvscanneractionv238_634ce4 --label d87028 --workdir /github/workspace --rm -e "INPUT_SCAN-ARGS" -e "HOME" -e "GITHUB_JOB" -e "GITHUB_REF" -e "GITHUB_SHA" -e "GITHUB_REPOSITORY" -e "GITHUB_REPOSITORY_OWNER" -e "GITHUB_REPOSITORY_OWNER_ID" -e "GITHUB_RUN_ID" -e "GITHUB_RUN_NUMBER" -e "GITHUB_RETENTION_DAYS" -e "GITHUB_RUN_ATTEMPT" -e "GITHUB_ACTOR_ID" -e "GITHUB_ACTOR" -e "GITHUB_WORKFLOW" -e "GITHUB_HEAD_REF" -e "GITHUB_BASE_REF" -e "GITHUB_EVENT_NAME" -e "GITHUB_SERVER_URL" -e
+dependencies	Bağımlılık açıkları (OSV)	./"
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:45.1916523Z Scanning dir ./
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:45.1916942Z Starting filesystem walk for root: /
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:45.2083391Z Scanned /github/workspace/pnpm-lock.yaml file and found 406 packages
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:45.2104881Z End status: 113 dirs visited, 744 inodes visited, 1 Extract calls, 18.933301ms elapsed, 18.933461ms wall time
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:46.0701510Z 
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:46.0702267Z Total 1 package affected by 1 known vulnerability (0 Critical, 0 High, 1 Medium, 0 Low, 0 Unknown) from 1 ecosystem.
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:46.0702881Z 1 vulnerability can be fixed.
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:46.0703056Z 
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:46.0703426Z +-------------------------------------+------+-----------+-----------+---------+---------------+----------------+
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:46.0704574Z | OSV URL                             | CVSS | ECOSYSTEM | PACKAGE   | VERSION | FIXED VERSION | SOURCE         |
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:46.0705528Z +-------------------------------------+------+-----------+-----------+---------+---------------+----------------+
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:46.0706186Z | https://osv.dev/GHSA-g3hv-75wg-m249 | 6.9  | npm       | minimatch | 10.2.6  | 11.0.1        | pnpm-lock.yaml |
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:46.0706822Z +-------------------------------------+------+-----------+-----------+---------+---------------+----------------+
+dependencies	Bağımlılık açıkları (OSV)	2026-11-10T14:21:46.0707243Z Exit code: 1
