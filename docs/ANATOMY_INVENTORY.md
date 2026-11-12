@@ -1,9 +1,31 @@
 # Tam vücut anatomi envanteri ve eksik listesi
 
-**Durum: Aşama 0 — yalnızca envanter.** Bu belge tamamlanmış bir tam vücut anatomisi değildir. Hiçbir
-yeni model henüz uygulamaya alınmadı. Amaç: şu an ne olduğunu, neyin eksik olduğunu ve hangi açık
-kaynağın neyi karşılayabileceğini kanıtıyla göstermek; model seçimi gözden geçirildikten sonra
-entegrasyona başlamak.
+**Durum: Aşama 1–3 entegre edildi (2026-11-12); tam vücut henüz tamamlanmadı.** Aşağıdaki §0 bu turda
+yapılanları, §7 hâlâ eksik olanları listeler. §1–§6 ilk envanterdir (Aşama 0); değişen satırlar §0'da.
+
+## 0. Bu turda yapılanlar
+
+| Aşama | Ne yapıldı | Nerede | Not |
+|---|---|---|---|
+| 1 | **İskelette her kemik ayrı mesh** (erkek 247, kadın: 25 omur + sakrum/koksiks + pelvis parçaları HRA'dan, diğerleri BodyParts3D'den uyarlanmış). Her mesh'te FMA kimliği, kaynaktaki ad, Türkçe ve Latince ad, kaynak kodu ve kadında "uyarlandı" işareti (glTF `extras`) | Temel model (`skeleton.glb`), APK içinde | Türkçe/Latince adlar `assets-pipeline/names-tr.ts` sözlüğünden; sözlükte olmayan ad uydurulmaz |
+| 1 | Panelde tek yapı: ad, Latince, bölüm, kaynak kimliği, kaynak ve lisans; liste "Modeldeki tek tek yapılar"; aramada tek yapılar; doğrudan bağlantı `#/vucut/yapi/<yapı>/e-…` | `BodyPanels.tsx`, `SearchOverlay.tsx` | |
+| 1 | Kadında erkekten uyarlanan her yapı (kemikler, kaslar, mide, yemek borusu, hipofiz, böbreküstü, diyafram, BodyParts3D gövde damarları, tüm kadın paketleri) **mora kaydırılmış renk + "Erkek referansından uyarlanmıştır"** etiketi | `palette.ts`, `sources.ts` | |
+| 2 | **Z-Anatomy dönüştürme hattı**: FBX → glTF, 72 kemik çifti üzerinden Umeyama hizalama (ortalama 4,4 mm, en büyük 21 mm), dişler/kulak yapıları için kemiğine yerel ICP (alt çene 5,7 mm, şakak 4–5 mm kaydırma, artık 0,4–2,5 mm), NC lisanslı ve lisansı belirsiz parçaların otomatik dışlanması, yumuşak normaller, meshopt sıkıştırma | `assets-pipeline/zanatomy-*.ts` | Kadın paketleri temel modeldeki kadın kemik/kaslarıyla aynı erkek → kadın eklem uyumundan geçer |
+| 2 | **İsteğe bağlı paketler (.khpack)**: dosyadan kurulur; manifest + lisans + SHA-256 denetlenir, özet uygulamaya gömülü resmi listeyle (`packs.generated.ts`) eşleşmezse kurulmaz; IndexedDB'de saklanır, internetsiz çalışır; aç/kapa, kaldır. Uygulamanın internet izni yok, değişmedi | `anatomy/packs.ts`, Gizlilik ve veriler → Anatomi paketleri | Paketler APK'ya girmez; derlemede ayrı ek ve `apk-son` sürümünde ayrı dosya |
+| 2 | Paket etkinken yerini aldığı temel yapılar gizlenir (bölgesel kaslar, şematik sinirler, şematik kol-bacak damarları, şematik tiroid, şematik dış/orta kulak); paket yüklenene kadar temel model görünür | `useModels.ts` | Sistem bazlı yükleme: paket yalnız kurulu ve açıkken yüklenir |
+| 2 | **Organı vücuttan ayır** (araç çubuğu / D tuşu): odaktaki yapı vücudun önüne taşınır, kamera kadrajlar | `BodyScene.tsx`, `Explorer.tsx` | |
+| 3 | 6 sistem paketi × 2 vücut (aşağıda) | `anatomy-packs/` | |
+
+| Paket | Yapı | Üçgen | Boyut | İçerik |
+|---|---:|---:|---:|---|
+| Kaslar, tendonlar ve fasyalar | 664 | 520 bin | 4,3 MB | Tek tek kaslar (tendonlarıyla), 76 fasya, bursalar, tendon kılıfları; göz kasları HRA'da kalır |
+| Eklemler ve bağlar | 345 | 139 bin | 1,4 MB | Kapsüller, bağlar, eklem diskleri, zarlar; diz bağları/menisküs HRA'da, omurlar arası diskler BodyParts3D'de kalır |
+| Sinirler | 265 | 260 bin | 2,0 MB | Kafa sinirleri I–XII ve dalları, boyun sinirleri, brakiyal ve bel-sakral pleksus dalları, sempatik zincir, spinal ganglionlar, beyin ve omurilik zarları |
+| Damarlar | 534 | 332 bin | 3,0 MB | Kol-bacak arter ve venleri (el/ayak dallarına kadar), dış/iç karotis dalları, vertebral arter, Willis halkası, dural sinüsler, gövde duvarı ve pelvis dalları; kalp ve ana gövde damarları HRA'da kalır |
+| Lenf düğümleri | 158 | 73 bin | 0,7 MB | Baş, boyun, koltuk altı-kol, göğüs, karın, pelvis, kasık-bacak düğüm grupları |
+| Baş-boyun | 124 | 164 bin | 1,2 MB | Dil, damak, dişeti, tükürük bezleri ve kanalları, yutak, burun boşluğu ve sinüsler, gırtlak kıkırdakları, 28 diş, tiroid ve 4 paratiroid, kulak kepçesi, kulak zarı, kemikçikler, Östaki borusu |
+
+(Değerler erkek paketleri; kadın paketleri aynı yapı sayısında, üçgen ve boyut ±%1.)
 
 Tarih: 2026-11-12 · Dal: `ccr-3b782f4c-3pfpxw`
 
@@ -177,8 +199,34 @@ HRA'da bulunup henüz kullanılmayanlar:
 
 ## 7. Eksik yapılar listesi (açık)
 
-| # | Eksik | En iyi aday | Durum |
+Durum sütunu bu turdan sonraki hâlidir.
+
+| # | Yapı | Aday | Durum (2026-11-12) |
 |---|---|---|---|
+| 1 | Tek tek kemikler (≈ 206 + kıkırdaklar, diskler) | BP3D 3.0 | **Yapıldı** — temel modelde her kemik ayrı. Kadında kafatası, kaburga, kol, el ve ayak kemikleri erkekten uyarlanmış (işaretli) |
+| 2 | Eklemler, bağlar, eklem diskleri (diz dışı) | Z-Anatomy | **Paketle** (345 yapı). Kadında omurlar arası disk yok (HRA kadın omurgasında disk modeli yok) |
+| 3 | Tek tek kaslar, tendonlar, fasya, bursa | Z-Anatomy | **Paketle** (664 yapı). Kadında erkekten uyarlanmış (işaretli) |
+| 4 | Kas tutunma yüzeyleri (origo/insersiyo) | Z-Anatomy (705) | **Yapılmadı** — sonraki tur |
+| 5 | Kafa sinirleri, pleksuslar, periferik sinirler, sempatik zincir | Z-Anatomy | **Paketle** (265 yapı); şematik sinirlerin yerini alır |
+| 6 | Kol, bacak, el, ayak, baş-boyun, beyin damarları | Z-Anatomy | **Paketle** (534 yapı); şematik kol-bacak damarlarının yerini alır |
+| 7 | Tiroid, paratiroid | Z-Anatomy | **Paketle**; şematik tiroidin yerini alır |
+| 8 | Dış kulak, kulak zarı, kemikçikler, Östaki borusu | Z-Anatomy | **Paketle**. **İç kulak (koklea, vestibül, yarım daire kanalları) şematik kalır** (tek kaynak CC BY-NC-SA) |
+| 9 | Dil, damak, dişler, dişeti, tükürük bezleri, yutak, burun boşluğu, sinüsler | Z-Anatomy | **Paketle** |
+| 10 | Mide ve yemek borusu iç katları | — | Kaynak yok |
+| 11 | Lenf düğümü grupları | Z-Anatomy | **Paketle** (158 grup) |
+| 12 | Lenf damarları, toraks kanalı | — | Kaynak bulunamadı |
+| 13 | Deri altı yağ dokusu (vücut ölçeğinde) | — | Kaynak bulunamadı |
+| 14 | Kılcal damarlar | HRA organ içi damar ağaçları | **Yapılmadı** — HRA'nın organ içi damar ağaçları (böbrek, karaciğer, kalp, dalak, rahim, göz…) sonraki tur; kılcal yatak yalnız temsili sahnede |
+| 15 | Kadın kafatası, kaburga, kol, el ve ayak kemikleri | — | Kaynak yok → uyarlanmış + etiketli |
+| 16 | Kadın iskelet kasları | Andreassen 2023 (yalnız bacak) | Erişim yok (simtk.org, digitalcommons.du.edu engelli) |
+| 17 | Kadın üretrası, kadın dış genital | HRA v1.10 | Doğrulanamadı (cdn.humanatlas.io engelli) |
+| 18 | Beyinde ayrıntılı giruslar | HRA v1.10 / Z-Anatomy | Z-Anatomy beyin yüzeylerinin lisansı belirsiz → alınmadı; HRA v1.10'a erişim yok |
+| 19 | Periton, mezenter, omentum | Z-Anatomy (sınırlı) | Yapılmadı |
+| 20 | LOD (aynı yapının çok çözünürlüklü sürümleri) | — | **Yapılmadı**: temel model (orta) + paket (yüksek) iki düzey var; mesafeye göre otomatik geçiş yok |
+| 21 | Türkçe adlar (kas, damar, bağ, lenf) | — | Sözlük yalnız kemikler, dişler, kafa sinirleri, ana sinirler ve baş-boyun organlarını kapsıyor; diğerlerinde uluslararası ad |
+| 22 | Gerçek cihazda mobil/masaüstü performans ölçümü | — | Yalnız yazılımsal WebGL (SwiftShader) ile e2e; gerçek telefon ölçümü yok |
+
+---|---|---|---|
 | 1 | Tek tek kemikler (≈ 206 + dişler + kıkırdaklar) | BP3D 3.0 (zaten indiriliyor) veya Z-Anatomy | Mevcut kaynaktan yapılabilir |
 | 2 | Eklemler, bağlar, diskler (diz dışı) | Z-Anatomy Joints (413) | Aday |
 | 3 | Tek tek kaslar, tendonlar, fasya, bursa | Z-Anatomy Muscular | Aday (erkek) |

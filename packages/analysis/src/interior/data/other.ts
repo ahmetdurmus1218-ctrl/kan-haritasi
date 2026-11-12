@@ -613,7 +613,7 @@ export const MUSCULOSKELETAL: OrganInteriorDefinition[] = [
     system: 'musculoskeletal',
     summary: 'İki kemiğin buluştuğu, kıkırdak kaplı uçların sıvı dolu bir boşlukta kaydığı yapı.',
     structure: 'knee',
-    aliases: ['knee'],
+    aliases: ['knee', 'joints'],
     interiorScene: { kind: 'lumen', shape: 'sac', lining: 'smooth', content: 'fluid', radius: 1, wave: 0.1, flow: 0.1, color: '#d8c9b0' },
     lumen: { enabled: true, contents: ['sinoviyal sıvı'], flow: ['hareketle sıvı kıkırdağa pompalanır'] },
     functionalRegions: [

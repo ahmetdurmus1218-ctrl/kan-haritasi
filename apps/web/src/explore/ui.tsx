@@ -95,7 +95,7 @@ const LAYER_ROWS: { key: Exclude<keyof Layers, 'skin'>; label: string; note?: st
   { key: 'nervous', label: 'Sinir sistemi' },
 ];
 
-export function LayersMenu({ layers, onChange, onClose }: { layers: Layers; onChange: (l: Layers) => void; onClose: () => void }) {
+export function LayersMenu({ layers, onChange, onClose, packs }: { layers: Layers; onChange: (l: Layers) => void; onClose: () => void; packs?: { active: number; onOpen: () => void } }) {
   return (
     <div className="pointer-events-auto w-64 rounded-2xl border border-ink-600/70 bg-ink-950/92 p-4 shadow-2xl backdrop-blur" role="dialog" aria-label="Katmanlar">
       <div className="mb-3 flex items-center justify-between">
@@ -146,6 +146,12 @@ export function LayersMenu({ layers, onChange, onClose }: { layers: Layers; onCh
           );
         })}
       </ul>
+      {packs && (
+        <button type="button" className="mt-3 w-full rounded-lg border border-ink-600/70 px-2 py-2 text-left text-xs text-fg-muted transition hover:text-fg" onClick={packs.onOpen}>
+          <span className="block text-fg">Ayrıntılı anatomi paketleri →</span>
+          {packs.active ? `${packs.active} paket açık` : 'Kaslar, eklemler, sinirler, damarlar, lenf, baş-boyun'}
+        </button>
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { buildExport } from '../lib/exportData';
 import { Banner, Dialog } from '../components/ui';
 import { ThemePicker } from '../components/ThemeToggle';
 import { LocalModels } from '../components/LocalModels';
+import { AnatomyPacks } from '../components/AnatomyPacks';
 import { useSetting } from '../state/settings';
 import { CheckIcon, DownloadIcon, FingerprintIcon, LockIcon, ShieldIcon, SpinnerIcon, TrashIcon, UploadIcon } from '../components/icons';
 
@@ -355,8 +356,14 @@ export function PrivacyPage() {
         <LocalModels />
       </Section>
 
+      <div id="anatomi-paketleri">
+        <Section title="Anatomi paketleri (ayrıntılı 3B modeller)">
+          <AnatomyPacks />
+        </Section>
+      </div>
+
       <Section title="Hakkında ve lisanslar">
-        <p className="text-sm text-fg-muted">Kullanılan açık kaynak bileşenler, 3D model kaynakları (HuBMAP CC BY 4.0, BodyParts3D CC BY-SA 2.1 JP) ve tıbbi uyarılar.</p>
+        <p className="text-sm text-fg-muted">Kullanılan açık kaynak bileşenler, 3D model kaynakları (HuBMAP CC BY 4.0, BodyParts3D CC BY-SA 2.1 JP, isteğe bağlı paketlerde Z-Anatomy CC BY-SA 4.0) ve tıbbi uyarılar.</p>
         <button type="button" className="btn-ghost mt-3" onClick={() => go({ name: 'about' })}>
           Hakkında
         </button>

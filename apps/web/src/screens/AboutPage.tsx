@@ -68,7 +68,15 @@ export function AboutPage() {
           Yapılan değişiklikler: sahne düzleştirildi, parçalar yapıya ve anatomik bölüme göre birleştirildi, BodyParts3D parçaları HRA koordinatlarına benzerlik
           dönüşümüyle taşındı; kadın vücudunda BodyParts3D kemik ve kasları erkek → kadın benzerlik dönüşümüyle (omur ve pelvis noktalarına göre, ortalama sapma
           ≈ 1,3 cm) yerleştirildi. Uyum yaklaşıktır. Ağlar sadeleştirildi, nicemlendi ve sıkıştırıldı. Tiroid bezi ve kulak kaynaklarda olmadığından şematik
-          şekillerle; kol-bacak damarları ve periferik sinirler kemiklere göre şematik tüplerle gösterilir.
+          şekillerle; kol-bacak damarları ve periferik sinirler kemiklere göre şematik tüplerle gösterilir. İskelette her kemik ayrı ağdır (adı, FMA kimliği
+          ve kaynağı ağın kendisinde). Kadın vücudunda erkek referansından uyarlanan yapılar ayrı renkle ve etiketle işaretlidir.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-fg-muted">
+          İsteğe bağlı anatomi paketleri (ayrı dosyalar, uygulamaya gömülü değildir): Z-Anatomy — The open source atlas of anatomy, Creative Commons Atıf-Aynı
+          Lisansla Paylaş 4.0 (CC BY-SA 4.0); BodyParts3D türevidir (CC BY-SA 2.1 JP); kafa sinirleri University of Dundee, CAHID, CC BY 4.0. Kaynak:
+          github.com/LluisV/Z-Anatomy (commit 6c7f901). Değişiklikler: FBX → glTF, uygulamanın vücut koordinatına kemik çiftleri üzerinden hizalama, etiket
+          ağlarının çıkarılması, sadeleştirme ve sıkıştırma; kadın paketleri erkek referansından uyarlanmıştır. Ticari olmayan lisanslı iç kulak ve böbrek
+          modelleri ile lisansı belirtilmemiş beyin yüzeyleri alınmadı. Her paketin içinde ayrıca ATTRIBUTION.txt vardır.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-fg-muted">
           Doku, hücre ve süreç sahneleri (22 sahne: damar içi, kan hücreleri, alveol, nefron, lobül, adacık, folikül, kemik iliği, nöron ve sinaps, retina,

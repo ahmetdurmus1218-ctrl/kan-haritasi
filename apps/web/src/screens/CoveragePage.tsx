@@ -1,5 +1,6 @@
 import { PROCESSES, STRUCTURES, TESTS, partsOf, systemById } from '@kh/catalog';
 import { MODEL_COVERAGE } from '../anatomy/coverage.generated';
+import { PACK_INDEX } from '../anatomy/packs.generated';
 import { FIT_LABEL, insideLinks } from '../anatomy/organs';
 import { INSIDE } from '../explore/inside/registry';
 import { INSIDE_CONTENT } from '../explore/inside/content';
@@ -13,11 +14,18 @@ import { go } from '../state/router';
 
 type Cell = { text: string; tone: 'ok' | 'partial' | 'none' };
 
+/** Bu yapıya parça ekleyen ya da onun yerini alan isteğe bağlı paketler. */
+function packsFor(id: string, body: 'male' | 'female') {
+  return PACK_INDEX.filter((p) => p.body === body && (id in p.structures || (p.schematicReplaced as readonly string[]).some((x) => x === id || x.startsWith(`${id}:`))));
+}
+
 function external(id: string, body: 'male' | 'female', schematic?: boolean, approximate?: boolean, sex?: string): Cell {
   if (sex && sex !== body) return { text: '—', tone: 'none' };
-  if (schematic) return { text: 'Şematik', tone: 'partial' };
-  if (!MODEL_COVERAGE[body][id]) return { text: 'Yok', tone: 'none' };
-  if (approximate) return { text: 'Yaklaşık', tone: 'partial' };
+  const pack = packsFor(id, body)[0];
+  const withPack = pack ? ` · paketle 3D (${pack.title.split(/[,:]/)[0]})` : '';
+  if (schematic) return { text: `Şematik${withPack}`, tone: 'partial' };
+  if (!MODEL_COVERAGE[body][id]) return pack ? { text: `Yalnız paketle 3D (${pack.title.split(/[,:]/)[0]})`, tone: 'partial' } : { text: 'Yok', tone: 'none' };
+  if (approximate) return { text: `Yaklaşık${withPack}`, tone: 'partial' };
   return { text: '3D', tone: 'ok' };
 }
 
@@ -162,8 +170,10 @@ export function CoveragePage() {
           deri 3B modelde tek parçadır (iç bölümleri ayrı seçilemez); paratiroid bezleri modellenmedi.
         </p>
         <p>
-          Model kaynakları: HuBMAP İnsan Referans Atlası 3D Nesne Kütüphanesi (CC BY 4.0) ve BodyParts3D (DBCLS, CC BY-SA 2.1 JP). Ayrıntılı atıf ve lisanslar
-          Hakkında sayfasında ve <span className="font-mono">models/ATTRIBUTION.txt</span> dosyasında.
+          Model kaynakları: HuBMAP İnsan Referans Atlası 3D Nesne Kütüphanesi (CC BY 4.0) ve BodyParts3D (DBCLS, CC BY-SA 2.1 JP); isteğe bağlı anatomi
+          paketlerinde Z-Anatomy (CC BY-SA 4.0). "Paketle 3D" yazan satırlar ilgili paket kurulu ve açıkken gerçek modeldir; paket kurulu değilse temel
+          modeldeki hâli (şematik ya da yok) geçerlidir. Ayrıntılı atıf ve lisanslar Hakkında sayfasında ve{' '}
+          <span className="font-mono">models/ATTRIBUTION.txt</span> dosyasında.
         </p>
       </section>
     </div>

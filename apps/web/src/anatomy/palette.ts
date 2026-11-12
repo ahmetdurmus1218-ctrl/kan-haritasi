@@ -1,3 +1,4 @@
+import { Color } from 'three';
 import { type SystemId, structureById } from '@kh/catalog';
 import { isVein } from './names';
 import { TONE_HEX } from '../lib/tone';
@@ -6,6 +7,8 @@ import { TONE_HEX } from '../lib/tone';
 const COLORS: Record<string, string> = {
   skin: '#d9b8a3',
   bones: '#ddd5c4',
+  joints: '#e6d9b8',
+  mouth: '#d98a8a',
   heart: '#b8484f',
   'coronary-arteries': '#e0505a',
   aorta: '#d4454f',
@@ -58,6 +61,25 @@ const COLORS: Record<string, string> = {
  * kan) mavimsi, sol taraf kırmızı; beyinde loblar farklı tonlarda; gözde katmanlar gerçek renklerine yakın.
  */
 const PART_COLORS: Record<string, string> = {
+  // Anatomi paketi bölümleri
+  'skeletal-muscle|fascia': '#e8e0d0',
+  'skeletal-muscle|bursae': '#c8d8e8',
+  'skeletal-muscle|tendon-sheaths': '#d8e4ea',
+  'joints|spine': '#e8dcc0',
+  'brain|meninges': '#d8c8b8',
+  'spinal-cord|meninges': '#d8c8b8',
+  'airways|sinuses': '#a8d8e8',
+  'airways|nasal-cavity': '#e8a8a8',
+  'airways|larynx-cartilages': '#d8e8f0',
+  'mouth|tongue': '#d87880',
+  'mouth|palate': '#e09098',
+  'mouth|gingiva': '#e8a0a8',
+  'mouth|salivary': '#e8c890',
+  'mouth|pharynx': '#d88888',
+  'thyroid|gland': '#c77fb4',
+  'thyroid|parathyroid': '#e0a040',
+  'ear|auricle': '#d9b8a3',
+  'ear|auditory-tube': '#d8a8a8',
   'heart|right-atrium': '#7a6fb8',
   'heart|right-ventricle': '#8a6fae',
   'heart|left-atrium': '#c4565e',
@@ -162,6 +184,15 @@ const PART_COLORS: Record<string, string> = {
 
 /** Tek başına saydam çizilen bölümler (dış kılıflar, saydam ortamlar): içleri görünsün. */
 export const PART_OPACITY: Record<string, number> = {
+  // Anatomi paketi: fasyalar ve sinoviyal keseler kasların üstünü örtmesin
+  'skeletal-muscle|fascia': 0.22,
+  'skeletal-muscle|bursae': 0.5,
+  'skeletal-muscle|tendon-sheaths': 0.5,
+  'joints|spine': 0.85,
+  'ear|auricle': 0.85,
+  'brain|meninges': 0.25,
+  'spinal-cord|meninges': 0.3,
+  'airways|sinuses': 0.45,
   'eyes|cornea': 0.4,
   'eyes|conjunctiva': 0.25,
   'eyes|aqueous': 0.25,
@@ -228,3 +259,18 @@ export const TRANSLUCENT: Record<string, number> = {
   bones: 0.5,
   'skeletal-muscle': 0.82,
 };
+
+const adaptedCache = new Map<string, string>();
+/**
+ * Erkek referansından uyarlanan yapılar (kadın vücudunda): rengi mora doğru kaydırılır ki kendi
+ * kaynağından gelen yapılardan ayırt edilsin. Panelde ayrıca "Erkek referansından uyarlanmıştır" yazar.
+ */
+export function adaptedColor(hex: string): string {
+  let out = adaptedCache.get(hex);
+  if (!out) {
+    const c = new Color(hex).lerp(new Color('#8f7cf0'), 0.38);
+    out = `#${c.getHexString()}`;
+    adaptedCache.set(hex, out);
+  }
+  return out;
+}

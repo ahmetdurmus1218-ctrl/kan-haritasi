@@ -69,7 +69,8 @@ describe('yapılar, sahneler ve modeller tutarlı', () => {
 
   it('şematik olmayan her yapı kendi vücudunda gerçekten modelde bulunuyor', () => {
     for (const s of modelled) {
-      if (s.schematic) continue;
+      // Şematik yapılar ve yalnız isteğe bağlı paketle gelen yapılar temel modelde yoktur.
+      if (s.schematic || s.asset === 'pack') continue;
       for (const body of ['male', 'female'] as const) {
         if (!inBody(s.id, body)) {
           expect(MODEL_COVERAGE[body][s.id], `${body}:${s.id} olmamalı`).toBeUndefined();

@@ -29,6 +29,7 @@ export const DIGESTIVE: OrganInteriorDefinition[] = [
     type: 'hollow',
     system: 'digestive',
     summary: 'Sindirimin başladığı boşluk: dişler, dil ve tükürük besini lokmaya çevirir.',
+    aliases: ['mouth'],
     interiorScene: { kind: 'lumen', shape: 'sac', lining: 'mucosa', content: 'saliva', radius: 1.3, wave: 0.15, flow: 0.2, color: '#d9737a' },
     lumen: { enabled: true, contents: ['besin', 'tükürük', 'hava'], flow: ['ağız → yutak'] },
     functionalRegions: [

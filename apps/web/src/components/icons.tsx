@@ -138,6 +138,12 @@ export const MaximizeIcon = (p: IconProps) => (
     <path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4" />
   </Icon>
 );
+export const DetachIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="9.5" width="11" height="11" rx="1.5" />
+    <path d="M10 14l9-9M13.5 4H20v6.5" />
+  </Icon>
+);
 export const MinimizeIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M9 4v4a1 1 0 0 1-1 1H4M20 9h-4a1 1 0 0 1-1-1V4M15 20v-4a1 1 0 0 1 1-1h4M4 15h4a1 1 0 0 1 1 1v4" />

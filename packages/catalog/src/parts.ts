@@ -98,6 +98,8 @@ export const PARTS: readonly PartDef[] = [
     { key: 'visual-pathway', tr: 'Görme yolları', latin: 'Chiasma, tractus et radiatio optica', match: /optic/, info: 'Görme sinirlerinin çaprazlaştığı kiazma ve görüntüyü talamustan görme korteksine taşıyan yollar.', inner: true },
     { key: 'olfactory', tr: 'Koku soğanı ve koku yolları', latin: 'Bulbus et tractus olfactorius', match: /olfactory|piriform|gyrus ambiens/, info: 'Burundan gelen koku sinyallerinin ilk işlendiği yapılar.' },
     { key: 'white-matter', tr: 'Beyaz cevher ve bağlantı yolları', latin: 'Substantia alba', match: /white matter|fornix|commissure|mammillothalamic/, info: 'Beyin bölgelerini birbirine bağlayan miyelinli sinir lifleri.', inner: true },
+    // Paket bölümü (Z-Anatomy): kaynak düğüm eşlemesi yok, düğüm adı doğrudan bu anahtarı taşır.
+    { key: 'meninges', tr: 'Beyin zarları (falx, tentoryum, yumuşak zarlar)', latin: 'Meninges encephali', info: 'Beyni saran sert zar (dura) ve onun beyin yarıkürelerini ve beyinciği ayıran kıvrımları (beyin orağı, beyincik çadırı) ile yumuşak zarlar.' },
   ]),
   ...P('hypothalamus', [{ key: 'regions', tr: 'Hipotalamus bölgeleri', latin: 'Hypothalamus', match: /./, inner: true }]),
   ...P('spinal-cord', [
@@ -105,6 +107,7 @@ export const PARTS: readonly PartDef[] = [
     { key: 'thoracic', tr: 'Göğüs segmentleri (T1–T12)', latin: 'Pars thoracica', match: /thoracic/, info: 'Gövde kaslarını ve sempatik sinir sistemini besler.' },
     { key: 'lumbar', tr: 'Bel segmentleri (L1–L5)', latin: 'Pars lumbalis', match: /lumbar/, info: 'Bacak sinirlerinin (ör. femoral sinir) kaynağı.' },
     { key: 'sacral', tr: 'Sakral segmentler (S1–S5)', latin: 'Pars sacralis, conus medullaris', match: /sacral/, info: 'Mesane, bağırsak ve cinsel işlev sinirleri; siyatik sinire katkı.' },
+    { key: 'meninges', tr: 'Omurilik zarları', latin: 'Meninges spinales', info: 'Omuriliği saran sert zar (dura) ve yumuşak zarlar; aralarında beyin-omurilik sıvısı dolaşır.' },
   ]),
 
   /* ------------------------------------------------------------------ Göz */
@@ -144,6 +147,9 @@ export const PARTS: readonly PartDef[] = [
     { key: 'lobar-bronchi', tr: 'Lob bronşları', latin: 'Bronchi lobares', match: /lobar bronchus/ },
     { key: 'bronchial-cartilage', tr: 'Bronş kıkırdakları', latin: 'Cartilagines bronchiales', match: /cartilage of the/ },
     { key: 'segmental-bronchi', tr: 'Segment bronşları', latin: 'Bronchi segmentales', match: /bronch|basal$/ },
+    { key: 'larynx-cartilages', tr: 'Gırtlak kıkırdakları (tek tek)', latin: 'Cartilagines laryngis', info: 'Tiroid, krikoid, aritenoid ve kornikulat kıkırdaklar ayrı ayrı.' },
+    { key: 'nasal-cavity', tr: 'Burun boşluğu ve burun kıkırdakları', latin: 'Cavitas nasi, cartilagines nasi', info: 'Havayı ısıtan, nemlendiren ve süzen mukoza ile burnun kıkırdak iskeleti.' },
+    { key: 'sinuses', tr: 'Burun çevresi sinüsleri', latin: 'Sinus paranasales', info: 'Alın, kama kemiği ve etmoid kemiği içindeki havalı boşluklar; burun boşluğuna açılır.', inner: true },
   ]),
 
   /* ------------------------------------------------------------------ Sindirim */
@@ -193,7 +199,24 @@ export const PARTS: readonly PartDef[] = [
     { key: 'afferent', tr: 'Getirici lenf damarları', latin: 'Vasa lymphatica afferentia', match: /afferent/ },
     { key: 'efferent', tr: 'Götürücü lenf damarı', latin: 'Vas lymphaticum efferens', match: /efferent/ },
     { key: 'vessels', tr: 'Kan damarları', latin: 'Vasa sanguinea', match: /blood/, inner: true },
+    // Paket bölümleri (Z-Anatomy): bölgelere göre adlandırılmış düğüm grupları.
+    { key: 'head', tr: 'Baş lenf düğümleri', latin: 'Nodi lymphoidei capitis' },
+    { key: 'neck', tr: 'Boyun lenf düğümleri', latin: 'Nodi lymphoidei colli' },
+    { key: 'upper-limb', tr: 'Koltuk altı ve kol lenf düğümleri', latin: 'Nodi lymphoidei membri superioris' },
+    { key: 'thorax', tr: 'Göğüs lenf düğümleri', latin: 'Nodi lymphoidei thoracis' },
+    { key: 'abdomen', tr: 'Karın lenf düğümleri', latin: 'Nodi lymphoidei abdominis' },
+    { key: 'pelvis', tr: 'Pelvis lenf düğümleri', latin: 'Nodi lymphoidei pelvis' },
+    { key: 'lower-limb', tr: 'Kasık ve bacak lenf düğümleri', latin: 'Nodi lymphoidei membri inferioris' },
   ]),
+  ...P('limb-vessels', [
+    { key: 'arm-r', tr: 'Sağ kol ve el damarları', latin: 'Vasa membri superioris dextri' },
+    { key: 'arm-l', tr: 'Sol kol ve el damarları', latin: 'Vasa membri superioris sinistri' },
+    { key: 'leg-r', tr: 'Sağ bacak ve ayak damarları', latin: 'Vasa membri inferioris dextri' },
+    { key: 'leg-l', tr: 'Sol bacak ve ayak damarları', latin: 'Vasa membri inferioris sinistri' },
+  ]),
+  ...P('carotid-arteries', [{ key: 'head-neck', tr: 'Baş, boyun ve beyin atardamar dalları', latin: 'Rami arteriae carotis externae et internae, a. vertebralis, circulus arteriosus cerebri' }]),
+  ...P('veins', [{ key: 'head-neck', tr: 'Baş-boyun toplardamarları ve dural sinüsler', latin: 'Venae capitis et colli, sinus durae matris' }]),
+  ...P('abdominal-vessels', [{ key: 'trunk-wall', tr: 'Gövde duvarı ve pelvis damar dalları', latin: 'Vasa parietis trunci et pelvis' }]),
   ...P('knee', [
     { key: 'meniscus', tr: 'Menisküsler', latin: 'Meniscus medialis et lateralis', match: /meniscus/, info: 'Uyluk ve kaval kemiği arasında yükü dağıtan C biçimli kıkırdak yastıklar.' },
     { key: 'cartilage', tr: 'Eklem kıkırdağı', latin: 'Cartilago articularis', match: /articular cartilage/, info: 'Eklem yüzeylerini kaplayan, sürtünmeyi azaltan kaygan kıkırdak.' },
@@ -267,7 +290,30 @@ export const PARTS: readonly PartDef[] = [
     { key: 'thigh-l', tr: 'Sol uyluk kasları', latin: 'Musculi femoris sinistri' },
     { key: 'leg-r', tr: 'Sağ bacak ve ayak kasları', latin: 'Musculi cruris et pedis dextri' },
     { key: 'leg-l', tr: 'Sol bacak ve ayak kasları', latin: 'Musculi cruris et pedis sinistri' },
+    { key: 'pelvic-floor', tr: 'Pelvis tabanı ve perine kasları', latin: 'Diaphragma pelvis, musculi perinei' },
+    { key: 'fascia', tr: 'Fasyalar', latin: 'Fasciae', info: 'Kasları ve kas gruplarını saran, bölmelere ayıran bağ dokusu kılıflar.' },
+    { key: 'bursae', tr: 'Bursalar (kayganlık keseleri)', latin: 'Bursae synoviales', info: 'Tendon ile kemik arasında sürtünmeyi azaltan sıvı dolu küçük keseler.', inner: true },
+    { key: 'tendon-sheaths', tr: 'Tendon kılıfları', latin: 'Vaginae tendinum', info: 'El bileği ve ayak bileğinde tendonların içinde kaydığı sinoviyal kılıflar.' },
     { key: 'other', tr: 'Diğer kaslar', latin: 'Musculi' },
+  ]),
+  ...P('joints', [
+    { key: 'skull', tr: 'Kafatası eklemleri ve çene eklemi', latin: 'Juncturae cranii, articulatio temporomandibularis' },
+    { key: 'spine', tr: 'Omurga bağları', latin: 'Juncturae columnae vertebralis' },
+    { key: 'thorax', tr: 'Göğüs kafesi eklemleri', latin: 'Juncturae thoracis' },
+    { key: 'larynx', tr: 'Gırtlak eklemleri ve zarları', latin: 'Juncturae laryngis' },
+    { key: 'pelvis', tr: 'Leğen kemiği bağları', latin: 'Juncturae cinguli pelvici' },
+    { key: 'upper-r', tr: 'Sağ omuz, kol ve el eklemleri', latin: 'Juncturae membri superioris dextri' },
+    { key: 'upper-l', tr: 'Sol omuz, kol ve el eklemleri', latin: 'Juncturae membri superioris sinistri' },
+    { key: 'lower-r', tr: 'Sağ kalça, bacak ve ayak eklemleri', latin: 'Juncturae membri inferioris dextri' },
+    { key: 'lower-l', tr: 'Sol kalça, bacak ve ayak eklemleri', latin: 'Juncturae membri inferioris sinistri' },
+    { key: 'other', tr: 'Diğer eklemler', latin: 'Juncturae' },
+  ]),
+  ...P('mouth', [
+    { key: 'tongue', tr: 'Dil', latin: 'Lingua', info: 'Tat alma, çiğneme, yutma ve konuşmada görevli kaslı organ.' },
+    { key: 'palate', tr: 'Yumuşak damak ve küçük dil', latin: 'Palatum molle, uvula', info: 'Yutarken burun yutağını kapatan kaslı perde.' },
+    { key: 'gingiva', tr: 'Dişeti', latin: 'Gingiva' },
+    { key: 'salivary', tr: 'Tükürük bezleri ve kanalları', latin: 'Glandulae salivariae majores', info: 'Kulak altı (parotis), çene altı ve dil altı bezleri; günde yaklaşık 1–1,5 litre tükürük üretir.' },
+    { key: 'pharynx', tr: 'Yutak', latin: 'Pharynx', info: 'Burun yutağı, ağız yutağı ve gırtlak yutağı: hava ve besin yollarının kesiştiği kanal.' },
   ]),
   ...P('adrenals', [
     { key: 'right', tr: 'Sağ böbreküstü bezi', latin: 'Glandula suprarenalis dextra' },
@@ -283,6 +329,8 @@ export const PARTS: readonly PartDef[] = [
     { key: 'penis', tr: 'Penis', latin: 'Penis' },
   ]),
   ...P('thyroid', [
+    { key: 'gland', tr: 'Tiroid bezi', latin: 'Glandula thyroidea' },
+    { key: 'parathyroid', tr: 'Paratiroid bezleri', latin: 'Glandulae parathyroideae', info: 'Tiroidin arkasındaki dört küçük bez; paratiroid hormonu (PTH) ile kandaki kalsiyumu düzenler.' },
     { key: 'left-lobe', tr: 'Sol lob', latin: 'Lobus sinister glandulae thyroideae' },
     { key: 'right-lobe', tr: 'Sağ lob', latin: 'Lobus dexter glandulae thyroideae' },
     { key: 'isthmus', tr: 'İstmus (köprü)', latin: 'Isthmus glandulae thyroideae' },
@@ -294,6 +342,8 @@ export const PARTS: readonly PartDef[] = [
     { key: 'cochlea', tr: 'Koklea (salyangoz)', latin: 'Cochlea', info: 'Sıvı dolu sarmal kanal; içindeki tüy hücreleri titreşimi sinir sinyaline çevirir.', inner: true },
     { key: 'vestibule', tr: 'Vestibül', latin: 'Vestibulum', info: 'Başın eğimini ve doğrusal hareketi algılayan denge organları.', inner: true },
     { key: 'canals', tr: 'Yarım daire kanalları', latin: 'Canales semicirculares', info: 'Birbirine dik üç kanal; başın dönme hareketlerini algılar.', inner: true },
+    { key: 'auricle', tr: 'Kulak kepçesi', latin: 'Auricula', info: 'Sesi toplayıp dış kulak yoluna yönlendiren kıkırdak iskeletli dış kulak.' },
+    { key: 'auditory-tube', tr: 'Östaki borusu', latin: 'Tuba auditiva', info: 'Orta kulağı burun yutağına bağlar; kulak zarının iki yanındaki basıncı eşitler.', inner: true },
   ]),
   ...P('nerves', [
     { key: 'brachial', tr: 'Brakiyal pleksus', latin: 'Plexus brachialis', info: 'Boyun omuriliğinden (C5–T1) çıkan ve kolun tüm sinirlerini oluşturan ağ.' },
@@ -305,6 +355,15 @@ export const PARTS: readonly PartDef[] = [
     { key: 'tibial', tr: 'Tibial sinir', latin: 'Nervus tibialis', info: 'Baldır kaslarını ve ayak tabanını yönetir.' },
     { key: 'peroneal', tr: 'Ortak peroneal sinir', latin: 'Nervus fibularis communis', info: 'Fibula başını dolanır; ayağı yukarı kaldıran kasları yönetir.' },
     { key: 'intercostal', tr: 'Kaburgalar arası sinirler', latin: 'Nervi intercostales' },
+    { key: 'cranial', tr: 'Kafa sinirleri (I–XII)', latin: 'Nervi craniales', info: 'Beyinden ve beyin sapından doğrudan çıkan 12 çift sinir: koku, görme, göz hareketleri, yüz duyusu ve kasları, işitme-denge, yutma, ses ve iç organlar (vagus).' },
+    { key: 'cervical', tr: 'Boyun sinirleri', latin: 'Nervi cervicales' },
+    { key: 'brachial-r', tr: 'Sağ brakiyal pleksus ve kol sinirleri', latin: 'Plexus brachialis dexter' },
+    { key: 'brachial-l', tr: 'Sol brakiyal pleksus ve kol sinirleri', latin: 'Plexus brachialis sinister' },
+    { key: 'lumbosacral-r', tr: 'Sağ bel-sakral pleksus ve bacak sinirleri', latin: 'Plexus lumbosacralis dexter' },
+    { key: 'lumbosacral-l', tr: 'Sol bel-sakral pleksus ve bacak sinirleri', latin: 'Plexus lumbosacralis sinister' },
+    { key: 'autonomic', tr: 'Sempatik zincir (otonom sinir sistemi)', latin: 'Truncus sympathicus', info: 'Omurganın iki yanında uzanan ganglion zinciri; "savaş ya da kaç" yanıtını iç organlara iletir.' },
+    { key: 'ganglia', tr: 'Spinal ganglionlar ve sinir kökleri', latin: 'Ganglia spinalia, radices', inner: true },
+    { key: 'spinal', tr: 'Diğer spinal sinirler', latin: 'Nervi spinales' },
     { key: 'vagus', tr: 'Vagus siniri', latin: 'Nervus vagus (X)', info: 'Beyin sapından çıkıp kalp, akciğer ve sindirim organlarına uzanan en uzun kafa siniri; “dinlen-sindir” sistemi.' },
   ]),
 ];

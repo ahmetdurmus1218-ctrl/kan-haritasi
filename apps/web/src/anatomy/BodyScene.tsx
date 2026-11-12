@@ -2,8 +2,8 @@ import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { Color, DoubleSide, FrontSide, Mesh, MeshStandardMaterial, type Plane, ShaderMaterial, SphereGeometry, ConeGeometry, TorusGeometry, CylinderGeometry, TubeGeometry, CatmullRomCurve3, Vector3, type BufferGeometry } from 'three';
 import { partDef } from '@kh/catalog';
-import type { ModelPart } from './models';
-import { PART_OPACITY, TRANSLUCENT, colorFor, highlightColor } from './palette';
+import type { ModelPart, PartElement } from './models';
+import { PART_OPACITY, TRANSLUCENT, adaptedColor, colorFor, highlightColor } from './palette';
 import type { StructureHighlight } from './highlight';
 import type { SchematicPart, SchematicShape } from './schematic';
 
@@ -19,6 +19,8 @@ export interface PickInfo {
   structure: string;
   label: string | null;
   partId: string;
+  /** Tek yapı (kemik, kas…) ise kaynak adları. */
+  element?: PartElement | null;
   /** Tıklanan noktanın dünya koordinatı (bilgi bulutunun bağlandığı yer). */
   point?: [number, number, number];
 }
@@ -63,6 +65,8 @@ export interface BodySceneProps {
    * organlar öne çıkar. null: kimse soluklaşmaz.
    */
   muted: Set<string> | null;
+  /** Vücuttan ayrılmış yapı: parçaları bu kadar kaydırılarak (metre) vücudun önünde çizilir. */
+  detach?: { structure: string; offset: [number, number, number] } | null;
 }
 
 const noRaycast = () => null;
@@ -204,7 +208,7 @@ function PartView({ part, clip, visible, color, targetOpacity, emissiveColor, em
     invalidate();
   }, [material, color, emissiveColor, emissive, pulse, targetOpacity, part.id, visuals, invalidate]);
 
-  const info: PickInfo = { structure: part.structure, label: part.label, partId: part.id };
+  const info: PickInfo = { structure: part.structure, label: part.label, partId: part.id, element: 'element' in part ? part.element : null };
   const common = {
     material,
     visible,
@@ -314,7 +318,7 @@ function mutedColor(hex: string, theme: 'light' | 'dark'): string {
 }
 
 export function BodyScene(props: BodySceneProps) {
-  const { parts, schematic, visible, isVisible, highlights, focus, focusParts, skinMode, accent, reducedMotion, onPick, onHover, hidden, isolate, innerView, clip, theme, partLevel, muted } = props;
+  const { parts, schematic, visible, isVisible, highlights, focus, focusParts, skinMode, accent, reducedMotion, onPick, onHover, hidden, isolate, innerView, clip, theme, partLevel, muted, detach } = props;
   const visuals = useRef(new Map<string, Visual>());
   const skinRef = useRef<ShaderMaterial | null>(null);
   const [hovered, setHovered] = useState<{ partId: string; structure: string; whole: boolean } | null>(null);
@@ -340,14 +344,18 @@ export function BodyScene(props: BodySceneProps) {
         // Soluk yapı üzerine gelinince biraz belirginleşir (tıklanabileceği anlaşılsın)
         const targetOpacity = isMuted ? Math.min(focused, isHovered ? 0.55 : focus ? 0.4 : theme === 'light' ? 0.2 : 0.13) : focused;
         const emissiveColor = h ? highlightColor(h.status, h.score) : (focusParts?.has(p.id) ?? false) || isHovered ? accent : null;
+        // Paket damarlarında atardamar / toplardamar rengi kaynak adından
+        const el = 'element' in p ? p.element : null;
+        const base0 = el && /(arter|vein|sinus|arch|trunk|branch)/i.test(el.en) ? colorFor(p.structure, el.en.toLowerCase()) : colorFor(p.structure, p.label);
+        const baseColor = 'adapted' in p && p.adapted ? adaptedColor(base0) : base0;
         const shown = !hidden.has(p.structure) && (isVisible(p.structure) || (!!focus && focus.has(p.structure))) && !(isolate && !inFocus);
-        return (
+        const view = (
           <PartView
             key={p.id}
             part={p}
             clip={clip}
             visible={shown}
-            color={isMuted && !isHovered ? mutedColor(colorFor(p.structure, p.label), theme) : colorFor(p.structure, p.label)}
+            color={isMuted && !isHovered ? mutedColor(baseColor, theme) : baseColor}
             targetOpacity={targetOpacity}
             emissiveColor={emissiveColor}
             emissive={h ? (isHovered ? 1.25 : 0.45 + 0.22 * h.score) : isHovered ? 0.28 : 0.35}
@@ -361,6 +369,13 @@ export function BodyScene(props: BodySceneProps) {
               onHover(info);
             }}
           />
+        );
+        return detach && detach.structure === p.structure ? (
+          <group key={p.id} position={detach.offset}>
+            {view}
+          </group>
+        ) : (
+          view
         );
       })}
       {skin && !hidden.has('skin') && !(isolate && focus) && <SkinView part={skin} mode={skinMode} xrayRef={skinRef} clip={clip} theme={theme} />}

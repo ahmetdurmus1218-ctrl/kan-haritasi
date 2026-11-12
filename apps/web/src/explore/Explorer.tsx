@@ -21,7 +21,7 @@ import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene
 import { ORGANS, insidesOf } from '../anatomy/organs';
 import { partLabel, partLatin } from '../anatomy/names';
 import { interiorForStructure, routeForNode } from '../lib/anatomyNav';
-import { type BodyModel, webglAvailable } from '../anatomy/models';
+import { type BodyModel, elementKey, webglAvailable } from '../anatomy/models';
 import { highlightColor } from '../anatomy/palette';
 import { Banner } from '../components/ui';
 import { LayersIcon, MaximizeIcon, MinimizeIcon } from '../components/icons';
@@ -32,10 +32,10 @@ import { type Phase, SceneDirector } from './SceneDirector';
 import { type Entry, InteriorWorld, type Leaving, WORLD_FOV, type WorldView } from './inside/InteriorScene';
 import { type ActionTarget, LEVEL_DEPTH, type LevelAction, type LevelView, clampStage, levelActions, levelCrumbs, levelView, structureOfInterior } from './interiorNav';
 import { LevelDock } from './LevelDock';
-import { BodyIntroPanel, OrganPanel, type OrganTab, SystemPanel, TestPanel, vesselParts } from './BodyPanels';
+import { BodyIntroPanel, OrganPanel, type OrganTab, SystemPanel, TestPanel, elementLabel, vesselParts } from './BodyPanels';
 import { MENU_SYSTEMS, inBody, isSystemId, structuresOfSystem, systemColor } from './systems';
 import { type CloudData, CloudAnchor, OrganCloud, useCloudRefs } from './OrganCloud';
-import { SearchOverlay } from './SearchOverlay';
+import { SearchOverlay, elementItems } from './SearchOverlay';
 import { CLIP_OFF, type ClipState, ClipPanel, HelpOverlay, ToolBar } from './Tools';
 import { Breadcrumb, Caps, ContextSheet, type Crumb, DEFAULT_LAYERS, type Layers, LayersMenu, LoadingLine, Tooltip, type ViewName, ViewControls } from './ui';
 import { INSIDE, type InsideId, resolveInside } from './inside/registry';
@@ -121,7 +121,7 @@ let introPlayed = false;
 const CARDIO_LAYER = new Set(['heart', 'coronary-arteries', 'aorta', 'carotid-arteries', 'pulmonary-vessels', 'veins', 'renal-vessels', 'abdominal-vessels', 'eye-vessels', 'limb-vessels']);
 
 function layerAllows(layers: Layers, structure: string): boolean {
-  if (structure === 'bones') return layers.skeleton;
+  if (structure === 'bones' || structure === 'joints') return layers.skeleton;
   if (structure === 'skeletal-muscle') return layers.muscles;
   if (CARDIO_LAYER.has(structure)) return layers.cardio;
   if (structure === 'lungs' || structure === 'airways') return layers.respiratory;
@@ -156,6 +156,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   // Araçlar
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const [isolate, setIsolate] = useState(false);
+  /** Organı vücuttan ayır: odaktaki yapı vücudun önüne taşınır (tek başına döndürülüp incelenir). */
+  const [detached, setDetached] = useState(false);
   const [innerView, setInnerView] = useState(false);
   const [clip, setClip] = useState<ClipState>(CLIP_OFF);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -219,6 +221,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     setPartKey(null);
     setIsolate(false);
     setInnerView(false);
+    setDetached(false);
   }, [structure]);
   useEffect(() => {
     // Seviye değişince bulut yalnızca aynı yapıya aitse kalır.
@@ -251,14 +254,50 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     return withFindingHighlights(withMeasures, studies.flatMap((st) => st.findings.map((f) => ({ ...f, fileId: st.head.id }))));
   }, [series, focusTest, weights, studies]);
   const allParts = useMemo(() => [...models.parts, ...models.schematic], [models.parts, models.schematic]);
-  const boxes = useMemo(() => structureBoxes(allParts), [allParts]);
+  const rawBoxes = useMemo(() => structureBoxes(allParts), [allParts]);
+  const detach = useMemo(() => {
+    const b = detached && structure ? rawBoxes.get(structure) : undefined;
+    if (!b || !structure) return null;
+    // Vücudun önüne: organın derinliğine göre yeterince ileri (+Z ön), gövdeden ayrı görünsün.
+    const size = b.getSize(new Vector3());
+    const offset: [number, number, number] = [0, 0, +(0.22 + Math.max(size.x, size.z) * 1.4).toFixed(3)];
+    return { structure, offset };
+  }, [detached, structure, rawBoxes]);
+  const boxes = useMemo(() => {
+    if (!detach) return rawBoxes;
+    const m = new Map(rawBoxes);
+    m.set(detach.structure, rawBoxes.get(detach.structure)!.clone().translate(new Vector3(...detach.offset)));
+    return m;
+  }, [rawBoxes, detach]);
   const vessels = useMemo(() => (structure ? vesselParts(allParts, structure) : []), [allParts, structure]);
+  // Arama: yüklü modeldeki tek yapılar (kemikler, paket yapıları)
+  const elementSearch = useMemo(() => {
+    const seen = new Set<string>();
+    const items: Parameters<typeof elementItems>[0] = [];
+    for (const p of models.parts) {
+      if (!p.element) continue;
+      const key = elementKey(p.structure, p.element.id);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const s = structureById.get(p.structure);
+      items.push({
+        title: elementLabel(p.element),
+        sub: [s?.nameTr, partLabel(p.structure, p.label)].filter(Boolean).join(' · '),
+        latin: p.element.la ?? (p.element.tr ? p.element.en : undefined),
+        en: p.element.en,
+        color: systemColor(s?.systems[0]),
+        structure: p.structure,
+        key,
+      });
+    }
+    return elementItems(items);
+  }, [models.parts]);
   const part = vessels.find((v) => v.id === partKey) ?? null;
 
   // Rotadaki bölüm (#/vucut/yapi/kalp/sol-karincik): parçalar yüklenince seçilir.
   useEffect(() => {
     if (!routePart) return;
-    const v = vessels.find((x) => x.def?.key === routePart);
+    const v = vessels.find((x) => x.key === routePart) ?? vessels.find((x) => !x.element && x.def?.key === routePart) ?? vessels.find((x) => x.def?.key === routePart);
     if (v) setPartKey(v.id);
   }, [routePart, vessels]);
 
@@ -444,7 +483,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     frame(!reducedMotion);
     // focusReady: model geldiğinde tekrar kadrajla; frame her render'da yeni olduğundan bağımlılıkta yok.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownKey, structure, system, focusTest, partKey, focusReady, intro, reducedMotion, controlsReady, body, vp.width, vp.height]);
+  }, [shownKey, structure, system, focusTest, partKey, focusReady, intro, reducedMotion, controlsReady, body, vp.width, vp.height, detached]);
 
   // "İçine gir": kamera organa yaklaşır ve içine dalar; perde bu hareketin sonunda kapanır (SceneDirector delay).
   useEffect(() => {
@@ -546,7 +585,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       root.style.cursor = 'pointer';
       const s = structureById.get(p.structure);
       // Odaktaki organda bölüm adı, diğerlerinde organ adı
-      const name = p.label && p.structure === structure ? (partLabel(p.structure, p.label) ?? p.label) : (s?.nameTr ?? p.structure);
+      const name =
+        p.label && p.structure === structure ? (p.element ? elementLabel(p.element) : (partLabel(p.structure, p.label) ?? p.label)) : (s?.nameTr ?? p.structure);
       const h = highlights.get(p.structure);
       el.textContent = h ? `${name} · ${h.tests.map((t) => highlightName(t)).join(', ')} ${h.status === 'high' ? '▲' : h.status === 'low' ? '▼' : ''}` : name;
       const r = root.getBoundingClientRect();
@@ -651,6 +691,10 @@ export function Explorer({ route }: { route: ExploreRoute }) {
           break;
         case 'h':
           k.hideCurrent();
+          break;
+        case 'd':
+        case 'D':
+          if (k.structure) setDetached((v) => !v);
           break;
         case 'H':
           setHidden(new Set());
@@ -943,6 +987,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                   clip={shown === 'body' ? clipPlane : null}
                   theme={theme}
                   partLevel={structure ?? null}
+                  detach={detach}
                   muted={muted}
                 />
                 {shown !== 'body' && SceneComp && insideState && (
@@ -1051,7 +1096,12 @@ export function Explorer({ route }: { route: ExploreRoute }) {
               </button>
               {layersOpen && (
                 <div className="absolute right-0 top-11">
-                  <LayersMenu layers={layers} onChange={setLayers} onClose={() => setLayersOpen(false)} />
+                  <LayersMenu
+                    layers={layers}
+                    onChange={setLayers}
+                    onClose={() => setLayersOpen(false)}
+                    packs={{ active: models.packs.filter((p) => p.status === 'ready').length, onOpen: () => go({ name: 'privacy' }) }}
+                  />
                 </div>
               )}
             </div>
@@ -1088,6 +1138,8 @@ export function Explorer({ route }: { route: ExploreRoute }) {
             inner={innerView}
             clip={clip.on}
             hiddenCount={hidden.size}
+            detached={detached && !!structure}
+            onDetach={() => setDetached((v) => !v)}
             onSearch={() => setSearchOpen(true)}
             onIsolate={() => setIsolate((v) => !v)}
             onHide={hideCurrent}
@@ -1173,6 +1225,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                 structure={structure}
                 body={body}
                 onSwitchBody={switchBody}
+                schematicLeft={models.schematic.some((p) => p.structure === structure)}
                 highlights={highlights}
                 series={seriesMap}
                 vessels={vessels}
@@ -1227,7 +1280,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         </div>
       )}
 
-      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} onBody={switchBody} />}
+      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} onBody={switchBody} extra={elementSearch} />}
       {helpOpen && <HelpOverlay onClose={() => setHelpOpen(false)} />}
 
       {/* Açılış */}

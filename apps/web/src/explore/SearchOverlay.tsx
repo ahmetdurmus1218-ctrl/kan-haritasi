@@ -12,7 +12,7 @@ import { Caps } from './ui';
  * Tamamen yerel; hiçbir arama ağa gitmez.
  */
 
-type Kind = 'Yapı' | 'Bölüm' | 'Sistem' | 'Sahne' | 'Tahlil';
+type Kind = 'Yapı' | 'Bölüm' | 'Tek yapı' | 'Sistem' | 'Sahne' | 'Tahlil';
 
 export interface SearchItem {
   kind: Kind;
@@ -80,14 +80,19 @@ export function searchIndex(): SearchItem[] {
   return out;
 }
 
-const KIND_RANK: Record<Kind, number> = { Yapı: 0, Sistem: 1, Bölüm: 2, Sahne: 3, Tahlil: 4 };
+const KIND_RANK: Record<Kind, number> = { Yapı: 0, Sistem: 1, Bölüm: 2, 'Tek yapı': 3, Sahne: 4, Tahlil: 5 };
 
-export function searchAnatomy(query: string, limit = 40): SearchItem[] {
+/** Yüklü modeldeki tek yapılar (kemikler, paket yapıları) için arama kayıtları. */
+export function elementItems(items: { title: string; sub: string; latin?: string; en: string; color: string; structure: string; key: string }[]): SearchItem[] {
+  return items.map((i) => ({ kind: 'Tek yapı' as const, title: i.title, sub: i.sub, latin: i.latin, color: i.color, route: { name: 'body' as const, structure: i.structure, part: i.key }, hay: fold(`${i.title} ${i.latin ?? ''} ${i.en}`) }));
+}
+
+export function searchAnatomy(query: string, limit = 40, extra: SearchItem[] = []): SearchItem[] {
   const q = fold(query.trim());
   if (!q) return [];
   const words = q.split(/\s+/);
   const scored: [number, SearchItem][] = [];
-  for (const item of searchIndex()) {
+  for (const item of extra.length ? [...searchIndex(), ...extra] : searchIndex()) {
     let score = 0;
     let ok = true;
     for (const w of words) {
@@ -113,12 +118,12 @@ export function searchAnatomy(query: string, limit = 40): SearchItem[] {
 
 const SUGGEST = ['kalp', 'beyin', 'retina', 'nefron', 'hipofiz', 'hepar', 'sinaps', 'ferritin'];
 
-export function SearchOverlay({ onClose, onBody }: { onClose: () => void; onBody: (sex: 'male' | 'female') => void }) {
+export function SearchOverlay({ onClose, onBody, extra = [] }: { onClose: () => void; onBody: (sex: 'male' | 'female') => void; extra?: SearchItem[] }) {
   const [q, setQ] = useState('');
   const [at, setAt] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
-  const results = useMemo(() => searchAnatomy(q), [q]);
+  const results = useMemo(() => searchAnatomy(q, 40, extra), [q, extra]);
   useEffect(() => input.current?.focus(), []);
   useEffect(() => setAt(0), [q]);
   useEffect(() => {

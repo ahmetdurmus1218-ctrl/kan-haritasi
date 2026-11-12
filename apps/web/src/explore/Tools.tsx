@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { EyeIcon, EyeOffIcon, KeyboardIcon, LayersIcon, ScissorsIcon, SearchIcon, TargetIcon } from '../components/icons';
+import { DetachIcon, EyeIcon, EyeOffIcon, KeyboardIcon, LayersIcon, ScissorsIcon, SearchIcon, TargetIcon } from '../components/icons';
 import { Caps } from './ui';
 
 export type ClipAxis = 'x' | 'y' | 'z';
@@ -39,6 +39,8 @@ export function ToolBar({
   inner,
   clip,
   hiddenCount,
+  detached = false,
+  onDetach,
   onSearch,
   onIsolate,
   onHide,
@@ -53,6 +55,9 @@ export function ToolBar({
   inner: boolean;
   clip: boolean;
   hiddenCount: number;
+  /** Seçili organ vücuttan ayrılmış (önüne taşınmış) mı? */
+  detached?: boolean;
+  onDetach?: () => void;
   onSearch: () => void;
   onIsolate: () => void;
   onHide: () => void;
@@ -70,6 +75,11 @@ export function ToolBar({
       <ToolButton label="İzole et" keyHint="I" active={isolate} disabled={!canFocusTools} onClick={onIsolate}>
         <TargetIcon size={16} />
       </ToolButton>
+      {onDetach && (
+        <ToolButton label={detached ? 'Organı vücuda geri yerleştir' : 'Organı vücuttan ayır'} keyHint="D" active={detached} disabled={!canFocusTools} onClick={onDetach}>
+          <DetachIcon size={16} />
+        </ToolButton>
+      )}
       <ToolButton label="Seçili yapıyı gizle" keyHint="H" disabled={!canFocusTools} onClick={onHide}>
         <EyeOffIcon size={16} />
       </ToolButton>
@@ -138,6 +148,7 @@ const SHORTCUTS: [string, string][] = [
   ['R', 'Görünümü sıfırla'],
   ['I', 'Seçili yapıyı izole et'],
   ['H', 'Seçili yapıyı gizle'],
+  ['D', 'Organı vücuttan ayır / geri yerleştir'],
   ['Shift + H', 'Gizlenenleri geri getir'],
   ['X', 'Kesit görünümü aç/kapat'],
   ['[  ]', 'Kesiti ilerlet / geri al'],
