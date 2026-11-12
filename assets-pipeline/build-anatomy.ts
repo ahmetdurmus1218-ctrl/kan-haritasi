@@ -24,7 +24,8 @@ import { EXTMeshoptCompression, KHRMeshQuantization, ALL_EXTENSIONS } from '@glt
 import { clearNodeTransform, dedup, flatten, joinPrimitives, meshopt, normals, prune, quantize, simplify, weld, getBounds } from '@gltf-transform/functions';
 import { MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import { type ModelAsset, cleanNodeName, partFor, structureById, structureForNode } from '@kh/catalog';
-import { BP3D_COMMIT, BP3D_ORGANS, BP3D_REPO, type Bp3dGroup, bp3dDocument, centroidOf, planBp3d, readStl } from './bp3d';
+import { BP3D_COMMIT, BP3D_ORGANS, BP3D_REPO, type Bp3dGroup, type ElementExtras, bp3dDocument, bp3dName, centroidOf, planBp3d, readStl } from './bp3d';
+import { type ElementName, boneName, hraBoneName } from './names-tr';
 import { limbVesselDocument, nerveDocument, trunkVesselDocument } from './limbs';
 import { type LimbFit, boneArray, femaleLimbs, kneeFit } from './anatomy-fit';
 import { type Rigid, Volume, apply as applyRigid, keepInside } from './fit';
@@ -51,6 +52,8 @@ interface SourceSpec {
   route?: (clean: string) => string | null | undefined;
   /** Diz dosyası: o taraftaki diz uyum dönüşümü uygulanır (HRA diz → uygulama kemikleri). */
   knee?: 'l' | 'r';
+  /** Her kaynak düğüm ayrı yapı (element) olarak kalır; ad çevirisi bu işlevle. */
+  elements?: (clean: string) => ElementName | null;
 }
 
 /** Vücut başına diz uyum dönüşümleri (main içinde hesaplanır). */
@@ -104,8 +107,8 @@ const SOURCES: Record<BodySex, SourceSpec[]> = {
   ],
   female: [
     { file: 'VH_Female/v1.3/VH_F_skin.glb', asset: 'body', structure: 'skin', tris: 40000 },
-    { file: 'VH_Female/v1.2/VH_F_Vertebrae.glb', asset: 'skeleton', structure: 'bones', tris: 16000 },
-    { file: 'VH_Female/v1.2/VH_F_Pelvis.glb', asset: 'skeleton', route: (n) => (/spongy/.test(n) ? null : 'bones'), tris: 12000 },
+    { file: 'VH_Female/v1.2/VH_F_Vertebrae.glb', asset: 'skeleton', structure: 'bones', tris: 16000, elements: hraBoneName },
+    { file: 'VH_Female/v1.2/VH_F_Pelvis.glb', asset: 'skeleton', route: (n) => (/spongy/.test(n) ? null : 'bones'), tris: 12000, elements: hraBoneName },
     { file: 'VH_Female/v1.2/VH_F_Heart.glb', asset: 'cardio', structure: 'heart', tris: 30000 },
     { file: 'VH_Female/v1.4/3d-vh-f-blood-vasculature.glb', asset: 'cardio', fallback: 'abdominal-vessels', tris: 110000, keepNodes: true },
     { file: 'VH_Female/v1.4/3d-vh-f-lung.glb', asset: 'respiratory', fallback: 'lungs', tris: 42000 },
@@ -213,6 +216,7 @@ async function loadSource(spec: SourceSpec): Promise<Document> {
   // 3) Yapıya göre grupla ve birleştir
   const scene = root.getDefaultScene() ?? root.listScenes()[0]!;
   const groups = new Map<string, { node: Node; label: string }[]>();
+  const extras = new Map<string, ElementExtras>();
   for (const node of root.listNodes()) {
     if (!node.getMesh()) continue;
     const routed = spec.route?.(cleanNodeName(node.getName()));
@@ -221,7 +225,13 @@ async function loadSource(spec: SourceSpec): Promise<Document> {
     if (!structure || !structureById.has(structure)) throw new Error(`yapı bulunamadı: ${spec.file} → ${node.getName()}`);
     // Damarlar tek tek; organlar bölümlerine göre (parts.ts); kuralı olmayan yapılar tek parça.
     const part = spec.keepNodes ? cleanLabel(node.getName()) : partFor(structure, node.getName());
-    const key = part ? `${structure}|${part}` : structure;
+    let key = part ? `${structure}|${part}` : structure;
+    if (spec.elements) {
+      const clean = cleanNodeName(node.getName());
+      const n = spec.elements(clean);
+      key = `${key}|${clean.replace(/ /g, '-')}`;
+      extras.set(key, { id: clean, en: clean, ...(n ? { tr: n.tr, la: n.la } : {}), src: 'hra' });
+    }
     const list = groups.get(key) ?? [];
     list.push({ node, label: cleanLabel(node.getName()) });
     groups.set(key, list);
@@ -243,6 +253,8 @@ async function loadSource(spec: SourceSpec): Promise<Document> {
       mesh.addPrimitive(joined);
     }
     const n = doc.createNode(key).setMesh(mesh);
+    const ex = extras.get(key);
+    if (ex) n.setExtras({ ...ex });
     newNodes.push(n);
   }
   for (const node of root.listNodes()) if (!newNodes.includes(node)) node.dispose();
@@ -423,7 +435,17 @@ async function loadBp3d(asset: keyof typeof BP3D_BUDGET, sex: BodySex): Promise<
   let groups = asset === 'body' ? plan.skin : asset === 'skeleton' ? plan.skeleton : plan.muscles;
   // Kadında omurga ve leğen kemiği HRA VH_F'den gelir (kadın pelvisi); geri kalanı dönüştürülür.
   if (sex === 'female' && asset === 'skeleton') groups = groups.filter((g) => g.key !== 'bones|spine' && g.key !== 'bones|pelvis');
-  const doc = bp3dDocument(groups, asset, sex === 'female' ? (asset === 'skeleton' ? femaleBones : femaleArray) : undefined);
+  // İskelet: her kemik ayrı düğüm (BodyParts3D dosyası başına), adı ve kaynağı düğümde.
+  const element =
+    asset === 'skeleton'
+      ? (id: string): ElementExtras => {
+          const en = bp3dName(id);
+          const n = boneName(en);
+          return { id, en, ...(n ? { tr: n.tr, la: n.la } : {}), src: 'bp3d3', ...(sex === 'female' ? { adapted: true } : {}) };
+        }
+      : undefined;
+  const groupExtras = { src: 'bp3d3', ...(sex === 'female' && asset !== 'body' ? { adapted: true } : {}) };
+  const doc = bp3dDocument(groups, asset, sex === 'female' ? (asset === 'skeleton' ? femaleBones : femaleArray) : undefined, undefined, element, groupExtras);
   await simplifyTo(doc, BP3D_BUDGET[asset] * (sex === 'female' && asset === 'skeleton' ? 0.9 : 1), `BodyParts3D ${asset}`, groups.length);
   return doc;
 }
@@ -432,7 +454,8 @@ async function loadBp3dOrgans(asset: keyof typeof BP3D_ORGANS, sex: BodySex, gla
   if (asset === 'reproductive' && sex === 'female') return null;
   const groups: Bp3dGroup[] = BP3D_ORGANS[asset];
   const place = glands ? (g: Bp3dGroup, c: V3): V3 | null => (glands[g.key] ? [glands[g.key]![0] - c[0], glands[g.key]![1] - c[1], glands[g.key]![2] - c[2]] : null) : undefined;
-  const doc = bp3dDocument(groups, asset, sex === 'female' ? m2fArray : undefined, place);
+  // Kadında bu BodyParts3D organları erkek referansından uyarlanmıştır (HRA kadın vücudunda yoklar).
+  const doc = bp3dDocument(groups, asset, sex === 'female' ? m2fArray : undefined, place, undefined, { src: 'bp3d3', ...(sex === 'female' ? { adapted: true } : {}) });
   await simplifyTo(doc, BP3D_ORGAN_BUDGET[asset], `BodyParts3D ${asset}`, groups.length);
   return doc;
 }
@@ -565,7 +588,10 @@ kalça, diz, ayak bileği) etrafında döndürülerek kadın derisine oturtuldu 
 eklemlerde yumuşak geçişli). HRA diz parçaları (kıkırdak, menisküs, bağlar) her iki vücutta kendi
 femur/tibia uçları üzerinden uygulamanın kemiklerine oturtuldu. Hipofiz ve böbreküstü bezleri komşu HRA
 organlarına göre yerleştirildi. Ağlar sadeleştirildi (meshoptimizer), nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı.
-Tiroid bezi ve kulak kaynaklarda olmadığından uygulamada şematik olarak çizilir.
+Tiroid bezi ve kulak temel modelin kaynaklarında olmadığından uygulamada şematik olarak çizilir.
+İskelette her kemik (BodyParts3D dosyası başına; kadında omurga ve pelvis için HRA düğümü başına) ayrı
+ağdır; düğümün glTF "extras" alanında kaynak kimliği (FMA), İngilizce adı, Türkçe ve Latince adı, kaynak
+kodu ve kadında "adapted" (erkek referansından uyarlandı) işareti bulunur.
 `,
   );
 }

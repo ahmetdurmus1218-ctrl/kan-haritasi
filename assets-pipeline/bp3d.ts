@@ -82,6 +82,27 @@ function hierarchy(): Hierarchy {
   return { names, children };
 }
 
+let cachedHierarchy: Hierarchy | null = null;
+/** BodyParts3D parça adı (İngilizce, ör. "right fifth metacarpal bone"). */
+export function bp3dName(id: string): string {
+  cachedHierarchy ??= hierarchy();
+  return cachedHierarchy.names.get(id) ?? id;
+}
+
+/** glTF düğümüne yazılan tek yapı (element) bilgisi: uygulama `userData` olarak okur. */
+export interface ElementExtras {
+  /** Kaynak kimliği (ör. FMA kimliği). */
+  id: string;
+  /** Kaynaktaki İngilizce ad. */
+  en: string;
+  tr?: string;
+  la?: string;
+  /** Kaynak kodu: bp3d3 | hra | za (uygulamadaki kaynak tablosu). */
+  src: string;
+  /** Başka bir vücuttan (erkek → kadın) uyarlandı. */
+  adapted?: boolean;
+}
+
 function descendants(h: Hierarchy, root: string): Set<string> {
   const out = new Set<string>();
   const stack = [root];
@@ -265,10 +286,30 @@ export type PointMap = (p: Float32Array, group?: string) => void;
  * `map`: konumlara uygulanacak dönüşüm (ör. erkek → kadın vücudu); `place`: grup başına son konum
  * düzeltmesi (bezleri komşu organa oturtmak için), `offset` yerine kullanılır.
  */
-export function bp3dDocument(groups: Bp3dGroup[], sceneName: string, map?: PointMap, place?: (g: Bp3dGroup, centroid: [number, number, number]) => [number, number, number] | null): Document {
+export function bp3dDocument(
+  groups: Bp3dGroup[],
+  sceneName: string,
+  map?: PointMap,
+  place?: (g: Bp3dGroup, centroid: [number, number, number]) => [number, number, number] | null,
+  /** Verilirse her kaynak dosya ayrı düğüm olur ("grup|kimlik"), bilgisi düğümün extras'ına yazılır. */
+  element?: (id: string) => ElementExtras,
+  /** Grup düğümlerinin extras'ı (ör. kaynak ve "uyarlandı" bilgisi). */
+  groupExtras?: Record<string, unknown>,
+): Document {
   const doc = new Document();
   const buffer = doc.createBuffer();
   const scene = doc.createScene(sceneName);
+  if (element) {
+    for (const g of groups) {
+      for (const id of g.ids) {
+        const pos = readStl(id);
+        if (map) map(pos, g.key);
+        scene.addChild(meshNode(doc, buffer, pos, `${g.key}|${id}`).setExtras({ ...element(id) }));
+      }
+    }
+    doc.getRoot().setDefaultScene(scene);
+    return doc;
+  }
   for (const g of groups) {
     const arrays = g.ids.map(readStl);
     if (map) for (const a of arrays) map(a, g.key);
@@ -285,17 +326,23 @@ export function bp3dDocument(groups: Bp3dGroup[], sceneName: string, map?: Point
       pos.set(a, o);
       o += a.length;
     }
-    const count = pos.length / 3;
-    const index = count > 65535 ? new Uint32Array(count) : new Uint16Array(count);
-    for (let i = 0; i < count; i++) index[i] = i;
-    const prim = doc
-      .createPrimitive()
-      .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(pos).setBuffer(buffer))
-      .setIndices(doc.createAccessor().setType('SCALAR').setArray(index).setBuffer(buffer));
-    const mesh = doc.createMesh(g.key).addPrimitive(prim);
-    const node: Node = doc.createNode(g.key).setMesh(mesh);
+    const node = meshNode(doc, buffer, pos, g.key);
+    if (groupExtras) node.setExtras({ ...groupExtras });
     scene.addChild(node);
   }
   doc.getRoot().setDefaultScene(scene);
   return doc;
+}
+
+/** İndekssiz üçgen çorbasından tek düğümlük ağ. */
+export function meshNode(doc: Document, buffer: ReturnType<Document['createBuffer']>, pos: Float32Array, name: string): Node {
+  const count = pos.length / 3;
+  const index = count > 65535 ? new Uint32Array(count) : new Uint16Array(count);
+  for (let i = 0; i < count; i++) index[i] = i;
+  const prim = doc
+    .createPrimitive()
+    .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(pos).setBuffer(buffer))
+    .setIndices(doc.createAccessor().setType('SCALAR').setArray(index).setBuffer(buffer));
+  const mesh = doc.createMesh(name).addPrimitive(prim);
+  return doc.createNode(name).setMesh(mesh);
 }

@@ -423,7 +423,8 @@ export function trunkVesselDocument(map?: (p: Float32Array) => void): Document {
       .setAttribute('POSITION', doc.createAccessor().setType('VEC3').setArray(pos).setBuffer(buffer))
       .setIndices(doc.createAccessor().setType('SCALAR').setArray(index).setBuffer(buffer));
     const key = `${structure}|${name}`;
-    scene.addChild(doc.createNode(key).setMesh(doc.createMesh(key).addPrimitive(prim)));
+    // map verildiyse (kadın vücudu) damar erkek referansından uyarlanmıştır.
+    scene.addChild(doc.createNode(key).setMesh(doc.createMesh(key).addPrimitive(prim)).setExtras({ src: 'bp3d3', ...(map ? { adapted: true } : {}) }));
   }
   doc.getRoot().setDefaultScene(scene);
   return doc;

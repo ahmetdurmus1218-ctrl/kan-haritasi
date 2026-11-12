@@ -25,4 +25,7 @@ kalça, diz, ayak bileği) etrafında döndürülerek kadın derisine oturtuldu 
 eklemlerde yumuşak geçişli). HRA diz parçaları (kıkırdak, menisküs, bağlar) her iki vücutta kendi
 femur/tibia uçları üzerinden uygulamanın kemiklerine oturtuldu. Hipofiz ve böbreküstü bezleri komşu HRA
 organlarına göre yerleştirildi. Ağlar sadeleştirildi (meshoptimizer), nicemlendi ve EXT_meshopt_compression ile sıkıştırıldı.
-Tiroid bezi ve kulak kaynaklarda olmadığından uygulamada şematik olarak çizilir.
+Tiroid bezi ve kulak temel modelin kaynaklarında olmadığından uygulamada şematik olarak çizilir.
+İskelette her kemik (BodyParts3D dosyası başına; kadında omurga ve pelvis için HRA düğümü başına) ayrı
+ağdır; düğümün glTF "extras" alanında kaynak kimliği (FMA), İngilizce adı, Türkçe ve Latince adı, kaynak
+kodu ve kadında "adapted" (erkek referansından uyarlandı) işareti bulunur.

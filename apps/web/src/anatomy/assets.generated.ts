@@ -3,7 +3,7 @@ export const MODEL_ASSETS = {
   "male": {
     "body": {
       "file": "m/body.glb",
-      "bytes": 921820,
+      "bytes": 921844,
       "triangles": 35850,
       "bounds": {
         "min": [
@@ -20,8 +20,8 @@ export const MODEL_ASSETS = {
     },
     "skeleton": {
       "file": "m/skeleton.glb",
-      "bytes": 3671080,
-      "triangles": 138986,
+      "bytes": 4410316,
+      "triangles": 141408,
       "bounds": {
         "min": [
           -0.3285,
@@ -29,7 +29,7 @@ export const MODEL_ASSETS = {
           -0.1555
         ],
         "max": [
-          0.3638,
+          0.3639,
           0.9136,
           0.1181
         ]
@@ -37,7 +37,7 @@ export const MODEL_ASSETS = {
     },
     "endocrine": {
       "file": "m/endocrine.glb",
-      "bytes": 118424,
+      "bytes": 118500,
       "triangles": 3996,
       "bounds": {
         "min": [
@@ -54,7 +54,7 @@ export const MODEL_ASSETS = {
     },
     "digestive": {
       "file": "m/digestive.glb",
-      "bytes": 2112328,
+      "bytes": 2112376,
       "triangles": 78404,
       "bounds": {
         "min": [
@@ -88,7 +88,7 @@ export const MODEL_ASSETS = {
     },
     "reproductive": {
       "file": "m/reproductive.glb",
-      "bytes": 254500,
+      "bytes": 254624,
       "triangles": 9196,
       "bounds": {
         "min": [
@@ -105,7 +105,7 @@ export const MODEL_ASSETS = {
     },
     "respiratory": {
       "file": "m/respiratory.glb",
-      "bytes": 1630860,
+      "bytes": 1630884,
       "triangles": 61651,
       "bounds": {
         "min": [
@@ -156,7 +156,7 @@ export const MODEL_ASSETS = {
     },
     "cardio": {
       "file": "m/cardio.glb",
-      "bytes": 4903492,
+      "bytes": 4903816,
       "triangles": 182115,
       "bounds": {
         "min": [
@@ -173,7 +173,7 @@ export const MODEL_ASSETS = {
     },
     "muscles": {
       "file": "m/muscles.glb",
-      "bytes": 4043600,
+      "bytes": 4043976,
       "triangles": 149748,
       "bounds": {
         "min": [
@@ -209,24 +209,24 @@ export const MODEL_ASSETS = {
     },
     "skeleton": {
       "file": "f/skeleton.glb",
-      "bytes": 4110116,
-      "triangles": 155370,
+      "bytes": 4791296,
+      "triangles": 156120,
       "bounds": {
         "min": [
           -0.4657,
           -0.7922,
-          -0.1825
+          -0.1824
         ],
         "max": [
           0.4601,
-          0.8652,
-          0.0628
+          0.8651,
+          0.063
         ]
       }
     },
     "endocrine": {
       "file": "f/endocrine.glb",
-      "bytes": 118452,
+      "bytes": 118572,
       "triangles": 3998,
       "bounds": {
         "min": [
@@ -243,7 +243,7 @@ export const MODEL_ASSETS = {
     },
     "digestive": {
       "file": "f/digestive.glb",
-      "bytes": 2045716,
+      "bytes": 2045796,
       "triangles": 76055,
       "bounds": {
         "min": [
@@ -294,7 +294,7 @@ export const MODEL_ASSETS = {
     },
     "respiratory": {
       "file": "f/respiratory.glb",
-      "bytes": 1619376,
+      "bytes": 1619416,
       "triangles": 60972,
       "bounds": {
         "min": [
@@ -345,7 +345,7 @@ export const MODEL_ASSETS = {
     },
     "cardio": {
       "file": "f/cardio.glb",
-      "bytes": 4889164,
+      "bytes": 4889684,
       "triangles": 180574,
       "bounds": {
         "min": [
@@ -362,7 +362,7 @@ export const MODEL_ASSETS = {
     },
     "muscles": {
       "file": "f/muscles.glb",
-      "bytes": 4052944,
+      "bytes": 4053544,
       "triangles": 149698,
       "bounds": {
         "min": [
