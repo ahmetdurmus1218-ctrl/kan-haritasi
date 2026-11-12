@@ -97,6 +97,38 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           sha256sum out/*.apk | tee out/SHA256SUMS.txt
 
+      - name: Anatomi paketleri resmi listeyle eşleşmeli (APK'ya girmez, ayrı indirilir)
+        run: |
+          mkdir -p out-packs
+          python3 - <<'PY'
+          import hashlib, json, re, zipfile, pathlib, sys
+          src = pathlib.Path('apps/web/src/anatomy/packs.generated.ts').read_text()
+          index = json.loads(re.search(r'PACK_INDEX = (\[.*\]) as const', src, re.S).group(1))
+          ok = True
+          for e in index:
+              f = pathlib.Path('anatomy-packs') / e['file']
+              if not f.exists():
+                  print(f"::error::paket yok: {f}"); ok = False; continue
+              z = zipfile.ZipFile(f)
+              glb = z.read('model.glb'); man = json.loads(z.read('manifest.json'))
+              sha = hashlib.sha256(glb).hexdigest()
+              if sha != e['sha256'] or man['model']['sha256'] != sha or 'ATTRIBUTION.txt' not in z.namelist():
+                  print(f"::error::paket doğrulanamadı: {f}"); ok = False
+              else:
+                  print(f"{e['file']}: {sha[:16]}… {f.stat().st_size // 1024} KB")
+          sys.exit(0 if ok else 1)
+          PY
+          cp anatomy-packs/*.khpack out-packs/
+          (cd out-packs && sha256sum *.khpack > SHA256SUMS-paketler.txt)
+          unzip -l apps/android/app/build/outputs/apk/release/*.apk | grep -q khpack && { echo "::error::paket APK'ya girmiş"; exit 1; } || true
+
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: KanHaritasi-anatomi-paketleri-${{ steps.name.outputs.version }}
+          path: out-packs/
+          retention-days: 7
+
       - uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
@@ -112,7 +144,7 @@ jobs:
           VERSION: ${{ steps.name.outputs.version }}
         run: |
           gh release delete apk-son --yes --cleanup-tag || true
-          gh release create apk-son out/*.apk out/SHA256SUMS.txt \
+          gh release create apk-son out/*.apk out/SHA256SUMS.txt out-packs/*.khpack out-packs/SHA256SUMS-paketler.txt \
             --target "$GITHUB_SHA" --prerelease \
             --title "Kan Haritası ${VERSION} (son derleme)" \
-            --notes "main dalının son derlemesi (${GITHUB_SHA::7}). APK'yı telefondan indirip kur. Veriler yalnızca cihazda, şifreli; uygulamanın internet izni yoktur."
+            --notes "main dalının son derlemesi (${GITHUB_SHA::7}). APK'yı telefondan indirip kur. Veriler yalnızca cihazda, şifreli; uygulamanın internet izni yoktur. İsteğe bağlı ayrıntılı anatomi paketleri (anatomi-*.khpack, Z-Anatomy CC BY-SA 4.0): indirip uygulamada Gizlilik ve veriler → Anatomi paketleri → Paket kur ile ekle; SHA-256 özeti uygulama içinde doğrulanır."

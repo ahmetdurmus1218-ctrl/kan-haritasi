@@ -30,11 +30,14 @@ import { limbVesselDocument, nerveDocument, trunkVesselDocument } from './limbs'
 import { type LimbFit, boneArray, femaleLimbs, kneeFit } from './anatomy-fit';
 import { type Rigid, Volume, apply as applyRigid, keepInside } from './fit';
 import { trianglesOf } from './anatomy-fit';
+import { PACKS, type PackIndexEntry, alignment, buildPack } from './zanatomy-packs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SRC = process.env.HRA_DIR ?? join(here, '.cache/hra');
 const OUT = join(here, '../apps/web/public/models');
 const WEB_INDEX = join(here, '../apps/web/src/anatomy/assets.generated.ts');
+const PACK_DIR = join(here, '../anatomy-packs');
+const PACK_INDEX = join(here, '../apps/web/src/anatomy/packs.generated.ts');
 
 type BodySex = 'male' | 'female';
 
@@ -474,6 +477,10 @@ async function main() {
   };
   mkdirSync(OUT, { recursive: true });
   const only = process.env.ONLY_SEX as BodySex | undefined;
+  // ONLY_PACKS=1: yalnız Z-Anatomy paketleri; SKIP_PACKS=1: paketler üretilmez.
+  const onlyPacks = process.env.ONLY_PACKS === '1';
+  const skipPacks = process.env.SKIP_PACKS === '1';
+  const packIndex: PackIndexEntry[] = [];
   for (const sex of ['male', 'female'] as const) {
     if (only && only !== sex) continue;
     const dir = join(OUT, sex === 'male' ? 'm' : 'f');
@@ -490,6 +497,14 @@ async function main() {
       l: await kneeFit(join(SRC, `${tag}_Knee_L.glb`), boneArray('bones|femur-l', boneMap), boneArray('bones|leg-l', boneMap), console.log),
       r: await kneeFit(join(SRC, `${tag}_Knee_R.glb`), boneArray('bones|femur-r', boneMap), boneArray('bones|leg-r', boneMap), console.log),
     };
+    if (!skipPacks) {
+      console.log(`\n[${sex} · Z-Anatomy paketleri]`);
+      for (const def of PACKS) {
+        if (process.env.PACK && process.env.PACK !== def.id) continue;
+        packIndex.push(await buildPack(def, sex, sex === 'female' ? { soft: femaleArray, rigid: femaleBones } : {}, PACK_DIR, console.log));
+      }
+    }
+    if (onlyPacks) continue;
     const assets: Record<string, unknown> = {};
     (manifest.bodies as Record<string, unknown>)[sex] = assets;
     for (const asset of ASSETS) {
@@ -539,8 +554,18 @@ async function main() {
       console.log(`  → ${sex}/${asset}.glb ${(statSync(file).size / 1024).toFixed(0)} KB, ${triCount(target)} üçgen`);
     }
   }
-  if (only) {
-    console.log('\nONLY_SEX: dizin ve künye dosyaları güncellenmedi.');
+  if (!skipPacks && !only && !process.env.PACK) {
+    const a = alignment(() => {});
+    writeFileSync(
+      PACK_INDEX,
+      `// Otomatik üretildi (assets-pipeline/build-anatomy.ts → zanatomy-packs.ts). Elle düzenlemeyin.\n` +
+        `// Resmi anatomi paketleri: kurulumda paketteki model.glb'nin SHA-256 özeti buradakiyle eşleşmelidir.\n` +
+        `export const PACK_ALIGNMENT = ${JSON.stringify({ pairs: a.pairs, meanResidualMm: +(a.residual * 1000).toFixed(2), maxResidualMm: +(a.max * 1000).toFixed(2) })} as const;\n\n` +
+        `export const PACK_INDEX = ${JSON.stringify(packIndex, null, 1)} as const;\n`,
+    );
+  }
+  if (only || onlyPacks) {
+    console.log('\nONLY_SEX / ONLY_PACKS: model dizini ve künye dosyaları güncellenmedi.');
     return;
   }
   writeFileSync(join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 1));
@@ -592,6 +617,10 @@ Tiroid bezi ve kulak temel modelin kaynaklarında olmadığından uygulamada şe
 İskelette her kemik (BodyParts3D dosyası başına; kadında omurga ve pelvis için HRA düğümü başına) ayrı
 ağdır; düğümün glTF "extras" alanında kaynak kimliği (FMA), İngilizce adı, Türkçe ve Latince adı, kaynak
 kodu ve kadında "adapted" (erkek referansından uyarlandı) işareti bulunur.
+
+4) İsteğe bağlı anatomi paketleri (ayrı dosyalar, anatomi-*.khpack; uygulamaya gömülü değildir):
+   Z-Anatomy — The open source atlas of anatomy, CC BY-SA 4.0 (BodyParts3D türevi), kafa sinirleri
+   University of Dundee CC BY 4.0. Her paketin kendi ATTRIBUTION.txt dosyası vardır.
 `,
   );
 }

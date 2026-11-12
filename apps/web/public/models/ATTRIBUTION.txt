@@ -29,3 +29,7 @@ Tiroid bezi ve kulak temel modelin kaynaklarında olmadığından uygulamada şe
 İskelette her kemik (BodyParts3D dosyası başına; kadında omurga ve pelvis için HRA düğümü başına) ayrı
 ağdır; düğümün glTF "extras" alanında kaynak kimliği (FMA), İngilizce adı, Türkçe ve Latince adı, kaynak
 kodu ve kadında "adapted" (erkek referansından uyarlandı) işareti bulunur.
+
+4) İsteğe bağlı anatomi paketleri (ayrı dosyalar, anatomi-*.khpack; uygulamaya gömülü değildir):
+   Z-Anatomy — The open source atlas of anatomy, CC BY-SA 4.0 (BodyParts3D türevi), kafa sinirleri
+   University of Dundee CC BY 4.0. Her paketin kendi ATTRIBUTION.txt dosyası vardır.
