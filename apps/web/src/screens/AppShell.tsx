@@ -5,7 +5,8 @@ import { type Route, go, hrefFor } from '../state/router';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Sheet } from '../components/Sheet';
 import { SearchSheet } from '../components/SearchSheet';
-import { BodyIcon, BrainIcon, ChartIcon, DropIcon, FolderIcon, HomeIcon, ListIcon, LockIcon, MicroscopeIcon, MoreIcon, PlusIcon, PulseIcon, ScanIcon, SearchIcon, ShieldIcon, UserIcon } from '../components/icons';
+import { BrandLogo } from '../components/BrandLogo';
+import { BodyIcon, BrainIcon, ChartIcon, FolderIcon, HomeIcon, ListIcon, LockIcon, MicroscopeIcon, MoreIcon, PlusIcon, PulseIcon, ScanIcon, SearchIcon, ShieldIcon, UserIcon } from '../components/icons';
 
 /**
  * Bilgi mimarisi: dokuz ana yer ve tek giriş noktası "+ Veri ekle".
@@ -119,9 +120,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       {/* Masaüstü / tablet kenar çubuğu */}
       <aside className={`hidden w-64 shrink-0 flex-col overflow-y-auto border-r border-ink-600/60 bg-ink-900/60 ${immersive ? '' : 'md:flex'}`}>
         <a href={hrefFor({ name: 'home' })} className="flex items-center gap-3 px-5 pb-6 pt-7">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-accent to-accent-deep text-on-solid shadow-[var(--shadow-card)]">
-            <DropIcon size={20} />
-          </span>
+          <BrandLogo size={36} glow />
           <span className="text-[17px] font-semibold tracking-tight">Kan Haritası</span>
         </a>
         <div className="px-4 pb-5">
@@ -163,9 +162,7 @@ export function AppShell({ route, children }: { route: Route; children: ReactNod
       {/* Mobil üst çubuk */}
       <header className={`items-center justify-between bg-ink-950/85 px-4 pb-2 pt-3 backdrop-blur-xl md:hidden ${explore || immersive ? 'hidden' : 'flex'}`}>
         <a href={hrefFor({ name: 'home' })} className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-deep text-on-solid">
-            <DropIcon size={17} />
-          </span>
+          <BrandLogo size={30} glow />
           <span className="text-[16px] font-semibold tracking-tight">Kan Haritası</span>
         </a>
         <div className="flex items-center gap-0.5">

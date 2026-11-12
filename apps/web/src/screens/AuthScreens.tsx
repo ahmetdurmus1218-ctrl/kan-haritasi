@@ -4,7 +4,8 @@ import { useVault } from '../state/VaultContext';
 import { nextBlockDelayMs, readSetting, writeSetting } from '../state/settings';
 import { userMessage } from '../lib/messages';
 import { Banner, Dialog } from '../components/ui';
-import { DropIcon, EyeIcon, EyeOffIcon, FingerprintIcon, LockIcon, ShieldIcon, SpinnerIcon } from '../components/icons';
+import { BrandLogo } from '../components/BrandLogo';
+import { EyeIcon, EyeOffIcon, FingerprintIcon, LockIcon, ShieldIcon, SpinnerIcon } from '../components/icons';
 import { DEVICE_KEY_SCHEME } from '@kh/platform';
 
 function AuthLayout({ children }: { children: ReactNode }) {
@@ -12,9 +13,7 @@ function AuthLayout({ children }: { children: ReactNode }) {
     <div className="grid-bg flex min-h-full items-center justify-center px-4 py-10">
       <div className="w-full max-w-[420px]">
         <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-accent/30 bg-accent/10 text-accent">
-            <DropIcon size={22} />
-          </div>
+          <BrandLogo size={46} glow />
           <div>
             <div className="text-lg font-semibold tracking-tight">Kan Haritası</div>
             <div className="text-xs text-fg-muted">Tahlilini vücudunda keşfet</div>

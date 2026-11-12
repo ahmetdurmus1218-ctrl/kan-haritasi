@@ -16,6 +16,7 @@ import { ResultDetail, ResultsPage } from './screens/ResultsPage';
 import { ImagesPage } from './screens/ImagesPage';
 
 import { Banner } from './components/ui';
+import { Splash } from './components/Splash';
 import { SpinnerIcon } from './components/icons';
 
 // 3D keşif ekranı (three.js) büyük olduğu için yalnızca açıldığında yüklenir.
@@ -166,10 +167,17 @@ function UpdateNotice() {
   );
 }
 
+/** Açılış ekranı: kasa durumu belirlenince (yükleme bitti) çubuk tamamlanır. */
+function SplashGate() {
+  const { status } = useVault();
+  return <Splash ready={status.kind !== 'loading'} />;
+}
+
 export function App() {
   return (
     <VaultProvider>
       <Gate />
+      <SplashGate />
       <UpdateNotice />
     </VaultProvider>
   );

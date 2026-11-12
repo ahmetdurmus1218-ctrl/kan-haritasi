@@ -1,22 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Kan Haritası logosu: kırmızı-mavi kan damlası ve nabız çizgisi (uygulamadaki BrandLogo ile aynı). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:translateX="22" android:translateY="22">
+    <group android:translateX="29" android:translateY="25" android:scaleX="0.5" android:scaleY="0.5">
+        <path
+            android:strokeWidth="2.5"
+            android:pathData="M50,4 C38,26 12,52 12,74 a38,38 0,0 0,76 0 C88,52 62,26 50,4z">
+            <aapt:attr name="android:fillColor">
+                <gradient android:type="linear" android:startX="50" android:startY="4" android:endX="50" android:endY="112">
+                    <item android:offset="0" android:color="#FFFF3B4A" />
+                    <item android:offset="0.48" android:color="#FFD0263C" />
+                    <item android:offset="0.52" android:color="#FF2A5FE0" />
+                    <item android:offset="1" android:color="#FF1638A8" />
+                </gradient>
+            </aapt:attr>
+            <aapt:attr name="android:strokeColor">
+                <gradient android:type="linear" android:startX="50" android:startY="4" android:endX="50" android:endY="112">
+                    <item android:offset="0" android:color="#FFFFB0B8" />
+                    <item android:offset="1" android:color="#FF9CC4FF" />
+                </gradient>
+            </aapt:attr>
+        </path>
         <path
             android:fillColor="#00000000"
-            android:strokeColor="#FF37D6C4"
-            android:strokeWidth="3.6"
-            android:strokeLineJoin="round"
-            android:pathData="M32,10c-6.5,9.5 -14,18 -14,28a14,14 0,0 0,28 0c0,-10 -7.5,-18.5 -14,-28z" />
+            android:strokeColor="#59FFFFFF"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:pathData="M50,4 C44,16 36,26 30,36" />
         <path
             android:fillColor="#00000000"
-            android:strokeColor="#FFE7EDF5"
-            android:strokeWidth="2.8"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="5"
             android:strokeLineCap="round"
             android:strokeLineJoin="round"
-            android:pathData="M23,40h5l2.2,-5.5 3.3,9.5 2.2,-4.5h4.3" />
+            android:pathData="M20,78 H38 L44,66 L52,92 L58,72 L63,78 H80" />
     </group>
 </vector>

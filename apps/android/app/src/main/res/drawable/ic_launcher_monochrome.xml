@@ -4,19 +4,19 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:translateX="22" android:translateY="22">
+    <group android:translateX="29" android:translateY="25" android:scaleX="0.5" android:scaleY="0.5">
         <path
             android:fillColor="#00000000"
             android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="3.6"
+            android:strokeWidth="6"
             android:strokeLineJoin="round"
-            android:pathData="M32,10c-6.5,9.5 -14,18 -14,28a14,14 0,0 0,28 0c0,-10 -7.5,-18.5 -14,-28z" />
+            android:pathData="M50,4 C38,26 12,52 12,74 a38,38 0,0 0,76 0 C88,52 62,26 50,4z" />
         <path
             android:fillColor="#00000000"
             android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="2.8"
+            android:strokeWidth="5"
             android:strokeLineCap="round"
             android:strokeLineJoin="round"
-            android:pathData="M23,40h5l2.2,-5.5 3.3,9.5 2.2,-4.5h4.3" />
+            android:pathData="M20,78 H38 L44,66 L52,92 L58,72 L63,78 H80" />
     </group>
 </vector>
