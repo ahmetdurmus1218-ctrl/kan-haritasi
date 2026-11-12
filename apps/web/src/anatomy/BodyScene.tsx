@@ -1,11 +1,12 @@
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
-import { Color, DoubleSide, FrontSide, Mesh, MeshStandardMaterial, type Plane, ShaderMaterial, SphereGeometry, ConeGeometry, TorusGeometry, CylinderGeometry, TubeGeometry, CatmullRomCurve3, Vector3, type BufferGeometry } from 'three';
+import { Color, DoubleSide, FrontSide, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, type Plane, ShaderMaterial, SphereGeometry, ConeGeometry, TorusGeometry, CylinderGeometry, TubeGeometry, CatmullRomCurve3, Vector3, type BufferGeometry } from 'three';
 import { partDef } from '@kh/catalog';
 import type { ModelPart, PartElement } from './models';
 import { PART_OPACITY, TRANSLUCENT, adaptedColor, colorFor, highlightColor } from './palette';
 import type { StructureHighlight } from './highlight';
 import type { SchematicPart, SchematicShape } from './schematic';
+import { type Surface, applySurface, surfaceFor, useLook } from './surface';
 
 /**
  * Vücut sahnesi: HRA modellerinden gelen yapılar + şematik bezler.
@@ -70,10 +71,22 @@ export interface BodySceneProps {
 }
 
 const noRaycast = () => null;
+
+/**
+ * Bir organa odaklanınca onun yüzeyinde/köküne bağlı yapılar da soluklaşmaz (ör. kalpte koroner
+ * damarlar ve büyük damar kökleri): atlas görünümündeki gibi organ kendi damarlarıyla görünür.
+ */
+const COMPANIONS: Record<string, string[]> = {
+  heart: ['coronary-arteries', 'aorta', 'pulmonary-vessels'],
+};
+function companionInFocus(focus: Set<string>, structure: string): boolean {
+  for (const f of focus) if (COMPANIONS[f]?.includes(structure)) return true;
+  return false;
+}
 const DIM = 0.055;
 
 interface Visual {
-  mat: MeshStandardMaterial;
+  mat: MeshPhysicalMaterial;
   opacity: number;
   targetOpacity: number;
   emissive: number;
@@ -162,6 +175,9 @@ interface PartViewProps {
   clip: Plane | null;
   visible: boolean;
   color: string;
+  /** Gerçekçi yüzey türü ve ayrıntı (gürültü) açık mı. */
+  surface: Surface;
+  detail: boolean;
   targetOpacity: number;
   emissiveColor: string | null;
   emissive: number;
@@ -172,9 +188,14 @@ interface PartViewProps {
   onHover: BodySceneProps['onHover'];
 }
 
-function PartView({ part, clip, visible, color, targetOpacity, emissiveColor, emissive, pulse, pickable, visuals, onPick, onHover }: PartViewProps) {
+function PartView({ part, clip, visible, color, surface, detail, targetOpacity, emissiveColor, emissive, pulse, pickable, visuals, onPick, onHover }: PartViewProps) {
   const invalidate = useThree((s) => s.invalidate);
-  const material = useMemo(() => new MeshStandardMaterial({ roughness: 0.46, metalness: 0.02, envMapIntensity: 1 }), []);
+  const material = useMemo(() => new MeshPhysicalMaterial({ roughness: 0.46, metalness: 0, envMapIntensity: 1 }), []);
+
+  useEffect(() => {
+    applySurface(material, surface, detail);
+    invalidate();
+  }, [material, surface, detail, invalidate]);
 
   useEffect(() => {
     // Kesit: düzlemin önü kesilir; iç yüzler de çizilir ki organın içi görünsün.
@@ -265,20 +286,22 @@ function makeSkinXray(): ShaderMaterial {
   });
 }
 
-function SkinView({ part, mode, xrayRef, clip, theme }: { part: ModelPart; mode: SkinMode; xrayRef: RefObject<ShaderMaterial | null>; clip: Plane | null; theme: 'light' | 'dark' }) {
+function SkinView({ part, mode, xrayRef, clip, theme, real }: { part: ModelPart; mode: SkinMode; xrayRef: RefObject<ShaderMaterial | null>; clip: Plane | null; theme: 'light' | 'dark'; real: boolean }) {
   const invalidate = useThree((s) => s.invalidate);
   const xray = useMemo(makeSkinXray, []);
   const solid = useMemo(() => new MeshStandardMaterial({ color: colorFor('skin', null), roughness: 0.72, metalness: 0 }), []);
   useEffect(() => {
     // Açık temada röntgen derisi koyu mavi çizgi, koyu temada açık mavi parıltı
-    xray.uniforms.uColor!.value.set(theme === 'light' ? '#2f5f9e' : '#9cc8ff');
+    // Gerçekçi görünümde koyu temada hologram mavisi (uygulamanın görsel kimliği)
+    xray.uniforms.uColor!.value.set(theme === 'light' ? '#2f5f9e' : real ? '#58b4ff' : '#9cc8ff');
+    solid.color.set(colorFor('skin', null, real ? 'real' : 'atlas'));
     for (const m of [xray, solid]) {
       m.clippingPlanes = clip ? [clip] : null;
       m.needsUpdate = true;
     }
     solid.side = clip ? DoubleSide : FrontSide;
     invalidate();
-  }, [xray, solid, clip, theme, invalidate]);
+  }, [xray, solid, clip, theme, real, invalidate]);
   useEffect(() => {
     xrayRef.current = xray;
     return () => {
@@ -298,6 +321,23 @@ function SkinView({ part, mode, xrayRef, clip, theme }: { part: ModelPart; mode:
       renderOrder={mode === 'xray' ? 10 : 0}
       raycast={noRaycast}
     />
+  );
+}
+
+/**
+ * Vücut sahnesine özel ışıklar (yalnız vücut görünürken etkili): önden sıcak ana ışık, arkadan soğuk
+ * mavi kenar ışıkları. Islak doku yüzeylerinde parlama ve hacim hissi verir.
+ */
+function BodyLights({ theme, real }: { theme: 'light' | 'dark'; real: boolean }) {
+  if (!real) return null;
+  const dark = theme === 'dark';
+  return (
+    <>
+      <hemisphereLight args={[dark ? '#9fc4ff' : '#dfe9ff', '#1a0808', dark ? 0.22 : 0.3]} />
+      <directionalLight position={[1.2, 1.6, 2.2]} intensity={dark ? 1.05 : 0.95} color="#fff1e6" />
+      <directionalLight position={[-1.6, 1.2, -2.2]} intensity={dark ? 1.7 : 0.9} color="#4fb6ff" />
+      <directionalLight position={[1.8, -0.4, -1.8]} intensity={dark ? 1.1 : 0.6} color="#6a8cff" />
+    </>
   );
 }
 
@@ -326,12 +366,14 @@ export function BodyScene(props: BodySceneProps) {
   const skin = parts.find((p) => p.structure === 'skin');
   // Yakın çekimde deri çizgileri organı örtmesin diye daha saydam
   const skinTarget = focus ? (theme === 'light' ? 0.16 : 0.12) : theme === 'light' ? 0.75 : 0.5;
+  const { look, quality } = useLook();
+  const real = look === 'real';
 
   return (
     <group visible={visible} dispose={null}>
       {all.map((p) => {
         const h = highlights.get(p.structure);
-        const inFocus = !focus || focus.has(p.structure);
+        const inFocus = !focus || focus.has(p.structure) || companionInFocus(focus, p.structure);
         const partFocused = focusParts ? focusParts.has(p.id) : true;
         const key = `${p.structure}|${p.label ?? ''}`;
         const base = PART_OPACITY[key] ?? TRANSLUCENT[p.structure] ?? 1;
@@ -346,7 +388,8 @@ export function BodyScene(props: BodySceneProps) {
         const emissiveColor = h ? highlightColor(h.status, h.score) : (focusParts?.has(p.id) ?? false) || isHovered ? accent : null;
         // Paket damarlarında atardamar / toplardamar rengi kaynak adından
         const el = 'element' in p ? p.element : null;
-        const base0 = el && /(arter|vein|sinus|arch|trunk|branch)/i.test(el.en) ? colorFor(p.structure, el.en.toLowerCase()) : colorFor(p.structure, p.label);
+        const base0 = el && /(arter|vein|sinus|arch|trunk|branch)/i.test(el.en) ? colorFor(p.structure, el.en.toLowerCase(), look) : colorFor(p.structure, p.label, look);
+        const surface = surfaceFor(p.structure, el ? el.en.toLowerCase() : p.label);
         const baseColor = 'adapted' in p && p.adapted ? adaptedColor(base0) : base0;
         const shown = !hidden.has(p.structure) && (isVisible(p.structure) || (!!focus && focus.has(p.structure))) && !(isolate && !inFocus);
         const view = (
@@ -356,6 +399,8 @@ export function BodyScene(props: BodySceneProps) {
             clip={clip}
             visible={shown}
             color={isMuted && !isHovered ? mutedColor(baseColor, theme) : baseColor}
+            surface={real ? surface : 'organ'}
+            detail={real && quality === 'high'}
             targetOpacity={targetOpacity}
             emissiveColor={emissiveColor}
             emissive={h ? (isHovered ? 1.25 : 0.45 + 0.22 * h.score) : isHovered ? 0.28 : 0.35}
@@ -378,7 +423,8 @@ export function BodyScene(props: BodySceneProps) {
           view
         );
       })}
-      {skin && !hidden.has('skin') && !(isolate && focus) && <SkinView part={skin} mode={skinMode} xrayRef={skinRef} clip={clip} theme={theme} />}
+      <BodyLights theme={theme} real={real} />
+      {skin && !hidden.has('skin') && !(isolate && focus) && <SkinView part={skin} mode={skinMode} xrayRef={skinRef} clip={clip} theme={theme} real={real} />}
       <Animator visuals={visuals} skin={skinRef} skinTarget={skinTarget} reducedMotion={reducedMotion} />
     </group>
   );

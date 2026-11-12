@@ -25,6 +25,7 @@ import { bp3dName, meshNode, planBp3d, readStl } from './bp3d';
 import { type Rigid, type V3, PointGrid, apply as applyRigid, icp } from './fit';
 import { ZA_COMMIT, ZA_REPO, type Sim, type ZaMesh, applySimArray, baseName, isAttachment, isLabel, readZa, sideOf, zaToBody } from './zanatomy-read';
 import { zaName } from './zanatomy-names';
+import { smoothNormals } from './mesh-normals';
 
 export const PACK_FORMAT = 'kh-anatomy-pack';
 export const PACK_VERSION = 1;
@@ -319,41 +320,6 @@ export function alignment(log: (s: string) => void): Align {
     ALIGN = { T: r.T, residual: r.residual, max: r.max, pairs: r.pairs.length, local };
   }
   return ALIGN;
-}
-
-/**
- * Yumuşak köşe normalleri (alan ağırlıklı yüz normallerinin toplamı). gltf-transform'un normals()
- * işlevi düz gölgeleme için her üçgene ayrı köşe üretir; kaslar, sinirler ve damarlar gibi organik
- * yüzeylerde yumuşak gölgeleme hem gerçeğe yakındır hem de dosyayı ~3 kat küçültür.
- */
-function smoothNormals(doc: Document) {
-  for (const mesh of doc.getRoot().listMeshes())
-    for (const prim of mesh.listPrimitives()) {
-      const pos = prim.getAttribute('POSITION');
-      const idx = prim.getIndices();
-      if (!pos || !idx) continue;
-      const P = pos.getArray() as Float32Array;
-      const I = idx.getArray()!;
-      const N = new Float32Array(P.length);
-      for (let f = 0; f < I.length; f += 3) {
-        const a = I[f]! * 3, b = I[f + 1]! * 3, c = I[f + 2]! * 3;
-        const ux = P[b]! - P[a]!, uy = P[b + 1]! - P[a + 1]!, uz = P[b + 2]! - P[a + 2]!;
-        const vx = P[c]! - P[a]!, vy = P[c + 1]! - P[a + 1]!, vz = P[c + 2]! - P[a + 2]!;
-        const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-        for (const k of [a, b, c]) {
-          N[k] += nx;
-          N[k + 1] += ny;
-          N[k + 2] += nz;
-        }
-      }
-      for (let i = 0; i < N.length; i += 3) {
-        const l = Math.hypot(N[i]!, N[i + 1]!, N[i + 2]!) || 1;
-        N[i] /= l;
-        N[i + 1] /= l;
-        N[i + 2] /= l;
-      }
-      prim.setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(N).setBuffer(pos.getBuffer()));
-    }
 }
 
 function triCount(doc: Document): number {

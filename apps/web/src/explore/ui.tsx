@@ -1,6 +1,7 @@
 import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import type { SkinMode } from '../anatomy/BodyScene';
 import { HIGHLIGHT, highlightColor } from '../anatomy/palette';
+import { setLook, useLook } from '../anatomy/surface';
 import { ChevronRightIcon, MinimizeIcon, RotateCcwIcon, XIcon, ZoomInIcon, ZoomOutIcon } from '../components/icons';
 
 /** Küçük, aralıklı büyük harf etiket (bilimsel etiket dili). */
@@ -95,6 +96,43 @@ const LAYER_ROWS: { key: Exclude<keyof Layers, 'skin'>; label: string; note?: st
   { key: 'nervous', label: 'Sinir sistemi' },
 ];
 
+/** Görünüm: gerçekçi (ıslak doku, ışık) ya da atlas (bölümler ayırt edici renklerde); yüzey ayrıntısı. */
+function LookPicker() {
+  const { look, quality } = useLook();
+  return (
+    <>
+      <p className="mb-1.5 text-xs text-fg-muted">Görünüm</p>
+      <div className="mb-2 grid grid-cols-2 gap-1 rounded-xl bg-ink-800 p-1" role="radiogroup" aria-label="Görünüm">
+        {(
+          [
+            ['real', 'Gerçekçi'],
+            ['atlas', 'Atlas renkleri'],
+          ] as const
+        ).map(([m, label]) => (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={look === m}
+            onClick={() => setLook({ look: m })}
+            className={`rounded-lg py-1.5 text-xs transition ${look === m ? 'bg-ink-600 text-fg' : 'text-fg-muted hover:text-fg'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {look === 'real' && (
+        <label className="mb-4 flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-ink-800">
+          <input type="checkbox" className="h-4 w-4 accent-[var(--color-accent)]" checked={quality === 'high'} onChange={(e) => setLook({ quality: e.target.checked ? 'high' : 'lite' })} />
+          <span className="flex-1">Yüzey ayrıntısı</span>
+          <Caps className="text-[9px] text-fg-faint">{quality === 'high' ? 'Açık' : 'Hafif'}</Caps>
+        </label>
+      )}
+      {look === 'atlas' && <div className="mb-4" />}
+    </>
+  );
+}
+
 export function LayersMenu({ layers, onChange, onClose, packs }: { layers: Layers; onChange: (l: Layers) => void; onClose: () => void; packs?: { active: number; onOpen: () => void } }) {
   return (
     <div className="pointer-events-auto w-64 rounded-2xl border border-ink-600/70 bg-ink-950/92 p-4 shadow-2xl backdrop-blur" role="dialog" aria-label="Katmanlar">
@@ -125,6 +163,7 @@ export function LayersMenu({ layers, onChange, onClose, packs }: { layers: Layer
           </button>
         ))}
       </div>
+      <LookPicker />
       <ul className="space-y-1">
         {LAYER_ROWS.map((row) => {
           const disabled = false;

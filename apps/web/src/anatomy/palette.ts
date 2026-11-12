@@ -210,16 +210,81 @@ export const PART_OPACITY: Record<string, number> = {
 export const VEIN_COLOR = '#4a6fd6';
 export const ARTERY_COLOR = '#d4454f';
 
-export function colorFor(structure: string, label: string | null): string {
+/**
+ * Gerçekçi görünüm renkleri (koyu, ıslak doku tonları; ışık ve ton eşleme bunları açar). Atlas
+ * geleneği korunur: atardamar kırmızı, toplardamar mavi, sinir sarı, lenf yeşilimsi.
+ */
+const REAL_COLORS: Record<string, string> = {
+  skin: '#c99278',
+  bones: '#cdbf9f',
+  joints: '#cfd3cc',
+  mouth: '#b85a5e',
+  heart: '#5c0d10',
+  'coronary-arteries': '#a3121a',
+  aorta: '#9a141b',
+  'carotid-arteries': '#a3121a',
+  'pulmonary-vessels': '#9a141b',
+  veins: '#24398f',
+  'renal-vessels': '#a3121a',
+  'abdominal-vessels': '#a3121a',
+  'eye-vessels': '#a3121a',
+  'limb-vessels': '#a3121a',
+  lungs: '#d0848c',
+  airways: '#d8b8a6',
+  liver: '#521610',
+  gallbladder: '#3a6428',
+  pancreas: '#d4a06a',
+  'small-intestine': '#d48a72',
+  'large-intestine': '#b87358',
+  kidneys: '#6e2019',
+  'urinary-tract': '#cdb062',
+  prostate: '#a8666e',
+  brain: '#c28e86',
+  'spinal-cord': '#e2cfa0',
+  spleen: '#55152a',
+  thymus: '#c99a7e',
+  thyroid: '#8e2c36',
+  pituitary: '#b87868',
+  hypothalamus: '#c08a84',
+  adrenals: '#cf9438',
+  'skeletal-muscle': '#94241b',
+  stomach: '#cc7a68',
+  esophagus: '#b86a5e',
+  eyes: '#ece8e2',
+  testes: '#d8a8b0',
+  'male-genitals': '#c08088',
+  pineal: '#b88a80',
+  nerves: '#e8cc6a',
+  ear: '#dcc4a8',
+  tonsils: '#c06878',
+  'lymph-node': '#86b890',
+  knee: '#d4dade',
+  diaphragm: '#8a241e',
+  ovaries: '#dca2ae',
+  uterus: '#b86672',
+  'fallopian-tubes': '#d48e9e',
+  vagina: '#c27884',
+  breasts: '#dcae94',
+};
+const REAL_ARTERY = '#a3121a';
+const REAL_VEIN = '#24398f';
+/** Gerçekçi görünümde atlas renklendirmesi yapılmayan bölümler (gerçekte aynı dokudan, aynı renkte). */
+const REAL_UNIFORM = /^(heart\|(right|left|septum|papillary)|brain\|(?!white-matter|corpus-callosum|ventricles|visual-pathway)|lungs\||liver\|(right|left|caudate|quadrate|capsule)|lymph-node\|(follicles|paracortex|medulla)|prostate\|(transition|central))/;
+
+export type ColorLook = 'real' | 'atlas';
+
+export function colorFor(structure: string, label: string | null, look: ColorLook = 'atlas'): string {
+  const real = look === 'real';
   if (label) {
-    const pc = PART_COLORS[`${structure}|${label}`];
-    if (pc) return pc;
+    const key = `${structure}|${label}`;
+    const pc = PART_COLORS[key];
+    if (pc && !(real && REAL_UNIFORM.test(key))) return pc;
     // Akciğer damarlarında yön terstir: pulmoner arter oksijensiz, pulmoner ven oksijenli kan taşır.
-    if (structure === 'pulmonary-vessels') return /vein/.test(label) ? '#e0505a' : '#6b7fe0';
-    if (isVein(label)) return VEIN_COLOR;
-    if (/artery|aorta|trunk|arch|branch/.test(label)) return COLORS[structure] ?? ARTERY_COLOR;
+    if (structure === 'pulmonary-vessels') return /vein/.test(label) ? (real ? REAL_ARTERY : '#e0505a') : real ? REAL_VEIN : '#6b7fe0';
+    if (isVein(label)) return real ? REAL_VEIN : VEIN_COLOR;
+    if (/artery|aorta|trunk|arch|branch/.test(label)) return (real ? REAL_COLORS : COLORS)[structure] ?? (real ? REAL_ARTERY : ARTERY_COLOR);
   }
-  return COLORS[structure] ?? '#b0a8a0';
+  return (real ? REAL_COLORS[structure] : undefined) ?? COLORS[structure] ?? '#b0a8a0';
 }
 
 /** Vurgu renkleri (sonuç durumuna göre) — tek kaynak `lib/tone.ts` (TONE_HEX). */

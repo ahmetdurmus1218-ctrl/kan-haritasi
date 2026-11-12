@@ -23,6 +23,7 @@ import { partLabel, partLatin } from '../anatomy/names';
 import { interiorForStructure, routeForNode } from '../lib/anatomyNav';
 import { type BodyModel, elementKey, webglAvailable } from '../anatomy/models';
 import { highlightColor } from '../anatomy/palette';
+import { useLook } from '../anatomy/surface';
 import { Banner } from '../components/ui';
 import { LayersIcon, MaximizeIcon, MinimizeIcon } from '../components/icons';
 import { setImmersive, useImmersive } from '../state/immersive';
@@ -148,6 +149,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const [sex, setSex] = useState<Sex>('unspecified');
   const [bodyPref, setBodyPref] = useSetting('bodyModel');
   const [layers, setLayers] = useState<Layers>(DEFAULT_LAYERS);
+  const look = useLook();
   const [layersOpen, setLayersOpen] = useState(false);
   const [canvasKey, setCanvasKey] = useState(0);
   const [contextLost, setContextLost] = useState(false);
@@ -900,6 +902,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   }
 
   const light = theme === 'light';
+  const real = look.look === 'real';
   // Vücut seviyesinin arayüzü (sistem menüsü, araçlar, bilgi paneli) yalnızca vücut sahnesinde; iç dünyada seviye paneli.
   const bodyUi = shownKey === 'body' && route.name !== 'interior';
   const navLevel = lv ? lv.level : structure ? 'organ' : system ? 'system' : 'body';
@@ -1024,10 +1027,11 @@ export function Explorer({ route }: { route: ExploreRoute }) {
           <CloudAnchor point={cloud && bodyUi ? cloud.point : null} refs={cloudRefs} cover={coverRef} />
           <CameraProbe rootRef={rootRef} subjectRef={subjectRef} />
         </SceneThemeContext>
-        <ambientLight intensity={light ? 0.5 : 0.22} />
-        <directionalLight position={[1.2, 2, 2.5]} intensity={light ? 1.25 : 1.05} />
-        <directionalLight position={[-1.5, 0.5, -2]} intensity={light ? 0.55 : 0.35} />
-        <Env intensity={light ? 0.95 : 0.75} />
+        {/* Gerçekçi görünümde vücut sahnesinin kendi sinematik ışıkları da var (BodyScene); genel ışık azalır */}
+        <ambientLight intensity={real ? (light ? 0.22 : 0.08) : light ? 0.5 : 0.22} />
+        <directionalLight position={[1.2, 2, 2.5]} intensity={real ? (light ? 0.7 : 0.45) : light ? 1.25 : 1.05} />
+        <directionalLight position={[-1.5, 0.5, -2]} intensity={real ? 0.15 : light ? 0.55 : 0.35} />
+        <Env intensity={real ? (light ? 0.55 : 0.35) : light ? 0.95 : 0.75} />
         <CameraControls ref={setControls} makeDefault minDistance={0.05} maxDistance={6} smoothTime={0.55} draggingSmoothTime={0.1} dollySpeed={0.6} />
       </Canvas>
 

@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Document, type Mesh, type Node, NodeIO, type Primitive } from '@gltf-transform/core';
 import { EXTMeshoptCompression, KHRMeshQuantization, ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { clearNodeTransform, dedup, flatten, joinPrimitives, meshopt, normals, prune, quantize, simplify, weld, getBounds } from '@gltf-transform/functions';
+import { clearNodeTransform, dedup, flatten, joinPrimitives, meshopt, prune, quantize, simplify, weld, getBounds } from '@gltf-transform/functions';
 import { MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 import { type ModelAsset, cleanNodeName, partFor, structureById, structureForNode } from '@kh/catalog';
 import { BP3D_COMMIT, BP3D_ORGANS, BP3D_REPO, type Bp3dGroup, type ElementExtras, bp3dDocument, bp3dName, centroidOf, planBp3d, readStl } from './bp3d';
@@ -30,6 +30,7 @@ import { limbVesselDocument, nerveDocument, trunkVesselDocument } from './limbs'
 import { type LimbFit, boneArray, femaleLimbs, kneeFit } from './anatomy-fit';
 import { type Rigid, Volume, apply as applyRigid, keepInside } from './fit';
 import { trianglesOf } from './anatomy-fit';
+import { positionsOnly, smoothNormals, weldSmooth } from './mesh-normals';
 import { PACKS, type PackIndexEntry, alignment, buildPack } from './zanatomy-packs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -72,34 +73,34 @@ const uterusRoute = (n: string) => (/abdominal ostium/.test(n) ? 'fallopian-tube
 /** HRA erkek (VH_M) ve kadın (VH_F) referans organları. */
 const SOURCES: Record<BodySex, SourceSpec[]> = {
   male: [
-    { file: 'VH_Male/v1.2/VH_M_Heart.glb', asset: 'cardio', structure: 'heart', tris: 30000 },
-    { file: 'VH_Male/v1.4/3d-vh-m-blood-vasculature.glb', asset: 'cardio', fallback: 'abdominal-vessels', tris: 110000, keepNodes: true },
-    { file: 'VH_Male/v1.4/3d-vh-m-lung.glb', asset: 'respiratory', fallback: 'lungs', tris: 42000 },
-    { file: 'VH_Male/v1.4/3d-vh-m-trachea.glb', asset: 'respiratory', structure: 'airways', tris: 8000 },
-    { file: 'VH_Male/v1.4/3d-vh-m-larynx.glb', asset: 'respiratory', structure: 'airways', tris: 6000 },
-    { file: 'VH_Male/v1.2/VH_M_Liver.glb', asset: 'digestive', structure: 'liver', tris: 20000 },
-    { file: 'VH_Male/v1.2/VH_M_Gallbladder.glb', asset: 'digestive', structure: 'gallbladder', tris: 2000 },
-    { file: 'VH_Male/v1.2/VH_M_Biliary_Tree.glb', asset: 'digestive', route: biliaryRoute, tris: 3000 },
-    { file: 'VH_Male/v1.2/VH_M_Pancreas.glb', asset: 'digestive', structure: 'pancreas', tris: 7000 },
-    { file: 'VH_Male/v1.2/VH_M_Small_Intestine.glb', asset: 'digestive', structure: 'small-intestine', tris: 16000 },
-    { file: 'VH_Male/v1.2/SBU_M_Intestine_Large.glb', asset: 'digestive', structure: 'large-intestine', tris: 14000 },
-    { file: 'VH_Male/v1.2/VH_M_Kidney_L.glb', asset: 'urinary', structure: 'kidneys', tris: 14000 },
-    { file: 'VH_Male/v1.2/VH_M_Kidney_R.glb', asset: 'urinary', structure: 'kidneys', tris: 14000 },
+    { file: 'VH_Male/v1.2/VH_M_Heart.glb', asset: 'cardio', structure: 'heart', tris: 90000 },
+    { file: 'VH_Male/v1.4/3d-vh-m-blood-vasculature.glb', asset: 'cardio', fallback: 'abdominal-vessels', tris: 160000, keepNodes: true },
+    { file: 'VH_Male/v1.4/3d-vh-m-lung.glb', asset: 'respiratory', fallback: 'lungs', tris: 70000 },
+    { file: 'VH_Male/v1.4/3d-vh-m-trachea.glb', asset: 'respiratory', structure: 'airways', tris: 12000 },
+    { file: 'VH_Male/v1.4/3d-vh-m-larynx.glb', asset: 'respiratory', structure: 'airways', tris: 10000 },
+    { file: 'VH_Male/v1.2/VH_M_Liver.glb', asset: 'digestive', structure: 'liver', tris: 45000 },
+    { file: 'VH_Male/v1.2/VH_M_Gallbladder.glb', asset: 'digestive', structure: 'gallbladder', tris: 4000 },
+    { file: 'VH_Male/v1.2/VH_M_Biliary_Tree.glb', asset: 'digestive', route: biliaryRoute, tris: 5000 },
+    { file: 'VH_Male/v1.2/VH_M_Pancreas.glb', asset: 'digestive', structure: 'pancreas', tris: 14000 },
+    { file: 'VH_Male/v1.2/VH_M_Small_Intestine.glb', asset: 'digestive', structure: 'small-intestine', tris: 40000 },
+    { file: 'VH_Male/v1.2/SBU_M_Intestine_Large.glb', asset: 'digestive', structure: 'large-intestine', tris: 30000 },
+    { file: 'VH_Male/v1.2/VH_M_Kidney_L.glb', asset: 'urinary', structure: 'kidneys', tris: 24000 },
+    { file: 'VH_Male/v1.2/VH_M_Kidney_R.glb', asset: 'urinary', structure: 'kidneys', tris: 24000 },
     { file: 'VH_Male/v1.2/VH_M_Ureter_L.glb', asset: 'urinary', structure: 'urinary-tract', tris: 5000 },
     { file: 'VH_Male/v1.2/VH_M_Ureter_R.glb', asset: 'urinary', structure: 'urinary-tract', tris: 5000 },
-    { file: 'VH_Male/v1.2/VH_M_Urinary_Bladder.glb', asset: 'urinary', structure: 'urinary-tract', tris: 5000 },
+    { file: 'VH_Male/v1.2/VH_M_Urinary_Bladder.glb', asset: 'urinary', structure: 'urinary-tract', tris: 9000 },
     { file: 'VH_Male/v1.2/VH_M_Urethra.glb', asset: 'urinary', structure: 'urinary-tract', tris: 2500 },
     { file: 'VH_Male/v1.2/VH_M_Prostate.glb', asset: 'urinary', structure: 'prostate', tris: 9000 },
-    { file: 'VH_Male/v1.2/Allen_M_Brain.glb', asset: 'nervous', route: brainRoute, tris: 60000 },
-    { file: 'VH_Male/v1.2/VH_M_Spinal_Cord.glb', asset: 'nervous', structure: 'spinal-cord', tris: 8000 },
-    { file: 'VH_Male/v1.2/VH_M_Eye_L.glb', asset: 'nervous', structure: 'eyes', tris: 4000 },
-    { file: 'VH_Male/v1.2/VH_M_Eye_R.glb', asset: 'nervous', structure: 'eyes', tris: 4000 },
+    { file: 'VH_Male/v1.2/Allen_M_Brain.glb', asset: 'nervous', route: brainRoute, tris: 110000 },
+    { file: 'VH_Male/v1.2/VH_M_Spinal_Cord.glb', asset: 'nervous', structure: 'spinal-cord', tris: 12000 },
+    { file: 'VH_Male/v1.2/VH_M_Eye_L.glb', asset: 'nervous', structure: 'eyes', tris: 6000 },
+    { file: 'VH_Male/v1.2/VH_M_Eye_R.glb', asset: 'nervous', structure: 'eyes', tris: 6000 },
     { file: 'VH_Male/v1.2/VH_M_Nerves_Eye_L.glb', asset: 'nervous', structure: 'eyes', tris: 800 },
     { file: 'VH_Male/v1.2/VH_M_Nerves_Eye_R.glb', asset: 'nervous', structure: 'eyes', tris: 800 },
     { file: 'VH_Male/v1.2/VH_M_Muscles_Eye_L.glb', asset: 'nervous', structure: 'eyes', tris: 2000 },
     { file: 'VH_Male/v1.2/VH_M_Muscles_Eye_R.glb', asset: 'nervous', structure: 'eyes', tris: 2000 },
-    { file: 'VH_Male/v1.2/VH_M_Spleen.glb', asset: 'immune', structure: 'spleen', tris: 8000 },
-    { file: 'VH_Male/v1.2/VH_M_Thymus.glb', asset: 'immune', structure: 'thymus', tris: 2800 },
+    { file: 'VH_Male/v1.2/VH_M_Spleen.glb', asset: 'immune', structure: 'spleen', tris: 14000 },
+    { file: 'VH_Male/v1.2/VH_M_Thymus.glb', asset: 'immune', structure: 'thymus', tris: 5000 },
     { file: 'VH_Male/v1.4/3d-vh-m-palatine-tonsil-l.glb', asset: 'immune', structure: 'tonsils', tris: 800 },
     { file: 'VH_Male/v1.4/3d-vh-m-palatine-tonsil-r.glb', asset: 'immune', structure: 'tonsils', tris: 800 },
     { file: 'VH_Male/v1.2/NIH_M_Lymph_Node.glb', asset: 'immune', structure: 'lymph-node', tris: 9000 },
@@ -109,35 +110,35 @@ const SOURCES: Record<BodySex, SourceSpec[]> = {
     { file: 'VH_Male/v1.2/VH_M_Ligaments_Knee_R.glb', asset: 'skeleton', structure: 'knee', tris: 2500, knee: 'r' },
   ],
   female: [
-    { file: 'VH_Female/v1.3/VH_F_skin.glb', asset: 'body', structure: 'skin', tris: 40000 },
-    { file: 'VH_Female/v1.2/VH_F_Vertebrae.glb', asset: 'skeleton', structure: 'bones', tris: 16000, elements: hraBoneName },
-    { file: 'VH_Female/v1.2/VH_F_Pelvis.glb', asset: 'skeleton', route: (n) => (/spongy/.test(n) ? null : 'bones'), tris: 12000, elements: hraBoneName },
-    { file: 'VH_Female/v1.2/VH_F_Heart.glb', asset: 'cardio', structure: 'heart', tris: 30000 },
-    { file: 'VH_Female/v1.4/3d-vh-f-blood-vasculature.glb', asset: 'cardio', fallback: 'abdominal-vessels', tris: 110000, keepNodes: true },
-    { file: 'VH_Female/v1.4/3d-vh-f-lung.glb', asset: 'respiratory', fallback: 'lungs', tris: 42000 },
-    { file: 'VH_Female/v1.4/3d-vh-f-trachea.glb', asset: 'respiratory', structure: 'airways', tris: 8000 },
-    { file: 'VH_Female/v1.4/3d-vh-f-larynx.glb', asset: 'respiratory', structure: 'airways', tris: 6000 },
-    { file: 'VH_Female/v1.2/VH_F_Liver.glb', asset: 'digestive', structure: 'liver', tris: 20000 },
-    { file: 'VH_Female/v1.2/VH_F_Gallbladder.glb', asset: 'digestive', structure: 'gallbladder', tris: 2000 },
-    { file: 'VH_Female/v1.2/VH_F_Biliary_Tree.glb', asset: 'digestive', route: biliaryRoute, tris: 3000 },
-    { file: 'VH_Female/v1.2/VH_F_Pancreas.glb', asset: 'digestive', structure: 'pancreas', tris: 7000 },
-    { file: 'VH_Female/v1.2/VH_F_Small_Intestine.glb', asset: 'digestive', structure: 'small-intestine', tris: 16000 },
-    { file: 'VH_Female/v1.2/SBU_F_Intestine_Large.glb', asset: 'digestive', structure: 'large-intestine', tris: 14000 },
-    { file: 'VH_Female/v1.2/VH_F_Kidney_L.glb', asset: 'urinary', structure: 'kidneys', tris: 14000 },
-    { file: 'VH_Female/v1.2/VH_F_Kidney_R.glb', asset: 'urinary', structure: 'kidneys', tris: 14000 },
+    { file: 'VH_Female/v1.3/VH_F_skin.glb', asset: 'body', structure: 'skin', tris: 60000 },
+    { file: 'VH_Female/v1.2/VH_F_Vertebrae.glb', asset: 'skeleton', structure: 'bones', tris: 26000, elements: hraBoneName },
+    { file: 'VH_Female/v1.2/VH_F_Pelvis.glb', asset: 'skeleton', route: (n) => (/spongy/.test(n) ? null : 'bones'), tris: 20000, elements: hraBoneName },
+    { file: 'VH_Female/v1.2/VH_F_Heart.glb', asset: 'cardio', structure: 'heart', tris: 90000 },
+    { file: 'VH_Female/v1.4/3d-vh-f-blood-vasculature.glb', asset: 'cardio', fallback: 'abdominal-vessels', tris: 160000, keepNodes: true },
+    { file: 'VH_Female/v1.4/3d-vh-f-lung.glb', asset: 'respiratory', fallback: 'lungs', tris: 70000 },
+    { file: 'VH_Female/v1.4/3d-vh-f-trachea.glb', asset: 'respiratory', structure: 'airways', tris: 12000 },
+    { file: 'VH_Female/v1.4/3d-vh-f-larynx.glb', asset: 'respiratory', structure: 'airways', tris: 10000 },
+    { file: 'VH_Female/v1.2/VH_F_Liver.glb', asset: 'digestive', structure: 'liver', tris: 45000 },
+    { file: 'VH_Female/v1.2/VH_F_Gallbladder.glb', asset: 'digestive', structure: 'gallbladder', tris: 4000 },
+    { file: 'VH_Female/v1.2/VH_F_Biliary_Tree.glb', asset: 'digestive', route: biliaryRoute, tris: 5000 },
+    { file: 'VH_Female/v1.2/VH_F_Pancreas.glb', asset: 'digestive', structure: 'pancreas', tris: 14000 },
+    { file: 'VH_Female/v1.2/VH_F_Small_Intestine.glb', asset: 'digestive', structure: 'small-intestine', tris: 40000 },
+    { file: 'VH_Female/v1.2/SBU_F_Intestine_Large.glb', asset: 'digestive', structure: 'large-intestine', tris: 30000 },
+    { file: 'VH_Female/v1.2/VH_F_Kidney_L.glb', asset: 'urinary', structure: 'kidneys', tris: 24000 },
+    { file: 'VH_Female/v1.2/VH_F_Kidney_R.glb', asset: 'urinary', structure: 'kidneys', tris: 24000 },
     { file: 'VH_Female/v1.2/VH_F_Ureter_L.glb', asset: 'urinary', route: ureterRoute, tris: 5000 },
     { file: 'VH_Female/v1.2/VH_F_Ureter_R.glb', asset: 'urinary', route: ureterRoute, tris: 5000 },
-    { file: 'VH_Female/v1.2/VH_F_Urinary_Bladder.glb', asset: 'urinary', structure: 'urinary-tract', tris: 5000 },
-    { file: 'VH_Female/v1.2/Allen_F_Brain.glb', asset: 'nervous', route: brainRoute, tris: 60000 },
-    { file: 'VH_Female/v1.2/VH_F_Spinal_Cord.glb', asset: 'nervous', structure: 'spinal-cord', tris: 8000 },
-    { file: 'VH_Female/v1.2/VH_F_Eye_L.glb', asset: 'nervous', structure: 'eyes', tris: 4000 },
-    { file: 'VH_Female/v1.2/VH_F_Eye_R.glb', asset: 'nervous', structure: 'eyes', tris: 4000 },
+    { file: 'VH_Female/v1.2/VH_F_Urinary_Bladder.glb', asset: 'urinary', structure: 'urinary-tract', tris: 9000 },
+    { file: 'VH_Female/v1.2/Allen_F_Brain.glb', asset: 'nervous', route: brainRoute, tris: 110000 },
+    { file: 'VH_Female/v1.2/VH_F_Spinal_Cord.glb', asset: 'nervous', structure: 'spinal-cord', tris: 12000 },
+    { file: 'VH_Female/v1.2/VH_F_Eye_L.glb', asset: 'nervous', structure: 'eyes', tris: 6000 },
+    { file: 'VH_Female/v1.2/VH_F_Eye_R.glb', asset: 'nervous', structure: 'eyes', tris: 6000 },
     { file: 'VH_Female/v1.2/VH_F_Nerves_of_Eye_L.glb', asset: 'nervous', structure: 'eyes', tris: 800 },
     { file: 'VH_Female/v1.2/VH_F_Nerves_of_Eye_R.glb', asset: 'nervous', structure: 'eyes', tris: 800 },
     { file: 'VH_Female/v1.2/VH_F_Muscles_Eye_L.glb', asset: 'nervous', structure: 'eyes', tris: 2000 },
     { file: 'VH_Female/v1.2/VH_F_Muscles_Eye_R.glb', asset: 'nervous', structure: 'eyes', tris: 2000 },
-    { file: 'VH_Female/v1.2/VH_F_Spleen.glb', asset: 'immune', structure: 'spleen', tris: 8000 },
-    { file: 'VH_Female/v1.2/VH_F_Thymus.glb', asset: 'immune', structure: 'thymus', tris: 2800 },
+    { file: 'VH_Female/v1.2/VH_F_Spleen.glb', asset: 'immune', structure: 'spleen', tris: 14000 },
+    { file: 'VH_Female/v1.2/VH_F_Thymus.glb', asset: 'immune', structure: 'thymus', tris: 5000 },
     { file: 'VH_Female/v1.4/3d-vh-f-palatine-tonsil-l.glb', asset: 'immune', structure: 'tonsils', tris: 800 },
     { file: 'VH_Female/v1.4/3d-vh-f-palatine-tonsil-r.glb', asset: 'immune', structure: 'tonsils', tris: 800 },
     { file: 'VH_Female/v1.2/NIH_F_Lymph_Node.glb', asset: 'immune', structure: 'lymph-node', tris: 9000 },
@@ -145,10 +146,10 @@ const SOURCES: Record<BodySex, SourceSpec[]> = {
     { file: 'VH_Female/v1.2/VH_F_Knee_R.glb', asset: 'skeleton', route: kneeRoute, tris: 5000, knee: 'r' },
     { file: 'VH_Female/v1.2/VH_F_Ligaments_Knee_L.glb', asset: 'skeleton', structure: 'knee', tris: 2500, knee: 'l' },
     { file: 'VH_Female/v1.2/VH_F_Ligaments_Knee_R.glb', asset: 'skeleton', structure: 'knee', tris: 2500, knee: 'r' },
-    { file: 'VH_Female/v1.2/VH_F_Uterus.glb', asset: 'reproductive', route: uterusRoute, tris: 6000 },
+    { file: 'VH_Female/v1.2/VH_F_Uterus.glb', asset: 'reproductive', route: uterusRoute, tris: 12000 },
     { file: 'VH_Female/v1.2/VH_F_Ligaments_Uterus_Ovaries.glb', asset: 'reproductive', structure: 'uterus', tris: 5000 },
-    { file: 'VH_Female/v1.2/VH_F_Ovary_L.glb', asset: 'reproductive', structure: 'ovaries', tris: 1500 },
-    { file: 'VH_Female/v1.2/VH_F_Ovary_R.glb', asset: 'reproductive', structure: 'ovaries', tris: 1500 },
+    { file: 'VH_Female/v1.2/VH_F_Ovary_L.glb', asset: 'reproductive', structure: 'ovaries', tris: 5000 },
+    { file: 'VH_Female/v1.2/VH_F_Ovary_R.glb', asset: 'reproductive', structure: 'ovaries', tris: 5000 },
     { file: 'VH_Female/v1.2/VH_F_Fallopian_Tube_L.glb', asset: 'reproductive', structure: 'fallopian-tubes', tris: 2000 },
     { file: 'VH_Female/v1.2/VH_F_Fallopian_Tube_R.glb', asset: 'reproductive', structure: 'fallopian-tubes', tris: 2000 },
     { file: 'VH_Female/v1.2/VH_F_Vagina.glb', asset: 'reproductive', structure: 'vagina', tris: 2500 },
@@ -274,6 +275,8 @@ async function simplifyTo(doc: Document, tris: number, name: string, parts: numb
   const before = triCount(doc);
   const ratio = Math.min(1, tris / Math.max(1, before));
   const spec = { tris };
+  // Kaynak normalleri silinir ki aynı konumdaki köşeler kaynaşsın (sadeleştirici dikiş görmesin).
+  positionsOnly(doc);
   await doc.transform(weld({}));
   // Hata sınırını hedefe ulaşılana kadar kademeli gevşet (ince damarlar için küçük başlar).
   if (ratio < 0.98) {
@@ -282,7 +285,7 @@ async function simplifyTo(doc: Document, tris: number, name: string, parts: numb
       if (triCount(doc) <= spec.tris * 1.15) break;
     }
   }
-  await doc.transform(normals({ overwrite: true }));
+  smoothNormals(doc);
   console.log(`  ${name.padEnd(34)} ${String(before).padStart(7)} → ${String(triCount(doc)).padStart(6)} üçgen, ${parts} parça`);
 }
 
@@ -417,21 +420,21 @@ async function loadExtraVessels(sex: BodySex): Promise<Document[]> {
   const trunk = trunkVesselDocument(sex === 'female' ? femaleArray : undefined);
   await simplifyTo(trunk, 16000, 'BodyParts3D gövde damarları', 13);
   const limbs = limbVesselDocument(schematicPoint(sex));
-  await limbs.transform(weld({}), normals({ overwrite: true }));
+  await weldSmooth(limbs);
   console.log(`  ${'şematik kol/bacak damarları'.padEnd(34)} ${String(triCount(limbs)).padStart(7)} üçgen, ${limbs.getRoot().listNodes().length} parça`);
   return [trunk, limbs];
 }
 
 async function loadNerves(sex: BodySex): Promise<Document> {
   const doc = nerveDocument(schematicPoint(sex));
-  await doc.transform(weld({}), normals({ overwrite: true }));
+  await weldSmooth(doc);
   console.log(`  ${'şematik periferik sinirler'.padEnd(34)} ${String(triCount(doc)).padStart(7)} üçgen, ${doc.getRoot().listNodes().length} parça`);
   return doc;
 }
 
 /** BodyParts3D kaynaklı varlıklar: deri (yalnız erkek), iskelet, kaslar. */
-const BP3D_BUDGET = { body: 36000, skeleton: 130000, muscles: 150000 } as const;
-const BP3D_ORGAN_BUDGET = { digestive: 14000, endocrine: 4000, reproductive: 9000, respiratory: 5000 } as const;
+const BP3D_BUDGET = { body: 60000, skeleton: 200000, muscles: 200000 } as const;
+const BP3D_ORGAN_BUDGET = { digestive: 26000, endocrine: 7000, reproductive: 12000, respiratory: 9000 } as const;
 
 async function loadBp3d(asset: keyof typeof BP3D_BUDGET, sex: BodySex): Promise<Document> {
   const plan = planBp3d();
