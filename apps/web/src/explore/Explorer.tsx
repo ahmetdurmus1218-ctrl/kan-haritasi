@@ -19,6 +19,7 @@ import { formatDate } from '../lib/format';
 import { highlightName, highlightsFrom, withFindingHighlights, withImagingHighlights } from '../anatomy/highlight';
 import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene';
 import { ORGANS, insidesOf } from '../anatomy/organs';
+import { sectionPlane, sectionSpec, sectionable, stageParts } from '../anatomy/section';
 import { partLabel, partLatin } from '../anatomy/names';
 import { interiorForStructure, routeForNode } from '../lib/anatomyNav';
 import { type BodyModel, elementKey, webglAvailable } from '../anatomy/models';
@@ -197,10 +198,23 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const routePart = route.name === 'body' ? route.part : undefined;
   const system: SystemId | undefined = route.name === 'body' && isSystemId(route.system) ? route.system : undefined;
   const focusTest = route.name === 'body' && route.focus && testByKey.has(route.focus) ? route.focus : undefined;
+  // Kaslar isteğe bağlı (+4 MB): katman açılınca ya da odaktaki yapı/sistem/test kaslarla ilgiliyse yüklenir (ör. CK).
+  const focusTestMuscles = focusTest ? (testByKey.get(focusTest)?.structures.includes('skeletal-muscle') ?? false) : false;
+  const wantMuscles = layers.muscles || structure === 'skeletal-muscle' || system === 'musculoskeletal' || focusTestMuscles;
+  const [musclesRequested, setMusclesRequested] = useState(false);
+  useEffect(() => {
+    if (wantMuscles) setMusclesRequested(true);
+  }, [wantMuscles]);
+  const models = useModels(body, musclesRequested);
+  const allParts = useMemo(() => [...models.parts, ...models.schematic], [models.parts, models.schematic]);
+  const rawBoxes = useMemo(() => structureBoxes(allParts), [allParts]);
   // Doğrudan bir iç dünya adresiyle açılınca önce organ 3B vücutta gösterilir, sonra kamera içine dalar.
   const [diveOk, setDiveOk] = useState(() => !(route.name === 'interior' && interiorStructure));
   const holding = !!lv && !diveOk;
-  const sceneKey = inside ? `inside:${inside.scene}` : lv && !holding ? lv.sceneKey : 'body';
+  // İçine gir'in ilk adımları (iç dünya, bölümler): organın gerçek modeli kesitle açılır — vücut sahnesinde
+  // kalınır, prosedürel sahneye geçilmez. Duvar, doku ve hücre ancak "Daha derine in" ile gelir.
+  const section = !!lv && !holding && (lv.level === 'interior' || lv.level === 'region') && sectionable(interiorStructure) && rawBoxes.has(interiorStructure);
+  const sceneKey = inside ? `inside:${inside.scene}` : lv && !holding && !section ? lv.sceneKey : 'body';
   const [shownKey, setShownKey] = useState(sceneKey);
   // Seviye geçiş yönü: derine (kamera yaklaşır → perde → yeni sahneye dışarıdan girer) ya da yukarı (geri çekilir).
   const levelByKey = useRef(new Map<string, LevelView>());
@@ -229,14 +243,6 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     // Seviye değişince bulut yalnızca aynı yapıya aitse kalır.
     setCloud((c) => (c && c.structure === structure && !inside ? c : null));
   }, [structure, system, focusTest, inside]);
-  // Kaslar isteğe bağlı (+4 MB): katman açılınca ya da odaktaki yapı/sistem/test kaslarla ilgiliyse yüklenir (ör. CK).
-  const focusTestMuscles = focusTest ? (testByKey.get(focusTest)?.structures.includes('skeletal-muscle') ?? false) : false;
-  const wantMuscles = layers.muscles || structure === 'skeletal-muscle' || system === 'musculoskeletal' || focusTestMuscles;
-  const [musclesRequested, setMusclesRequested] = useState(false);
-  useEffect(() => {
-    if (wantMuscles) setMusclesRequested(true);
-  }, [wantMuscles]);
-  const models = useModels(body, musclesRequested);
 
   const [insideState, insideActions] = useInside(shownInside, !!inside?.startSimulation && shownInside === inside.scene, shownInside === inside?.scene ? mode : undefined);
 
@@ -255,8 +261,6 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     // Sağ-sol ön kontrolü (fotoğraf asimetrisi) 3B'de vurgulanmaz: bir organ bulgusu değildir.
     return withFindingHighlights(withMeasures, studies.flatMap((st) => st.findings.map((f) => ({ ...f, fileId: st.head.id }))));
   }, [series, focusTest, weights, studies]);
-  const allParts = useMemo(() => [...models.parts, ...models.schematic], [models.parts, models.schematic]);
-  const rawBoxes = useMemo(() => structureBoxes(allParts), [allParts]);
   const detach = useMemo(() => {
     const b = detached && structure ? rawBoxes.get(structure) : undefined;
     if (!b || !structure) return null;
@@ -309,7 +313,14 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     if (focusTest) return new Set(highlights.keys());
     return null;
   }, [structure, system, focusTest, highlights, body]);
-  const focusParts = useMemo(() => (part ? new Set(part.ids) : null), [part]);
+  // Kesit görünümünde basamağın düğümü bir bölüme karşılık geliyorsa (ör. brain.ventricles) o bölüm öne çıkar.
+  const sectionPart = useMemo(() => {
+    if (!section || !lv || !interiorStructure) return null;
+    const labels = stageParts(interiorStructure, lv.stage.id, lv.stage.node);
+    const ids = allParts.filter((p) => p.structure === interiorStructure && !!p.label && labels.includes(p.label)).map((p) => p.id);
+    return ids.length ? new Set(ids) : null;
+  }, [section, lv, interiorStructure, allParts]);
+  const focusParts = useMemo(() => (part ? new Set(part.ids) : sectionPart), [part, sectionPart]);
 
   // Sonuçla ilişkili organlar belirgin; diğerleri soluk (genel görünüm ve sistem seviyesinde).
   const resultMode = resultFocus && highlights.size > 0 && !structure && !focusTest;
@@ -343,7 +354,12 @@ export function Explorer({ route }: { route: ExploreRoute }) {
             : '#37d6c4';
 
   /* ---------------------------------------------------------- kesit */
+  const sectionClip = useMemo<Plane | null>(() => {
+    const b = section && interiorStructure ? boxes.get(interiorStructure) : undefined;
+    return b ? sectionPlane(interiorStructure!, b) : null;
+  }, [section, interiorStructure, boxes]);
   const clipPlane = useMemo<Plane | null>(() => {
+    if (sectionClip) return sectionClip;
     if (!clip.on) return null;
     const b = new Box3();
     for (const id of focus ?? boxes.keys()) {
@@ -357,7 +373,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     // Düzlemin önündeki (kameraya bakan) kısım kesilir: önden → z, yandan → x (kişinin solu), üstten → y
     const n = clip.axis === 'x' ? new Vector3(-1, 0, 0) : clip.axis === 'y' ? new Vector3(0, -1, 0) : new Vector3(0, 0, -1);
     return new Plane(n, at);
-  }, [clip, focus, boxes]);
+  }, [clip, focus, boxes, sectionClip]);
 
   /* ---------------------------------------------------------- kamera */
   const controlsRef = useRef<CameraControlsImpl | null>(null);
@@ -421,6 +437,17 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     if (structure) {
       const b = unionBox([structure]);
       if (wholeBody(b)) return overviewShot(cam);
+      if (section && b) {
+        // Kesit: basamağın bölümü varsa ona yaklaşılır; yoksa her basamakta organın çevresinde biraz dönülür
+        const [az, el] = sectionSpec(structure).view;
+        if (sectionPart) {
+          const pb = new Box3();
+          for (const p of allParts) if (sectionPart.has(p.id)) pb.union(p.box);
+          if (!pb.isEmpty()) return frameBox(pb, [az, el], cam, 1.7, 0.045);
+        }
+        const k = lv ? (lv.idx % 3) - 1 : 0;
+        return frameBox(b, [az + k * 12, el + Math.abs(k) * 4], cam, 0.95);
+      }
       return b ? frameBox(b, ORGANS[structure]?.view ?? [0, 5], cam, 1.45) : OVERVIEW;
     }
     if (system) {
@@ -434,7 +461,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       return b ? frameBox(b, [0, 6], cam, 1.15) : overviewShot(cam);
     }
     return overviewShot(cam);
-  }, [part, structure, system, focusTest, highlights, unionBox, allParts, body]);
+  }, [part, structure, system, focusTest, highlights, unionBox, allParts, body, section, sectionPart, lv]);
 
   // Odaktaki yapıların modeli yüklendi mi? (yüklenince bir kez yeniden kadrajla)
   const focusReady = useMemo(() => {
@@ -485,7 +512,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
     frame(!reducedMotion);
     // focusReady: model geldiğinde tekrar kadrajla; frame her render'da yeni olduğundan bağımlılıkta yok.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownKey, structure, system, focusTest, partKey, focusReady, intro, reducedMotion, controlsReady, body, vp.width, vp.height, detached]);
+  }, [shownKey, structure, system, focusTest, partKey, focusReady, intro, reducedMotion, controlsReady, body, vp.width, vp.height, detached, section, lv?.idx]);
 
   // "İçine gir": kamera organa yaklaşır ve içine dalar; perde bu hareketin sonunda kapanır (SceneDirector delay).
   useEffect(() => {
@@ -807,7 +834,13 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const busy = phase !== 'idle' || holding;
   // Ekrana sığma denetimi: vücut seviyesinde odaktaki organın küresi (iç dünyada sahne kendisi bildirir).
   if (shownKey === 'body') {
-    const b = structure ? boxes.get(structure) : undefined;
+    // Kesit basamağında kamera bölüme (ör. kapak) yaklaşır: kadraj o bölümün küresidir.
+    let b = structure ? boxes.get(structure) : undefined;
+    if (sectionPart) {
+      const pb = new Box3();
+      for (const p of allParts) if (sectionPart.has(p.id)) pb.union(p.box);
+      if (!pb.isEmpty()) b = pb;
+    }
     const sp = b ? b.getBoundingSphere(new Sphere()) : null;
     subjectRef.current = sp ? { center: sp.center.toArray() as [number, number, number], radius: sp.radius } : null;
   } else if (shownKey.startsWith('in:') || shownKey.startsWith('inside:')) subjectRef.current = null;
@@ -917,6 +950,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       data-level={navLevel}
       data-scene={shownKey}
       data-target-scene={sceneKey}
+      data-section={section ? interiorStructure : undefined}
       data-transition={phase}
       {...(lv
         ? {
@@ -979,14 +1013,15 @@ export function Explorer({ route }: { route: ExploreRoute }) {
                   highlights={highlights}
                   focus={focus}
                   focusParts={focusParts}
-                  skinMode={layers.skin}
+                  skinMode={section ? 'hidden' : layers.skin}
+                  section={section}
                   accent={accent}
                   reducedMotion={reducedMotion}
                   onPick={onPick}
                   onHover={onHover}
                   hidden={hidden}
-                  isolate={isolate && !!structure}
-                  innerView={innerView}
+                  isolate={(isolate && !!structure) || section}
+                  innerView={innerView && !section}
                   clip={shown === 'body' ? clipPlane : null}
                   theme={theme}
                   partLevel={structure ?? null}

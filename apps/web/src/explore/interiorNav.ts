@@ -173,9 +173,29 @@ export function levelView(def: OrganInteriorDefinition, idx: number): LevelView 
   return { def, idx: i, stage, level: levelOf(stage), scene, sceneKey: sceneKeyOf(def, scene), insideCount: interiorExperience(def).inside.length };
 }
 
+/**
+ * Kendi 3B yapısı tanımlanmamış iç dünyaların vücuttaki karşılığı (gerçek modelde kesitle açılabilsin):
+ * ağız, dil ve yutak baş-boyun paketindeki ağız yapısında; burun ve gırtlak hava yollarında; genel
+ * atardamar aortta; paratiroid tiroidin arkasında.
+ */
+const STRUCTURE_OF: Record<string, string> = {
+  'ic.mouth': 'mouth',
+  'ic.tongue': 'mouth',
+  'ic.pharynx': 'mouth',
+  'ic.nose': 'airways',
+  'ic.nasal-cavity': 'airways',
+  'ic.larynx': 'airways',
+  'ic.artery': 'aorta',
+  'ic.parathyroid': 'thyroid',
+};
+
 /** İç dünyanın 3B vücuttaki organı: kendisi ya da üst iç dünyalarından biri (girişte kamera ona dalar). */
 export function structureOfInterior(def: OrganInteriorDefinition): string | undefined {
-  for (const d of [...interiorTrail(def)].reverse()) if (d.structure && structureById.has(d.structure)) return d.structure;
+  for (const d of [...interiorTrail(def)].reverse()) {
+    if (d.structure && structureById.has(d.structure)) return d.structure;
+    const s = STRUCTURE_OF[d.organId];
+    if (s && structureById.has(s)) return s;
+  }
   return undefined;
 }
 

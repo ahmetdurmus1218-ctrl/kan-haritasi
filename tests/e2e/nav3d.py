@@ -2,7 +2,7 @@
 
   data-camera (konum|hedef|görüş açısı), data-camera-moving, data-scene / data-target-scene,
   data-transition (approach → cover → hold → reveal → idle), data-level, data-stage, data-interior,
-  data-current-level / data-current-node, data-scene-kind, data-focus, data-subject.
+  data-current-level / data-current-node, data-scene-kind, data-focus, data-subject, data-section (kesit görünümündeki organ).
 """
 import time
 
@@ -82,7 +82,8 @@ def goto_interior(page, url, oid, stage=None):
     page.goto(url + f"#/ic/{oid}" + (f"/{stage}" if stage else ""))
     page.get_by_test_id("explorer").wait_for()
     a, _ = settle(page, 90, before=before, want={"interior": oid})
-    if a and not a.get("scene", "").startswith(("ic:", "in:")):
+    # İç dünyanın ilk adımları gerçek organ modelinin kesitiyle vücut sahnesinde açılır (data-section)
+    if a and not a.get("scene", "").startswith(("ic:", "in:")) and not a.get("section"):
         a, _ = settle(page, 90, before=a)
     return a
 

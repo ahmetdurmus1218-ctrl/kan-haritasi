@@ -129,16 +129,23 @@ def dive(page, oid, label, shot=None, structure=None):
         page.goto(URL + f"#/ic/{oid}")
         page.get_by_test_id("explorer").wait_for()
     t0 = time.time()
-    first = None
+    # Organdan girişte başlangıç tıklamadan önceki organ görünümüdür (kesit kadrajı çok hızlı gelebilir).
+    first = org if structure else None
     while time.time() - t0 < 60:
         a = attrs(page)
         if a and a.get("scene") == "body" and a.get("camera"):
             first = first or a
-        if a and a.get("scene", "").startswith(("ic:", "in:")):
+        if a and (a.get("scene", "").startswith(("ic:", "in:")) or a.get("section")):
             break
         time.sleep(0.1)
     check(first is not None, f"{label}: önce organ 3B vücutta (dış görünüm)")
-    a, _ = wait_settled(page)
+    # Kesit görünümünde sahne değişmez; kameranın kesit kadrajına hareketi beklenir (yavaş GPU'da gecikebilir).
+    a, _ = wait_settled(page, before=first if first and attrs(page).get("section") else None)
+    if first and a.get("section"):
+        t1 = time.time()
+        while time.time() - t1 < 12 and dist(cam(first)[0], cam(attrs(page))[0]) <= 0.05:
+            time.sleep(0.2)
+        a, _ = wait_settled(page)
     check(a.get("level") == "interior" and a.get("currentNode") not in {"wall", "tissue", "cell", "molecule"}, f"{label}: İçine gir → organın iç dünyası ({a.get('level')}/{a.get('stage')}), duvara/hücreye atlanmadı")
     if first:
         p0, _, f0 = cam(first)
@@ -200,18 +207,15 @@ with sync_playwright() as p:
             time.sleep(0.4)
             approach_cam = attrs(page)
             page.screenshot(path=SHOTS / "02-icine-girme-animasyonu.png")
-        if a.get("scene", "").startswith("ic:"):
+        if a.get("scene", "").startswith("ic:") or a.get("section"):
             break
         time.sleep(0.05)
     phases = phases_since(page)
-    check("approach" in phases and "cover" in phases, f"{L}: İçine gir → önce kamera organa yaklaşır (approach), sonra perde (cover) ({sorted(x for x in phases if x)})")
-    if approach_cam:
-        check(dist(cam(org)[0], cam(approach_cam)[0]) > 0.05, f"{L}: dalış sırasında kamera organa doğru hareket ediyor")
     a, ph = wait_settled(page)
     ph |= phases
-    check(a.get("scene") == "ic:large-intestine" and a.get("level") == "interior" and a.get("stage") == "lumen", f"{L}: kamera lümene girdi — kalın bağırsak içi ({a.get('scene')}, {a.get('stage')})")
-    check(cam(a)[2] > 50, f"{L}: lümen içinde geniş açılı (endoskop) kamera (fov {cam(a)[2]})")
-    check({"cover", "reveal"} <= ph, f"{L}: sahne geçişi animasyonlu (perde kapanır, yeni sahne açılır)")
+    # İçine gir: organın gerçek modeli kesitle açılır (vücut sahnesinde; perde ve prosedürel sahne yok)
+    check(a.get("section") == "large-intestine" and a.get("scene") == "body" and a.get("level") == "interior" and a.get("stage") == "lumen", f"{L}: İçine gir → kalın bağırsağın gerçek modeli kesitle açıldı ({a.get('scene')}, kesit {a.get('section')}, {a.get('stage')})")
+    check(dist(cam(org)[0], cam(a)[0]) > 0.02, f"{L}: kamera kesit görünümüne geçti")
     check(not any(x.startswith(("wall:", "deeper:")) and "Hücre" in x for x in a["actions"]), f"{L}: içeride hücreye atlayan seçenek yok")
     crumb = page.get_by_role("navigation", name="Keşif seviyesi").inner_text()
     check(all(norm(x) in norm(crumb) for x in ["Sindirim", "Kalın bağırsak", "İçerisi"]), f"{L}: breadcrumb Vücut › Sindirim › Kalın bağırsak › İçerisi ({crumb!r})")
@@ -234,7 +238,7 @@ with sync_playwright() as p:
     b0 = attrs(page)
     page.get_by_role("navigation", name="Keşif seviyesi").get_by_role("button", name="İçerisi").click()
     a, _ = wait_settled(page, before=b0)
-    check(a.get("stage") == "lumen" and a.get("scene") == "ic:large-intestine", f"{L}: breadcrumb → İçerisi (lümene dönüş, {a.get('scene')})")
+    check(a.get("stage") == "lumen" and a.get("section") == "large-intestine", f"{L}: breadcrumb → İçerisi (kesit görünümüne dönüş, {a.get('scene')})")
     # İlk iç basamaktan geri: organın dışına (3B vücut, organ dış görünüm)
     a = act(page, "back", f"{L}: Geri → organ dış görünüm")
     check(a.get("scene") == "body" and a.get("level") == "organ", f"{L}: dışarı çıkıldı — organ 3B görünümü ({a.get('scene')}, {a.get('level')})")

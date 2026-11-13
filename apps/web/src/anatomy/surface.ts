@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { type MeshPhysicalMaterial, Vector3 } from 'three';
+import { Color, type MeshPhysicalMaterial, Vector3 } from 'three';
 
 /**
  * Gerçekçi yüzey: modellerde boyalı doku (texture) yoktur; dokusuz kaynaklarda gerçekçi görünüm
@@ -85,25 +85,44 @@ const NOISE_GLSL = /* glsl */ `
   float khF(vec3 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 3; i++) { s += a * khN(p); p *= 2.07; a *= 0.5; } return s; }
 `;
 
-/** Gürültüyü fiziksel malzemeye ekler. Aynı kodu paylaşan tüm malzemeler tek gölgelendirici programı kullanır. */
-function injectNoise(mat: MeshPhysicalMaterial, noise: Noise) {
-  const uniforms = {
-    uKhScale: { value: noise.scale },
-    uKhStretch: { value: new Vector3(...noise.stretch) },
-    uKhAmp: { value: noise.amp },
-    uKhTint: { value: noise.tint },
-  };
-  mat.userData.khNoise = uniforms;
+/** Malzemenin kesit yüzü rengi (kesit açıkken iç / arka yüzler bu renkte: dokunun kesilmiş yüzü gibi). */
+export function setCutColor(mat: MeshPhysicalMaterial, hex: string) {
+  const u = (mat.userData.khCut ??= { value: new Color(hex) }) as { value: Color };
+  u.value.set(hex);
+}
+
+/**
+ * Gölgelendirici eki: (1) kesit yüzü rengi — arka yüz (kesitte görünen iç taraf) ayrı renkte çizilir;
+ * (2) `noise` verilirse yüzey gürültüsü (renk değişimi + kabartma). Aynı kodu paylaşan tüm malzemeler
+ * tek gölgelendirici programı kullanır.
+ */
+function inject(mat: MeshPhysicalMaterial, noise: Noise | null) {
+  mat.userData.khCut ??= { value: new Color('#b07a70') };
+  const uniforms = noise
+    ? {
+        uKhScale: { value: noise.scale },
+        uKhStretch: { value: new Vector3(...noise.stretch) },
+        uKhAmp: { value: noise.amp },
+        uKhTint: { value: noise.tint },
+      }
+    : null;
+  if (uniforms) mat.userData.khNoise = uniforms;
+  else delete mat.userData.khNoise;
   mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, mat.userData.khNoise);
+    sh.uniforms.uKhCut = mat.userData.khCut;
+    if (uniforms) Object.assign(sh.uniforms, mat.userData.khNoise);
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 uKhCut;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\n        if (!gl_FrontFacing) diffuseColor.rgb = uKhCut;');
+    if (!uniforms) return;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vKhW;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvKhW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>\nvarying vec3 vKhW;\nuniform float uKhScale, uKhAmp, uKhTint;\nuniform vec3 uKhStretch;\n${NOISE_GLSL}`)
       .replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
+        'if (!gl_FrontFacing) diffuseColor.rgb = uKhCut;',
+        `if (!gl_FrontFacing) diffuseColor.rgb = uKhCut;
         vec3 khP = vKhW * uKhScale * uKhStretch;
         // Ekranda bir gürültü hücresi pikselden küçükse ayrıntı söner (uzaktan titreşim/kumlanma olmasın)
         float khFade = clamp(1.6 - length(fwidth(khP)) * 1.4, 0.0, 1.0);
@@ -121,7 +140,7 @@ function injectNoise(mat: MeshPhysicalMaterial, noise: Noise) {
         }`,
       );
   };
-  mat.customProgramCacheKey = () => 'kh-organic-1';
+  mat.customProgramCacheKey = () => (uniforms ? 'kh-organic-2' : 'kh-plain-2');
 }
 
 /** Malzemeyi yüzey türüne göre ayarlar. `detail`: false ise gürültü kapalı (hafif kip). */
@@ -133,12 +152,7 @@ export function applySurface(mat: MeshPhysicalMaterial, surface: Surface, detail
   mat.clearcoatRoughness = s.clearcoatRoughness;
   mat.sheen = s.sheen ?? 0;
   mat.sheenRoughness = 0.6;
-  if (detail && s.noise) injectNoise(mat, s.noise);
-  else {
-    mat.onBeforeCompile = () => {};
-    mat.customProgramCacheKey = () => 'kh-plain';
-    delete mat.userData.khNoise;
-  }
+  inject(mat, detail ? s.noise : null);
   mat.needsUpdate = true;
 }
 

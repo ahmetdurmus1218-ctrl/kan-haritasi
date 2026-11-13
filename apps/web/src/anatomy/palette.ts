@@ -267,6 +267,12 @@ const REAL_COLORS: Record<string, string> = {
   breasts: '#dcae94',
 };
 const REAL_ARTERY = '#a3121a';
+/** Gerçekçi görünümde atlas renginin yerine geçen bölüm renkleri (ör. karıncıklar koyu boşluk). */
+const REAL_PART: Record<string, string> = {
+  'brain|ventricles': '#4a3f3c',
+  'brain|visual-pathway': '#e6dccb',
+  'brain|olfactory': '#e6dccb',
+};
 const REAL_VEIN = '#24398f';
 /** Gerçekçi görünümde atlas renklendirmesi yapılmayan bölümler (gerçekte aynı dokudan, aynı renkte). */
 const REAL_UNIFORM = /^(heart\|(right|left|septum|papillary)|brain\|(?!white-matter|corpus-callosum|ventricles|visual-pathway)|lungs\||liver\|(right|left|caudate|quadrate|capsule)|lymph-node\|(follicles|paracortex|medulla)|prostate\|(transition|central))/;
@@ -277,6 +283,7 @@ export function colorFor(structure: string, label: string | null, look: ColorLoo
   const real = look === 'real';
   if (label) {
     const key = `${structure}|${label}`;
+    if (real && REAL_PART[key]) return REAL_PART[key];
     const pc = PART_COLORS[key];
     if (pc && !(real && REAL_UNIFORM.test(key))) return pc;
     // Akciğer damarlarında yön terstir: pulmoner arter oksijensiz, pulmoner ven oksijenli kan taşır.

@@ -6,7 +6,8 @@ import type { ModelPart, PartElement } from './models';
 import { PART_OPACITY, TRANSLUCENT, adaptedColor, colorFor, highlightColor } from './palette';
 import type { StructureHighlight } from './highlight';
 import type { SchematicPart, SchematicShape } from './schematic';
-import { type Surface, applySurface, surfaceFor, useLook } from './surface';
+import { type Surface, applySurface, setCutColor, surfaceFor, useLook } from './surface';
+import { cutColor } from './section';
 
 /**
  * Vücut sahnesi: HRA modellerinden gelen yapılar + şematik bezler.
@@ -66,6 +67,8 @@ export interface BodySceneProps {
    * organlar öne çıkar. null: kimse soluklaşmaz.
    */
   muted: Set<string> | null;
+  /** Kesit görünümü (İçine gir): yapı düzeyindeki yarı saydamlık kalkar, kesit yüzü dolu görünür. */
+  section?: boolean;
   /** Vücuttan ayrılmış yapı: parçaları bu kadar kaydırılarak (metre) vücudun önünde çizilir. */
   detach?: { structure: string; offset: [number, number, number] } | null;
 }
@@ -178,6 +181,8 @@ interface PartViewProps {
   /** Gerçekçi yüzey türü ve ayrıntı (gürültü) açık mı. */
   surface: Surface;
   detail: boolean;
+  /** Kesit yüzü rengi (kesit açıkken içte görünen yüzler). */
+  cut: string;
   targetOpacity: number;
   emissiveColor: string | null;
   emissive: number;
@@ -188,7 +193,7 @@ interface PartViewProps {
   onHover: BodySceneProps['onHover'];
 }
 
-function PartView({ part, clip, visible, color, surface, detail, targetOpacity, emissiveColor, emissive, pulse, pickable, visuals, onPick, onHover }: PartViewProps) {
+function PartView({ part, clip, visible, color, surface, detail, cut, targetOpacity, emissiveColor, emissive, pulse, pickable, visuals, onPick, onHover }: PartViewProps) {
   const invalidate = useThree((s) => s.invalidate);
   const material = useMemo(() => new MeshPhysicalMaterial({ roughness: 0.46, metalness: 0, envMapIntensity: 1 }), []);
 
@@ -196,6 +201,10 @@ function PartView({ part, clip, visible, color, surface, detail, targetOpacity, 
     applySurface(material, surface, detail);
     invalidate();
   }, [material, surface, detail, invalidate]);
+  useEffect(() => {
+    setCutColor(material, cut);
+    invalidate();
+  }, [material, cut, invalidate]);
 
   useEffect(() => {
     // Kesit: düzlemin önü kesilir; iç yüzler de çizilir ki organın içi görünsün.
@@ -358,7 +367,7 @@ function mutedColor(hex: string, theme: 'light' | 'dark'): string {
 }
 
 export function BodyScene(props: BodySceneProps) {
-  const { parts, schematic, visible, isVisible, highlights, focus, focusParts, skinMode, accent, reducedMotion, onPick, onHover, hidden, isolate, innerView, clip, theme, partLevel, muted, detach } = props;
+  const { parts, schematic, visible, isVisible, highlights, focus, focusParts, skinMode, accent, reducedMotion, onPick, onHover, hidden, isolate, innerView, clip, theme, partLevel, muted, detach, section } = props;
   const visuals = useRef(new Map<string, Visual>());
   const skinRef = useRef<ShaderMaterial | null>(null);
   const [hovered, setHovered] = useState<{ partId: string; structure: string; whole: boolean } | null>(null);
@@ -376,12 +385,13 @@ export function BodyScene(props: BodySceneProps) {
         const inFocus = !focus || focus.has(p.structure) || companionInFocus(focus, p.structure);
         const partFocused = focusParts ? focusParts.has(p.id) : true;
         const key = `${p.structure}|${p.label ?? ''}`;
-        const base = PART_OPACITY[key] ?? TRANSLUCENT[p.structure] ?? 1;
+        const base = PART_OPACITY[key] ?? (section ? 1 : (TRANSLUCENT[p.structure] ?? 1));
         const inner = p.label ? (partDef(p.structure, p.label)?.inner ?? false) : false;
         // İç anatomi: odaktaki organın dış bölümleri saydamlaşır
         const innerDim = innerView && inFocus && focus && !inner && !focusParts ? Math.min(base, 0.14) : base;
         const isMuted = !!muted && muted.has(p.structure) && !h;
-        const focused = !inFocus ? (isolate ? 0 : DIM) : focusParts && !partFocused ? Math.min(base, 0.18) : innerDim;
+        // Kesit görünümünde organ dolu kalır; basamağın bölümü yalnız ışıkla vurgulanır.
+        const focused = !inFocus ? (isolate ? 0 : DIM) : focusParts && !partFocused && !section ? Math.min(base, 0.18) : innerDim;
         const isHovered = !!hovered && (hovered.whole ? hovered.structure === p.structure : hovered.partId === p.id);
         // Soluk yapı üzerine gelinince biraz belirginleşir (tıklanabileceği anlaşılsın)
         const targetOpacity = isMuted ? Math.min(focused, isHovered ? 0.55 : focus ? 0.4 : theme === 'light' ? 0.2 : 0.13) : focused;
@@ -400,6 +410,7 @@ export function BodyScene(props: BodySceneProps) {
             visible={shown}
             color={isMuted && !isHovered ? mutedColor(baseColor, theme) : baseColor}
             surface={real ? surface : 'organ'}
+            cut={cutColor(p.structure, p.label, baseColor)}
             detail={real && quality === 'high'}
             targetOpacity={targetOpacity}
             emissiveColor={emissiveColor}

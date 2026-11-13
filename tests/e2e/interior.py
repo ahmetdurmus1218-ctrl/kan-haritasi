@@ -90,10 +90,11 @@ with sync_playwright() as p:
     page.wait_for_url("**/#/ic/small-intestine**")
     # İçine gir 3B keşifte açılır: önce organ 3B vücutta, sonra kamera organa dalar (aynı tuval, aynı kamera)
     a, phases = settle(page, 120, want={"interior": "small-intestine"})
-    if not a.get("scene", "").startswith("ic:"):
+    if not a.get("scene", "").startswith("ic:") and not a.get("section"):
         a, phases2 = settle(page, 120, before=a)
         phases |= phases2
-    check(a.get("scene") == "ic:small-intestine" and a.get("sceneKind") == "lumen", f"49: 3B iç sahne — lümen (tüpün içinden bakış) ({a.get('scene')}, {a.get('sceneKind')})")
+    # İçine gir'in ilk adımı: organın gerçek 3B modeli kesitle açılır (prosedürel iç sahne değil)
+    check(a.get("section") == "small-intestine" and a.get("scene") == "body" and a.get("sceneKind") == "lumen", f"49: İçine gir → gerçek modelin kesit görünümü ({a.get('scene')}, kesit {a.get('section')}, {a.get('sceneKind')})")
     check(a.get("level") == "interior" and a.get("stage") == "lumen", "49: İçine gir → organın içi (duvar/hücre değil)")
     check("Eğitimsel" in page.get_by_test_id("interior-label").inner_text(), "35: eğitimsel etiket (Eğitimsel · Temsili anatomi)")
     page.screenshot(path=SHOTS / "ic1-ince-bagirsak-lumen.png")
