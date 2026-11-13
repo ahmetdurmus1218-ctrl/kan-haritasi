@@ -8,7 +8,8 @@
     "fetch": "sh fetch-hra.sh && sh fetch-bp3d.sh && sh fetch-zanatomy.sh",
     "build": "tsx build-anatomy.ts",
     "check-fit": "tsx check-fit.ts",
-    "coverage": "tsx coverage.ts"
+    "coverage": "tsx coverage.ts",
+    "measure-organs": "tsx measure-organs.ts"
   },
   "devDependencies": {
     "@gltf-transform/core": "4.5.0",

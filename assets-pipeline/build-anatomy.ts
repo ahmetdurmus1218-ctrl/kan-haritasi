@@ -31,6 +31,7 @@ import { type LimbFit, boneArray, femaleLimbs, kneeFit } from './anatomy-fit';
 import { type Rigid, Volume, apply as applyRigid, keepInside } from './fit';
 import { trianglesOf } from './anatomy-fit';
 import { positionsOnly, smoothNormals, weldSmooth } from './mesh-normals';
+import { femaleHeadFit, maleOrganWarp } from './organ-fit';
 import { PACKS, type PackIndexEntry, alignment, buildPack } from './zanatomy-packs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -206,6 +207,26 @@ async function loadSource(spec: SourceSpec): Promise<Document> {
       }
   }
 
+  // Organ uyumu: HRA organları ve damarları iskelete (deri, omurga ve leğen kemiği hariç)
+  if (ORGAN_WARP && !spec.knee && spec.asset !== 'body' && spec.asset !== 'skeleton') {
+    const done = new Set<unknown>();
+    for (const mesh of root.listMeshes())
+      for (const prim of mesh.listPrimitives()) {
+        const acc = prim.getAttribute('POSITION');
+        if (!acc || done.has(acc)) continue;
+        done.add(acc);
+        const arr = acc.getArray();
+        if (arr instanceof Float32Array) warpArray(arr);
+        else {
+          const e: number[] = [0, 0, 0];
+          for (let i = 0; i < acc.getCount(); i++) {
+            acc.getElement(i, e);
+            acc.setElement(i, ORGAN_WARP([e[0]!, e[1]!, e[2]!]));
+          }
+        }
+      }
+  }
+
   // 2) Gereksiz öznitelikler ve malzemeler
   for (const mesh of root.listMeshes()) {
     for (const prim of mesh.listPrimitives()) {
@@ -311,6 +332,20 @@ const m2fArray = (a: Float32Array) => {
 
 /** Kadın vücudu için eklemli kol/bacak uyumu (main içinde hesaplanır). */
 let LIMBS: LimbFit | null = null;
+/**
+ * HRA organlarına uygulanan uyum bükmesi (organ-fit.ts): erkekte HRA → BodyParts3D iskeleti (gözler,
+ * beyin, omurga, gövde organları); kadında baş bölgesi (gözler, beyin) uyarlanmış kafatasına.
+ */
+let ORGAN_WARP: ((p: V3) => V3) | null = null;
+function warpArray(a: Float32Array) {
+  if (!ORGAN_WARP) return;
+  for (let i = 0; i < a.length; i += 3) {
+    const q = ORGAN_WARP([a[i]!, a[i + 1]!, a[i + 2]!]);
+    a[i] = q[0];
+    a[i + 1] = q[1];
+    a[i + 2] = q[2];
+  }
+}
 
 /** Erkek → kadın: benzerlik dönüşümü + kol/bacak uyumu (yumuşak doku, damar, sinir noktaları). */
 const femalePoint = (p: V3): V3 => {
@@ -337,10 +372,10 @@ const femaleArray = (a: Float32Array) => {
   }
 };
 /** Kemikler: benzerlik dönüşümü + ait olduğu kol/bacak parçasının katı dönüşümü (kemik bükülmez). */
-const femaleBones = (a: Float32Array, group?: string) => {
+const femaleBones = (a: Float32Array, group?: string, id?: string) => {
   m2fArray(a);
   if (!LIMBS || !group) return;
-  const T = LIMBS.bone(group);
+  const T = LIMBS.bone(group, id);
   for (let i = 0; i < a.length; i += 3) {
     const q = applyRigid(T, [a[i]!, a[i + 1]!, a[i + 2]!]);
     a[i] = q[0];
@@ -395,10 +430,12 @@ async function femaleGlandTargets(): Promise<Record<string, V3>> {
   };
   const rel = (p: V3, anchor: V3) => m2fVector([p[0] - anchor[0], p[1] - anchor[1], p[2] - anchor[2]]);
   const at = (anchor: V3, d: V3): V3 => [anchor[0] + d[0], anchor[1] + d[1], anchor[2] + d[2]];
+  // Kadının beyni ve böbrekleri organ uyumuyla yer değiştirdiyse bezler de onlarla gider
+  const w = (p: V3) => (ORGAN_WARP ? ORGAN_WARP(p) : p);
   return {
-    pituitary: at(hf, rel(maleCentroid('pituitary'), hm)),
-    'adrenals|right': at(krf, rel(maleCentroid('adrenals|right'), krm)),
-    'adrenals|left': at(klf, rel(maleCentroid('adrenals|left'), klm)),
+    pituitary: w(at(hf, rel(maleCentroid('pituitary'), hm))),
+    'adrenals|right': w(at(krf, rel(maleCentroid('adrenals|right'), krm))),
+    'adrenals|left': w(at(klf, rel(maleCentroid('adrenals|left'), klm))),
   };
 }
 
@@ -459,7 +496,17 @@ async function loadBp3d(asset: keyof typeof BP3D_BUDGET, sex: BodySex): Promise<
 async function loadBp3dOrgans(asset: keyof typeof BP3D_ORGANS, sex: BodySex, glands: Record<string, V3> | null): Promise<Document | null> {
   if (asset === 'reproductive' && sex === 'female') return null;
   const groups: Bp3dGroup[] = BP3D_ORGANS[asset];
-  const place = glands ? (g: Bp3dGroup, c: V3): V3 | null => (glands[g.key] ? [glands[g.key]![0] - c[0], glands[g.key]![1] - c[1], glands[g.key]![2] - c[2]] : null) : undefined;
+  const place = glands
+    ? (g: Bp3dGroup, c: V3): V3 | null => (glands[g.key] ? [glands[g.key]![0] - c[0], glands[g.key]![1] - c[1], glands[g.key]![2] - c[2]] : null)
+    : ORGAN_WARP
+      ? (g: Bp3dGroup, c: V3): V3 | null => {
+          // Erkek: komşu HRA organına göre ayarlanmış bezler (hipofiz, böbreküstü) organ uyumuyla birlikte taşınır
+          if (!g.offset) return null;
+          const p: V3 = [c[0] + g.offset[0], c[1] + g.offset[1], c[2] + g.offset[2]];
+          const q = ORGAN_WARP!(p);
+          return [q[0] - c[0], q[1] - c[1], q[2] - c[2]];
+        }
+      : undefined;
   // Kadında bu BodyParts3D organları erkek referansından uyarlanmıştır (HRA kadın vücudunda yoklar).
   const doc = bp3dDocument(groups, asset, sex === 'female' ? m2fArray : undefined, place, undefined, { src: 'bp3d3', ...(sex === 'female' ? { adapted: true } : {}) });
   await simplifyTo(doc, BP3D_ORGAN_BUDGET[asset], `BodyParts3D ${asset}`, groups.length);
@@ -489,8 +536,17 @@ async function main() {
     const dir = join(OUT, sex === 'male' ? 'm' : 'f');
     mkdirSync(dir, { recursive: true });
     currentSex = sex;
+    LIMBS = null;
+    ORGAN_WARP = null;
+    let head: Rigid | undefined;
+    if (sex === 'male') ORGAN_WARP = (await maleOrganWarp(SRC, console.log)).map;
+    else {
+      const fit = await femaleHeadFit(SRC, m2fPoint, console.log);
+      head = fit.head;
+      ORGAN_WARP = fit.organs.map;
+    }
     const glands = sex === 'female' ? await femaleGlandTargets() : null;
-    LIMBS = sex === 'female' ? await femaleLimbs(SRC, m2fArray, console.log) : null;
+    LIMBS = sex === 'female' ? await femaleLimbs(SRC, m2fArray, console.log, head) : null;
     SKIN = await skinVolume(sex);
     // Diz: HRA diz parçalarını bu vücudun (dönüştürülmüş) femur ve bacak kemiklerine oturt
     const boneMap = sex === 'female' ? femaleBones : undefined;

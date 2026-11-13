@@ -110,7 +110,8 @@ for (const [body, assets] of Object.entries(manifest.bodies)) {
   // Diz: kıkırdak ve menisküs femur/tibiaya yapışık olmalı
   const skel = await nodePoints(assets.skeleton!.file);
   for (const s of ['l', 'r']) {
-    const bone = [...(skel.get(`bones|femur-${s}`) ?? []), ...(skel.get(`bones|leg-${s}`) ?? [])];
+    // Kemikler tek tek düğümdür (bones|femur-l|FMA…): grup önekine göre topla
+    const bone = [...skel].filter(([k]) => k.startsWith(`bones|femur-${s}|`) || k.startsWith(`bones|leg-${s}|`) || k === `bones|femur-${s}` || k === `bones|leg-${s}`).flatMap(([, v]) => [...v]);
     const grid = new PointGrid(Float32Array.from(bone), 0.01);
     const side = s === 'l' ? 1 : -1;
     const cart = [...skel].filter(([k]) => /^knee\|(cartilage|meniscus)/.test(k)).map(([, v]) => v);

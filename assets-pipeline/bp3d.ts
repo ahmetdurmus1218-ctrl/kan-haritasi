@@ -279,7 +279,7 @@ export function planBp3d(): Bp3dSet {
   };
 }
 
-export type PointMap = (p: Float32Array, group?: string) => void;
+export type PointMap = (p: Float32Array, group?: string, id?: string) => void;
 
 /**
  * Grupları tek belgeye (her grup bir düğüm) yazar; sadeleştirme çağıran tarafta yapılır.
@@ -303,7 +303,7 @@ export function bp3dDocument(
     for (const g of groups) {
       for (const id of g.ids) {
         const pos = readStl(id);
-        if (map) map(pos, g.key);
+        if (map) map(pos, g.key, id);
         scene.addChild(meshNode(doc, buffer, pos, `${g.key}|${id}`).setExtras({ ...element(id) }));
       }
     }

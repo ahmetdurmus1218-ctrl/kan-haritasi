@@ -38,7 +38,7 @@ export const apply = (T: Rigid, p: V3): V3 => [
   T.R[2][0] * p[0] + T.R[2][1] * p[1] + T.R[2][2] * p[2] + T.t[2],
 ];
 
-const mulM = (a: M3, b: M3): M3 => [0, 1, 2].map((r) => [0, 1, 2].map((c) => a[r]![0] * b[0]![c]! + a[r]![1] * b[1]![c]! + a[r]![2] * b[2]![c]!)) as M3;
+export const mulM = (a: M3, b: M3): M3 => [0, 1, 2].map((r) => [0, 1, 2].map((c) => a[r]![0] * b[0]![c]! + a[r]![1] * b[1]![c]! + a[r]![2] * b[2]![c]!)) as M3;
 const mulV = (a: M3, v: V3): V3 => [a[0][0] * v[0] + a[0][1] * v[1] + a[0][2] * v[2], a[1][0] * v[0] + a[1][1] * v[1] + a[1][2] * v[2], a[2][0] * v[0] + a[2][1] * v[1] + a[2][2] * v[2]];
 
 /** a ∘ b (önce b, sonra a). */

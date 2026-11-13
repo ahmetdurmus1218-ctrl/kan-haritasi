@@ -8,8 +8,8 @@ import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { clearNodeTransform, flatten } from '@gltf-transform/functions';
 import { MeshoptDecoder } from 'meshoptimizer';
-import { planBp3d, readStl } from './bp3d';
-import { Blender, IDENTITY, PointGrid, type Rigid, type Segment, type SegmentFit, type V3, Volume, apply, downsample, fitSegments, icp } from './fit';
+import { bp3dName, planBp3d, readStl } from './bp3d';
+import { Blender, IDENTITY, PointGrid, type Rigid, type Segment, type SegmentFit, type V3, Volume, aboutPivot, apply, axisAngle, compose, downsample, fitSegments, icp, mulM } from './fit';
 
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
 
@@ -80,8 +80,8 @@ export function segmentOfBone(group: string): string | null {
 }
 
 export interface LimbFit {
-  /** Kemik grubu için katı dönüşüm (gövde kemiklerinde birim). */
-  bone: (group: string) => Rigid;
+  /** Kemik grubu (ve verilirse tek kemik: parmak) için katı dönüşüm (gövde kemiklerinde birim). */
+  bone: (group: string, id?: string) => Rigid;
   /** Yumuşak doku / damar / sinir noktası için harmanlanmış dönüşüm. */
   point: (p: V3) => V3;
   report: Map<string, SegmentFit>;
@@ -90,7 +90,7 @@ export interface LimbFit {
 /**
  * Kadın vücudu için eklemli kol/bacak uyumu. `m2f`: erkek → kadın benzerlik dönüşümü (dizi üzerinde).
  */
-export async function femaleLimbs(hraDir: string, m2f: ArrayMap, log: (s: string) => void): Promise<LimbFit> {
+export async function femaleLimbs(hraDir: string, m2f: ArrayMap, log: (s: string) => void, head: Rigid = IDENTITY): Promise<LimbFit> {
   log('\n[kadın · kol/bacak uyumu]');
   const skin = new Volume(await trianglesOf(join(hraDir, 'VH_Female/v1.3/VH_F_skin.glb')), 0.005);
   const plan = planBp3d();
@@ -150,18 +150,153 @@ export async function femaleLimbs(hraDir: string, m2f: ArrayMap, log: (s: string
   const report = fitSegments(segments, skin, log);
 
   const blender = new Blender(0.015);
-  for (const [key, a] of bones) {
+  // Kafatası (uyarlanmış) kadının baş dönüşümüyle; çevresindeki yumuşak doku da onunla harmanlanır.
+  const segT = (key: string) => {
+    if (key === 'bones|skull') return head;
     const seg = segmentOfBone(key);
-    blender.add(a, seg ? report.get(seg)!.T : IDENTITY);
+    return seg ? report.get(seg)!.T : IDENTITY;
+  };
+  const digits = fitDigits(plan.skeleton, m2f, report, skin, log);
+  const boneT = (key: string, id?: string) => (id && digits.get(id)) || segT(key);
+  for (const g of plan.skeleton) {
+    if (!/^bones\|(hand|foot)-/.test(g.key)) {
+      blender.add(bones.get(g.key)!, segT(g.key));
+      continue;
+    }
+    // El ve ayakta her kemik kendi dönüşümüyle (parmaklar ayrı oturtuldu)
+    for (const id of g.ids) blender.add(mapped([id], m2f), boneT(g.key, id));
   }
   return {
-    bone: (group) => {
-      const seg = segmentOfBone(group);
-      return seg ? report.get(seg)!.T : IDENTITY;
-    },
+    bone: boneT,
     point: (p) => blender.map(p),
     report,
   };
+}
+
+/**
+ * Parmaklar (el ve ayak): kadın derisinde parmak duruşu erkek modelinden farklıdır (ör. bükük
+ * parmak uçları derinin dışında kalıyordu). Her parmak, el/ayak dönüşümünden sonra kendi taban
+ * ekleminde (MCP/MTP: tarak kemiği ile ilk falanks arası) döndürülerek deriye oturtulur; küçük açılar
+ * yeğlenir (gereksiz bükme olmasın).
+ */
+const DIGIT = /^(proximal|middle|distal) phalanx of (left|right) (thumb|index finger|middle finger|ring finger|little finger|big toe|second toe|third toe|fourth toe|little toe)$/;
+const RAY: Record<string, string> = { thumb: 'first', 'index finger': 'second', 'middle finger': 'third', 'ring finger': 'fourth', 'little finger': 'fifth', 'big toe': 'first', 'second toe': 'second', 'third toe': 'third', 'fourth toe': 'fourth', 'little toe': 'fifth' };
+function fitDigits(skeleton: { key: string; ids: string[] }[], m2f: ArrayMap, report: Map<string, SegmentFit>, skin: Volume, log: (s: string) => void): Map<string, Rigid> {
+  const out = new Map<string, Rigid>();
+  const lines: string[] = [];
+  for (const g of skeleton) {
+    const m = /^bones\|(hand|foot)-([lr])$/.exec(g.key);
+    if (!m) continue;
+    const parent = report.get(`${m[1]}-${m[2]}`)!.T;
+    const digits = new Map<string, { ids: string[]; proximal?: string; level: Map<string, string> }>();
+    const rays = new Map<string, string>();
+    for (const id of g.ids) {
+      const name = bp3dName(id);
+      const d = DIGIT.exec(name);
+      if (d) {
+        const e = digits.get(d[3]!) ?? { ids: [], level: new Map<string, string>() };
+        e.ids.push(id);
+        e.level.set(d[1]!, id);
+        if (d[1] === 'proximal') e.proximal = id;
+        digits.set(d[3]!, e);
+      }
+      const r = /(first|second|third|fourth|fifth) (metacarpal|metatarsal) bone$/.exec(name);
+      if (r) rays.set(r[1]!, id);
+    }
+    for (const [digit, e] of digits) {
+      const ray = rays.get(RAY[digit]!);
+      if (!e.proximal || !ray) continue;
+      const prox = toV3(mapped([e.proximal], m2f)).map((p) => apply(parent, p));
+      const meta = new PointGrid(Float32Array.from(toV3(mapped([ray], m2f)).flatMap((p) => apply(parent, p))), 0.01);
+      const near = prox.map((p) => ({ p, d: meta.nearest(p, 0.08)?.d ?? 1 })).sort((a, b) => a.d - b.d);
+      const sel = near.slice(0, Math.max(3, Math.floor(near.length * 0.05)));
+      const pivot: V3 = [0, 1, 2].map((k) => sel.reduce((s, x) => s + x.p[k]!, 0) / sel.length) as V3;
+      const pts = e.ids.flatMap((id) => toV3(downsample(mapped([id], m2f), 0.003))).map((p) => apply(parent, p));
+      const rot = (a: number, b: number, c: number) => aboutPivot(mulM(axisAngle([0, 0, 1], (a * Math.PI) / 180), mulM(axisAngle([1, 0, 0], (b * Math.PI) / 180), axisAngle([0, 1, 0], (c * Math.PI) / 180))), pivot);
+      const outside = (T: Rigid) => {
+        let c = 0;
+        for (const p of pts) {
+          const q = apply(T, p);
+          if (!skin.inside(q)) c += 0.002 + (skin.surface.nearest(q, 0.05)?.d ?? 0.05);
+        }
+        return c / pts.length;
+      };
+      const cost = (q: [number, number, number]) => outside(rot(...q)) + 2e-7 * (q[0] ** 2 + q[1] ** 2 + q[2] ** 2);
+      let q: [number, number, number] = [0, 0, 0];
+      const before = outside(rot(0, 0, 0));
+      let best = cost(q);
+      const lim = m[1] === 'hand' ? 70 : 40;
+      for (const step of [10, 5, 2, 1]) {
+        let improved = true;
+        while (improved) {
+          improved = false;
+          for (let k = 0; k < 3; k++)
+            for (const dir of [1, -1]) {
+              const n: [number, number, number] = [...q];
+              n[k] += dir * step;
+              if (Math.abs(n[k]) > lim) continue;
+              const c = cost(n);
+              if (c < best - 1e-9) {
+                best = c;
+                q = n;
+                improved = true;
+              }
+            }
+        }
+      }
+      const T = compose(rot(...q), parent);
+      for (const id of e.ids) out.set(id, T);
+      const after1 = outside(rot(...q));
+      // Orta (PIP) ve uç (DIP) eklemleri: kalan taşma için parmağın uç kısmı ayrıca bükülür
+      let extra = '';
+      const chain = ['proximal', 'middle', 'distal'].filter((l) => e.level.has(l));
+      for (let li = 1; li < chain.length && after1 > 5e-5; li++) {
+        const prevId = e.level.get(chain[li - 1]!)!;
+        const sub = chain.slice(li).map((l) => e.level.get(l)!);
+        const cur = (id: string) => toV3(downsample(mapped([id], m2f), 0.003)).map((p) => apply(out.get(id)!, p));
+        const prevPts = cur(prevId);
+        const firstPts = cur(sub[0]!);
+        const grid = new PointGrid(Float32Array.from(prevPts.flat()), 0.01);
+        const nearSub = firstPts.map((p) => ({ p, d: grid.nearest(p, 0.05)?.d ?? 1 })).sort((a, b) => a.d - b.d).slice(0, 4);
+        const pv: V3 = [0, 1, 2].map((k) => nearSub.reduce((a, x) => a + x.p[k]!, 0) / nearSub.length) as V3;
+        const subPts = sub.flatMap(cur);
+        const rotS = (a: number, b: number, c: number) => aboutPivot(mulM(axisAngle([0, 0, 1], (a * Math.PI) / 180), mulM(axisAngle([1, 0, 0], (b * Math.PI) / 180), axisAngle([0, 1, 0], (c * Math.PI) / 180))), pv);
+        const outS = (T2: Rigid) => subPts.reduce((c, p) => {
+          const x = apply(T2, p);
+          return c + (skin.inside(x) ? 0 : 0.002 + (skin.surface.nearest(x, 0.05)?.d ?? 0.05));
+        }, 0) / subPts.length;
+        const costS = (v: [number, number, number]) => outS(rotS(...v)) + 2e-7 * (v[0] ** 2 + v[1] ** 2 + v[2] ** 2);
+        let v: [number, number, number] = [0, 0, 0];
+        let bestS = costS(v);
+        for (const step of [10, 5, 2, 1]) {
+          let imp = true;
+          while (imp) {
+            imp = false;
+            for (let k = 0; k < 3; k++)
+              for (const dir of [1, -1]) {
+                const n: [number, number, number] = [...v];
+                n[k] += dir * step;
+                if (Math.abs(n[k]) > 60) continue;
+                const c = costS(n);
+                if (c < bestS - 1e-9) {
+                  bestS = c;
+                  v = n;
+                  imp = true;
+                }
+              }
+          }
+        }
+        if (v.some((x) => x !== 0)) {
+          for (const id of sub) out.set(id, compose(rotS(...v), out.get(id)!));
+          extra += ` + ${chain[li]} eklemi (Z ${v[0]}°, X ${v[1]}°, Y ${v[2]}°)`;
+        }
+      }
+      if (before > 1e-5) lines.push(`${m[1]}-${m[2]} ${digit}: dışarıda ${(before * 1000).toFixed(1)} → ${(after1 * 1000).toFixed(1)} (Z ${q[0]}°, X ${q[1]}°, Y ${q[2]}°)${extra}`);
+    }
+  }
+  log(`  parmak uyumu: ${lines.length} parmak düzeltildi`);
+  for (const l of lines) log(`    ${l}`);
+  return out;
 }
 
 /**
