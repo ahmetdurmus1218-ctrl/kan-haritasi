@@ -86,7 +86,50 @@ function companionInFocus(focus: Set<string>, structure: string): boolean {
   for (const f of focus) if (COMPANIONS[f]?.includes(structure)) return true;
   return false;
 }
-const DIM = 0.055;
+const DIM = 0.04;
+
+/**
+ * Bağlam: küçük ya da bağlı yapılara odaklanınca ait oldukları organ yarı saydam görünür (ör. koroner
+ * atardamarlar kalbin üstünde, böbrek damarları böbreklerle, diz bağları kemiklerle). Böylece yapı
+ * boşlukta asılı durmaz. Değer: bağlam organının saydamlığı.
+ */
+const CONTEXT: Record<string, [string, number][]> = {
+  'coronary-arteries': [['heart', 0.45]],
+  'pulmonary-vessels': [['heart', 0.4], ['lungs', 0.12]],
+  aorta: [['heart', 0.4]],
+  'carotid-arteries': [['aorta', 0.5]],
+  'renal-vessels': [['kidneys', 0.4], ['aorta', 0.4], ['veins', 0.25]],
+  'abdominal-vessels': [['aorta', 0.5]],
+  adrenals: [['kidneys', 0.35]],
+  'urinary-tract': [['kidneys', 0.4]],
+  'eye-vessels': [['eyes', 0.22]],
+  knee: [['bones', 0.4]],
+  gallbladder: [['liver', 0.3]],
+  pancreas: [['small-intestine', 0.15], ['spleen', 0.3]],
+  thyroid: [['airways', 0.35]],
+  tonsils: [['airways', 0.3]],
+};
+/**
+ * Derindeki küçük yapılara odaklanınca kamera onları saran organın içine girer: saran organ (beyin)
+ * hiç çizilmez, yoksa soluk katmanları ekranı sis gibi kaplar.
+ */
+const ENCLOSING: Record<string, string[]> = {
+  pituitary: ['brain'],
+  hypothalamus: ['brain'],
+  pineal: ['brain'],
+  ear: ['brain'],
+};
+function enclosed(focus: Set<string> | null, structure: string): boolean {
+  if (!focus) return false;
+  for (const f of focus) if (ENCLOSING[f]?.includes(structure)) return true;
+  return false;
+}
+function contextOpacity(focus: Set<string> | null, structure: string): number {
+  if (!focus) return 0;
+  let o = 0;
+  for (const f of focus) for (const [s, v] of CONTEXT[f] ?? []) if (s === structure) o = Math.max(o, v);
+  return o;
+}
 
 interface Visual {
   mat: MeshPhysicalMaterial;
@@ -391,7 +434,12 @@ export function BodyScene(props: BodySceneProps) {
         const innerDim = innerView && inFocus && focus && !inner && !focusParts ? Math.min(base, 0.14) : base;
         const isMuted = !!muted && muted.has(p.structure) && !h;
         // Kesit görünümünde organ dolu kalır; basamağın bölümü yalnız ışıkla vurgulanır.
-        const focused = !inFocus ? (isolate ? 0 : DIM) : focusParts && !partFocused && !section ? Math.min(base, 0.18) : innerDim;
+        // Odak dışı: bağlam organı yarı saydam; diğerleri çok soluk. Odak dışındaki organların iç bölümleri
+        // (beyaz cevher, karıncıklar, kapaklar…) hiç çizilmez: üst üste binen soluk katmanlar sis yapmasın.
+        // Kesitte organ tek başına (bağlam organları kesit görüntüsünü kaplamasın)
+        const ctx = inFocus || section ? 0 : contextOpacity(focus, p.structure);
+        const outOfFocus = ctx > 0 ? (inner ? 0 : Math.min(base, ctx)) : isolate || inner || enclosed(focus, p.structure) ? 0 : DIM;
+        const focused = !inFocus ? outOfFocus : focusParts && !partFocused && !section ? Math.min(base, 0.18) : innerDim;
         const isHovered = !!hovered && (hovered.whole ? hovered.structure === p.structure : hovered.partId === p.id);
         // Soluk yapı üzerine gelinince biraz belirginleşir (tıklanabileceği anlaşılsın)
         const targetOpacity = isMuted ? Math.min(focused, isHovered ? 0.55 : focus ? 0.4 : theme === 'light' ? 0.2 : 0.13) : focused;
@@ -401,7 +449,7 @@ export function BodyScene(props: BodySceneProps) {
         const base0 = el && /(arter|vein|sinus|arch|trunk|branch)/i.test(el.en) ? colorFor(p.structure, el.en.toLowerCase(), look) : colorFor(p.structure, p.label, look);
         const surface = surfaceFor(p.structure, el ? el.en.toLowerCase() : p.label);
         const baseColor = 'adapted' in p && p.adapted ? adaptedColor(base0) : base0;
-        const shown = !hidden.has(p.structure) && (isVisible(p.structure) || (!!focus && focus.has(p.structure))) && !(isolate && !inFocus);
+        const shown = !hidden.has(p.structure) && (isVisible(p.structure) || (!!focus && focus.has(p.structure)) || ctx > 0) && !(isolate && !inFocus && ctx === 0);
         const view = (
           <PartView
             key={p.id}

@@ -7,7 +7,8 @@ Her kabul organı için (§25):
   - #/ic/<organ> 3B keşifte açılır (aynı tuval ve kamera) → currentLevel === interior, currentNode ∉ {wall, tissue, cell, molecule}
   - kalıba göre içerik: hollow → lümen + içerik + hareket/akış; solid → parankim + bölgeler + süreç;
     vascular → lümen + kan akışı; chamber → odacık + kan akışı; airway → hava + akış; sensory → uyaranın yolu
-  - 3B iç sahne çizilir (boş ekran yok), "Eğitimsel · Temsili anatomi" etiketi
+  - 3B iç görünüm çizilir (boş ekran yok): gerçek modeli olan organda kesit (data-section), olmayanda temsili iç sahne;
+    "Eğitimsel · Temsili anatomi" etiketi
   - organ sayfası varsa: organ sayfası → "İçine gir" → yine organın iç dünyası (döngü)
 Girişler: 3B vücut paneli, sistem sayfası, arama, Benim vücudum. Ayrıntılı akışlar: kalın bağırsak (lümen → içerik →
 hareket → emilim → mikrobiyota → dışkı → rektum, duvar ancak sonra), ince bağırsak (villus ilk ekran değil), mide, kalp,
@@ -73,7 +74,10 @@ def assert_inside(page, a, label, expect_id=None):
     check(ok_level, f"{label}: İçine gir → iç dünya (seviye={a.get('currentLevel')}, düğüm={a.get('currentNode')})")
     if expect_id:
         check(a.get("interior") == expect_id, f"{label}: doğru organın içi ({a.get('interior')} == {expect_id})")
-    check(a.get("scene", "").startswith("ic:") and a.get("sceneKind") in {"lumen", "vessel", "chambers", "parenchyma", "pathway"}, f"{label}: 3B iç sahne ({a.get('scene')}, {a.get('sceneKind')})")
+    # Gerçek 3B modeli olan organ: vücut sahnesinde kesitle açılır (data-section); modeli olmayan (mikroskobik) yapı:
+    # temsili iç sahne (ic:…).
+    in_section = a.get("scene") == "body" and bool(a.get("section"))
+    check((in_section or a.get("scene", "").startswith("ic:")) and a.get("sceneKind") in {"lumen", "vessel", "chambers", "parenchyma", "pathway"}, f"{label}: 3B iç görünüm — {'gerçek modelin kesiti' if in_section else 'iç sahne'} ({a.get('scene')}, {a.get('section')}, {a.get('sceneKind')})")
     check(len(a.get("actions", [])) <= 5 and any(x.startswith("back:") for x in a["actions"]), f"{label}: yalnızca bu seviyenin eylemleri ({len(a['actions'])})")
     return a
 

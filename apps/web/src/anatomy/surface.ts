@@ -62,7 +62,8 @@ export function surfaceFor(structure: string, name: string | null): Surface {
   if (structure === 'heart') return /valve|mitral|tricuspid|chorda/.test(s) ? 'tendon' : 'myocardium';
   if (VESSEL.has(structure)) return 'vessel';
   if (structure === 'skeletal-muscle') return /fascia|tendon|aponeuros|retinacul|bursa|sheath/.test(s) ? 'tendon' : 'muscle';
-  if (structure === 'diaphragm') return 'muscle';
+  // Diyafram: ince kas tabakası ve ortada tendon; kas lifi kabartması burada çizgili duvar gibi görünüyordu
+  if (structure === 'diaphragm') return 'organ';
   if (structure === 'lungs') return 'lung';
   if (structure === 'airways') return /cartilage|larynx/.test(s) ? 'cartilage' : 'gut';
   if (structure === 'brain' || structure === 'spinal-cord') return /meninges|ventricle/.test(s) ? 'clear' : 'brain';

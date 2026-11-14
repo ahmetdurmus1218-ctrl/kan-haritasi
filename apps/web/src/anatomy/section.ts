@@ -72,11 +72,24 @@ const STAGE_PARTS: Record<string, Record<string, string[]>> = {
   kidneys: { cortex: ['cortex', 'column'], medulla: ['pyramid', 'papilla'] },
   brain: { csf: ['ventricles'], hemisphere: ['corpus-callosum', 'cingulate'], deep: ['thalamus', 'basal-nuclei', 'hippocampus', 'amygdala'] },
 };
-export function stageParts(structure: string, stageId: string, node: string | undefined): string[] {
+/** Başka bir yapının içinde gösterilen iç dünyalar: kamera o bölüme gider (ör. gırtlak hava yollarında). */
+const INTERIOR_PARTS: Record<string, string[]> = {
+  'ic.larynx': ['larynx', 'epiglottis', 'larynx-cartilages'],
+  'ic.nose': ['nasal-cavity'],
+  'ic.nasal-cavity': ['nasal-cavity', 'sinuses'],
+  'ic.tongue': ['tongue'],
+  'ic.pharynx': ['pharynx'],
+  'ic.parathyroid': ['parathyroid'],
+};
+/** Bir yapının bölümünde geçen iç dünya mı (ör. gırtlak): kesit ve kamera o bölüme göre. */
+export function interiorParts(interiorId: string): string[] {
+  return INTERIOR_PARTS[interiorId] ?? [];
+}
+export function stageParts(structure: string, stageId: string, node: string | undefined, interiorId?: string): string[] {
   const byId = STAGE_PARTS[structure]?.[stageId];
   if (byId) return byId;
   if (node?.startsWith(`${structure}.`)) return [node.slice(structure.length + 1)];
-  return [];
+  return (interiorId && INTERIOR_PARTS[interiorId]) || [];
 }
 
 const CUT: Record<string, string> = {

@@ -19,7 +19,7 @@ import { formatDate } from '../lib/format';
 import { highlightName, highlightsFrom, withFindingHighlights, withImagingHighlights } from '../anatomy/highlight';
 import { BodyScene, type PickInfo, type PointerInfo } from '../anatomy/BodyScene';
 import { ORGANS, insidesOf } from '../anatomy/organs';
-import { sectionPlane, sectionSpec, sectionable, stageParts } from '../anatomy/section';
+import { interiorParts, sectionPlane, sectionSpec, sectionable, stageParts } from '../anatomy/section';
 import { partLabel, partLatin } from '../anatomy/names';
 import { interiorForStructure, routeForNode } from '../lib/anatomyNav';
 import { type BodyModel, elementKey, webglAvailable } from '../anatomy/models';
@@ -213,7 +213,11 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   const holding = !!lv && !diveOk;
   // İçine gir'in ilk adımları (iç dünya, bölümler): organın gerçek modeli kesitle açılır — vücut sahnesinde
   // kalınır, prosedürel sahneye geçilmez. Duvar, doku ve hücre ancak "Daha derine in" ile gelir.
+  // Kesit yalnız gerçek modeli olan yapılarda (şematik çizimin — ör. paketsiz kulak, tiroid — kesiti anlamsız)
+  const realStructures = useMemo(() => new Set(models.parts.map((p) => p.structure)), [models.parts]);
   const section = !!lv && !holding && (lv.level === 'interior' || lv.level === 'region') && sectionable(interiorStructure) && rawBoxes.has(interiorStructure);
+  // Kesit yalnız gerçek modelde; şematik çizimde (paketsiz kulak, tiroid) organ dıştan gösterilir ve paket önerilir.
+  const sectionCut = section && realStructures.has(interiorStructure!);
   const sceneKey = inside ? `inside:${inside.scene}` : lv && !holding && !section ? lv.sceneKey : 'body';
   const [shownKey, setShownKey] = useState(sceneKey);
   // Seviye geçiş yönü: derine (kamera yaklaşır → perde → yeni sahneye dışarıdan girer) ya da yukarı (geri çekilir).
@@ -316,7 +320,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
   // Kesit görünümünde basamağın düğümü bir bölüme karşılık geliyorsa (ör. brain.ventricles) o bölüm öne çıkar.
   const sectionPart = useMemo(() => {
     if (!section || !lv || !interiorStructure) return null;
-    const labels = stageParts(interiorStructure, lv.stage.id, lv.stage.node);
+    const labels = stageParts(interiorStructure, lv.stage.id, lv.stage.node, lv.def.organId);
     const ids = allParts.filter((p) => p.structure === interiorStructure && !!p.label && labels.includes(p.label)).map((p) => p.id);
     return ids.length ? new Set(ids) : null;
   }, [section, lv, interiorStructure, allParts]);
@@ -355,9 +359,17 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 
   /* ---------------------------------------------------------- kesit */
   const sectionClip = useMemo<Plane | null>(() => {
-    const b = section && interiorStructure ? boxes.get(interiorStructure) : undefined;
-    return b ? sectionPlane(interiorStructure!, b) : null;
-  }, [section, interiorStructure, boxes]);
+    if (!sectionCut || !interiorStructure || !lv) return null;
+    // Bölüm iç dünyasında (ör. gırtlak) düzlem bölümün ortasından geçer; yoksa organın ortasından.
+    const own = interiorParts(lv.def.organId);
+    let b = boxes.get(interiorStructure);
+    if (own.length) {
+      const pb = new Box3();
+      for (const p of allParts) if (p.structure === interiorStructure && p.label && own.includes(p.label)) pb.union(p.box);
+      if (!pb.isEmpty()) b = pb;
+    }
+    return b ? sectionPlane(interiorStructure, b) : null;
+  }, [sectionCut, interiorStructure, boxes, lv, allParts]);
   const clipPlane = useMemo<Plane | null>(() => {
     if (sectionClip) return sectionClip;
     if (!clip.on) return null;
@@ -951,6 +963,7 @@ export function Explorer({ route }: { route: ExploreRoute }) {
       data-scene={shownKey}
       data-target-scene={sceneKey}
       data-section={section ? interiorStructure : undefined}
+      data-section-cut={sectionCut ? 'true' : undefined}
       data-transition={phase}
       {...(lv
         ? {
@@ -1296,6 +1309,14 @@ export function Explorer({ route }: { route: ExploreRoute }) {
         </ContextSheet>
       )}
 
+      {section && !sectionCut && !immersive && (
+        <div className="pointer-events-auto absolute bottom-24 left-4 z-20 max-w-xs rounded-xl border border-ink-600/70 bg-ink-950/80 p-3 text-xs text-fg-muted backdrop-blur md:bottom-6 md:left-6" data-testid="section-note">
+          Bu yapının temel modeli şematik bir çizimdir; kesiti gerçek anatomiyi göstermez. Gerçek iç yapısı (kıkırdaklar, kemikçikler, bez lobları) isteğe bağlı <strong className="text-fg">Baş-boyun</strong> anatomi paketiyle gelir.
+          <button type="button" className="mt-1.5 block text-accent underline" onClick={() => go({ name: 'privacy' })}>
+            Anatomi paketleri →
+          </button>
+        </div>
+      )}
       {lv && !immersive && (
         <LevelDock view={lv} actions={lvActions} onAction={(a: LevelAction) => a.to && go(routeOf(lv.def, a.to))} accent={accent} onSize={onCover} personal={lvPersonal} label={lvLabel} busy={busy} picked={pickedInfo} personal3D={lvPersonal3D} />
       )}

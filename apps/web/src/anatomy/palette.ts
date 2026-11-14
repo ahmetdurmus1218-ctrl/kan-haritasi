@@ -233,11 +233,11 @@ const REAL_COLORS: Record<string, string> = {
   airways: '#d8b8a6',
   liver: '#521610',
   gallbladder: '#3a6428',
-  pancreas: '#d4a06a',
+  pancreas: '#d8a585',
   'small-intestine': '#d48a72',
   'large-intestine': '#b87358',
   kidneys: '#6e2019',
-  'urinary-tract': '#cdb062',
+  'urinary-tract': '#d8b0a0',
   prostate: '#a8666e',
   brain: '#c28e86',
   'spinal-cord': '#e2cfa0',
@@ -257,7 +257,7 @@ const REAL_COLORS: Record<string, string> = {
   nerves: '#e8cc6a',
   ear: '#dcc4a8',
   tonsils: '#c06878',
-  'lymph-node': '#86b890',
+  'lymph-node': '#c9a493',
   knee: '#d4dade',
   diaphragm: '#8a241e',
   ovaries: '#dca2ae',
@@ -272,6 +272,15 @@ const REAL_PART: Record<string, string> = {
   'brain|ventricles': '#4a3f3c',
   'brain|visual-pathway': '#e6dccb',
   'brain|olfactory': '#e6dccb',
+  // Atlas renkleri yerine gerçek doku tonları
+  'urinary-tract|urethra': '#d8a898',
+  'urinary-tract|bladder': '#d89a8c',
+  'prostate|ducts': '#cfae96',
+  'kidneys|capsule': '#7a2a22',
+  'kidneys|hilum': '#a8645a',
+  'lymph-node|capsule': '#d6b4a4',
+  'lymph-node|afferent': '#e6dccb',
+  'lymph-node|efferent': '#e6dccb',
 };
 const REAL_VEIN = '#24398f';
 /** Gerçekçi görünümde atlas renklendirmesi yapılmayan bölümler (gerçekte aynı dokudan, aynı renkte). */
