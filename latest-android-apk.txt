@@ -1,6 +1,6 @@
 workflow: Android APK
-run: 44907547582
-sha: 320e10ad258a0671941113dd478ee259cd96b2da
+run: 44908415869
+sha: 562e07e6347a4f3278dea3c8d5ec8467c1ca63ba
 conclusion: success
 
 apk: success
@@ -21,6 +21,7 @@ apk: success
   - Anatomi paketleri resmi listeyle eşleşmeli (APK'ya girmez, ayrı indirilir): success
   - Run actions/upload-artifact@v4: success
   - Run actions/upload-artifact@v4: success
+  - Dal derlemesi: denemelik yayın (apk-deneme): success
   - Son sürüm: telefondan indirilebilir yayın (apk-son): skipped
   - Post Run gradle/actions/setup-gradle@v4: success
   - Post Run actions/setup-java@v4: success
