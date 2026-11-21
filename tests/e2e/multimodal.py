@@ -154,8 +154,9 @@ with sync_playwright() as p:
     page.get_by_role("heading", name="Vücudum nasıl?").wait_for(timeout=20000)
 
     # --- UI kabul: ana sayfa "Vücudum nasıl?" sorusunu yanıtlar; "Veri ekle" ve "Vücudum" hemen görünür
-    check(page.get_by_role("link", name="Veri ekle").first.is_visible(), "UI: 'Veri ekle' ilk ekranda görünür")
-    check(page.get_by_role("link", name="Vücudum").first.is_visible(), "UI: ana gezinmede 'Vücudum' görünür")
+    check(page.get_by_role("link", name="Dosya Yükle").first.is_visible(), "UI: 'Dosya Yükle' ilk ekranda görünür")
+    page.get_by_test_id("home-body").wait_for(timeout=60000)
+    check(page.get_by_test_id("home-body").is_visible(), "UI: ana ekranın merkezinde 3B vücut görünür")
     labels = [x.strip() for x in page.locator("nav[aria-label] a, nav[aria-label] button").all_inner_texts() if x.strip()]
     # "Simülasyon" artık dokuz ana yerden biridir (fizyoloji laboratuvarı); kapsam raporu, hakkında ve DICOM araçları gezinmede yok.
     check(not any(w in " ".join(labels) for w in ("Kapsam", "Hakkında", "DICOM")), f"UI: gezinmede teknik öğe yok {labels}")
@@ -211,7 +212,7 @@ with sync_playwright() as p:
     # Ana sayfa artık özet gösteriyor
     page.goto(URL + "#/")
     page.get_by_role("heading", name="Vücudum nasıl?").wait_for()
-    check(page.get_by_text("Son durum").count() >= 1, "UI: ana sayfada 'Son durum' özeti")
+    check(page.get_by_text("Analiz Sonuç Özeti").count() >= 1, "UI: ana sayfada 'Analiz Sonuç Özeti'")
     check("görüntü/rapor gözlemi" not in page.locator("main").inner_text(), "UI: fotoğraf asimetrisi özette organ gözlemi olarak sayılmıyor")
     page.screenshot(path=SHOTS / "90c-ana-sayfa.png", full_page=True)
 
@@ -368,14 +369,23 @@ with sync_playwright() as p:
     bottom = page.get_by_role("navigation", name="Ana gezinme")
     n_items = bottom.locator("a:visible, button:visible").count()
     check(1 <= n_items <= 5, f"telefon: alt gezinmede en fazla 5 öğe ({n_items})")
-    check(bottom.get_by_role("link", name="Ekle").is_visible(), "telefon: ortada 'Ekle'")
+    check(bottom.get_by_role("link", name="Dosya Yükle").is_visible(), "telefon: ortada 'Dosya Yükle'")
     check(bottom.get_by_role("link", name="Sonuçlar").is_visible(), "telefon: alt gezinmede 'Sonuçlar'")
-    bottom.get_by_role("button", name="Daha").click()
-    more = page.locator("dialog[open]")
-    more.get_by_text("Görüntülerim", exact=True).wait_for()
-    check(more.get_by_text("Zaman Çizelgem", exact=True).count() == 1 and more.get_by_text("Belgelerim", exact=True).count() == 1, "telefon: 'Daha' alt sayfasında Görüntülerim, Zaman Çizelgem, Belgelerim")
-    check(more.get_by_text("Anatomi Laboratuvarı", exact=True).count() == 1 and more.get_by_text("Simülasyon", exact=True).count() == 1, "telefon: 'Daha' alt sayfasında Anatomi Laboratuvarı ve Simülasyon")
+    bottom.get_by_role("button", name="Sistemler").click()
+    sheet = page.locator("dialog[open]")
+    sheet.get_by_text("Sindirim", exact=True).wait_for()
+    check(sheet.get_by_role("button", name="Anatomi Laboratuvarı").count() == 1, "telefon: 'Sistemler' alt sayfası sistemleri ve Anatomi Laboratuvarı'nı açar")
     page.keyboard.press("Escape")
+    # Bölümlerin alt sayfaları: Raporlar → Belgelerim, Görüntülerim; Analizler → Zaman Çizelgem; Laboratuvar → Simülasyon
+    page.locator("nav[aria-label='Bölümler'] a", has_text="Raporlar").click()
+    sub = page.locator("nav[aria-label='Raporlar sayfaları']").last
+    sub.wait_for()
+    check(sub.get_by_text("Belgelerim", exact=True).count() == 1 and sub.get_by_text("Görüntülerim", exact=True).count() == 1, "telefon: Raporlar → Belgelerim, Görüntülerim")
+    page.locator("nav[aria-label='Bölümler'] a", has_text="Analizler").click()
+    check(page.locator("nav[aria-label='Analizler sayfaları']").last.get_by_text("Zaman Çizelgem", exact=True).count() == 1, "telefon: Analizler → Zaman Çizelgem")
+    page.locator("nav[aria-label='Bölümler'] a", has_text="Laboratuvar").click()
+    lab = page.locator("nav[aria-label='Laboratuvar sayfaları']").last
+    check(lab.get_by_text("Anatomi Laboratuvarı", exact=True).count() == 1 and lab.get_by_text("Simülasyon", exact=True).count() == 1, "telefon: Laboratuvar → Anatomi Laboratuvarı, Simülasyon")
     page.goto(URL + "#/vucudum")
     page.get_by_role("heading", name="Vücudum", exact=True).wait_for()
     sw = page.evaluate("() => document.querySelector('main').scrollWidth - document.querySelector('main').clientWidth")

@@ -61,6 +61,8 @@ jobs:
           for i in $(seq 1 30); do curl -sf http://localhost:4173/ > /dev/null && break; sleep 1; done
       - name: Belgeler ve kasa (smoke)
         run: python tests/e2e/smoke.py "$RUNNER_TEMP/shots"
+      - name: Ana Ekran (3B vücut, etkilenen organlar, organ yolculuğu) — masaüstü ve telefon
+        run: python tests/e2e/home.py "$RUNNER_TEMP/shots"
       - name: Okuma → sonuçlar → vücutta göster → simülasyon
         run: python tests/e2e/flow.py "$RUNNER_TEMP/shots"
       - name: Zaman çizelgesi, şifreli yedek, dışa aktarma

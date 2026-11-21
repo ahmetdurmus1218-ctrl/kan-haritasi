@@ -1,5 +1,42 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrandLogo } from './BrandLogo';
+import { BodyIcon, BrainIcon, FileTextIcon, SparkIcon } from './icons';
+
+/** Holografik insan figürü (vektör, prosedürel): platform halkaları üzerinde ışıyan siluet. */
+function Hologram() {
+  return (
+    <div className="splash-holo" aria-hidden="true">
+      <svg viewBox="0 0 120 230" className="splash-holo-fig">
+        <defs>
+          <linearGradient id="kh-holo-g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#9ff3ff" stopOpacity=".95" />
+            <stop offset="1" stopColor="#1e8fff" stopOpacity=".55" />
+          </linearGradient>
+        </defs>
+        <g fill="url(#kh-holo-g)" fillOpacity=".28" stroke="#7fe8ff" strokeWidth="1.4" strokeLinejoin="round">
+          <ellipse cx="60" cy="20" rx="12" ry="15" />
+          <path d="M53 34h14l1 7c10 2 19 5 22 12l5 40c1 9 2 22 6 36 1 4-3 5-5 2-6-13-9-25-11-36l-4-24-2 30c-1 9 1 16 1 24l-3 48c-1 10-1 20 0 28 1 4-6 4-8 1l-5-46-3-30h-2l-3 30-5 46c-2 3-9 3-8-1 1-8 1-18 0-28l-3-48c0-8 2-15 1-24l-2-30-4 24c-2 11-5 23-11 36-2 3-6 2-5-2 4-14 5-27 6-36l5-40c3-7 12-10 22-12Z" />
+        </g>
+        <g stroke="#bff6ff" strokeOpacity=".5" strokeWidth=".7" fill="none">
+          <path d="M60 41v70M47 58c8 4 18 4 26 0M46 72c9 4 19 4 28 0M49 86c7 3 15 3 22 0" />
+          <path d="M52 112l-4 50M68 112l4 50" />
+        </g>
+      </svg>
+      <div className="splash-holo-rings">
+        <i />
+        <i />
+        <i />
+      </div>
+    </div>
+  );
+}
+
+const FEATURES = [
+  { label: 'Anatomi', Icon: BodyIcon },
+  { label: 'Analiz', Icon: SparkIcon },
+  { label: 'Rapor', Icon: FileTextIcon },
+  { label: 'Serüven', Icon: BrainIcon },
+];
 
 /**
  * Açılış ekranı (resmî görsel kimlik): koyu lacivert zemin, dönen mavi DNA sarmalları, bilimsel ışık
@@ -181,10 +218,21 @@ export function Splash({ ready }: { ready: boolean }) {
         <BrandLogo size={128} glow className="splash-logo" />
         <h1 className="splash-title">Kan Haritası</h1>
         <p className="splash-sub">Kişisel Dijital Vücut ve Sağlık Analiz Platformu</p>
+        <Hologram />
+        <p className="splash-status">Sistem yükleniyor… %{pct}</p>
         <div className="splash-bar" aria-hidden="true">
           <i style={{ width: `${Math.max(3, pct)}%` }} />
         </div>
-        <p className="splash-status">Sistem yükleniyor… %{pct}</p>
+        <ul className="splash-features" aria-hidden="true">
+          {FEATURES.map(({ label, Icon }) => (
+            <li key={label}>
+              <span>
+                <Icon size={24} />
+              </span>
+              {label}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

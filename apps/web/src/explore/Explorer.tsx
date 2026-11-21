@@ -1,8 +1,8 @@
 import { type ComponentType, type LazyExoticComponent, type RefObject, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CameraControls, type CameraControlsImpl } from '@react-three/drei';
-import { Box3, MathUtils, type PerspectiveCamera, Plane, PMREMGenerator, Sphere, Vector3 } from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { Box3, MathUtils, type PerspectiveCamera, Plane, Sphere, Vector3 } from 'three';
+import { Env } from './sceneEnv';
 import { type Sex, type SystemId, structureById, systemById, testByKey } from '@kh/catalog';
 import { interiorArchetype, interiorById, interiorFor, interiorProvenance, stagePersonal } from '@kh/analysis';
 import { useHealthModel } from '../lib/analysisBridge';
@@ -1381,29 +1381,6 @@ export function Explorer({ route }: { route: ExploreRoute }) {
 }
 
 /** Oda ışığı ortamı (ağ isteği yok; sahne içinde üretilir). */
-function Env({ intensity }: { intensity: number }) {
-  const gl = useThree((s) => s.gl);
-  const scene = useThree((s) => s.scene);
-  const invalidate = useThree((s) => s.invalidate);
-  useEffect(() => {
-    const pmrem = new PMREMGenerator(gl);
-    const room = new RoomEnvironment();
-    const env = pmrem.fromScene(room, 0.04).texture;
-    scene.environment = env;
-    room.dispose();
-    return () => {
-      scene.environment = null;
-      env.dispose();
-      pmrem.dispose();
-    };
-  }, [gl, scene]);
-  useEffect(() => {
-    scene.environmentIntensity = intensity;
-    invalidate();
-  }, [scene, intensity, invalidate]);
-  return null;
-}
-
 /**
  * Kamera ve kadraj durumunu kök öğeye yazar (uçtan uca testler gerçek kamera hareketini ve ekrana sığmayı
  * denetler): data-camera = konum|hedef|görüş açısı; data-camera-moving; data-subject = kadrajdaki nesnenin

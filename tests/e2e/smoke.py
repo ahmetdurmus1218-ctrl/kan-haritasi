@@ -59,16 +59,23 @@ with sync_playwright() as p:
     # Ana sayfa: tek soru ("Vücudum nasıl?"), boş durumda doğrudan veri ekleme alanı
     check(page.get_by_role("heading", name="Vücudum nasıl?").count() == 1, "ana sayfa açılıyor")
     check(page.get_by_text("Henüz sağlık verisi eklemedin").count() == 1, "boş durum: veri ekle çağrısı")
-    check(page.get_by_role("link", name="Ekle").count() >= 1, "alt gezinmede tek ekleme düğmesi")
+    check(page.get_by_role("link", name="Dosya Yükle").count() >= 1, "alt gezinmede tek ekleme düğmesi (Dosya Yükle)")
+    page.get_by_test_id("home-body").wait_for(state="attached", timeout=60000)
+    check(page.get_by_test_id("home-body").count() == 1, "ana ekranın merkezinde 3B insan anatomisi")
+    check(page.get_by_test_id("range-gauge").count() == 0, "veri yokken sonuç göstergesi (yüzde) üretilmez")
     page.set_viewport_size({"width": 1366, "height": 860})
-    nav = [x.strip() for x in page.get_by_role("complementary").get_by_role("navigation", name="Ana gezinme").get_by_role("link").all_inner_texts() if x.strip()]
-    expected_nav = ["Genel Bakış", "Vücudum", "Anatomi Laboratuvarı", "Simülasyon", "Sonuçlarım", "Görüntülerim", "Zaman Çizelgem", "Belgelerim", "Ayarlar ve Gizlilik"]
-    check(nav == expected_nav, f"masaüstü ana gezinme: dokuz ana yer ({nav})")
+    nav = [x.strip() for x in page.locator("header nav[aria-label='Ana gezinme'] a").all_inner_texts() if x.strip()]
+    expected_nav = ["Ana Ekran", "Laboratuvar", "Analizler", "Raporlar", "Serüven", "Ayarlar"]
+    check(nav == expected_nav, f"masaüstü üst gezinme: altı ana bölüm ({nav})")
+    check(page.get_by_text("Çevrimdışı Mod").count() >= 1, "masaüstü: çevrimdışı mod göstergesi")
     page.set_viewport_size({"width": 390, "height": 844})
     mobile = [x.strip() for x in page.locator("nav.safe-bottom").locator("a, button").all_text_contents() if x.strip()]
-    check(mobile == ["Özet", "Vücudum", "Ekle", "Sonuçlar", "Daha"], f"mobil alt gezinme: Özet · Vücudum · (+) · Sonuçlar · Daha ({mobile})")
+    check(mobile == ["Ana Ekran", "Sistemler", "Dosya Yükle", "Sonuçlar", "Ayarlar"], f"mobil alt gezinme: Ana Ekran · Sistemler · (+) · Sonuçlar · Ayarlar ({mobile})")
+    sections = [x.strip() for x in page.locator("nav[aria-label='Bölümler'] a").all_inner_texts() if x.strip()]
+    check(sections == ["Ana Ekran", "Laboratuvar", "Analizler", "Raporlar", "Serüven"], f"mobil bölümler ({sections})")
     page.goto(URL + "#/goruntuler")
     page.get_by_role("heading", name="Görüntüler").wait_for()
+    page.get_by_test_id("no-images").wait_for(state="attached", timeout=30000)
     check(page.get_by_test_id("no-images").count() == 1, "Görüntüler sayfası: boş durum")
     page.goto(URL + "#/")
     page.get_by_role("heading", name="Vücudum nasıl?").wait_for()
@@ -196,7 +203,8 @@ with sync_playwright() as p:
 
     # Masaüstü görünüm
     page.set_viewport_size({"width": 1366, "height": 860})
-    page.get_by_role("link", name="Belgelerim").first.click()
+    page.locator("header nav[aria-label='Ana gezinme'] a", has_text="Raporlar").click()
+    page.get_by_text("Tahlil, Rapor veya Görüntü Yükle").wait_for()
     page.wait_for_timeout(500)
     page.screenshot(path=SHOTS / "10-masaustu.png")
     page.locator("ul li").first.locator("button").first.click()

@@ -3,7 +3,7 @@ import { GRAPH, interiorById } from '@kh/analysis';
 import { testByKey } from '@kh/catalog';
 import { DERIVED, SIM_MODELS } from '@kh/physio';
 import { hrefFor, parseHash } from '../state/router';
-import { activeKey } from '../screens/AppShell';
+import { activeKey, groupOf } from '../screens/AppShell';
 import { derivedReports } from '../screens/SimLabPage';
 import { viewWindow } from '../components/simlab';
 import type { StoredReport } from '../lib/reports';
@@ -48,15 +48,28 @@ describe('simülasyon laboratuvarı: uygulama verisine bağlar', () => {
       expect(parseHash(hrefFor(r))).toEqual(r);
     }
   });
-  it('gezinme: dokuz ana yerin her biri etkin öğesini bulur', () => {
+  it('gezinme: her yer etkin alt sayfasını ve ana bölümünü bulur', () => {
     expect(activeKey({ name: 'simlab' })).toBe('simlab');
     expect(activeKey({ name: 'flow' })).toBe('simlab');
     expect(activeKey({ name: 'anatomylab' })).toBe('anatomylab');
-    expect(activeKey({ name: 'body' })).toBe('anatomylab');
-    expect(activeKey({ name: 'interior', id: 'heart' })).toBe('anatomylab');
+    expect(activeKey({ name: 'body' })).toBe('explore');
+    expect(activeKey({ name: 'interior', id: 'heart' })).toBe('explore');
     expect(activeKey({ name: 'organ', id: 'heart' })).toBe('mybody');
     expect(activeKey({ name: 'documents' })).toBe('documents');
     expect(activeKey({ name: 'result', key: 'tsh' })).toBe('results');
+    expect(activeKey({ name: 'brain' })).toBe('brain');
+    // Ana bölümler: Ana Ekran · Laboratuvar · Analizler · Raporlar · Serüven · Ayarlar
+    expect(groupOf(activeKey({ name: 'home' }))).toBe('home');
+    expect(groupOf(activeKey({ name: 'simlab' }))).toBe('lab');
+    expect(groupOf(activeKey({ name: 'anatomylab' }))).toBe('lab');
+    expect(groupOf(activeKey({ name: 'results' }))).toBe('analyses');
+    expect(groupOf(activeKey({ name: 'timeline' }))).toBe('analyses');
+    expect(groupOf(activeKey({ name: 'organ', id: 'liver' }))).toBe('analyses');
+    expect(groupOf(activeKey({ name: 'images' }))).toBe('reports');
+    expect(groupOf(activeKey({ name: 'add' }))).toBe('reports');
+    expect(groupOf(activeKey({ name: 'body' }))).toBe('journey');
+    expect(groupOf(activeKey({ name: 'interior', id: 'liver' }))).toBe('journey');
+    expect(groupOf(activeKey({ name: 'privacy' }))).toBe('settings');
   });
   it('hesaplayıcı girdileri: "<" / ">" nitelikli ve kanonik değeri olmayan sonuçlar kullanılmaz', () => {
     const base = { loinc: '', rawName: '', unit: '', unitKey: null, refText: '', refSource: 'none' as const, status: 'normal' as const, userEdited: false };

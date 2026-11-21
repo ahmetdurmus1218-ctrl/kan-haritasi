@@ -342,3 +342,44 @@ export const MicroscopeIcon = (p: IconProps) => (
     <path d="M9 21v-3" />
   </Icon>
 );
+
+/* Ana gezinme simgeleri (görsel kimlik: Laboratuvar, Analizler, Serüven, Bildirim, Ayarlar, Sistemler) */
+export const FlaskIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M9 3h6M10 3v6.2L4.8 18.4A1.8 1.8 0 0 0 6.4 21h11.2a1.8 1.8 0 0 0 1.6-2.6L14 9.2V3" />
+    <path d="M7.5 14.5h9" />
+  </Icon>
+);
+export const SparkIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M3 13h3l2.5-6 4 11 2.5-7 1.5 2H21" />
+    <circle cx="8.5" cy="7" r="1" />
+    <circle cx="12.5" cy="18" r="1" />
+  </Icon>
+);
+export const HeartPulseIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M20.4 12.6 12 21l-8.4-8.4A5 5 0 0 1 12 6.2a5 5 0 0 1 8.4 6.4Z" />
+    <path d="M6.5 12.5h3l1.5-2.5 2 4.5 1.5-2h3" />
+  </Icon>
+);
+export const BellIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.5 2h-15Z" />
+    <path d="M10 20.5a2 2 0 0 0 4 0" />
+  </Icon>
+);
+export const GearIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+  </Icon>
+);
+export const NetworkIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="5.5" r="2.5" />
+    <circle cx="5.5" cy="17.5" r="2.5" />
+    <circle cx="18.5" cy="17.5" r="2.5" />
+    <path d="M10.8 7.7 6.7 15.3M13.2 7.7l4.1 7.6M8 17.5h8" />
+  </Icon>
+);
